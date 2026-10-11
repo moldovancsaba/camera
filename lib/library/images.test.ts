@@ -221,3 +221,22 @@ test('deleting a global image takes it out of every partner library; the fields 
   assert.equal((data.events[0] as Record<string, unknown>).emailFooterImageUrl, URL_OF('g1'));
   assert.equal((await deleteGlobalImage(db, 'e1')).ok, false, 'an event upload is deleted on its event page');
 });
+
+test('a sample selfie and a stadium background are kept out of every general Images list (the global page, the partner\'s, the event\'s), and are not mistaken for each other', async () => {
+  const { db } = seed();
+  const images = db.collection('images');
+  const extra = [
+    picture('sg', { tags: ['sample-selfie'] }),
+    picture('bg', { tags: ['stadium-background'] }),
+    picture('bp', { tags: ['stadium-background'], scope: 'partner', partnerId: 'P' }),
+    picture('be', { tags: ['stadium-background'], scope: 'event', eventId: 'E', partnerId: 'P' }),
+  ];
+  for (const doc of extra) await images.insertOne(doc);
+  assert.deepEqual(ids(await listGlobalImages(db, { all: false })), ['g1', 'g2', 'g3'], 'the global page');
+  assert.equal((await listGlobalImages(db, { all: true })).length, 7, 'the every-upload view');
+  const partnerLibrary = await loadPartnerLibrary(db, partner(), 'images');
+  assert.ok(!ids(partnerLibrary.items).some((id) => ['bp', 'bg', 'sg'].includes(id)), 'the partner\'s own uploads');
+  assert.ok(!ids(partnerLibrary.available).some((id) => ['bg', 'sg'].includes(id)), 'what a partner can take');
+  const event = (await db.collection('events').findOne({ eventId: 'E' }))!;
+  assert.ok(!ids((await loadEventLibrary(db, event, 'images')).available).some((id) => ['be', 'bp', 'bg', 'sg'].includes(id)), 'what an event can choose');
+});

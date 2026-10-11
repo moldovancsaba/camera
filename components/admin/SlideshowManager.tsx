@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { EmptyState, LabelTag } from '@sovereignsquad/gds-core/client';
 import WelcomeScreenCard from '@/components/admin/WelcomeScreenCard';
+import DefaultStageCard from '@/components/admin/DefaultStageCard';
 
 interface Slideshow {
   _id: string;
@@ -122,6 +123,7 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
       </div>
 
       <WelcomeScreenCard eventId={eventId} initial={welcomeScreen} />
+      <DefaultStageCard eventId={eventId} />
 
       {slideshows.length === 0 ? (
         <div style={{ padding: '1.5rem' }}>

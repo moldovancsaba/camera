@@ -16,7 +16,9 @@ import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY } from '@/lib/gds/tokens/colors';
 import { translate, normalizeUiLanguage } from '@/lib/i18n';
 import { withEffectiveLanguage } from '@/lib/i18n/overrides';
-import { DEFAULT_STAGE, renderDefaultOverlay, stagePalette } from '@/lib/screen/default-stage';
+import { DEFAULT_STAGE, renderStageOverlay, stagePalette } from '@/lib/screen/default-stage';
+import { chooseStageBackground, storeStagePick, type StageBackgroundDeps } from '@/lib/screen/stage-background';
+import { chooseQrText, storeQrTextPick } from '@/lib/library/qr-texts';
 import { createShortLink, listShortLinks } from '@/lib/short-links/store';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { loadEventTheme } from '@/lib/theme/load';
@@ -29,6 +31,10 @@ export interface DefaultSlideshowDeps {
   upload: (pathname: string, png: Buffer) => Promise<string>;
   origin: () => string;
   now: () => string;
+  /** How the stadium background of the stage is fetched (lib/screen/stage-background.ts); the real fetch when missing. Tests pass their own. */
+  background?: StageBackgroundDeps;
+  /** For the random pick of the QR text (lib/library/qr-texts.ts); tests pass a fixed one. */
+  random?: () => number;
 }
 
 const defaultDeps: DefaultSlideshowDeps = {
@@ -75,13 +81,19 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
   const theme = await loadEventTheme(db, event);
   const colours = { background: theme.background, accent: theme.buttonBackground };
   const palette = stagePalette(colours);
-  const png = renderDefaultOverlay(colours);
+  // The stage is drawn on a stadium background of the library when the event has one to use (issue 326: its own, its partner's, else a random global one, picked once and stored on the event); with none, as
+  // while the library is empty, it is the built-in stage in the event's colours, byte for byte what every event had before.
+  const stage = await chooseStageBackground(db, event, deps.background);
+  const png = await renderStageOverlay(colours, stage?.picture ?? null);
   const overlayImageUrl = await deps.upload(`screens/${eventUuid}/default-${createHash('sha256').update(png).digest('hex').slice(0, 16)}.png`, png);
 
   // The language of the event, or of its partner when the event has none (issue 353).
   const language = normalizeUiLanguage((await withEffectiveLanguage(db, event)).uiLanguage);
-  const { window, qr, addressText } = DEFAULT_STAGE;
+  const { window, qr, addressText, qrText: qrTextBox } = DEFAULT_STAGE;
   const now = deps.now();
+  // A QR text of the library (issue 326, item 4): one in the event's language (English when there is none), picked at random once and stored on the event; with none in the library there is no such line,
+  // which is what the default slideshow always had. Once it is a text of the slideshow the editor owns it.
+  const qrText = await chooseQrText(db, event, { random: deps.random });
   const slideshowId = generateId();
   await db.collection(COLLECTIONS.SLIDESHOWS).insertOne({
     slideshowId,
@@ -107,11 +119,14 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
       qr: { url: `${origin}/${slug}`, x: qr.x, y: qr.y, size: qr.size, color: palette.qr },
       texts: [
         { text: writtenAddress(origin, event, slug), x: addressText.x, y: addressText.y, width: addressText.width, size: addressText.size, align: 'center', fit: true, color: palette.text },
+        ...(qrText ? [{ text: qrText.text, x: qrTextBox.x, y: qrTextBox.y, width: qrTextBox.width, size: qrTextBox.size, align: 'center', fit: true, color: palette.text }] : []),
       ],
     },
     createdBy: 'system',
     createdAt: now,
     updatedAt: now,
   });
+  if (stage) await storeStagePick(db, event, stage.pictureId, now);
+  if (qrText) await storeQrTextPick(db, event, qrText, now);
   return { ok: true, slideshowId, created: true };
 }

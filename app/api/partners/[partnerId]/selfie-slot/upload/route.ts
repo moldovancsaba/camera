@@ -12,6 +12,7 @@ import { itemView } from '@/lib/library/db';
 import { SAMPLE_SELFIE_TAG } from '@/lib/library/sample-selfie';
 import { createLibraryItem } from '@/lib/library/upload';
 import { addSelfieToPartnerSlot } from '@/lib/slots/selfie-store';
+import { scheduleWelcomeRedrawForPartner } from '@/lib/screen/welcome-redraw';
 
 export const POST = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ partnerId: string }> }) => {
   const session = await requireAuth();
@@ -31,5 +32,7 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
   if (!result.ok) throw apiBadRequest(result.reason);
   const added = await addSelfieToPartnerSlot(db, partner, String(result.item.pictureId), generateTimestamp());
   if (!added.ok) throw apiBadRequest(added.reason);
+  // The new selfie joins what the partner uses: the welcome page screens of its events that have the picture are drawn again after the response where the pick changes (lib/screen/welcome-redraw.ts).
+  scheduleWelcomeRedrawForPartner(String(partner.partnerId), 'partner-sample-selfie');
   return apiCreated({ item: itemView('images', result.item) });
 });

@@ -13,6 +13,7 @@ import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiForbidden, apiNotFound, apiError } from '@/lib/api';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 import { loadEventSelfiePanel, setEventSelfie } from '@/lib/slots/selfie-store';
+import { scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
 
 type Context = { params: Promise<{ eventId: string }> };
 
@@ -41,5 +42,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context: Contex
   const result = await setEventSelfie(db, event, body.value ?? {}, generateTimestamp());
   if (!result.ok) throw apiError(result.reason, result.status);
   const saved = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(eventId) });
+  // The sample selfie is what the window of the welcome page screen shows (issue 540): when the event has that picture it is drawn again after the response, if the pick changed (lib/screen/welcome-redraw.ts).
+  scheduleWelcomeRedraw(saved ?? event, 'sample-selfie');
   return apiSuccess(await loadEventSelfiePanel(db, saved ?? event));
 });

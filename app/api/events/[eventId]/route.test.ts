@@ -688,3 +688,28 @@ test('GET for the editor: what each kind of checkbox is for the event and for it
   const guest = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: Record<string, unknown> } };
   assert.equal('effectiveCheckboxes' in guest.data.event, false, 'a guest is not sent the editors’ view');
 });
+
+// The welcome page screen is drawn in the event's colours (issue 327): a save that changes them asks for the picture to be drawn again (after the response, if the event has it); any other save does not.
+test('PATCH: a change of the brand colours or of the Start button colours schedules a redraw of the welcome page screen picture; any other change does not', async (t) => {
+  const scheduled: Array<{ event: { _id?: unknown; welcomeScreen?: unknown }; reason: string }> = [];
+  const redrawReal = await import('@/lib/screen/welcome-redraw');
+  t.mock.module('@/lib/screen/welcome-redraw', { namedExports: { ...redrawReal, scheduleWelcomeRedraw: (event: { _id?: unknown; welcomeScreen?: unknown }, reason: string) => scheduled.push({ event, reason }) } });
+  const welcome = (fill: string) => ({ pageId: 'w', pageType: 'welcome', order: 0, isActive: true, config: { title: 'Welcome', buttonText: 'Start', buttonColor: fill } });
+  mockDeps(t, { event: { customPages: [welcome(hex('111111'))], welcomeScreen: { url: 'https://blob.example/w.png' } }, session: ADMIN });
+  const { PATCH } = await importRouteModule('welcome-redraw-colours');
+
+  assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
+  assert.equal((await PATCH(patchRequest({ customPages: [{ ...welcome(hex('111111')), config: { title: 'Another title', buttonText: 'Start', buttonColor: hex('111111') } }] }), params)).status, 200);
+  assert.equal(scheduled.length, 0, 'a text, or a page title, is not a colour');
+
+  assert.equal((await PATCH(patchRequest({ brandColor: OWN_PRIMARY }), params)).status, 200);
+  assert.equal(scheduled.length, 1);
+  assert.equal(scheduled[0].reason, 'colours');
+  assert.equal((scheduled[0].event.welcomeScreen as { url: string }).url, 'https://blob.example/w.png');
+
+  assert.equal((await PATCH(patchRequest({ brandColor: OWN_PRIMARY }), params)).status, 200);
+  assert.equal(scheduled.length, 1, 'the same colour again changes nothing');
+
+  assert.equal((await PATCH(patchRequest({ customPages: [welcome(hex('222222'))] }), params)).status, 200);
+  assert.equal(scheduled.length, 2, 'the Start button colour changed');
+});

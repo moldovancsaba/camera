@@ -46,6 +46,7 @@ import { brokenAddresses, withoutBroken } from '@/lib/media/pictures';
 import { needsThemeRefresh, refreshEventTheme } from '@/lib/theme/refresh';
 import { trackedSlugExists } from '@/lib/short-links/store';
 import { journeyRecordingEnabled } from '@/lib/journey/setting';
+import { colourInputsOf, scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
 
 interface EventFrameDetails {
   frameId: string;
@@ -270,6 +271,8 @@ export const PATCH = withErrorHandler(async (
   if (!event) {
     throw apiNotFound('Event');
   }
+  // The colours the welcome page screen is drawn in, as they are before this save (issue 327).
+  const coloursBefore = colourInputsOf(event);
 
   // Parse request body
   const body = await request.json();
@@ -524,6 +527,10 @@ export const PATCH = withErrorHandler(async (
   const updatedEvent = await db
     .collection(COLLECTIONS.EVENTS)
     .findOne({ _id: new ObjectId(eventId) });
+
+  // The welcome page screen is drawn in the event's colours (issue 327): when this save changed the brand colours or the colours of the Start button, the picture is drawn again after the response (once,
+  // and only if the event has the picture; lib/screen/welcome-redraw.ts). A save that did not touch them schedules nothing.
+  if (updatedEvent && coloursBefore !== colourInputsOf(updatedEvent)) scheduleWelcomeRedraw(updatedEvent, 'colours');
 
   return apiSuccess({
     event: {

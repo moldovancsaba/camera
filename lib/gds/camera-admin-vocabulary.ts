@@ -48,6 +48,8 @@ export const cameraAdminVocabularyPacks = [
     'create-default': { defaultMessage: 'Create the default slideshow', icon: GdsIcons.Add, feedback: savedFeedback },
     'draw-welcome-screen': { defaultMessage: 'Draw the welcome page screen', icon: GdsIcons.Capture, feedback: savedFeedback },
     'pick-another-selfie': { defaultMessage: 'Pick another', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    'draw-stage': { defaultMessage: 'Draw the stage again', icon: GdsIcons.Capture, feedback: savedFeedback },
+    'pick-another-background': { defaultMessage: 'Pick another', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'choose-welcome-photo': { defaultMessage: 'Choose from the gallery', icon: GdsIcons.Gallery, feedback: openedFeedback },
     'reload-screen': { defaultMessage: 'Reload the screen', icon: GdsIcons.Refresh, feedback: savedFeedback },
   }),
@@ -199,6 +201,8 @@ export const cameraAdminVocabularyPacks = [
     'switch-off': { defaultMessage: 'Switch off', icon: GdsIcons.Toggle, feedback: savedFeedback },
     'import-messmass': { defaultMessage: 'Import the logo from messmass', icon: GdsIcons.Download, feedback: savedFeedback },
     'delete-import': { defaultMessage: 'Delete the import', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    'confirm-delete': { defaultMessage: 'Yes, delete it', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    'cancel-delete': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
   }),
   createGdsVocabularyPack('partner-frames', {
     'save-defaults': { defaultMessage: 'Save defaults', icon: GdsIcons.Save, feedback: savedFeedback },

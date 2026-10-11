@@ -5,21 +5,23 @@
  */
 
 import type { LibraryKind } from './kinds';
+import { STADIUM_BACKGROUND_TAG } from './stadium-background';
 
 export const SAMPLE_SELFIE_TAG = 'sample-selfie';
 
 /** The tags an upload request may carry: only the known ones; anything else is dropped. */
 export function parseTags(value: unknown): string[] {
   const list = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
-  return [...new Set(list.filter((tag): tag is string => tag === SAMPLE_SELFIE_TAG))];
+  return [...new Set(list.filter((tag): tag is string => tag === SAMPLE_SELFIE_TAG || tag === STADIUM_BACKGROUND_TAG))];
 }
 
 /**
- * The part of a library query that keeps sample selfies out of the general Images lists: only for the images kind. Every general list of images (the global library, a partner's, an
- * event's, what the picture fields choose from) adds it; the sample selfie lists ask for the tag instead.
+ * The part of a library query that keeps the pictures that are meant for something in particular (sample selfies, stadium backgrounds: issue 326) out of the general Images lists: only for the images
+ * kind. Every general list of images (the global library, a partner's, an event's, what the picture fields choose from) adds it; the lists of those pictures ask for their tag instead. The name is
+ * the first one it had.
  */
 export function withoutSampleSelfies(kind: LibraryKind): Record<string, unknown> {
-  return kind === 'images' ? { tags: { $ne: SAMPLE_SELFIE_TAG } } : {};
+  return kind === 'images' ? { tags: { $nin: [SAMPLE_SELFIE_TAG, STADIUM_BACKGROUND_TAG] } } : {};
 }
 
 /** True when the image document is a sample selfie. */

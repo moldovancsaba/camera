@@ -113,3 +113,18 @@ test('the same sources give the same picture; another QR address gives another',
   assert.ok(!a.equals(await renderWelcomeScreen(await sources({ design: other }))));
 });
 
+
+
+test('a QR text line of the library is drawn above the QR code in its panel, in the text colour, and the picture without it has nothing there (issue 326)', async () => {
+  const box = { x: DEFAULT_STAGE.qrText.x, y: DEFAULT_STAGE.qrText.y, w: DEFAULT_STAGE.qrText.width, h: DEFAULT_STAGE.qrText.size * 1.15 };
+  const withText: ScreenDesign = { ...design, texts: [...design.texts!, { text: 'Scan & smile', x: DEFAULT_STAGE.qrText.x, y: DEFAULT_STAGE.qrText.y, width: DEFAULT_STAGE.qrText.width, size: DEFAULT_STAGE.qrText.size, align: 'center', fit: true, color: palette.text }] };
+  const plain = await renderWelcomeScreen(await sources());
+  const drawn = await renderWelcomeScreen(await sources({ design: withText }));
+  const ink = rgbOf(palette.text);
+  assert.equal(await countNear(plain, box, ink, 30), 0, 'no line, no text-coloured pixel in that place');
+  assert.ok((await countNear(drawn, box, ink, 30)) > 150, 'the line is drawn there');
+  // It sits in the panel of the right column, clear of the white panel of the QR code and of the address band.
+  const q = DEFAULT_STAGE.qr;
+  assert.equal(await countNear(drawn, { x: q.x, y: q.y - 4, w: q.size, h: 2 }, ink, 30), 0, 'nothing is drawn over the white panel');
+  assert.ok(Math.abs(await countNear(drawn, { x: 2, y: 78, w: 70, h: 15 }, ink, 30) - (await countNear(plain, { x: 2, y: 78, w: 70, h: 15 }, ink, 30))) < 5, 'the address band is the same with and without it');
+});
