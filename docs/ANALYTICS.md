@@ -1,6 +1,6 @@
-# Analytics (issue 521, phase 1)
+# Analytics (issue 521)
 
-The Analytics view of an event, and of all events together. It says what the data **that already exists** says: nothing is recorded for it and nothing about how a photo is taken, stored or shown changed. The plan and the owner's decisions are in [ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md) (decisions 241 to 246: counters only go to messmass, the order is the photo and vetting numbers on existing data first, the journey recording and the change of the photo's IP address after the match on 2026-10-16).
+The Analytics view of an event, and of all events together. **Phase 1** says what the data that already exists says (photos, vetting, users, screens, links, e-mails, consents): nothing is recorded for it. **Phase 2** adds the **Journey** tab, from an anonymous recording of the capture pages ([JOURNEY_RECORDING.md](JOURNEY_RECORDING.md): what is recorded, what never is, the 30 days, the kill switch). The plan and the owner's decisions are in [ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md) (decisions 241 to 246: counters only go to messmass, the order is the photo and vetting numbers on existing data first, the journey recording and the change of the photo's IP address after).
 
 ## Where it is
 
@@ -10,7 +10,7 @@ The Analytics view of an event, and of all events together. It says what the dat
 | Operations **Analytics** (`/admin/analytics`; the old address `/admin/tryon/analytics` is redirected) | global admins | the same numbers over every event, and one row per event (the name opens that event's tab) |
 | `GET /api/admin/events/<id>/export/analytics` | like the tab | the figures of every tab as one CSV (`section,item,value`), with the same days and clock |
 
-Tabs are links (`?view=`), and the days and the clock are in the address too, so a report can be shared as a link. The tabs: **Overview** (the key figures, photos per day and per hour, what is not measured), **Photos and users**, **Vetting and people**, **Screens**, **Sources** (one event), **E-mails and consent**, **Try-on**.
+Tabs are links (`?view=`), and the days and the clock are in the address too, so a report can be shared as a link. The tabs: **Overview** (the key figures, photos per day and per hour, what is not measured), **Journey** (one event: visits, steps reached, photos saved, camera permission, retakes, consent left, shares and downloads, and the kill switch of the recording; the days are UTC days), **Photos and users**, **Vetting and people**, **Screens**, **Sources** (one event), **E-mails and consent**, **Try-on**.
 
 ## What is counted
 
@@ -58,11 +58,10 @@ Owner decision 245: the numbers sent to messmass are the list of the audit (sect
 | `imagesShownOnSlideshow` | total | plays: the sum of the running play count of the event's counted photos, all slideshows | computed |
 | `avgVettingSeconds` | average | average time from the photo to its first decision, whole seconds; **left out until a photo was decided** | computed |
 | `consentAccepted` | total | photos whose user accepted at least one consent | computed |
-| `journeyOpens`, `journeyCompleted`, `cameraDenied`, `retakes`, `consentAbandoned` | | nothing records the journey | waits for the journey recording |
-| `shares`, `downloads` | | the counters on the photo are only ever set to 0 | waits for the share page recording |
+| `journeyOpens`, `journeyCompleted`, `cameraDenied`, `retakes`, `consentAbandoned`, `shares`, `downloads` | total | from the journey recording ([JOURNEY_RECORDING.md](JOURNEY_RECORDING.md)): visits, visits that saved a photo, times the live camera of a desktop was refused, retakes, consent shown and not accepted, share buttons pressed, downloads of the photo | computed **since the recording started**; not sent at all for an event that has no journey record |
 | `declined<Reason>` | | the reason is free text | waits for the fixed list of reasons (decision 244) |
 
-A counter that cannot be counted is **never sent as a zero**: a zero would say nobody did it. The visits of the tracked links (`visitQrCode`, `visitShortUrl`, `qrscanAndroid`, `qrscanIphone`) already reach messmass through their own channel (`docs/SHORT_LINKS.md`) and are not in this list; the audit's note that an event with only its own short address never pushes (`lib/short-links/sync.ts`) is untouched, because that path is live.
+A counter that cannot be counted is **never sent as a zero**: a zero would say nobody did it. An event with no journey record sends no journey counter, even though the recording is running for the others. The visits of the tracked links (`visitQrCode`, `visitShortUrl`, `qrscanAndroid`, `qrscanIphone`) already reach messmass through their own channel (`docs/SHORT_LINKS.md`) and are not in this list; the audit's note that an event with only its own short address never pushes (`lib/short-links/sync.ts`) is untouched, because that path is live.
 
 **The pieces** (all in `lib/analytics/`, unit-tested with fakes only, no database and no network):
 
@@ -85,16 +84,14 @@ Listed on the Overview as **Not measured yet** (`NOT_MEASURED` in `lib/analytics
 
 | Not measured | Why | Waits for |
 |---|---|---|
-| People who opened the link, the step they reached and left at, time per step, how many finished | no page view, step or session is recorded anywhere | journey recording (phase 2, after the match) |
-| Camera permission asked, granted, denied; retakes | the user sees it, the server does not; the camera diagnostics are log lines | journey recording |
-| Consent left without accepting | only acceptances are stored, on the photo | journey recording |
-| Shares by channel, share page views, downloads | `shareCount` and `downloadCount` are only ever set to 0; the share buttons make no server call | share page recording |
-| Which QR or poster a photo came from | the redirect drops the link (the visits per link are shown) | journey recording |
+| Which QR or poster a visit or a photo came from | the redirect drops the link, so a visit cannot be tied to the link that brought the user (the visits per link are shown); passing it on changes the live redirect | link redirect |
 | Decline counts by reason | free text today | the fixed list of reasons (decision 244) |
-| Country and city | the fields are never filled; the IP address stored on every photo is read by nothing and storing it is to stop (decision 243) | the change of the photo's address (after the match) |
-| Plays per hour or per screen | only a running count and the last time are kept | journey recording |
+| Country and city | the fields are never filled, and a place would need the IP address of the photo, which decision 243 stops keeping | a decision |
+| Plays per hour or per screen | only a running count and the last time are kept; recording each play touches the giant screen, frozen until after the match | screen recording |
 | Sign-ins by provider | `lastLoginAt` is declared and never written | a sign-in log |
-| E-mail opens, clicks, bounces | not tracked, and a tracking pixel is not proposed | |
+| E-mail opens, clicks, bounces | not tracked, and a tracking pixel is not proposed | a decision |
+
+The journey (visits, steps, camera permission, retakes, consent left, shares and downloads) was in this list in phase 1 and is measured now, on the Journey tab, **from the day the recording started**. Before that day nothing exists; an event with no journey record shows "not recorded", never zeros.
 
 ## Limits to know
 
@@ -102,6 +99,7 @@ Listed on the Overview as **Not measured yet** (`NOT_MEASURED` in `lib/analytics
 - Plays are a running total: a re-run of a slideshow adds to it, and there is no time series.
 - The day filter limits by the day the photo was **taken**; a photo taken on the last day and decided the next morning is in the range with its decision.
 - An iPad that asks for the desktop site counts as a desktop.
+- The Journey tab counts **visits** (page loads), not people, by **UTC** day, and the days chosen on the page are read as UTC days there. See [JOURNEY_RECORDING.md](JOURNEY_RECORDING.md) for the rest of its limits.
 
 ## Defects of the old report (audit section 2) and where they stand
 

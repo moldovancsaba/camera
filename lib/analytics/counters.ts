@@ -2,14 +2,16 @@
  * The counters for messmass (issue 521, phase 1; docs/ANALYTICS_AUDIT.md section 7.6, owner decision 245): the list of numbers that go to messmass, and the pure functions that make them from the
  * report of lib/analytics/report.ts. **Counters only, never a person**: no name, e-mail, reviewer or photo leaves camera, only totals (decision 241).
  *
- * The list is the audit's. Six of its counters can be computed from the data that exists; the rest need the journey recording (after the match), the fixed list of decline reasons or the share
- * recording, and are **never sent as a zero** (a zero would say "nobody shared" when the truth is "nobody counted"): they are listed with what they wait for. The visits of the tracked links
+ * The list is the audit's. Six of its counters come from the photos; seven more from the journey recording (lib/journey, issue 521 phase 2) **once the event has any journey record**; the one
+ * that needs the fixed list of decline reasons (decision 244) waits. A counter that cannot be counted is **never sent as a zero** (a zero would say "nobody shared" when the truth is "nobody
+ * counted"): an event with no journey record sends no journey counter at all, and the list says what each one waits for. The visits of the tracked links
  * already go to messmass through their own channel (lib/short-links/sync.ts) and are not part of this list.
  *
  * What a counter is, so it can be checked against messmass: a **total** is a whole running total for the event (every photo ever counted, never a day's change), so a repeat of the same push
  * changes nothing; an **average** is not additive and is sent as a whole value that messmass must store as it is, with no baseline. Pure and DOM-free; unit-tested in counters.test.ts.
  */
 
+import { isRecorded, type JourneySummary } from './journey';
 import type { EventReport } from './report';
 
 export type CounterKind = 'total' | 'average';
@@ -31,24 +33,25 @@ export const COMPUTABLE_COUNTERS: readonly CounterDefinition[] = [
   { key: 'imagesShownOnSlideshow', label: 'Images shown on the slideshow', kind: 'total', definition: 'Plays: how many times a photo of the event appeared on a giant screen, all slideshows, counted from the running play count of each photo.' },
   { key: 'avgVettingSeconds', label: 'Average vetting time (seconds)', kind: 'average', definition: 'Average time from the photo being handed in to its first decision, over the photos that have one. Not sent until a photo was decided.' },
   { key: 'consentAccepted', label: 'Consents accepted', kind: 'total', definition: 'Photos whose user accepted at least one consent (the consent is stored on the photo; only acceptances exist).' },
+  // From the journey recording: counted from the day the recording started, and not sent at all for an event that has no journey record (never a zero).
+  { key: 'journeyOpens', label: 'Journey opens', kind: 'total', definition: 'Visits to the capture page (a page load with the event; a return from a sign-in is not another visit), since the recording started. Not a count of different people.' },
+  { key: 'journeyCompleted', label: 'Journeys completed', kind: 'total', definition: 'Visits that saved a photo (the first photo of the visit), since the recording started.' },
+  { key: 'cameraDenied', label: 'Camera denied', kind: 'total', definition: 'Times a user said no when the live camera of a desktop asked for permission. A phone takes the photo with its own camera app and asks nothing on the page.' },
+  { key: 'retakes', label: 'Retakes', kind: 'total', definition: 'Times a user went back from the move-and-zoom step to take the photo again.' },
+  { key: 'consentAbandoned', label: 'Consents abandoned', kind: 'total', definition: 'Visits that were shown the consent and did not accept it (shown minus accepted, for the consent page and for the box on the Who-are-you page).' },
+  { key: 'shares', label: 'Shares', kind: 'total', definition: 'Presses of a share button (copy the link, Facebook, X, LinkedIn, WhatsApp) on the page after the photo was saved.' },
+  { key: 'downloads', label: 'Downloads', kind: 'total', definition: 'Downloads of the photo from its public page.' },
 ];
 
 export interface WaitingCounter {
   key: string;
   label: string;
   why: string;
-  waitsFor: 'journey recording' | 'share page recording' | 'decline reasons';
+  waitsFor: 'decline reasons';
 }
 
 /** The counters of the audit's list that cannot be computed yet, and what each waits for. */
 export const WAITING_COUNTERS: readonly WaitingCounter[] = [
-  { key: 'journeyOpens', label: 'Journey opens', why: 'No page view or session is recorded: only a saved photo leaves a trace.', waitsFor: 'journey recording' },
-  { key: 'journeyCompleted', label: 'Journeys completed', why: 'Needs the opens and the steps (opened to saved).', waitsFor: 'journey recording' },
-  { key: 'cameraDenied', label: 'Camera denied', why: 'The user sees the camera error; the server sees nothing.', waitsFor: 'journey recording' },
-  { key: 'retakes', label: 'Retakes', why: 'A retake leaves no trace: only the photo that was saved exists.', waitsFor: 'journey recording' },
-  { key: 'shares', label: 'Shares', why: 'The share counter of a photo is only ever set to 0 and the share buttons make no server call.', waitsFor: 'share page recording' },
-  { key: 'downloads', label: 'Downloads', why: 'The download counter of a photo is only ever set to 0.', waitsFor: 'share page recording' },
-  { key: 'consentAbandoned', label: 'Consents abandoned', why: 'Only acceptances are stored; someone who leaves at the consent page leaves nothing.', waitsFor: 'journey recording' },
   { key: 'declined<Reason>', label: 'Declined, by reason', why: 'The reason is free text; one counter for each reason needs the fixed list (decision 244).', waitsFor: 'decline reasons' },
 ];
 
@@ -62,8 +65,11 @@ export const NO_COUNTERS: CounterSet = { totals: {}, averages: {} };
 
 const whole = (value: number): number => Math.max(0, Math.round(value));
 
-/** The counters of an event from its report. The report must cover the whole event (no range of days): a counter is a running total. */
-export function buildCounters(report: EventReport): CounterSet {
+/**
+ * The counters of an event from its report, and from its journey summary when it has one. The report and the summary must cover the whole event (no range of days): a counter is a running
+ * total. A summary of an event with no journey record (`isRecorded` false) adds nothing: the journey counters are left out, not sent as zeros.
+ */
+export function buildCounters(report: EventReport, journey?: JourneySummary | null): CounterSet {
   const totals: Record<string, number> = {
     imagesTaken: whole(report.photos.taken),
     imagesApproved: whole(report.photos.approved),
@@ -71,6 +77,15 @@ export function buildCounters(report: EventReport): CounterSet {
     imagesShownOnSlideshow: whole(report.screens.plays),
     consentAccepted: whole(report.consents.photosWithConsent),
   };
+  if (isRecorded(journey)) {
+    totals.journeyOpens = whole(journey.opens);
+    totals.journeyCompleted = whole(journey.completed);
+    totals.cameraDenied = whole(journey.camera.denied);
+    totals.retakes = whole(journey.photos.retakes);
+    totals.consentAbandoned = whole(journey.consent.abandoned);
+    totals.shares = whole(journey.shares.clicks);
+    totals.downloads = whole(journey.shares.downloads);
+  }
   const averages: Record<string, number> = {};
   if (report.vetting.timeToFirstDecision.avgSeconds !== null) averages.avgVettingSeconds = whole(report.vetting.timeToFirstDecision.avgSeconds);
   return { totals, averages };

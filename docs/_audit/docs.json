@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-10T20:49:53+00:00",
+  "generated": "2026-10-11T05:09:44+00:00",
   "repo": "camera",
-  "head": "ec0c357c",
+  "head": "758b9ae0",
   "counts": {
-   "endpoints": 131,
+   "endpoints": 133,
    "collections": 7,
    "env": 55,
    "outbound-hosts": 31,
-   "docs": 71
+   "docs": 72
   }
  },
  "items": [
@@ -74,7 +74,7 @@
   },
   {
    "file": "docs/ANALYTICS.md",
-   "title": "Analytics (issue 521, phase 1)"
+   "title": "Analytics (issue 521)"
   },
   {
    "file": "docs/ANALYTICS_AUDIT.md",
@@ -171,6 +171,10 @@
   {
    "file": "docs/JOURNEY_IMAGES.md",
    "title": "Pictures of the guest journey: the CTA page picture and the email footer"
+  },
+  {
+   "file": "docs/JOURNEY_RECORDING.md",
+   "title": "Journey recording (issue 521, phase 2)"
   },
   {
    "file": "docs/LIBRARIES.md",

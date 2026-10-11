@@ -36,10 +36,10 @@ export const GET = withErrorHandler(async (request: NextRequest, context: { para
 
   const event = analyticsEventOf(doc);
   const query = parseAnalyticsQuery(Object.fromEntries(request.nextUrl.searchParams.entries()), defaultTimeZone(event.uiLanguage));
-  const { report, sources } = await loadEventAnalytics(db, event, { timeZone: query.timeZone, from: query.from, to: query.to });
+  const { report, sources, journey } = await loadEventAnalytics(db, event, { timeZone: query.timeZone, from: query.from, to: query.to });
 
   const date = new Date().toISOString().slice(0, 10);
-  return new NextResponse(analyticsCsv(analyticsRows(report, sources)), {
+  return new NextResponse(analyticsCsv(analyticsRows(report, sources, journey)), {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="event-${exportSlug(event.name)}-analytics-${date}.csv"`,

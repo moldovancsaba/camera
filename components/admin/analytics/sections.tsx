@@ -99,7 +99,7 @@ const zoneName = (report: EventReport) => REPORT_TIME_ZONES.find((zone) => zone.
 
 export function NotMeasuredPanel() {
   return (
-    <Panel title="Not measured yet" description="What the audit asks for and the data cannot give today. These are not zeros: nothing records them yet. Journey recording and the decline reasons come after the match on 16 October.">
+    <Panel title="Not measured yet" description="What the audit asks for and the data cannot give today. These are not zeros: nothing records them yet. The journey is on its own tab, from the day the recording was switched on.">
       <ul data-not-measured style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)', listStyle: 'none', margin: 0, padding: 0 }}>
         {NOT_MEASURED.map((row) => (
           <li key={row.what} style={{ borderBottom: '1px solid var(--mantine-color-default-border)', display: 'grid', gap: 2, paddingBottom: 'var(--mantine-spacing-sm)' }}>

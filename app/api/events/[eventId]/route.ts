@@ -45,6 +45,7 @@ import { loadEventTheme } from '@/lib/theme/load';
 import { brokenAddresses, withoutBroken } from '@/lib/media/pictures';
 import { needsThemeRefresh, refreshEventTheme } from '@/lib/theme/refresh';
 import { trackedSlugExists } from '@/lib/short-links/store';
+import { journeyRecordingEnabled } from '@/lib/journey/setting';
 
 interface EventFrameDetails {
   frameId: string;
@@ -216,6 +217,8 @@ export const GET = withErrorHandler(async (
       ...(forGuest ? {} : { effectiveCheckboxes: checkboxes, partnerCheckboxes: effectiveCheckboxes(null, partner) }),
       // Whether the event sends the welcome e-mail (epic 463): the capture page tells the server who registered only when it does.
       welcomeEmailEnabled: normalizeSubmissionEmailPolicy(event.notifications, language).types.welcome.enabled,
+      // Whether the capture page records the anonymous journey (issue 521, phase 2): the owner's global kill switch, on unless switched off (lib/journey/setting.ts). Only the guest answer carries it, and the page records nothing unless it is exactly true.
+      ...(forGuest ? { journeyRecording: await journeyRecordingEnabled(db) } : {}),
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
       journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, ...(chosenDocuments(checkboxes) ? { documents: chosenDocuments(checkboxes) } : {}), ...(event.defaultPageOrders ? { defaultOrders: event.defaultPageOrders as Record<string, number> } : {}) },
       _id: event._id.toString(),

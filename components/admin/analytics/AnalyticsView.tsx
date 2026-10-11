@@ -9,10 +9,12 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { formatCount, formatDateTime } from '@/lib/analytics/format';
 import { analyticsHref, type AnalyticsQuery, type AnalyticsViewId } from '@/lib/analytics/query';
+import type { JourneySummary } from '@/lib/analytics/journey';
 import type { EventReport, EventsTableRow } from '@/lib/analytics/report';
 import type { SourcesReport } from '@/lib/analytics/sources';
 import { REPORT_TIME_ZONES } from '@/lib/analytics/time';
 import AnalyticsFilterForm from './AnalyticsFilterForm';
+import JourneySection, { type JourneySettingState } from './JourneySection';
 import { EmailsSection, OverviewSection, PhotosSection, ScreensSection, SourcesSection, VettingSection } from './sections';
 import { Note } from './ui';
 
@@ -23,6 +25,7 @@ interface TabDefinition {
 
 const TABS: TabDefinition[] = [
   { id: 'overview', label: 'Overview' },
+  { id: 'journey', label: 'Journey' },
   { id: 'photos', label: 'Photos and users' },
   { id: 'vetting', label: 'Vetting and people' },
   { id: 'screens', label: 'Screens' },
@@ -38,6 +41,9 @@ export interface AnalyticsViewProps {
   report: EventReport;
   /** The tracked links of the event; absent on the all-events page (the Sources tab is then not offered). */
   sources?: SourcesReport;
+  /** The journey recording of the event and the state of its kill switch (issue 521, phase 2); absent on the all-events page (the Journey tab is then not offered). */
+  journey?: JourneySummary;
+  journeySetting?: JourneySettingState;
   /** One row per event, on the all-events page. */
   table?: EventsTableRow[];
   /** The event's Mongo id, for the link back to its overview. */
@@ -49,8 +55,8 @@ export interface AnalyticsViewProps {
   messmass?: ReactNode;
 }
 
-export default function AnalyticsView({ basePath, query, defaultTimeZone, report, sources, table, eventMongoId, exportHref, showMessmass, messmass }: AnalyticsViewProps) {
-  const tabs = TABS.filter((tab) => (tab.id === 'sources' ? Boolean(sources) : tab.id === 'messmass' ? Boolean(showMessmass) : true));
+export default function AnalyticsView({ basePath, query, defaultTimeZone, report, sources, journey, journeySetting, table, eventMongoId, exportHref, showMessmass, messmass }: AnalyticsViewProps) {
+  const tabs = TABS.filter((tab) => (tab.id === 'sources' ? Boolean(sources) : tab.id === 'journey' ? Boolean(journey && journeySetting) : tab.id === 'messmass' ? Boolean(showMessmass) : true));
   const active: AnalyticsViewId = tabs.some((tab) => tab.id === query.view) ? query.view : 'overview';
   const { scope } = report;
   const href = (overrides: Partial<AnalyticsQuery>) => analyticsHref(basePath, query, overrides, defaultTimeZone);
@@ -100,6 +106,7 @@ export default function AnalyticsView({ basePath, query, defaultTimeZone, report
       ) : null}
 
       {active === 'overview' ? <OverviewSection report={report} sources={sources} table={table} /> : null}
+      {active === 'journey' && journey && journeySetting ? <JourneySection journey={journey} setting={journeySetting} timeZone={report.options.timeZone} /> : null}
       {active === 'photos' ? <PhotosSection report={report} /> : null}
       {active === 'vetting' ? <VettingSection report={report} /> : null}
       {active === 'screens' ? <ScreensSection report={report} /> : null}

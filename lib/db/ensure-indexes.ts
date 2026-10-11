@@ -16,6 +16,34 @@ export interface IndexEnsureResult {
   detail?: string;
 }
 
+/** How long a raw journey row lives (issue 521, phase 2; docs/JOURNEY_RECORDING.md): 30 days, then the database removes it. The daily counts stay. */
+export const JOURNEY_RETENTION_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * The indexes of the journey recording: the TTL index that removes a raw row after 30 days, the one the median read uses, and the unique key of the daily count. Also created, once per server
+ * instance, by the first write (lib/journey/store.ts), so the 30 days hold even if `npm run db:ensure-indexes` was not run; failures are reported, not thrown.
+ */
+export async function ensureJourneyIndexes(db: Db): Promise<IndexEnsureResult[]> {
+  const specs: Array<{ collection: string; keys: Record<string, 1 | -1>; options: Record<string, unknown> }> = [
+    { collection: COLLECTIONS.JOURNEY_EVENTS, keys: { at: 1 }, options: { expireAfterSeconds: JOURNEY_RETENTION_SECONDS, name: 'journey_events_at_ttl' } },
+    { collection: COLLECTIONS.JOURNEY_EVENTS, keys: { eventId: 1, name: 1, at: -1 }, options: { name: 'journey_events_event_name_at' } },
+    { collection: COLLECTIONS.JOURNEY_DAILY, keys: { eventId: 1, day: 1, name: 1, key: 1 }, options: { unique: true, name: 'journey_daily_event_day_name_key_unique' } },
+  ];
+  const results: IndexEnsureResult[] = [];
+  for (const spec of specs) {
+    try {
+      const name = await db.collection(spec.collection).createIndex(spec.keys, spec.options);
+      results.push({ collection: spec.collection, name, status: 'created' });
+    } catch (e: unknown) {
+      const err = e as { code?: number; codeName?: string; message?: string };
+      const msg = err.message ?? String(e);
+      const same = err.code === 85 || err.code === 86 || err.codeName === 'IndexOptionsConflict' || err.codeName === 'IndexKeySpecsConflict' || msg.includes('already exists');
+      results.push({ collection: spec.collection, name: same ? '(same spec)' : '(error)', status: same ? 'exists' : 'error', detail: msg });
+    }
+  }
+  return results;
+}
+
 /**
  * Create recommended indexes for production workloads (slideshow, capture, admin lists).
  */
@@ -413,6 +441,8 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .collection(COLLECTIONS.WEB_SESSIONS)
       .createIndex({ expireAt: 1 }, { expireAfterSeconds: 0, name: 'web_sessions_expireAt_ttl' })
   );
+
+  results.push(...(await ensureJourneyIndexes(db)));
 
   return results;
 }

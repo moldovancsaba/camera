@@ -69,6 +69,10 @@ export const COLLECTIONS = {
   ACTIVITY_EXPORTS: 'activity_exports',
   /** What the check of every other picture found (logos, frames, page pictures, e-mail pictures; issue 514, lib/media/pictures.ts): one row for each picture address, `_id` is the address. */
   PICTURE_HEALTH: 'picture_health',
+  /** The journey recording (issue 521, phase 2, lib/journey): one row for each recorded step of a visit to the capture pages. Anonymous (a random visit id, no IP address, no user agent, no person), kept 30 days by a TTL index on `at`. */
+  JOURNEY_EVENTS: 'journey_events',
+  /** The same records added up for each event, UTC day, name and key (a count, nothing about a person): the rows the Analytics view and the counters for messmass read, kept for good. */
+  JOURNEY_DAILY: 'journey_daily',
 } as const;
 
 // ============================================================================

@@ -9,6 +9,7 @@
 import type { Db } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { PHOTO_PROJECTION, photoFactsOf, type PhotoFacts } from './facts';
+import { loadJourneySummary, type JourneySummary } from './journey';
 import { buildEventReport, buildEventsTable, type EventReport, type EventsTableRow, type RegistrationFact, type ReportOptions } from './report';
 import { buildSourcesReport, type SourceHit, type SourceLink, type SourcesReport } from './sources';
 
@@ -76,12 +77,20 @@ export interface EventAnalytics {
   event: AnalyticsEvent;
   report: EventReport;
   sources: SourcesReport;
+  /** The journey recording (issue 521, phase 2; lib/analytics/journey.ts), for the same days read as UTC days. */
+  journey: JourneySummary;
 }
 
 /** Everything the Analytics view of one event shows. */
 export async function loadEventAnalytics(db: Db, event: AnalyticsEvent, options: ReportOptions): Promise<EventAnalytics> {
-  const [photos, registrations, slideshows, sources] = await Promise.all([loadPhotoFacts(db, event), loadRegistrations(db, event), loadSlideshowNames(db, event), loadSources(db, event, options)]);
-  return { event, report: buildEventReport({ photos, registrations, slideshows }, options), sources };
+  const [photos, registrations, slideshows, sources, journey] = await Promise.all([
+    loadPhotoFacts(db, event),
+    loadRegistrations(db, event),
+    loadSlideshowNames(db, event),
+    loadSources(db, event, options),
+    loadJourneySummary(db, event.eventId, options),
+  ]);
+  return { event, report: buildEventReport({ photos, registrations, slideshows }, options), sources, journey };
 }
 
 export interface AllEventsAnalytics {
