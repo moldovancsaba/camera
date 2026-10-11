@@ -80,14 +80,14 @@ No module is imported without being declared (the only names the script could no
 | Packages installed by `npm ci` | 622 | 622 (no package leaves; every dependency is used) |
 | `npm ci` deprecation warnings | 2 | 2 |
 | `npm audit` / `npm audit --omit=dev` | 5 high / 0 | 5 high / 0 |
-| Tracked source and script files | | -22 files, -2 override lines |
+| Tracked source and script files | | -22 files, -2 override lines, -1 environment variable (`EVENT_MONGO_ID`, read only by two of the deleted scripts: gone from `.env.example` and `docs/_audit/env.json`) |
 
 **Looked at and not removed.**
 
 | What | Why it stays |
 |------|--------------|
 | Every direct dependency | Each has an importer, a binary in a script, a config entry or a peer requirement (section 3). The four peer packages `@mantine/hooks`, `@mantine/dates`, `@mantine/modals` and `dayjs` have no import in the repo, but `gds-core` and `gds-theme` list them as non-optional peers; without a declaration npm would pick the newest Mantine for them (`^7.9 \|\| ^8.3 \|\| ^9`) |
-| `tailwindcss`, `@tailwindcss/postcss` | The CSS imports Tailwind and 8 files still use utility classes, including the live guest pages (`app/capture/[eventId]/page.tsx`, `components/camera/CameraCapture.tsx`); the reset it brings is global. Removing it is a styling change on the capture path: after 2026-10-14 and with the owner (section 5b) |
+| `tailwindcss`, `@tailwindcss/postcss` | The CSS imports Tailwind, the production build's stylesheet still carries 227 Tailwind utility classes (17 kB; `animate-spin`, `transition-all`, `rounded-lg` ... used, among others, by the live guest pages `app/capture/[eventId]/page.tsx` and `components/camera/CameraCapture.tsx`), and its reset is global. Removing it is a styling change on the capture path: after 2026-10-14 and with the owner (section 5b) |
 | `lib/submissions/public-image.ts` and its test | No production importer, but `original-exposure.test.ts` guards it by name and the submissions route cites it as the place where an original is kept private. It belongs to the original-photo cleanup the owner has not released |
 | `scripts/backfill-preview-image-urls.ts`, `count-stored-photo-addresses.ts`, `scan-broken-pictures.ts`, `backfill-screen-pictures.ts`, `grant-admin*.mjs`, `grant-app-permission.mjs` | Named by `RUNBOOK.md`, `CLAUDE.md`, `.env.example`, `docs/PRIVACY_DATA.md` or other documents |
 | `config/leather-suits.example.json`, `public/fff/*`, `pnpm-workspace.yaml`, `public/favicon.png` | The first two are held back by the try-on and FunFitFan clean-ups on the owner's go (issues 561 and 400); `pnpm-workspace.yaml` is the developer-convenience setting that `docs/GDS_RELEASE_GATE.md` mentions; `favicon.png` is an asset (6 kB) that an external page might link |
