@@ -16,7 +16,8 @@ import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY } from '@/lib/gds/tokens/colors';
 import { translate, normalizeUiLanguage } from '@/lib/i18n';
 import { withEffectiveLanguage } from '@/lib/i18n/overrides';
-import { DEFAULT_STAGE, renderDefaultOverlay, stagePalette } from '@/lib/screen/default-stage';
+import { DEFAULT_STAGE, renderStageOverlay, stagePalette } from '@/lib/screen/default-stage';
+import { chooseStageBackground, storeStagePick, type StageBackgroundDeps } from '@/lib/screen/stage-background';
 import { createShortLink, listShortLinks } from '@/lib/short-links/store';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { loadEventTheme } from '@/lib/theme/load';
@@ -29,6 +30,8 @@ export interface DefaultSlideshowDeps {
   upload: (pathname: string, png: Buffer) => Promise<string>;
   origin: () => string;
   now: () => string;
+  /** How the stadium background of the stage is fetched (lib/screen/stage-background.ts); the real fetch when missing. Tests pass their own. */
+  background?: StageBackgroundDeps;
 }
 
 const defaultDeps: DefaultSlideshowDeps = {
@@ -75,7 +78,10 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
   const theme = await loadEventTheme(db, event);
   const colours = { background: theme.background, accent: theme.buttonBackground };
   const palette = stagePalette(colours);
-  const png = renderDefaultOverlay(colours);
+  // The stage is drawn on a stadium background of the library when the event has one to use (issue 326: its own, its partner's, else a random global one, picked once and stored on the event); with none, as
+  // while the library is empty, it is the built-in stage in the event's colours, byte for byte what every event had before.
+  const stage = await chooseStageBackground(db, event, deps.background);
+  const png = await renderStageOverlay(colours, stage?.picture ?? null);
   const overlayImageUrl = await deps.upload(`screens/${eventUuid}/default-${createHash('sha256').update(png).digest('hex').slice(0, 16)}.png`, png);
 
   // The language of the event, or of its partner when the event has none (issue 353).
@@ -113,5 +119,6 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
     createdAt: now,
     updatedAt: now,
   });
+  if (stage) await storeStagePick(db, event, stage.pictureId, now);
   return { ok: true, slideshowId, created: true };
 }
