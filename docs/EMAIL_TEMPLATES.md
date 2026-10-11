@@ -39,7 +39,7 @@ Hi {name},
 Thank you for enjoying the {event} experience.
 
 Your photo is ready. Don't forget to share it on your social media!
-{link}
+[Visit your selfie]({link})
 
 AI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.
 
@@ -49,23 +49,7 @@ Policies and General Terms and Conditions:
 {terms}
 ```
 
-For rerun-approved updates, the default subject and body are:
-
-```text
-Hi {name},
-
-Thank you for enjoying the {event} experience.
-
-Your updated photo is ready. Don't forget to share it on your social media!
-{link}
-
-AI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.
-
-Wishing you an unforgettable time at {event}.
-
-Policies and General Terms and Conditions:
-{terms}
-```
+**The link to the photo is a labelled link** (issue 382, owner 2026-10-11): `[Visit your selfie]({link})` in English and `[Nézd meg a szelfidet]({link})` in Hungarian, in the "photo ready" e-mail and in the follow-up e-mail. The long address is no longer shown; the plain-text part of the e-mail still carries the whole address after the label. An event whose editor had saved the earlier default (the bare `{link}` line) as if it were its own gets the new default; a text an editor wrote or changed stays as written, and an editor can write the same label in any text with `[label]({link})` (docs/EMAIL_FORMAT_PLAN.md). The "updated photo" e-mail of the removed try-on integration is gone.
 
 The phrase "your event" in legacy templates is intentionally normalized to `{event}` for consistency.
 

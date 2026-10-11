@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the link to the photo in the e-mails reads "Visit your selfie" (issue 382; owner answer 2026-10-11)
+
+- **Owner:** "can we use it as link with text 'visit your selfie'".
+- **Changed:** the default "photo ready" e-mail and the follow-up e-mail show the link to the photo as a labelled link, `[Visit your selfie]({link})` in English and `[Nézd meg a szelfidet]({link})` in Hungarian, instead of the whole address; the plain-text part keeps the whole address after the label. A long link can no longer widen an e-mail. An event whose editor had saved the earlier default as if it were its own follows the new default (`LEGACY_ENGLISH_DEFAULTS` in `lib/email/submission-template-defaults.ts`); a text an editor wrote or changed stays as written; a per-type text stored in the event editor is the editor's own and keeps its link as it is.
+- **Effect on live events:** the e-mails sent from now on (the MTK x Vasas event included, unless its editor wrote its own text) show the label.
+- **Verified:** unit tests (the label and the whole address behind it, in the HTML and the plain-text part, English and Hungarian; the replaced default follows the new one; an edited copy stays), the full CI chain.
+- **Not done:** a look at a real e-mail in a phone mail app (owner test); the labels of the "welcome" and "not approved" e-mails (their links are short event links and stay as they are).
+
 ## Unreleased — two leftovers removed (camera#598 items 3 and 4; owner answer 360 "yes", the safe ones now)
 
 - **Removed:** the five unreferenced create-next-app pictures in `public/` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`; nothing in the code, docs or pages names them) and the third target of `scripts/patch-baseline-browser-mapping.mjs` (`next/dist/compiled/browserslist/index.js`: the marker is not in that file any more, so every install printed "marker not found"; the other two targets still carry it and are patched).

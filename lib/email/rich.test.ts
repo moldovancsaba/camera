@@ -18,10 +18,22 @@ test('a text with no markup is drawn exactly as e-mails were drawn before: the s
   const values: Values = { name: 'Ann', event: 'MTK x Vasas', link: 'https://camera.test/share/abc', terms: 'https://seyuselfies.com/hu/policies/' };
   for (const language of ['en', 'hu'] as const) {
     const defaults = emailDefaults(language);
-    for (const template of [defaults.body, defaults.notApprovedBody]) {
+    // The "Your photo is ready" text carries the link as a label since issue 382 ("[Visit your selfie]({link})"); every other standard text has no markup.
+    for (const template of [defaults.body.replace(/\[[^\]]+\]\(\{link\}\)/, '{link}'), defaults.notApprovedBody]) {
       const filled = template.replace(/\{(name|event|link|terms)\}/gi, (_m, key: string) => values[key.toLowerCase()] ?? '');
       assert.equal(html(template, values), oldHtml(filled), `${language}: ${template.slice(0, 30)}`);
     }
+  }
+});
+
+test('the standard "Your photo is ready" text shows the link as "Visit your selfie" and keeps the whole address behind it, in the plain-text part too (issue 382)', () => {
+  const values: Values = { name: 'Ann', event: 'MTK x Vasas', link: 'https://camera.test/share/' + 'a'.repeat(120), terms: 'https://seyuselfies.com/hu/policies/' };
+  for (const [language, label] of [['en', 'Visit your selfie'], ['hu', 'Nézd meg a szelfidet']] as const) {
+    const body = emailDefaults(language).body;
+    const out = html(body, values);
+    assert.ok(out.includes(`href="${values.link}"`) && out.includes(`>${label}</a>`), `${language}: the label is the link text`);
+    assert.equal(out.includes(`>${values.link}</a>`), false, `${language}: the long address is not shown`);
+    assert.ok(text(body, values).includes(`${label} (${values.link})`), `${language}: the plain-text part keeps the address`);
   }
 });
 

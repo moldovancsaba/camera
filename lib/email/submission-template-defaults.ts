@@ -34,13 +34,27 @@ const normalizeNewlines = (value: string) => value.trim().replace(/\r\n/g, '\n')
 const PREFILLED_DEFAULT_KEYS = ['email.subject', 'email.body'] as const satisfies readonly MessageKey[];
 
 /**
+ * The English defaults that were replaced (issue 382, 2026-10-11: the link to the photo became "[Visit your selfie]({link})" instead of the whole address). An event whose editor
+ * had saved the old text as if it were its own still holds it: it counts as the default, so it follows the new one in every language, and a text the editor wrote stays as written.
+ */
+const LEGACY_ENGLISH_DEFAULTS: Partial<Record<(typeof PREFILLED_DEFAULT_KEYS)[number], readonly string[]>> = {
+  'email.body': [
+    "Hi {name},\n\nThank you for enjoying the {event} experience.\n\nYour photo is ready. Don't forget to share it on your social media!\n{link}\n\nAI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.\n\nWishing you an unforgettable time at {event}.\n\nPolicies and General Terms and Conditions:\n{terms}",
+  ],
+};
+
+/**
  * A template an editor may have stored, as it is sent in the language. The event editor pre-fills and saves the English defaults as if they were the
  * editor's own, so in another language a stored template that is exactly one of the English defaults counts as not set: the same default in the
- * language is sent instead (a text the editor wrote stays as written). An editor's own text is sent as written; in English nothing changes.
+ * language is sent instead (a text the editor wrote stays as written). An editor's own text is sent as written; in English nothing changes, except that a stored
+ * copy of an English default that was replaced (LEGACY_ENGLISH_DEFAULTS) is sent as the current default.
  */
 export function emailTemplateIn(language: UiLanguage, stored: string | null, texts?: TextOverrides | null): string | null {
   if (!stored) return null;
+  const same = (a: string, b: string) => normalizeNewlines(a) === normalizeNewlines(b);
+  const legacyKey = PREFILLED_DEFAULT_KEYS.find((candidate) => LEGACY_ENGLISH_DEFAULTS[candidate]?.some((old) => same(old, stored)));
+  if (legacyKey) return translate(language, legacyKey, undefined, texts);
   if (language === DEFAULT_UI_LANGUAGE) return stored;
-  const key = PREFILLED_DEFAULT_KEYS.find((candidate) => normalizeNewlines(translate(DEFAULT_UI_LANGUAGE, candidate)) === normalizeNewlines(stored));
+  const key = PREFILLED_DEFAULT_KEYS.find((candidate) => same(translate(DEFAULT_UI_LANGUAGE, candidate), stored));
   return key ? translate(language, key, undefined, texts) : stored;
 }
