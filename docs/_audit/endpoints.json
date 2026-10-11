@@ -46,6 +46,7 @@
   {"path": "/api/admin/users/[email]/role", "methods": ["PATCH"], "file": "app/api/admin/users/[email]/role/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/users/[email]/status", "methods": ["PATCH"], "file": "app/api/admin/users/[email]/status/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/users/merge", "methods": ["POST"], "file": "app/api/admin/users/merge/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/admin/welcome-screen-backfill", "methods": ["GET", "POST"], "file": "app/api/admin/welcome-screen-backfill/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/auth/callback", "methods": ["GET"], "file": "app/api/auth/callback/route.ts", "auth_markers": [], "no_auth_marker": true},
   {"path": "/api/auth/dev-login", "methods": ["GET"], "file": "app/api/auth/dev-login/route.ts", "auth_markers": [], "no_auth_marker": true},
   {"path": "/api/auth/login", "methods": ["GET"], "file": "app/api/auth/login/route.ts", "auth_markers": [], "no_auth_marker": true},
