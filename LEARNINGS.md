@@ -76,14 +76,14 @@ This document records actual issues encountered during development, their soluti
 **Solution**:
 - Created comprehensive documentation suite with 5 core files + feature-specific guides
 - README.md: Project overview with complete feature list
-- WARP.DEV_AI_CONVERSATION.md: AI session tracking and development conventions
+- docs/MULTI_LEVEL_SUBMISSION_MANAGEMENT_LOG.md: the implementation log of the multi-level submission management (2025-11-06; it was called after an AI tool until 2026-10-11 and is a historical record only)
 - TASKLIST.md: Active tasks with dependencies and acceptance criteria
 - ROADMAP.md: Forward-looking plans only (no historical entries)
 - RELEASE_NOTES.md: Historical record of all completed work
 - LEARNINGS.md: This file for issues and solutions
 
 **Key Decisions**:
-- Separate WARP.DEV_AI_CONVERSATION.md for AI-specific context
+- A separate implementation log (now docs/MULTI_LEVEL_SUBMISSION_MANAGEMENT_LOG.md) for the session context of that work
 - TASKLIST.md for current work, RELEASE_NOTES.md for completed work
 - ROADMAP.md strictly forward-looking to avoid confusion
 - LEARNINGS.md categorized by Dev/Design/Backend/Frontend/Process/Other
