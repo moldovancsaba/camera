@@ -72,3 +72,18 @@ test('a user without the right is refused', async (t) => {
   assert.equal((await GET(new NextRequest(url), params)).status, 403);
   assert.equal((await PUT(put({ value: {} }), params)).status, 403);
 });
+
+// The partner's sample selfies are what its events' welcome page screens show until they choose their own (issue 540): a saved choice asks for the pictures of its events to be drawn again (after the
+// response, those that have the picture; each decides by its stored pick whether anything changes). A refused choice and a read ask for nothing.
+test('PUT: a saved choice schedules the redraw of the welcome page screens of the partner\'s events; a refused one and a read do not', async (t) => {
+  const scheduled: Array<{ partnerId: unknown; reason: unknown }> = [];
+  const redrawReal = await import('@/lib/screen/welcome-redraw');
+  t.mock.module('@/lib/screen/welcome-redraw', { namedExports: { ...redrawReal, scheduleWelcomeRedrawForPartner: (partnerId: unknown, reason: unknown) => scheduled.push({ partnerId, reason }) } });
+  setup(t);
+  const { GET, PUT } = await importRoute('redraw');
+  await GET(new NextRequest(url), params);
+  assert.equal((await PUT(put({ value: { items: ['x1'] } }), params)).status, 400);
+  assert.equal(scheduled.length, 0);
+  assert.equal((await PUT(put({ value: { items: ['p1'], useDefault: false } }), params)).status, 200);
+  assert.deepEqual(scheduled, [{ partnerId: 'P', reason: 'partner-sample-selfie' }]);
+});

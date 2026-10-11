@@ -13,6 +13,7 @@ import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiError } from '@/lib/api';
 import { assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization';
 import { loadPartnerSelfiePanel, setPartnerSelfie } from '@/lib/slots/selfie-store';
+import { scheduleWelcomeRedrawForPartner } from '@/lib/screen/welcome-redraw';
 
 type Context = { params: Promise<{ partnerId: string }> };
 
@@ -34,5 +35,8 @@ export const PUT = withErrorHandler(async (request: NextRequest, context: Contex
   const result = await setPartnerSelfie(db, partner, body.value ?? {}, generateTimestamp());
   if (!result.ok) throw apiError(result.reason, result.status);
   const saved = await db.collection(COLLECTIONS.PARTNERS).findOne({ _id: new ObjectId(partnerId) });
+  // The partner's sample selfies are what its events' welcome page screens show until they choose their own (issue 540): the ones that have the picture are drawn again after the response, a few at a time,
+  // and only where the pick changes (lib/screen/welcome-redraw.ts).
+  scheduleWelcomeRedrawForPartner(String(partner.partnerId), 'partner-sample-selfie');
   return apiSuccess(await loadPartnerSelfiePanel(db, saved ?? partner));
 });
