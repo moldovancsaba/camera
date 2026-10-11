@@ -14,7 +14,7 @@ Checked on Node 24.19 / npm 10.9 after a clean `npm ci`. The full gate (`npm run
 | Advisories in what ships to production (`npm audit --omit=dev`) | **0** |
 | Advisories anywhere (`npm audit`) | 1 advisory, shown as 5 high findings, **development tool only, no patched release exists** |
 | Open Dependabot alerts | none (`gh api "repos/moldovancsaba/camera/dependabot/alerts?state=open"` returned nothing) |
-| Packages nothing uses | 1 removed (`@mantine/dropzone`); the try-on removal itself left no orphan package |
+| Packages nothing uses | 1 removed (`@mantine/dropzone`); the try-on removal itself left no orphan package. Second pass the same day (section 3a): no further unused package; 9 unused source files, 13 unused one-off scripts and 2 unused overrides removed |
 | Updated | 7 packages (patch and minor, same lines) |
 | Deprecated | `eslint` 9.x (whole line) and `glob` 10.5.0 (transitive, production tree, through `archiver`) |
 | Majors and framework lines not done | 11, with effort and risk in section 5 |
@@ -54,6 +54,46 @@ The try-on removal (issue 557) left no unused package: the integration talked to
 
 No module is imported without being declared (the only names the script could not match are the `@/lib` and `@/components` path aliases and text inside strings).
 
+### 3a. Second pass: unused files, scripts and overrides (2026-10-11)
+
+**Method.** `npx depcheck` and `npx knip` (neither added to the repo), then every finding checked by hand with `git grep` over code, config, workflow, docs and `.env.example`, and with `git log -S` for the last importer. Both tools found **no unused dependency**: depcheck lists `@tailwindcss/postcss`, `tailwindcss` and `baseline-browser-mapping` and knip lists `baseline-browser-mapping`, and all three are the known false positives of section 3 (`postcss.config.mjs`, the CSS import, the `postinstall` patch). Knip also lists every `*.test.ts` as an unused file (the repository runs them through `scripts/run-unit-tests.mjs`, not as entry points) and 377 unused exports and 131 unused types, which were left alone (an export is not a module, and each one is a decision about an API).
+
+**Removed (9 source files, 13 scripts, 2 overrides); the unit tests, type-check, lint and the production build are the proof that nothing used them.**
+
+| File | Evidence |
+|------|----------|
+| `components/admin/HashtagInput.tsx` | No importer since the FunFitFan removal (`e96bec57`, 2026-05-23); `gds_fix_handover.md` S39 already said "Delete: no call sites"; `docs/ELEMENT_INVENTORY.md` listed it as an orphan |
+| `components/admin/RemoveSubmissionButton.tsx` | No importer since `59c7d755` (2026-05-14, the gallery removal workflow); listed as an orphan in `docs/ELEMENT_INVENTORY.md` |
+| `components/shared/LoadingSpinner.tsx`, `components/shared/index.ts` | The spinner was imported only by the index, and nothing imports the index (`@/components/shared` appears nowhere). The folder is gone |
+| `lib/admin/upload-image-client.ts` | `RELEASE_NOTES.md` (library step 5, camera#368) already says it "has no caller left" |
+| `lib/auth/oauth-return-message.ts` | Importer removed with FunFitFan (`e96bec57`); the admin login has its own messages (`app/admin/login/page.tsx`) |
+| `lib/gds/notifications.ts` | One line re-exporting `notifications`; `components/capture/notify.ts` imports `@mantine/notifications` directly and nothing imports this file |
+| `lib/logos/utils.ts` | `selectRandomLogo` is dead (the product shows the first active logo; `docs/ELEMENT_INVENTORY.md` gfx-023 says so) |
+| `lib/slideshow/open-slideshow.ts` | Importer removed with FunFitFan (`e96bec57`) |
+| `scripts/add-uuid-fields.mjs`, `fix-submission-eventids.mjs`, `fix-null-eventid-submissions.mjs`, `cleanup-orphaned-frames.mjs`, `migrate-frames-add-frameId.ts`, `backfill-dimensions.mjs`, `disable-create-own-share-button-events.ts`, `push-vercel-env.mjs` | One-off migrations and repairs from 2025-11 to 2026-06 that write to the database (or to Vercel). Not named by `package.json`, the workflow, any document, another script or `.env.example`. Several carry hard-coded ids and read `.env.local` themselves. They stay in git history |
+| `scripts/audit-playcounts.mjs`, `check-aspect-ratios.mjs`, `check-all-event-submissions.mjs`, `check-pseudo-users.js`, `test-aggregation.js` | One-off read-only diagnostics of 2025-11 (a hard-coded slideshow id, the pseudo-users investigation); same: named nowhere |
+| Overrides `postcss` 8.5.23 and `esbuild` 0.28.1 (June 2026, "fix dependency audit findings") | Their reason is gone: `next` 16.3.8 itself requires `postcss` 8.5.23 exactly, `@tailwindcss/postcss` asks `^8.5.16`, `tsx` asks `esbuild ~0.28.0`. Removed one by one and together with `npm install --package-lock-only`: `package-lock.json` came out **byte for byte the same** (apart from the four `libc` lines npm 10.9 drops), so the resolved tree is unchanged (`npm explain postcss`, `npm explain esbuild`) |
+
+| Measure | Before (main, 6483bc06) | After |
+|---------|-------------------------|-------|
+| Direct dependencies / devDependencies / overrides | 23 / 15 / 7 | 23 / 15 / **5** |
+| Packages installed by `npm ci` | 622 | 622 (no package leaves; every dependency is used) |
+| `npm ci` deprecation warnings | 2 | 2 |
+| `npm audit` / `npm audit --omit=dev` | 5 high / 0 | 5 high / 0 |
+| Tracked source and script files | | -22 files, -2 override lines |
+
+**Looked at and not removed.**
+
+| What | Why it stays |
+|------|--------------|
+| Every direct dependency | Each has an importer, a binary in a script, a config entry or a peer requirement (section 3). The four peer packages `@mantine/hooks`, `@mantine/dates`, `@mantine/modals` and `dayjs` have no import in the repo, but `gds-core` and `gds-theme` list them as non-optional peers; without a declaration npm would pick the newest Mantine for them (`^7.9 \|\| ^8.3 \|\| ^9`) |
+| `tailwindcss`, `@tailwindcss/postcss` | The CSS imports Tailwind and 8 files still use utility classes, including the live guest pages (`app/capture/[eventId]/page.tsx`, `components/camera/CameraCapture.tsx`); the reset it brings is global. Removing it is a styling change on the capture path: after 2026-10-14 and with the owner (section 5b) |
+| `lib/submissions/public-image.ts` and its test | No production importer, but `original-exposure.test.ts` guards it by name and the submissions route cites it as the place where an original is kept private. It belongs to the original-photo cleanup the owner has not released |
+| `scripts/backfill-preview-image-urls.ts`, `count-stored-photo-addresses.ts`, `scan-broken-pictures.ts`, `backfill-screen-pictures.ts`, `grant-admin*.mjs`, `grant-app-permission.mjs` | Named by `RUNBOOK.md`, `CLAUDE.md`, `.env.example`, `docs/PRIVACY_DATA.md` or other documents |
+| `config/leather-suits.example.json`, `public/fff/*`, `pnpm-workspace.yaml`, `public/favicon.png` | The first two are held back by the try-on and FunFitFan clean-ups on the owner's go (issues 561 and 400); `pnpm-workspace.yaml` is the developer-convenience setting that `docs/GDS_RELEASE_GATE.md` mentions; `favicon.png` is an asset (6 kB) that an external page might link |
+| `lib/library/fake-db.ts`, `lib/tryon/sync.fake-db.ts`, `lib/events/baseline/*.baseline.ts` | Test helpers used by test files (knip does not count tests as entry points) |
+| Unused exports and types (knip: 377 and 131) | Not modules; each one is an API decision |
+
 ## 4. Updated
 
 Patch and minor updates inside the current lines. All pass the full gate; the lockfile keeps the `libc` entries that npm 11 (CI, Dependabot) writes, because the npm 10.9 on this machine would drop them.
@@ -88,7 +128,7 @@ Anything that is a framework line, a major, or a library the gate cannot exercis
 | `@upstash/ratelimit`, `@upstash/redis` | 2.0.8 > 2.2.0; 1.38.0 > 1.39.0 | Minor, but they talk to a live Redis the gate cannot reach | S | low: afterwards hit one rate-limited route on a preview with Upstash configured |
 | `resend` | 6.16.0 > 6.32.1 | Sixteen minors of a live mail API the gate cannot reach | S | low-medium: send one test mail (`npm run email:test`) from a preview |
 | `@playwright/test` | 1.61.1 > 1.64.0 | Minor; the e2e suite is not part of the gate and needs the disposable `camera_test` database | S | low |
-| `overrides` `postcss` 8.5.23 and `esbuild` 0.28.1 | latest 8.5.29 and 0.28.2 | Exact pins freeze the patch level of two transitive packages. Next 16.3.8 itself pins `postcss` 8.5.23, and `tsx` asks for `esbuild ~0.28.0`; relax them to ranges (`^8.5.23`, `^0.28.1`) at the next bump | XS | low |
+| `overrides` `postcss` 8.5.23 and `esbuild` 0.28.1 | **Done 2026-10-11**: removed, the resolved tree is unchanged (section 3a) | XS | none |
 
 ## 6. Deprecated packages
 
@@ -108,7 +148,7 @@ Tested on 2026-10-11 by removing one override at a time in a scratch copy and ru
 | Override | Result | Decision |
 |----------|--------|----------|
 | `@tiptap/core`, `@tiptap/pm`, `@tiptap/react`, `@tiptap/extension-bubble-menu`, `@tiptap/extension-floating-menu` = 3.31.3 | Without them `@tiptap/starter-kit` 3.31.4 gets its own nested `@tiptap/core` and `@tiptap/pm` 3.31.4 next to the 3.31.3 the rest of the tree uses (two copies of the editor core, which these packages are not built for). `gds-core` 6.8.0 brings tiptap in. | Keep |
-| `postcss` 8.5.23, `esbuild` 0.28.1 | Removing either leaves the resolved tree unchanged; the pins only stop later patches | Keep for now, relax at the next bump (section 5) |
+| `postcss` 8.5.23, `esbuild` 0.28.1 | Added in June 2026 for audit findings on older versions. Today `next` 16.3.8 pins `postcss` 8.5.23 and `tsx` asks `esbuild ~0.28.0`; removing both leaves `package-lock.json` unchanged | **Removed 2026-10-11** (section 3a) |
 
 ## 8. Versions
 
