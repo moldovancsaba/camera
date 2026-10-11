@@ -14,6 +14,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { refreshFrameDesign } from '@/lib/frame/sync';
 import { generateFrameVariants } from '@/lib/frame/variants';
 import type { FrameDesign } from '@/lib/frame/context';
+import { scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
 
 export const THEME_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const THEME_RETRY_AFTER_MS = 10 * 60 * 1000;
@@ -57,6 +58,9 @@ export async function refreshEventTheme(db: Db, event: Document, deps: ThemeRefr
       await deps.generate(db, { ...event, frameDesign: design });
     }
     await events.updateOne({ _id: event._id }, { $set: { themeCheckedAt: at }, $unset: { themeStale: '' } });
+    // A new messmass style (colours, font) is also what the welcome page screen is drawn in (issue 327): the frame images above already schedule it when they were drawn; an event without frame images
+    // is covered here. Only when the snapshot really changed, and only for an event that has the picture.
+    if (changed) scheduleWelcomeRedraw(event, 'style');
     return changed ? 'updated' : 'unchanged';
   } catch (error) {
     console.error(`Event ${String(event._id)}: theme refresh failed`, error);

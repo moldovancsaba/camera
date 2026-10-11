@@ -10,15 +10,10 @@ import { messmassFontUrl } from '@/lib/messmassClient';
 import { resolveEventTheme, type EventTheme } from '@/lib/theme/event-theme';
 import { storedPartnerPictures } from '@/lib/events/partner-pictures';
 import { brokenAddresses, pictureOrNull } from '@/lib/media/pictures';
+import { welcomeButtonColours } from '@/lib/theme/welcome-buttons';
 
-/** The colours of the Start button on the event's active welcome page (fill, label, ring), if it has set any: the whole flow's buttons look like it. */
-export function welcomeButtonColours(pages: unknown): { fill?: unknown; label?: unknown; ring?: unknown } | null {
-  const welcome = (Array.isArray(pages) ? pages : [])
-    .filter((page): page is { pageType: string; isActive?: boolean; order?: number; config?: Record<string, unknown> } => !!page && typeof page === 'object' && (page as { pageType?: unknown }).pageType === 'welcome' && (page as { isActive?: unknown }).isActive !== false)
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
-  const config = welcome?.config;
-  return config ? { fill: config.buttonColor, label: config.buttonTextColor, ring: config.buttonBorderColor } : null;
-}
+// The function lives in its own file (no imports) so that a light module can read it without the loader's imports; it is still exported from here for its tests and callers.
+export { welcomeButtonColours };
 
 async function partnerEmailFooter(db: Db, event: Document): Promise<string | null> {
   if (typeof event.partnerId !== 'string' || !event.partnerId) return null;

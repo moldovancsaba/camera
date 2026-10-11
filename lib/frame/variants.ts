@@ -20,6 +20,7 @@ import { chosenFrameIds, frameBaseOf, loadMessageFrames, type MessageFrame } fro
 import { messageTokens, usableMessages } from './messages';
 import { FRAME_RENDER_VERSION, generatedLayers, renderFrame, renderSlotFrame, slotLayers } from './render';
 import { slotLayerBoxes } from './slot-layout';
+import { scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
 import { resolveSlotPictures, slotsForMessage, type SlotPosition } from './slots';
 import { loadInheritedSlots } from './slots-inherit';
 
@@ -237,5 +238,8 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
   const next: FrameDesign = { ...design, variants, generatedAt };
   // One write at the end: a failed upload above leaves the previous variants as they were.
   await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, { $set: { 'frameDesign.variants': variants, 'frameDesign.generatedAt': generatedAt } });
+  // The welcome page screen shows this frame, in the colours and the font of the same snapshot (issue 327): when the event has that picture it is drawn again after the response, once, if anything it is
+  // drawn from changed (lib/screen/welcome-redraw.ts; an event without the picture, a call outside a request and a switched-off redraw do nothing).
+  scheduleWelcomeRedraw(event, 'frame');
   return { design: next, generated, reused: variants.length - generated };
 }
