@@ -10,6 +10,15 @@ deleted; no `dev`/`preview` branch exists. Every merge to `main` deploys, and
 `main` only takes a pull request with a green `Verify` check (see below). Policy
 and current practice in [docs/BRANCHING.md](docs/BRANCHING.md).
 
+## Parallel branches in git worktrees: `npm run sync:main`
+
+Many pull requests are prepared at once, each in its own git worktree (often under `.claude/worktrees/<name>`). `main` moves every few minutes and almost every branch regenerates `docs/_audit/*.json`, so a rebase onto `main` used to stop on those generated files again and again.
+
+- **`npm run sync:main`** (`scripts/sync-main.sh`, from any worktree) refuses to start with uncommitted changes to tracked files (and on `main` or a detached HEAD), fetches `origin` and rebases the current branch onto `origin/main`. When the only conflicts are in `docs/_audit/*.json` (and `docs/_meta/*` where a repo has it) it takes main's version of those files, runs `python3 scripts/fleet-audit-inventory.py --write`, `git add` and `git rebase --continue`, for every commit that conflicts. Any other conflicting file stops it: it prints the files, the commit being applied and the commands to go on by hand, and running it again after the files are resolved continues the same rebase (`git rebase --abort` gives up). At the end it runs `python3 scripts/fleet-audit-inventory.py --check` and prints the result (exit 0 all good, 1 stopped, 2 rebased but the inventory check fails).
+- **It never pushes.** After a rebase the branch needs a lease-protected push, which it prints for you to run: `git push --force-with-lease origin <branch>`. `gh pr update-branch <n>` is the alternative when there is no local rebase need (GitHub brings the PR branch up to date itself; it does not regenerate the inventory after a conflict).
+- **The inventory files are the same wherever the checkout lives and carry nothing about the run.** `_meta` holds the repo name (from the `origin` URL, not from the folder, so `camera-b` never lands in the files) and the regenerate command; there is no timestamp, no commit and no counts, and every item is on its own line, so two branches that add different items merge without a conflict. The scanner skips `node_modules`, `.next`, `.git`, `.claude` and the like only *below the repo root*, so a worktree under `.claude/worktrees/...` scans exactly like the primary checkout. `--check` compares only `items`. Tests: `scripts/test_fleet_audit_inventory.py` and `scripts/sync-main.test.ts` (both in `npm run test:unit`).
+- A conflict in `docs/_audit/*.json` outside `sync:main` (a merge, an old branch) is never merged by hand: take main's file and run `python3 scripts/fleet-audit-inventory.py --write`.
+
 ## Deploying to production
 
 Production deploys from git: every push to `main` builds and promotes

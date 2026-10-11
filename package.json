@@ -22,6 +22,7 @@
     "env:verify": "tsx scripts/verify-env.ts",
     "verify:production-guards": "tsx scripts/verify-production-guards.ts",
     "inventory:check": "python3 scripts/fleet-audit-inventory.py --check",
+    "sync:main": "bash scripts/sync-main.sh",
     "email:test": "tsx scripts/send-test-email.ts",
     "camera:diagnostics-report": "tsx scripts/camera-diagnostics-report.ts",
     "blob:orphans": "tsx scripts/blob-orphans.ts",

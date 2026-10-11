@@ -5,5 +5,6 @@ architecture map: messmass `docs/_audit/fleet-architecture.md`.
 
 - `drift-register.md` — doc/comment verdicts with file:line evidence.
 - `*.json` — generated inventories. Regenerate with this repo's own `python3 scripts/fleet-audit-inventory.py --write` (vendored copy; canonical source in messmass).
+  Stable by design: `_meta` is only the repo name (read from the git remote, never the worktree folder) and the regenerate command; no timestamp, commit or counts, and one item per line, so branches that regenerate do not conflict. `--check` compares `items` only. In a conflict take main's file and regenerate (`npm run sync:main` does it for a rebase).
 - `contract-first-rule.md` — the fleet contract-first rule; `npm run inventory:check` (CI) fails when `*.json` drift from the tree.
 - `api-reference.md` — the `app/api/**/route.ts` routes written up with their auth guard, request/response shape, side effects, and deprecation candidates (not all of them: `endpoints.json` is the complete list, see the coverage line at the top of the reference).

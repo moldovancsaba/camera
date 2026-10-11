@@ -1,312 +1,83 @@
 {
  "_meta": {
-  "generated": "2026-10-11T07:13:27+00:00",
   "repo": "camera",
-  "head": "f51c394a",
-  "counts": {
-   "endpoints": 133,
-   "collections": 7,
-   "env": 55,
-   "outbound-hosts": 31,
-   "docs": 74
-  }
+  "regenerate": "python3 scripts/fleet-audit-inventory.py --write"
  },
  "items": [
-  {
-   "file": "ARCHITECTURE.md",
-   "title": "Architecture"
-  },
-  {
-   "file": "CLAUDE.md",
-   "title": "CLAUDE.md \u2014 Standing Operating Rules"
-  },
-  {
-   "file": "CODE_AUDIT.md",
-   "title": "CODE_AUDIT.md"
-  },
-  {
-   "file": "HANDOVER.md",
-   "title": "Handover"
-  },
-  {
-   "file": "LEARNINGS.md",
-   "title": "LEARNINGS.md"
-  },
-  {
-   "file": "NAMING_GUIDE.md",
-   "title": "Naming Guide"
-  },
-  {
-   "file": "README.md",
-   "title": "Camera"
-  },
-  {
-   "file": "RELEASE_NOTES.md",
-   "title": "RELEASE_NOTES.md"
-  },
-  {
-   "file": "ROADMAP.md",
-   "title": "Roadmap"
-  },
-  {
-   "file": "RUNBOOK.md",
-   "title": "Operations Runbook"
-  },
-  {
-   "file": "TASKLIST.md",
-   "title": "Tasklist"
-  },
-  {
-   "file": "TECH_STACK.md",
-   "title": "Tech Stack"
-  },
-  {
-   "file": "WARP.DEV_AI_CONVERSATION.md",
-   "title": "Multi-Level Submission Management Implementation"
-  },
-  {
-   "file": "assets/frame-fonts/README.md",
-   "title": "Frame fonts"
-  },
-  {
-   "file": "business_requirements.md",
-   "title": "Seyu 2.0 \u2013 SaaS version \u2014 Business & vendor requirements"
-  },
-  {
-   "file": "docs/ANALYTICS.md",
-   "title": "Analytics (issue 521)"
-  },
-  {
-   "file": "docs/ANALYTICS_AUDIT.md",
-   "title": "Analytics audit: what we know about the users and the service, what we could know, and how to feed messmass"
-  },
-  {
-   "file": "docs/AUTHORIZATION.md",
-   "title": "Authorization Guide"
-  },
-  {
-   "file": "docs/BRANCHING.md",
-   "title": "Branching model"
-  },
-  {
-   "file": "docs/BUILDING_BRICKS.md",
-   "title": "Building bricks: one way to build every element of an event"
-  },
-  {
-   "file": "docs/CAMERA_MODULE_PLAN.md",
-   "title": "Camera module plan"
-  },
-  {
-   "file": "docs/CAPTURE_MESSAGES.md",
-   "title": "Messages in the capture flow (owner feedback 2026-10-09, MTK x Vasas)"
-  },
-  {
-   "file": "docs/DEFAULT_FRAME_PLAN.md",
-   "title": "Default event frame from messmass data"
-  },
-  {
-   "file": "docs/DEPENDENCIES.md",
-   "title": "Dependencies"
-  },
-  {
-   "file": "docs/DOCUMENTATION.md",
-   "title": "Documentation Maintenance"
-  },
-  {
-   "file": "docs/ELEMENT_INVENTORY.md",
-   "title": "Element inventory: everything an event needs, and what relates to what"
-  },
-  {
-   "file": "docs/EMAIL_FORMAT_PLAN.md",
-   "title": "The e-mails to the user: one format, one legal part, an editor, variables (client feedback 2026-10-09)"
-  },
-  {
-   "file": "docs/EMAIL_TEMPLATES.md",
-   "title": "Email template verification"
-  },
-  {
-   "file": "docs/EVENT_EXPORTS.md",
-   "title": "Event Data Exports \u2014 Low-Level Design"
-  },
-  {
-   "file": "docs/EXECUTION_ORDER.md",
-   "title": "Execution order (owner answers of 2026-10-10)"
-  },
-  {
-   "file": "docs/FRAME_BASE.md",
-   "title": "Frames from the designers' picture (frame base)"
-  },
-  {
-   "file": "docs/FRAME_LAYOUT_SELECTION_PLAN.md",
-   "title": "Layout and message selection at an event (client feedback 2026-10-09)"
-  },
-  {
-   "file": "docs/FRAME_SLOTS_PLAN.md",
-   "title": "Frames in general: twelve optional slots (issue 502, client request 2026-10-09, owner answer 218: full delivery now)"
-  },
-  {
-   "file": "docs/GDS_CAMERA_ADOPTION.md",
-   "title": "Camera GDS Adoption"
-  },
-  {
-   "file": "docs/GDS_COMPONENT_RULES.md",
-   "title": "Camera GDS Component Rules"
-  },
-  {
-   "file": "docs/GDS_EXCEPTION_STANDARD.md",
-   "title": "GDS Exception Standard"
-  },
-  {
-   "file": "docs/GDS_RELEASE_GATE.md",
-   "title": "Camera GDS Release Gate"
-  },
-  {
-   "file": "docs/IMAGE_DIRECT_INTEGRATION.md",
-   "title": "Camera \u2194 image.direct rendering contract"
-  },
-  {
-   "file": "docs/JOURNEY_DEFAULT_PAGES.md",
-   "title": "Default pages of the user flow and the global switch"
-  },
-  {
-   "file": "docs/JOURNEY_DESIGN_PLAN.md",
-   "title": "Event design on the guest journey (plan)"
-  },
-  {
-   "file": "docs/JOURNEY_IMAGES.md",
-   "title": "Pictures of the guest journey: the CTA page picture and the email footer"
-  },
-  {
-   "file": "docs/JOURNEY_RECORDING.md",
-   "title": "Journey recording (issue 521, phase 2)"
-  },
-  {
-   "file": "docs/LIBRARIES.md",
-   "title": "Libraries: Global -> Partner -> Event"
-  },
-  {
-   "file": "docs/LIBRARY_AUDIT.md",
-   "title": "Library audit: what bypasses the libraries or cannot be seen (2026-10-08)"
-  },
-  {
-   "file": "docs/LOGO_STORAGE.md",
-   "title": "Logo storage (Cloudflare R2)"
-  },
-  {
-   "file": "docs/MESSMASS_FANMASS_INTEGRATION.md",
-   "title": "messmass + fanmass integration"
-  },
-  {
-   "file": "docs/MONGODB_ATLAS.md",
-   "title": "MongoDB Atlas"
-  },
-  {
-   "file": "docs/MONGODB_CONVENTIONS.md",
-   "title": "MongoDB Conventions"
-  },
-  {
-   "file": "docs/PHOTO_VETTING_PLAN.md",
-   "title": "Photo vetting by default: plan"
-  },
-  {
-   "file": "docs/PRIVACY_DATA.md",
-   "title": "What camera stores about a user, and for how long"
-  },
-  {
-   "file": "docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md",
-   "title": "Profiles across events: purpose and consent (owner decisions 2026-10-10)"
-  },
-  {
-   "file": "docs/SCREEN_DESIGN.md",
-   "title": "Giant-screen design (slideshow screen design)"
-  },
-  {
-   "file": "docs/SHORT_LINKS.md",
-   "title": "Tracked short links (camera#320)"
-  },
-  {
-   "file": "docs/SLIDESHOW_LOGIC.md",
-   "title": "Slideshow Logic"
-  },
-  {
-   "file": "docs/STORAGE_ARCHITECTURE.md",
-   "title": "Storage architecture: how we never lose an image"
-  },
-  {
-   "file": "docs/TEXT_LEVELS.md",
-   "title": "Text levels: the Dictionary, a partner's texts, an event's texts"
-  },
-  {
-   "file": "docs/TRYON_ANALYTICS.md",
-   "title": "Try-On analytics and data operations"
-  },
-  {
-   "file": "docs/TRYON_ARCHITECTURE.md",
-   "title": "Try-On Architecture"
-  },
-  {
-   "file": "docs/TRYON_LOW_LEVEL_DESIGN.md",
-   "title": "Try-On Low-Level Design"
-  },
-  {
-   "file": "docs/TRYON_OPERATIONS.md",
-   "title": "Try-On Operations"
-  },
-  {
-   "file": "docs/TRYON_REMOVED.md",
-   "title": "Try-on integration: what existed, why it was removed, how to rebuild it as an add-on"
-  },
-  {
-   "file": "docs/UI_LANGUAGE.md",
-   "title": "UI language of an event (camera#352)"
-  },
-  {
-   "file": "docs/WELCOME_AND_DEFAULTS_PLAN.md",
-   "title": "Welcome page, default slideshow, global defaults and page defaults (plan)"
-  },
-  {
-   "file": "docs/WELCOME_SCREEN_PHOTO_PLAN.md",
-   "title": "A selfie in the welcome page screen (plan)"
-  },
-  {
-   "file": "docs/WELCOME_STEP.md",
-   "title": "Welcome step (step 0 of the guest journey)"
-  },
-  {
-   "file": "docs/_audit/README.md",
-   "title": "Fleet audit artifacts"
-  },
-  {
-   "file": "docs/_audit/api-reference.md",
-   "title": "Camera API Reference"
-  },
-  {
-   "file": "docs/_audit/camera-in-the-fleet.md",
-   "title": "camera in the SEYU fleet"
-  },
-  {
-   "file": "docs/_audit/contract-first-rule.md",
-   "title": "Contract-first rule (fleet)"
-  },
-  {
-   "file": "docs/_audit/drift-register.md",
-   "title": "camera drift register \u2014 fleet audit P3, first edition"
-  },
-  {
-   "file": "docs/_research/GALLERY_MULTISELECT_RESEARCH.md",
-   "title": "Event gallery: selecting several photos at once (research, camera#488, owner report 207)"
-  },
-  {
-   "file": "docs/_research/SLIDESHOW_FREEZE_RESEARCH.md",
-   "title": "Giant-screen slideshow freeze: root-cause research and fix plan"
-  },
-  {
-   "file": "docs/landing-page-css-handoff.md",
-   "title": "Landing Page CSS Handoff"
-  },
-  {
-   "file": "gds_fix_handover.md",
-   "title": "GDS fix handover: camera"
-  }
+  {"file": "ARCHITECTURE.md", "title": "Architecture"},
+  {"file": "CLAUDE.md", "title": "CLAUDE.md \u2014 Standing Operating Rules"},
+  {"file": "CODE_AUDIT.md", "title": "CODE_AUDIT.md"},
+  {"file": "HANDOVER.md", "title": "Handover"},
+  {"file": "LEARNINGS.md", "title": "LEARNINGS.md"},
+  {"file": "NAMING_GUIDE.md", "title": "Naming Guide"},
+  {"file": "README.md", "title": "Camera"},
+  {"file": "RELEASE_NOTES.md", "title": "RELEASE_NOTES.md"},
+  {"file": "ROADMAP.md", "title": "Roadmap"},
+  {"file": "RUNBOOK.md", "title": "Operations Runbook"},
+  {"file": "TASKLIST.md", "title": "Tasklist"},
+  {"file": "TECH_STACK.md", "title": "Tech Stack"},
+  {"file": "WARP.DEV_AI_CONVERSATION.md", "title": "Multi-Level Submission Management Implementation"},
+  {"file": "assets/frame-fonts/README.md", "title": "Frame fonts"},
+  {"file": "business_requirements.md", "title": "Seyu 2.0 \u2013 SaaS version \u2014 Business & vendor requirements"},
+  {"file": "docs/ANALYTICS.md", "title": "Analytics (issue 521)"},
+  {"file": "docs/ANALYTICS_AUDIT.md", "title": "Analytics audit: what we know about the users and the service, what we could know, and how to feed messmass"},
+  {"file": "docs/AUTHORIZATION.md", "title": "Authorization Guide"},
+  {"file": "docs/BRANCHING.md", "title": "Branching model"},
+  {"file": "docs/BUILDING_BRICKS.md", "title": "Building bricks: one way to build every element of an event"},
+  {"file": "docs/CAMERA_MODULE_PLAN.md", "title": "Camera module plan"},
+  {"file": "docs/CAPTURE_MESSAGES.md", "title": "Messages in the capture flow (owner feedback 2026-10-09, MTK x Vasas)"},
+  {"file": "docs/DEFAULT_FRAME_PLAN.md", "title": "Default event frame from messmass data"},
+  {"file": "docs/DEPENDENCIES.md", "title": "Dependencies"},
+  {"file": "docs/DOCUMENTATION.md", "title": "Documentation Maintenance"},
+  {"file": "docs/ELEMENT_INVENTORY.md", "title": "Element inventory: everything an event needs, and what relates to what"},
+  {"file": "docs/EMAIL_FORMAT_PLAN.md", "title": "The e-mails to the user: one format, one legal part, an editor, variables (client feedback 2026-10-09)"},
+  {"file": "docs/EMAIL_TEMPLATES.md", "title": "Email template verification"},
+  {"file": "docs/EVENT_EXPORTS.md", "title": "Event Data Exports \u2014 Low-Level Design"},
+  {"file": "docs/EXECUTION_ORDER.md", "title": "Execution order (owner answers of 2026-10-10)"},
+  {"file": "docs/FRAME_BASE.md", "title": "Frames from the designers' picture (frame base)"},
+  {"file": "docs/FRAME_LAYOUT_SELECTION_PLAN.md", "title": "Layout and message selection at an event (client feedback 2026-10-09)"},
+  {"file": "docs/FRAME_SLOTS_PLAN.md", "title": "Frames in general: twelve optional slots (issue 502, client request 2026-10-09, owner answer 218: full delivery now)"},
+  {"file": "docs/GDS_CAMERA_ADOPTION.md", "title": "Camera GDS Adoption"},
+  {"file": "docs/GDS_COMPONENT_RULES.md", "title": "Camera GDS Component Rules"},
+  {"file": "docs/GDS_EXCEPTION_STANDARD.md", "title": "GDS Exception Standard"},
+  {"file": "docs/GDS_RELEASE_GATE.md", "title": "Camera GDS Release Gate"},
+  {"file": "docs/IMAGE_DIRECT_INTEGRATION.md", "title": "Camera \u2194 image.direct rendering contract"},
+  {"file": "docs/JOURNEY_DEFAULT_PAGES.md", "title": "Default pages of the user flow and the global switch"},
+  {"file": "docs/JOURNEY_DESIGN_PLAN.md", "title": "Event design on the guest journey (plan)"},
+  {"file": "docs/JOURNEY_IMAGES.md", "title": "Pictures of the guest journey: the CTA page picture and the email footer"},
+  {"file": "docs/JOURNEY_RECORDING.md", "title": "Journey recording (issue 521, phase 2)"},
+  {"file": "docs/LIBRARIES.md", "title": "Libraries: Global -> Partner -> Event"},
+  {"file": "docs/LIBRARY_AUDIT.md", "title": "Library audit: what bypasses the libraries or cannot be seen (2026-10-08)"},
+  {"file": "docs/LOGO_STORAGE.md", "title": "Logo storage (Cloudflare R2)"},
+  {"file": "docs/MESSMASS_FANMASS_INTEGRATION.md", "title": "messmass + fanmass integration"},
+  {"file": "docs/MONGODB_ATLAS.md", "title": "MongoDB Atlas"},
+  {"file": "docs/MONGODB_CONVENTIONS.md", "title": "MongoDB Conventions"},
+  {"file": "docs/PHOTO_VETTING_PLAN.md", "title": "Photo vetting by default: plan"},
+  {"file": "docs/PRIVACY_DATA.md", "title": "What camera stores about a user, and for how long"},
+  {"file": "docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md", "title": "Profiles across events: purpose and consent (owner decisions 2026-10-10)"},
+  {"file": "docs/PR_AND_MERGE_PLAYBOOK.md", "title": "Pull requests and merges in a busy repository (what failed on 2026-10-10 and 11, and the rules that follow)"},
+  {"file": "docs/SCREEN_DESIGN.md", "title": "Giant-screen design (slideshow screen design)"},
+  {"file": "docs/SHORT_LINKS.md", "title": "Tracked short links (camera#320)"},
+  {"file": "docs/SLIDESHOW_LOGIC.md", "title": "Slideshow Logic"},
+  {"file": "docs/STORAGE_ARCHITECTURE.md", "title": "Storage architecture: how we never lose an image"},
+  {"file": "docs/TEXT_LEVELS.md", "title": "Text levels: the Dictionary, a partner's texts, an event's texts"},
+  {"file": "docs/TRYON_ANALYTICS.md", "title": "Try-On analytics and data operations"},
+  {"file": "docs/TRYON_ARCHITECTURE.md", "title": "Try-On Architecture"},
+  {"file": "docs/TRYON_LOW_LEVEL_DESIGN.md", "title": "Try-On Low-Level Design"},
+  {"file": "docs/TRYON_OPERATIONS.md", "title": "Try-On Operations"},
+  {"file": "docs/TRYON_REMOVED.md", "title": "Try-on integration: what existed, why it was removed, how to rebuild it as an add-on"},
+  {"file": "docs/UI_LANGUAGE.md", "title": "UI language of an event (camera#352)"},
+  {"file": "docs/WELCOME_AND_DEFAULTS_PLAN.md", "title": "Welcome page, default slideshow, global defaults and page defaults (plan)"},
+  {"file": "docs/WELCOME_SCREEN_PHOTO_PLAN.md", "title": "A selfie in the welcome page screen (plan)"},
+  {"file": "docs/WELCOME_STEP.md", "title": "Welcome step (step 0 of the guest journey)"},
+  {"file": "docs/_audit/README.md", "title": "Fleet audit artifacts"},
+  {"file": "docs/_audit/api-reference.md", "title": "Camera API Reference"},
+  {"file": "docs/_audit/camera-in-the-fleet.md", "title": "camera in the SEYU fleet"},
+  {"file": "docs/_audit/contract-first-rule.md", "title": "Contract-first rule (fleet)"},
+  {"file": "docs/_audit/drift-register.md", "title": "camera drift register \u2014 fleet audit P3, first edition"},
+  {"file": "docs/_research/GALLERY_MULTISELECT_RESEARCH.md", "title": "Event gallery: selecting several photos at once (research, camera#488, owner report 207)"},
+  {"file": "docs/_research/SLIDESHOW_FREEZE_RESEARCH.md", "title": "Giant-screen slideshow freeze: root-cause research and fix plan"},
+  {"file": "docs/landing-page-css-handoff.md", "title": "Landing Page CSS Handoff"},
+  {"file": "gds_fix_handover.md", "title": "GDS fix handover: camera"}
  ]
 }
