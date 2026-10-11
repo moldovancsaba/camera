@@ -12,8 +12,6 @@
  * 404 when the event does not exist.
  */
 
-import { Readable } from 'node:stream';
-import archiver from 'archiver';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { withErrorHandler, requireAuth, apiNotFound, apiBadRequest } from '@/lib/api';
@@ -24,9 +22,9 @@ import {
   collectEventImages,
   toCsv,
   exportSlug,
-  imageExtension,
   MAX_ZIP_IMAGES,
 } from '@/lib/events/event-export';
+import { createImagesZip } from '@/lib/events/image-zip';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -86,52 +84,8 @@ export const GET = withErrorHandler(async (
     );
   }
 
-  const archive = archiver('zip', { zlib: { level: 6 } });
-
-  // Drive fetch + append in the background; archiver streams out as the client
-  // reads. A per-image failure is recorded in _errors.txt rather than aborting.
-  (async () => {
-    const failures: string[] = [];
-    const usedNames = new Set<string>();
-    let index = 0;
-
-    for (const image of images) {
-      index += 1;
-      try {
-        const response = await fetch(image.url);
-        if (!response.ok) {
-          failures.push(`${image.url} -> HTTP ${response.status}`);
-          continue;
-        }
-        const buffer = Buffer.from(await response.arrayBuffer());
-        const ext = imageExtension(response.headers.get('content-type'), image.url);
-        const prefix = String(index).padStart(4, '0');
-        let name = `${image.kind}/${prefix}-${image.submissionId || 'image'}.${ext}`;
-        // Guard against the rare collision when two submissions share an id.
-        while (usedNames.has(name)) {
-          name = `${image.kind}/${prefix}-${image.submissionId || 'image'}-${usedNames.size}.${ext}`;
-        }
-        usedNames.add(name);
-        archive.append(buffer, { name });
-      } catch (error) {
-        failures.push(`${image.url} -> ${error instanceof Error ? error.message : 'fetch failed'}`);
-      }
-    }
-
-    if (failures.length > 0) {
-      archive.append(
-        `${failures.length} image(s) could not be fetched:\n\n${failures.join('\n')}\n`,
-        { name: '_errors.txt' }
-      );
-    }
-    await archive.finalize();
-  })().catch((error) => {
-    archive.abort();
-    console.error('Event image ZIP export failed:', error);
-  });
-
-  // Node Readable -> Web ReadableStream for the App Router Response body.
-  const body = Readable.toWeb(archive) as unknown as ReadableStream<Uint8Array>;
+  // The archive is built (and streamed as the client reads it) by lib/events/image-zip.ts; a failed picture goes into _errors.txt.
+  const body = createImagesZip(images);
   return new NextResponse(body, {
     headers: {
       'Content-Type': 'application/zip',

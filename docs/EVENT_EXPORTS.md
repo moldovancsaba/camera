@@ -50,11 +50,12 @@ last_submitted_at`. Filename: `event-<slug>-emails-<date>.csv`.
 - `format=csv` (default, uncapped): one row per image —
   `submission_id, kind, submission_kind, url, user_email, user_name, created_at`.
 - `format=zip`: guards `images.length` against `MAX_ZIP_IMAGES` (returns `400` pointing to
-  the CSV when exceeded; `400` when there are no images). Otherwise streams a ZIP via
-  `archiver`: each image is fetched from imgbb and appended under `original/`, `final/`, or
-  `primary/`; per-image fetch failures are recorded in `_errors.txt` instead of aborting the
-  archive. The Node `archiver` stream is converted to a web `ReadableStream` via
-  `Readable.toWeb` for the App Router response. `runtime = 'nodejs'`.
+  the CSV when exceeded; `400` when there are no images). Otherwise streams a ZIP built by
+  `createImagesZip` (`lib/events/image-zip.ts`, on `archiver`'s `ZipArchive`): each image is fetched
+  from its host and appended under `original/`, `final/`, or `primary/` as
+  `<kind>/<NNNN>-<submissionId>.<ext>`; per-image fetch failures are recorded in `_errors.txt`
+  instead of aborting the archive. The Node archive stream is converted to a web `ReadableStream`
+  via `Readable.toWeb` for the App Router response. `runtime = 'nodejs'`.
 
 ## Data model references
 
@@ -67,4 +68,4 @@ See [MONGODB_CONVENTIONS.md](./MONGODB_CONVENTIONS.md) and the `Submission` inte
 
 ## Test coverage
 
-`tests/e2e/event-exports.spec.ts` (added v2.15.0) covers the access matrix (401 unauthenticated, 403 viewer, 403 unassigned, 404 missing event, global-admin allow), email-CSV deduplication, the image-CSV column contract, and the ZIP-on-empty-event 400. Run via `npm run test:e2e:safe`.
+`lib/events/image-zip.test.ts` (unit, no database) reads the finished archive with a reader of its own and checks the entry names, the exact bytes, the checksums and the `_errors.txt` text (a missing picture, a failing host, every picture failing). `tests/e2e/event-exports.spec.ts` (added v2.15.0) covers the access matrix (401 unauthenticated, 403 viewer, 403 unassigned, 404 missing event, global-admin allow), email-CSV deduplication, the image-CSV column contract, and the ZIP-on-empty-event 400. Run via `npm run test:e2e:safe`.

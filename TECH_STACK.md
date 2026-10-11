@@ -134,7 +134,9 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 ### `archiver`
 
 - streams the per-event image ZIP export (`/api/admin/events/[id]/export/images?format=zip`)
-  as a Node stream converted to a web `ReadableStream`, capped at 500 files
+  as a Node stream converted to a web `ReadableStream`, capped at 500 files; the archive is built in
+  `lib/events/image-zip.ts` (`ZipArchive` of archiver 8, an ES module with no default export), which
+  `lib/events/image-zip.test.ts` checks byte for byte
 
 ### `resend`
 
