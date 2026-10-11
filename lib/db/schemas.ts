@@ -737,6 +737,36 @@ export type SubmissionTryOnRequestStatus =
   | 'enqueue_failed'
   | 'cancelled';
 
+/**
+ * One stored copy of a submission's picture (issue 509, docs/STORAGE_ARCHITECTURE.md "Built"). A submission lists a copy for every file that holds one of its pictures, so "is this picture safe?"
+ * is answered from the submission itself: how many copies exist, in which store, and when each was last read back. At most one entry per `role` and `store`; writing it again replaces it.
+ * Designed so a later manifest collection can be filled from it (an entry is that manifest's `copies[]` row plus the role).
+ *
+ * `verified` only after a ranged read of `url` answered with `bytes` bytes (`verifiedAt` is then set). `unverified`: the file was written (the address is known) but the read-back could not tell (a timeout, a 5xx).
+ * `failed`: the copy was not made, or the read-back showed it is gone or the wrong size; `error` says why, and an address / delete link that is known is kept so deleting the submission can still reach it.
+ */
+export interface ImageCopy {
+  /** `unframed`: the plain crop the user saved (before the frame). `composed`: the framed picture the public sees. */
+  role: 'unframed' | 'composed';
+  /** `blob`: this project's Vercel Blob store. `imgbb`: the third-party host (owner decision 295: the final destination of unframed pictures). */
+  store: 'blob' | 'imgbb';
+  state: 'verified' | 'unverified' | 'failed';
+  /** Address of the file in that store, or null when none was made. */
+  url: string | null;
+  /** Size in bytes that was written (and that the read-back must report). */
+  bytes: number | null;
+  /** ISO time of the last successful read-back, null until one succeeded. */
+  verifiedAt: string | null;
+  /** ISO time this entry was written. */
+  recordedAt: string;
+  /** ImgBB only: the link that deletes the file (the host has no other way to delete). Never sent to a browser. */
+  deleteUrl?: string | null;
+  /** ImgBB only: the host's own id of the file. */
+  externalId?: string | null;
+  /** Why it is not verified or failed; absent when verified. */
+  error?: string | null;
+}
+
 export interface SubmissionTryOnRequestState {
   requested: boolean;
   status: SubmissionTryOnRequestStatus;
@@ -800,6 +830,8 @@ export interface Submission {
   // How the original was framed (mode, zoom, crop box in source pixels, frame aspect, mirrored), so any crop can
   // be redone. Present exactly when originalImageUrl is a distinct full-frame original.
   reframe?: ReframeRecord | null;
+  /** Every stored copy of this submission's pictures and its state (issue 509, lib/storage/image-copies.ts). Admin and delete-flow only: it names the private unframed crop, so no public route may return it. */
+  imageCopies?: ImageCopy[];
   eventId?: string | null;           // Legacy/current single-event mirror for filtering
   frameName?: string | null;         // Cached frame name used by admin listings
   frameCategory?: string | null;     // Cached frame category used by admin filters
@@ -823,7 +855,7 @@ export interface Submission {
   // never returned by a public route), what approval needs to compose the real picture, and the history of the review. The
   // branded composite does not exist until approval; imageUrl and finalImageUrl are absent until then.
   photoReview?: {
-    photoUrl: string | null;         // Plain photo, Blob `pending/<event>/…`; deleted with the submission, and after approval (then null)
+    photoUrl: string | null;         // Plain photo, Blob `pending/<event>/…`; KEPT after approval (issue 509: the only unframed copy), deleted with the submission; null only on photos approved before issue 509
     photoSize: number;
     photoMime: string;
     shareOptIn: boolean;             // The guest's pledge-wall choice, applied when the photo is approved

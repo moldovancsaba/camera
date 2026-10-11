@@ -3,16 +3,19 @@
  *
  * Approval is where the picture is made: the plain photo and the frame image the photo recorded (the generated frame variant, or the
  * event's own frame) are composed on the server, stored, and only then does the photo become visible. A photo whose frame cannot be
- * fetched or composed stays pending: the brand's frame is never skipped silently. The guest gets the share link by email, and the private plain
- * photo is deleted. (A try-on request held with the photo was queued here until the try-on integration was removed, issue 557.) Rejection keeps the photo private and makes no picture.
+ * fetched or composed stays pending: the brand's frame is never skipped silently. The guest gets the share link by email. The private plain
+ * photo (the unframed crop) is KEPT (issue 509, "never lose an image": it used to be deleted here, which left the framed picture as the only copy); after the
+ * answer is sent a second copy of it goes to ImgBB (owner decision 295) and every copy that exists is recorded and read back (`Submission.imageCopies`,
+ * lib/storage/image-copies.ts). How long it is kept is a later decision (owner answer 226: 90 days after the event, then deleted on request); nothing deletes it automatically.
+ * (A try-on request held with the photo was queued here until the try-on integration was removed, issue 557.) Rejection keeps the photo private and makes no picture.
  *
  * Every state change is one conditional update on the review status, so two moderators acting at once cannot both win.
  */
 
-import { del } from '@vercel/blob';
 import type { Db, Document, ObjectId, WithId } from 'mongodb';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
-import { uploadImage } from '@/lib/imgbb/upload';
+import { uploadImageTracked, type MirrorResult } from '@/lib/imgbb/upload';
+import { recordApprovalCopies, type ApprovalCopiesInput } from '@/lib/storage/image-copies';
 import { logWarn } from '@/lib/observability/logger';
 import { buildEmailMetadataPatch, legalOf, resolveEventForSubmission, textsOf, themeOf } from '@/lib/email/submission-result-email';
 import { fetchImageBuffer } from '@/lib/media/image-buffer';
@@ -33,29 +36,34 @@ export interface UploadedPicture {
   imageId: string;
   fileSize: number;
   mimeType: string;
+  /** The ImgBB mirror attempt that started with the upload (it may still be running); absent in tests that do not care. Resolves with the copy, or null; never rejects. */
+  mirror?: Promise<MirrorResult | null>;
+  /** The address of the ImgBB mirror when it answered in time (`deleteUrl` and `imageId` above are its delete link and id), else null. Used when `mirror` is absent. */
+  mirrorImageUrl?: string | null;
 }
 
 export interface ReviewDeps {
   fetchImage: (url: string) => Promise<Buffer>;
   upload: (base64: string, name: string) => Promise<UploadedPicture>;
-  deleteFile: (url: string) => Promise<void>;
   sendApproved: typeof sendPhotoApprovedEmail;
   sendNotApproved: typeof sendPhotoNotApprovedEmail;
   /** Makes the screen-sized picture of the approved photo (camera#476, S7), after the answer is sent; never throws. Absent in tests that do not care. */
   screenPicture?: (db: Db, submission: { _id: ObjectId; imageUrl: string; finalImageUrl: string }) => void;
+  /** Records and makes the copies of the approved photo's pictures (issue 509), after the answer is sent; never throws. Absent in tests that do not care. */
+  imageCopies?: (db: Db, input: ApprovalCopiesInput) => void;
   now: () => string;
 }
 
 export const defaultReviewDeps: ReviewDeps = {
   fetchImage: fetchImageBuffer,
   upload: async (base64, name) => {
-    const result = await uploadImage(base64, { name });
-    return { imageUrl: result.imageUrl, deleteUrl: result.deleteUrl, imageId: result.imageId, fileSize: result.fileSize, mimeType: result.mimeType };
+    const result = await uploadImageTracked(base64, { name });
+    return { imageUrl: result.imageUrl, deleteUrl: result.deleteUrl, imageId: result.imageId, fileSize: result.fileSize, mimeType: result.mimeType, mirror: result.mirrorSettled, mirrorImageUrl: result.mirrorImageUrl };
   },
-  deleteFile: (url) => del(url),
   sendApproved: sendPhotoApprovedEmail,
   sendNotApproved: sendPhotoNotApprovedEmail,
   screenPicture: (db, submission) => runAfterResponse(() => ensureScreenPicture(db, submission).then(() => undefined)),
+  imageCopies: (db, input) => runAfterResponse(() => recordApprovalCopies(db, input).then(() => undefined)),
   now: () => new Date().toISOString(),
 };
 
@@ -159,12 +167,20 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
     }
   }
 
-  // The plain photo is private and no longer needed: the picture exists.
+  // The plain photo stays (issue 509): it is the only unframed copy of the user's picture, and `photoReview.photoUrl` keeps pointing at it so deleting the submission deletes it.
+  // The copies are made and recorded after the answer; a failure there never touches the approval.
   try {
-    await deps.deleteFile(review.photoUrl);
-    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { 'photoReview.photoUrl': null } });
+    deps.imageCopies?.(db, {
+      submissionId: submission._id,
+      composed: {
+        url: picture.imageUrl,
+        bytes: picture.fileSize,
+        mirror: picture.mirror ?? (picture.mirrorImageUrl ? { imageUrl: picture.mirrorImageUrl, deleteUrl: picture.deleteUrl, imageId: picture.imageId } : null),
+      },
+      unframed: { url: review.photoUrl, buffer: photo },
+    });
   } catch (error) {
-    logWarn('photo_vetting.pending_photo_not_deleted', 'The private photo of an approved submission was not deleted', { submissionId: String(submission._id), error: errorMessage(error) });
+    logWarn('image_copy.not_scheduled', 'The copies of the approved photo could not be scheduled', { submissionId: String(submission._id), error: errorMessage(error) });
   }
 
   return { ok: true, email };

@@ -206,6 +206,9 @@ the database record second. (A stored try-on result is refused with 409: the dat
   repeated (deleting a file that is already gone is not an error). A failure is logged as
   `Submission <id>: deleting N stored file(s) failed`. The record is never removed while a file it
   names may still be online.
+- **Recorded copies (issue 509):** every copy listed in `imageCopies` is deleted with the submission: the unframed crop (`photoReview.photoUrl`, a Blob file kept after approval) and any other Blob copy with the Blob files, an ImgBB copy
+  (the unframed crop on ImgBB, the framed picture's mirror) through its stored delete link. An ImgBB delete that fails is logged as `submission_files.imgbb_not_deleted` with the file's public address and role: **remove that file by hand
+  from the ImgBB account** (the delete link is gone with the row).
 - **imgbb mirror:** the stored delete link is requested (only `ibb.co` / `imgbb.com` links are ever
   called) and `files.imgbbFailed` reports a failed request, but it never blocks the delete.
   **Not verified:** whether imgbb deletes on that request, because no imgbb key was available when this
@@ -327,6 +330,16 @@ Every checkbox a user can meet is shown or not, and required or optional, set on
 - **To take a setting away** set it back to "Same as the partner" (event) or "Standard" (partner) in the editor; the stored value is removed (`consentSettings` null, `galleryConsent` null).
 - **The baseline copies** in `lib/events/baseline/` are test fixtures of the old logic and are never imported by the app.
 
+## Image copies (issue 509, docs/STORAGE_ARCHITECTURE.md "Built")
+
+- **What exists:** each approved photo lists its copies in `submissions.imageCopies` (`unframed` and `composed`, each on `blob` and `imgbb`): address, size, state (`verified` / `unverified` / `failed`), the time of the last read-back, and for ImgBB the delete link (never shown to a browser).
+  They are made right after an approval, after the answer is sent, so approving is as fast as before; the approver sees nothing different.
+- **Look at one:** in the database, `db.submissions.findOne({ _id: ObjectId("…") }, { imageCopies: 1, 'photoReview.photoUrl': 1 })`. After the first approval at an event, check that all four entries are `verified`; an `error` text says why not
+  (`wrong size: N bytes were written, the host reports M` means ImgBB stored another file than was sent).
+- **In the logs:** one line per copy, event `image_copy.outcome` (warning when it is not `verified`), plus `image_copy.step_failed`, `image_copy.not_recorded`, `image_copy.submission_gone`, `image_copy.orphan_removed`.
+- **A failed copy never blocks an approval.** It is listed by the Image safety card (pull request 2) and made again by its run; an entry that is not `verified` is tried again whenever the work runs for that photo.
+- **The unframed crop is kept** after approval (it used to be deleted). Nothing deletes it automatically: the retention rule (owner answer 226, 90 days after the event, then deleted on request) is not built yet and needs the owner's go. Until then a photo's crop is deleted with the photo.
+
 ## Photo vetting (camera#261)
 
 Plan and decisions: [docs/PHOTO_VETTING_PLAN.md](docs/PHOTO_VETTING_PLAN.md). The setting is `events.photoVetting.required`; it is on for every event
@@ -340,7 +353,7 @@ Plan and decisions: [docs/PHOTO_VETTING_PLAN.md](docs/PHOTO_VETTING_PLAN.md). Th
   event's setting; only a global admin can switch it (turning it off asks first).
   Approval composes the plain photo with the frame image the photo recorded (the generated variant, or the event's own frame), stores the
   picture, publishes the photo, applies the guest's pledge-wall choice, emails the share link
-  (`/share/<token>`, whatever the event's own email switch says) and deletes the private photo. Rejection keeps the photo private and emails a short fixed "not approved" note with a link to take another photo. A rejected photo can still be approved.
+  (`/share/<token>`, whatever the event's own email switch says) and **keeps the private photo** (issue 509: it is the only unframed copy; see "Image copies" below). Rejection keeps the photo private and emails a short fixed "not approved" note with a link to take another photo. A rejected photo can still be approved.
 - **If approval answers 502** ("the photo stays pending"), the frame image or the photo could not be fetched or stored; nothing changed, so
   repeat the action. A frame is never skipped silently: an unframed picture is only made for a photo that recorded no frame at all.
 - **If the email did not go out** the answer says `email: failed` or `skipped` (no address, no sender configured); the photo is approved

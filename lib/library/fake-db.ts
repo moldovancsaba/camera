@@ -2,7 +2,7 @@
  * A database of plain arrays for the tests of the libraries: just the calls lib/library and its routes make (find with sort and limit,
  * findOne, countDocuments, insertOne (a duplicate `_id` is refused, as MongoDB does), updateOne with $set, $push and $pull (and `upsert` with plain filters), updateMany with $set, $unset and $pull (also on a dotted path such as
  * `library.images`), deleteOne). Filters: equality (null matches a missing field),
- * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`; a plain value also matches an array that holds it); $set (also `frames.$.isActive`), $unset, $push and $pull; $inc and
+ * $in, $nin, $ne, $exists, $or, $not (as the only operator of a field) and dotted paths through arrays (`frames.frameId`; a plain value also matches an array that holds it); $set (also `frames.$.isActive` and `imageCopies.$`, the whole matched element), $unset, $push and $pull; $inc and
  * $setOnInsert on an update or an upsert, insertMany, createIndex (recorded, nothing indexed) and bulkWrite (updateOne and insertOne operations) for the journey recording. Not part of the app.
  */
 
@@ -61,6 +61,10 @@ export function matches(doc: Doc, filter: Doc): boolean {
     if (key === '$or') return (want as Doc[]).some((f) => matches(doc, f));
     if (key === '$and') return (want as Doc[]).every((f) => matches(doc, f));
     const values = valuesAt(doc, key.split('.'));
+    // `{ field: { $not: <condition> } }`: true when the field (or any of its array elements) does not meet the condition at all, and when the field is missing (as in MongoDB).
+    if (want && typeof want === 'object' && !Array.isArray(want) && Object.keys(want).length === 1 && '$not' in (want as Doc)) {
+      return !values.some((value) => matchesValue(value, (want as Doc).$not));
+    }
     return values.some((value) => matchesValue(value, want));
   });
 }
@@ -107,7 +111,9 @@ function setPath(doc: Doc, path: string, value: unknown, filter: Doc = {}): void
     target = target[key] as Doc;
     previous = part;
   }
-  target[parts[parts.length - 1]] = value;
+  // A positional `$` as the last part replaces the matched element as a whole (`imageCopies.$`).
+  const last = parts[parts.length - 1];
+  target[last === '$' ? String(positionalIndex(doc, filter, previous)) : last] = value;
 }
 
 export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record<string, Doc[]>; calls: Array<{ collection: string; op: string; args: unknown[] }> } {

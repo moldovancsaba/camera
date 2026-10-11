@@ -137,7 +137,7 @@ cannot be seen; the owner's phone test.
   on screen, never while a decision is in flight or a reason for a rejection is being written. Until 2026-10-08 it refreshed only after a decision, so a new photo needed a reload.
 - Photos that already have a public composite (all existing ones) are not touched by the backfill; hiding one is the existing
   "remove from event" action, and V1 makes that action effective on the share page as well.
-- Deleting a pending photo must delete its private file (the file-deletion helper covers the composite and the original today).
+- Deleting a photo must delete its private file (the file-deletion helper covers the composite, the original and, since issue 509, the private unframed photo and every recorded copy). **Since issue 509 approval no longer deletes the private photo**: it is the only unframed copy and goes to ImgBB as well (owner decision 295); its retention (90 days after the event, owner answer 226) is a later step.
 - The shapes picture shows the guest's own photo; it is kept in the guest's browser and in the moderation queue, not on a public page.
 - `ensure-indexes.ts` has an index on `{eventId, submissionKind, isSlideshowEligible, isArchived, createdAt}` that gains `reviewStatus`.
 

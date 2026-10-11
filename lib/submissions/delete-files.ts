@@ -13,6 +13,9 @@
  *  3. A file another submission still points at is kept, not deleted.
  *  4. The imgbb mirror is third-party and best effort: its delete link is requested and the
  *     outcome reported, but it never blocks the delete (see RUNBOOK, "Deleting a submission").
+ *  5. Every copy recorded on the submission (`imageCopies`, issue 509: the unframed crop and the framed picture, on Blob and on imgbb) is deleted with it, through the same two
+ *     paths: a Blob copy with the Blob files, an imgbb copy through its stored delete link. An imgbb file whose delete link failed is never silent: it is counted
+ *     (`imgbbFailed`), listed with its address (`imgbbNotDeleted`, no secret in it) and logged as a warning (`submission_files.imgbb_not_deleted`), so it can be removed by hand.
  */
 
 import { del } from '@vercel/blob';
@@ -20,6 +23,7 @@ import type { Db, Document } from 'mongodb';
 import { apiError } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { deleteImage } from '@/lib/imgbb/upload';
+import { logWarn } from '@/lib/observability/logger';
 import { blobStoreHostFromToken } from '@/lib/submissions/original-image';
 
 /** Display fields another submission may legitimately share a file through. */
@@ -41,10 +45,18 @@ export interface SubmissionFilesResult {
   keptShared: string[];
   imgbbRequested: number;
   imgbbFailed: number;
+  /** The addresses of the imgbb files whose delete request failed (they may still be online; remove them by hand). Public addresses, never a delete link. */
+  imgbbNotDeleted: string[];
 }
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+/** The copies recorded on the submission (issue 509): the address of each file and, for imgbb, the link that deletes it. */
+function copiesOf(submission: Document): Array<{ url: string | null; deleteUrl: string | null; store: string | null; role: string | null }> {
+  if (!Array.isArray(submission.imageCopies)) return [];
+  return (submission.imageCopies as Document[]).map((copy) => ({ url: text(copy?.url), deleteUrl: text(copy?.deleteUrl), store: text(copy?.store), role: text(copy?.role) }));
 }
 
 /** Every file URL the submission owns, de-duplicated; originalImageUrl equals imageUrl for older submissions. */
@@ -52,6 +64,7 @@ export function ownedUrls(submission: Document): { fileUrls: string[]; imgbbDele
   // The source photo an old try-on request stored on its own (the integration is removed, issue 557, but the file is still the submission's).
   const tryOn = (submission.tryOnRequest ?? {}) as Document;
   const review = (submission.photoReview ?? {}) as Document;
+  const copies = copiesOf(submission);
   const fileUrls = new Set(
     [
       submission.imageUrl,
@@ -61,14 +74,16 @@ export function ownedUrls(submission: Document): { fileUrls: string[]; imgbbDele
       // The screen-sized picture made for the giant screen (camera#476, S7); equal to imageUrl when that was small enough, which the set de-duplicates.
       submission.screenImageUrl,
       tryOn.sourceImageUrl,
-      // The private plain photo of a vetted photo that has not been approved yet (camera#266).
+      // The private plain photo of a vetted photo (camera#266). Since issue 509 it is kept after approval too, so it is deleted here for good.
       review.photoUrl,
+      // Every file a recorded copy names (the ones on imgbb are not in our store and are skipped by `inStore`; they go through their delete link below).
+      ...copies.map((copy) => copy.url),
     ]
       .map(text)
       .filter((url): url is string => url !== null)
   );
   const imgbbDeleteLinks = new Set(
-    [submission.deleteUrl, tryOn.sourceDeleteUrl]
+    [submission.deleteUrl, tryOn.sourceDeleteUrl, ...copies.map((copy) => copy.deleteUrl)]
       .map(text)
       .filter((url): url is string => url !== null && IMGBB_DELETE_LINK.test(url))
   );
@@ -132,8 +147,18 @@ export async function deleteSubmissionFiles(
   }
 
   let imgbbFailed = 0;
+  const imgbbNotDeleted: string[] = [];
+  const recorded = new Map(copiesOf(submission).filter((copy) => copy.deleteUrl).map((copy) => [copy.deleteUrl as string, copy]));
   for (const link of imgbbDeleteLinks) {
-    if (!(await deps.deleteImage(link))) imgbbFailed += 1;
+    if (await deps.deleteImage(link)) continue;
+    imgbbFailed += 1;
+    const copy = recorded.get(link);
+    if (copy?.url) imgbbNotDeleted.push(copy.url);
+    logWarn('submission_files.imgbb_not_deleted', 'An imgbb file could not be deleted with its submission; it may still be online and must be removed by hand', {
+      submissionId: String(submission._id),
+      role: copy?.role ?? 'framed picture',
+      url: copy?.url ?? null,
+    });
   }
   if (imgbbFailed) {
     console.warn(`Submission ${String(submission._id)}: ${imgbbFailed} imgbb delete request(s) failed; the mirror may still be online`);
@@ -144,5 +169,6 @@ export async function deleteSubmissionFiles(
     keptShared: [...shared],
     imgbbRequested: imgbbDeleteLinks.length,
     imgbbFailed,
+    imgbbNotDeleted,
   };
 }

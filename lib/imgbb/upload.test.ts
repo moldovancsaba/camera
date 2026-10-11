@@ -6,7 +6,7 @@ type UploadModule = typeof import('./upload');
 
 // The mirror is imgbb; `mirror` decides how it behaves. Vercel Blob is always quick; what it was given is kept in `puts`.
 const puts: Array<{ name: string; body: Buffer; contentType: string }> = [];
-async function load(t: TestContext, tag: string, mirror: 'hangs' | 'works'): Promise<UploadModule> {
+async function load(t: TestContext, tag: string, mirror: 'hangs' | 'works' | 'slow'): Promise<UploadModule> {
   process.env.IMGBB_API_KEY = 'test-key-not-real';
   t.after(() => { delete process.env.IMGBB_API_KEY; });
   puts.length = 0;
@@ -18,9 +18,12 @@ async function load(t: TestContext, tag: string, mirror: 'hangs' | 'works'): Pro
       },
     },
   });
+  const answer = { data: { success: true, data: { id: 'abc', url: 'https://i.ibb.co/abc/photo.png', display_url: 'https://i.ibb.co/abc/photo.png', delete_url: 'https://ibb.co/abc/del' } } };
   const post = mirror === 'hangs'
     ? () => new Promise(() => undefined)
-    : async () => ({ data: { success: true, data: { id: 'abc', url: 'https://i.ibb.co/abc/photo.png', display_url: 'https://i.ibb.co/abc/photo.png', delete_url: 'https://ibb.co/abc/del' } } });
+    : mirror === 'slow'
+      ? () => new Promise((resolve) => setTimeout(() => resolve(answer), 60))
+      : async () => answer;
   const axios = { post, get: async () => ({ data: { destroy: () => undefined } }), isAxiosError: () => false };
   t.mock.module('axios', { exports: { default: axios, AxiosError: class extends Error {} } });
   return (await import('./upload?case=' + tag)) as UploadModule;
@@ -64,4 +67,32 @@ test('an SVG is stored as image/svg+xml, the type a browser needs to draw it', a
   const result = await uploadImage(new File([svg], 'crest.svg', { type: 'image/svg+xml' }), { name: 'image-2', mirrorWaitMs: 50 });
   assert.equal(result.mimeType, 'image/svg+xml');
   assert.deepEqual(puts.map((p) => [p.name, p.contentType]), [['image-2.svg', 'image/svg+xml']]);
+});
+
+
+test('the tracked upload returns without a late mirror, and `mirrorSettled` still gives that copy (address, delete link, id) when it lands (issue 509)', async (t) => {
+  const { uploadImageTracked } = await load(t, 'tracked-slow', 'slow');
+  const result = await uploadImageTracked(await png(), { name: 'x', mirrorWaitMs: 5, validatePublicUrl: false });
+  assert.equal(result.imageUrl, 'https://blob.example.test/photo.png');
+  assert.equal(result.mirrorImageUrl, null, 'the call did not wait');
+  assert.deepEqual(await result.mirrorSettled, { imageUrl: 'https://i.ibb.co/abc/photo.png', deleteUrl: 'https://ibb.co/abc/del', imageId: 'abc' });
+});
+
+test('the tracked upload settles with null when the mirror fails, and plain uploadImage keeps exactly its old shape', async (t) => {
+  const { uploadImageTracked, uploadImage } = await load(t, 'tracked-fail', 'works');
+  delete process.env.IMGBB_API_KEY;
+  const tracked = await uploadImageTracked(await png(), { name: 'x', mirrorWaitMs: 50 });
+  assert.equal(await tracked.mirrorSettled, null, 'no key, no mirror, and no rejection');
+  const plain = await uploadImage(await png(), { name: 'x', mirrorWaitMs: 50 });
+  assert.equal('mirrorSettled' in plain, false);
+  assert.deepEqual(Object.keys(plain).sort(), ['deleteUrl', 'fileName', 'fileSize', 'imageId', 'imageUrl', 'mimeType', 'mirrorImageUrl', 'provider', 'success', 'thumbnailUrl']);
+});
+
+test('uploading to imgbb only makes no Blob copy, gives the address, delete link and id, and says so when imgbb is not configured', async (t) => {
+  const { uploadToImgbbOnly } = await load(t, 'only', 'works');
+  const result = await uploadToImgbbOnly(await png(), { name: 'unframed-1', validatePublicUrl: false });
+  assert.deepEqual(result, { imageUrl: 'https://i.ibb.co/abc/photo.png', deleteUrl: 'https://ibb.co/abc/del', imageId: 'abc' });
+  assert.equal(puts.length, 0, 'nothing went to Blob');
+  delete process.env.IMGBB_API_KEY;
+  await assert.rejects(() => uploadToImgbbOnly('aGVsbG8='), /not configured/);
 });
