@@ -185,8 +185,8 @@ the imgbb mirror), on the same three levels: Global Images, the partner's images
 | `GET`, `PUT /api/partners/<id>/library?kind=images`, `POST .../upload`, `DELETE .../items/<pictureId>?kind=images` | As for frames, without defaults. |
 | `GET /api/events/<id>/library?kind=images`, `POST .../upload`, `DELETE .../items/<pictureId>?kind=images` | As for frames; an upload is not assigned. |
 
-Built since this was written: the sample selfies (section Sample selfies, issue 540), the stadium backgrounds (section Stadium backgrounds) and the move of the MTK pictures into the libraries (LIB-6, camera#369, below). Not done: the QR texts
-of the default slideshow (camera#326); the slideshow background picture keeps its own upload. The index definitions of `images` (`lib/db/ensure-indexes.ts`) exist only once
+Built since this was written: the sample selfies (section Sample selfies, issue 540), the stadium backgrounds (section Stadium backgrounds), the move of the MTK pictures into the libraries (LIB-6, camera#369, below) and the QR texts of the default slideshow
+(section QR texts, camera#326). Not done: the slideshow background picture keeps its own upload. The index definitions of `images` (`lib/db/ensure-indexes.ts`) exist only once
 `npm run db:ensure-indexes` has run; nothing depends on them.
 
 ## Sample selfies (issue 540; owner answers 255 to 260, 2026-10-10)
@@ -209,6 +209,15 @@ The pictures the stage of an event's default slideshow is drawn on, with the eve
 - **How it is drawn (`renderStageOverlay`, lib/screen/default-stage.ts):** the picture fills the 16:9 stage (cropped), the event's page colour lies over it as a veil (62 %), the glow of the floodlights is drawn in the event's accent colour, then the same panels, QR panel and transparent photo window as the built-in stage. The photo window, the QR code and the written address do not depend on the background.
 - **Pages and routes:** Libraries > **Stadium backgrounds** (`/admin/stadium-backgrounds`, global admins: upload, switch off or on, delete with the question on the card; `GET`, `POST /api/stadium-backgrounds`; a delete or a switch off is `PATCH`, `DELETE /api/images/<pictureId>`); the partner's **Pictures** page has the card **Stadium backgrounds** (`TaggedSlotPanel`, the same `SlotPanel` as the logo; `GET`, `PUT /api/partners/<id>/stadium-slot`, `POST .../stadium-slot/upload`); the event's panel (`GET`, `PUT /api/events/<id>/stadium-slot`, `POST .../upload`) is in the card **Default stage** on the event's Slideshows page, which also draws the stage again (`GET`, `PUT /api/admin/events/<id>/stage-background`, `lib/screen/stage-redraw.ts`; docs/SCREEN_DESIGN.md, "The stage on a stadium background").
 - **An event that exists keeps its stage** until an editor presses **Draw the stage again** (or changes the choice in the panel, which does the same): only a stage the system drew (`screens/<event uuid>/default-<hash>.png`) is drawn again; a slideshow whose stage picture an editor chose (the designers' picture of MTK x Vasas) is never touched, and the card says so.
+
+## QR texts (issue 326, plan items 1, 4, 9, 10 and 49)
+
+The short line above the QR code on the stage of an event's default slideshow, picked at random from a library. **Not an Images library kind:** its own collection `qr_texts` (`lib/library/qr-texts.ts`, page-safe constants in `lib/library/qr-texts-shared.ts`), with no slot and no partner or event level: the library is global, the choice is the event's own and is made once.
+
+- **The library:** Libraries > **QR texts** (`/admin/qr-texts`, global admins): add a line with a language (English or Hungarian, at most 40 characters, because the line is scaled to the width of the QR code), switch it off or on, delete it (the question sits on its row). The same text in the same language twice is refused; the library holds 200 at most. `GET`, `POST /api/qr-texts`, `PATCH`, `DELETE /api/qr-texts/<id>`; the path is a management path of the activity log. It starts empty and is not seeded from the Dictionary.
+- **The pick:** when an event's default slideshow is made (a new event, or the backfill of existing events), one active text in the event's language (its partner's language when the event has none; English when there is none in it) is picked at random and stored (`Event.qrText = { qrTextId, pickedAt }`, `chooseQrText`, `storeQrTextPick`), and added as a second text of the slideshow above the QR code, in the panel of the right column, as wide as the QR code (`DEFAULT_STAGE.qrText`). The written address stays the first text.
+- **After that it is the slideshow's own text:** the editor changes or removes it in the slideshow editor, which always wins; the library is not read for that slideshow again; switching a text off or deleting it changes no existing slideshow. With no active text for the event the default slideshow is exactly what it was (one line, the written address, nothing stored).
+- **Together with the stadium backgrounds** the new default slideshow gets both picks, and both are stored on the event (tested in `lib/slideshow/default-slideshow.test.ts`).
 
 ## What is done and what comes next
 
