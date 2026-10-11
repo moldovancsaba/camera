@@ -238,7 +238,7 @@ Do not use for:
 
 - full-screen camera capture or slideshow playback flows
 
-### `confirmDestructive` (`lib/gds/confirm-destructive.tsx`)
+### `confirmDestructive` (`useGdsConfirm()` from `@sovereignsquad/gds-core/client`; the old `lib/gds/confirm-destructive.tsx` bridge is deleted)
 
 Use for:
 
@@ -246,7 +246,7 @@ Use for:
 
 Do not use for:
 
-- non-destructive confirmations (use `modals.openConfirmModal` with neutral confirm color)
+- non-destructive confirmations (they are not a destructive-confirm case; the old advice to use Mantine's `modals.openConfirmModal` is not used in this app any more, and `@mantine/core` stays out of `app/admin`)
 
 ## Migration Guidance
 

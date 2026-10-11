@@ -201,10 +201,9 @@
         "components/capture/AcceptPage.tsx",
         "components/capture/RestartPage.tsx",
         "components/capture/ShareOverlay.tsx",
-        "components/slideshow/SlideshowPlayerCore.tsx",
-        "app/greatest-hits/[slug]/page.tsx"
+        "components/slideshow/SlideshowPlayerCore.tsx"
       ],
-      "reason": "Camera's public capture, share, greatest-hits, and slideshow surfaces already consume the substantive GDS public contracts directly: PublicFlowShell (via CaptureStageShell), PublicShell, and PlaybackSurface. The granular per-stage widgets named in the 3.4.3-era issue #76 do not carry a usable contract in @sovereignsquad/gds-core 3.9.0: PublicIdentityStep/PublicCtaStep/PublicConsentStep/PublicAcceptStep/PublicRestartStep are thin `<Stack gap=\"md\">{children}</Stack>` body-slot wrappers that only duplicate the Stack CaptureStageShell already applies; ShareButtonGroup/PublicShareOverlay cannot express ShareOverlay's copy/social/status orchestration; AccessRecoveryPanel does not fit the greatest-hits gallery (name coincidence); PlaybackControls duplicates the already-adopted PlaybackSurface framing for the runtime-exception slideshow player.",
+      "reason": "Camera's public capture, share, and slideshow surfaces already consume the substantive GDS public contracts directly: PublicFlowShell (via CaptureStageShell), PublicShell, and PlaybackSurface. The granular per-stage widgets named in the 3.4.3-era issue #76 do not carry a usable contract in @sovereignsquad/gds-core 3.9.0: PublicIdentityStep/PublicCtaStep/PublicConsentStep/PublicAcceptStep/PublicRestartStep are thin `<Stack gap=\"md\">{children}</Stack>` body-slot wrappers that only duplicate the Stack CaptureStageShell already applies; ShareButtonGroup/PublicShareOverlay cannot express ShareOverlay's copy/social/status orchestration; PlaybackControls duplicates the already-adopted PlaybackSurface framing for the runtime-exception slideshow player.",
       "allowedImplementation": [
         "Bespoke Mantine field/validation/consent/action markup inside the official PublicFlowShell body",
         "Custom share orchestration and slideshow controls inside the adopted GDS shells"

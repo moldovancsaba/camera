@@ -27,9 +27,9 @@ function setup(t: TestContext) {
     partners: [{ partnerId: 'P', name: 'Partner P', library: { frames: [], logos: [], images: ['g1'] } }],
     events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', frames: [] }],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { getPartnerScopedAccessForEvent: async () => ({ allowed: true, role: 'admin', partnerId: 'P' }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN } });
+  t.mock.module('@/lib/partners/authorization', { exports: { getPartnerScopedAccessForEvent: async () => ({ allowed: true, role: 'admin', partnerId: 'P' }) } });
   return seeded;
 }
 

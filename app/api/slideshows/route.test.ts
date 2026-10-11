@@ -17,9 +17,9 @@ function setup(t: TestContext) {
       { _id: OTHER_ID, slideshowId: 's-other', eventId: 'e-uuid', name: 'Mine' },
     ],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/auth/session', { namedExports: { getSession: async () => ({ appRole: 'admin', user: { id: 'a1' } }) } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { isGlobalAdminSession: () => true, getPartnerScopedAccessForEvent: async () => ({ allowed: true }), getPartnerScopedAccessForEventUuid: async () => ({ allowed: true }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/auth/session', { exports: { getSession: async () => ({ appRole: 'admin', user: { id: 'a1' } }) } });
+  t.mock.module('@/lib/partners/authorization', { exports: { isGlobalAdminSession: () => true, getPartnerScopedAccessForEvent: async () => ({ allowed: true }), getPartnerScopedAccessForEventUuid: async () => ({ allowed: true }) } });
   return seeded;
 }
 
@@ -65,7 +65,7 @@ test('anything but true or false for the crossfade is refused and nothing is sto
 test('a screen design that is refused says what is wrong, stores nothing, and the refusal is logged (owner, 2026-10-09: "do you save the errors?")', async (t) => {
   const { data } = setup(t);
   const logged: Array<{ event: string; context: Record<string, unknown> }> = [];
-  t.mock.module('@/lib/observability/logger', { namedExports: { logWarn: (event: string, _message: string, context: Record<string, unknown>) => { logged.push({ event, context }); } } });
+  t.mock.module('@/lib/observability/logger', { exports: { logWarn: (event: string, _message: string, context: Record<string, unknown>) => { logged.push({ event, context }); } } });
   const { PATCH } = await importRoute('design-refused');
   const design = { overlayImageUrl: 'https://images.example.test/overlay.png', window: { left: 2, top: 3, width: 69, height: 69 }, photoFit: 'cover', qr: { url: 'go.messmass.com/mtk-vasas', x: 73, y: 2, size: 24 } };
   const response = await PATCH(patch(OTHER_ID, { screenDesign: design }));
@@ -84,7 +84,7 @@ test('saving the screen design of the default slideshow draws the welcome page s
   const seeded = setup(t);
   seeded.data.events = [{ _id: new ObjectId(), eventId: 'e-uuid', name: 'MTK' }];
   const scheduled: unknown[][] = [];
-  t.mock.module('@/lib/screen/welcome-screen-store', { namedExports: { scheduleWelcomeScreen: (...args: unknown[]) => scheduled.push(args) } });
+  t.mock.module('@/lib/screen/welcome-screen-store', { exports: { scheduleWelcomeScreen: (...args: unknown[]) => scheduled.push(args) } });
   const { PATCH } = await importRoute('welcome-default');
   assert.equal((await PATCH(patch(DEFAULT_ID, { screenDesign: DESIGN }))).status, 200);
   assert.equal(scheduled.length, 1);
@@ -96,7 +96,7 @@ test('another slideshow of the event, or a save without a screen design, leaves 
   const seeded = setup(t);
   seeded.data.events = [{ _id: new ObjectId(), eventId: 'e-uuid', name: 'MTK' }];
   const scheduled: unknown[][] = [];
-  t.mock.module('@/lib/screen/welcome-screen-store', { namedExports: { scheduleWelcomeScreen: (...args: unknown[]) => scheduled.push(args) } });
+  t.mock.module('@/lib/screen/welcome-screen-store', { exports: { scheduleWelcomeScreen: (...args: unknown[]) => scheduled.push(args) } });
   const { PATCH } = await importRoute('welcome-other');
   assert.equal((await PATCH(patch(OTHER_ID, { screenDesign: DESIGN }))).status, 200);
   assert.equal((await PATCH(patch(DEFAULT_ID, { name: 'Renamed' }))).status, 200);

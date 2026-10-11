@@ -14,7 +14,7 @@ function mockWorld(t: TestContext, options: { slideshow?: object | null; event?:
   const writes: Array<{ filter: unknown; update: unknown }> = [];
   const forbidden = apiReal.apiForbidden('Partner-level Events manager access is required');
   t.mock.module('@/lib/api', {
-    namedExports: {
+    exports: {
       ...apiReal,
       requireAuth: async () => {
         if (options.signedIn === false) throw apiReal.apiUnauthorized();
@@ -23,7 +23,7 @@ function mockWorld(t: TestContext, options: { slideshow?: object | null; event?:
     },
   });
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: (name: string) =>
           name === 'slideshows'
@@ -33,7 +33,7 @@ function mockWorld(t: TestContext, options: { slideshow?: object | null; event?:
     },
   });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertGlobalAdminOrPartnerEventAccess: async () => {
         if (options.access === 'forbidden') throw forbidden;
         return { role: 'manager', partnerId: 'p1' };

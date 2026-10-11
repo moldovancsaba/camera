@@ -36,10 +36,10 @@ function setup(t: TestContext, options: { denied?: boolean } = {}) {
     admin_settings: [],
   });
   const roles: string[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertGlobalAdminOrPartnerEventAccess: async (_db: unknown, _s: unknown, _id: string, role: string) => {
         roles.push(role);
         if (options.denied) throw apiReal.apiError('Forbidden', 403);

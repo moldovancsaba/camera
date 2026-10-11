@@ -1,11 +1,11 @@
 # Try-On Architecture
 
-> **REMOVED INTEGRATION (camera issue 557, 2026-10-10).** This document describes the try-on integration as it was at git tag `tryon-integration-final`. Try-on is switched off on every event and is being removed from the camera app; [TRYON_REMOVED.md](./TRYON_REMOVED.md) says what existed, what it left in the database and what a rebuild as an add-on needs. Nothing below is current behaviour or an operating guide; it is kept as the record of the contract.
+> **REMOVED INTEGRATION (camera issue 557, 2026-10-10).** This document describes the try-on integration as it was at git tag `tryon-integration-final`. Try-on was switched off on every event and has been removed from the camera app (only its unreachable guest-path code is left, which goes after the match of 2026-10-16); [TRYON_REMOVED.md](./TRYON_REMOVED.md) says what existed, what it left in the database and what a rebuild as an add-on needs. Nothing below is current behaviour or an operating guide; it is kept as the record of the contract.
 
 **Version**: 12.3.41  
 **Last Updated**: 2026-10-01
 
-**Runtime status 2026-10-01**: Try-on is paused. Current events have try-on disabled, the local legacy worker is stopped, and the try-on sync cron is removed. This document records the retained Camera data/moderation contract; do not interpret the historical worker flow below as enabled production processing. The planned image.direct replacement is documented in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md) and is not live.
+**Runtime status 2026-10-01**: Try-on is paused. Current events have try-on disabled, the local legacy worker is stopped, and the try-on sync cron is removed. (Superseded by the banner above: nothing here is retained any more.) This document records the Camera data/moderation contract as it was; do not interpret the historical worker flow below as enabled production processing. The planned image.direct replacement is documented in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md) and is not live.
 
 ## Purpose
 

@@ -13,10 +13,10 @@ function setup(t: TestContext, options: { slideshow?: { ok: true; slideshowId: s
   const seeded = fakeDb({ events: options.noEvent ? [] : [event] });
   const calls: string[] = [];
   t.mock.method(console, 'warn', () => undefined);
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('next/server', { namedExports: { after: () => { throw new Error('outside a request scope'); } } });
-  t.mock.module('@/lib/slideshow/default-slideshow', { namedExports: { ensureDefaultSlideshow: async () => { calls.push('slideshow'); if (options.throws) throw new Error('boom'); return options.slideshow ?? { ok: true, slideshowId: 's1', created: true }; } } });
-  t.mock.module('./welcome-screen-store', { namedExports: { ensureWelcomeScreen: async () => { calls.push('screen'); return { ok: true, url: 'https://blob.example/w.png', created: true }; } } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('next/server', { exports: { after: () => { throw new Error('outside a request scope'); } } });
+  t.mock.module('@/lib/slideshow/default-slideshow', { exports: { ensureDefaultSlideshow: async () => { calls.push('slideshow'); if (options.throws) throw new Error('boom'); return options.slideshow ?? { ok: true, slideshowId: 's1', created: true }; } } });
+  t.mock.module('./welcome-screen-store', { exports: { ensureWelcomeScreen: async () => { calls.push('screen'); return { ok: true, url: 'https://blob.example/w.png', created: true }; } } });
   return calls;
 }
 

@@ -17,7 +17,7 @@ function importRouteModule(caseId: string): Promise<RouteModule> {
 
 function mockEvents(t: TestContext, existingEventIds: string[]) {
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: () => ({
           findOne: async (filter: { eventId?: string }) =>

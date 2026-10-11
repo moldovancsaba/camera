@@ -9,11 +9,11 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 function setup(t: import('node:test').TestContext, options: { admin?: boolean } = {}) {
   const batches: unknown[] = [];
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ({ user: { id: 'u1', email: 'a@example.test' } }), checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({}) } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { isGlobalAdminSession: () => options.admin !== false } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ({ user: { id: 'u1', email: 'a@example.test' } }), checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({}) } });
+  t.mock.module('@/lib/partners/authorization', { exports: { isGlobalAdminSession: () => options.admin !== false } });
   t.mock.module('@/lib/submissions/screen-backfill', {
-    namedExports: {
+    exports: {
       screenBackfillStatus: async () => ({ remaining: 352, events: 10 }),
       runScreenBackfillBatch: async (_db: unknown, o: unknown) => (batches.push(o), { processed: 2, counts: { made: 2 }, beforeBytes: 10, afterBytes: 2, next: null, remaining: 0 }),
     },

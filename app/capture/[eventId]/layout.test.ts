@@ -16,13 +16,13 @@ const params = Promise.resolve({ eventId });
 
 // The layout also loads the event's theme (camera#285); the database and the loader are replaced.
 function mockTheme(t: import('node:test').TestContext, background: string | null) {
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({}) } });
-  t.mock.module('@/lib/theme/load', { namedExports: { loadEventTheme: async () => (background ? { background } : Promise.reject(new Error('no theme'))) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({}) } });
+  t.mock.module('@/lib/theme/load', { exports: { loadEventTheme: async () => (background ? { background } : Promise.reject(new Error('no theme'))) } });
 }
 
 test('a known event publishes its manifest, the iOS web-app tags, its theme colour and full-screen viewport', async (t) => {
   t.mock.module('@/lib/events/capture-event', {
-    namedExports: { loadCaptureEvent: async () => ({ name: 'Summer Fest in the Park', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) },
+    exports: { loadCaptureEvent: async () => ({ name: 'Summer Fest in the Park', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) },
   });
 
   mockTheme(t, CAMERA_DEFAULT_CTA_BRAND_COLOR);
@@ -38,14 +38,14 @@ test('a known event publishes its manifest, the iOS web-app tags, its theme colo
 });
 
 test('when the theme cannot be loaded the toolbar keeps the brand colour', async (t) => {
-  t.mock.module('@/lib/events/capture-event', { namedExports: { loadCaptureEvent: async () => ({ name: 'x', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) } });
+  t.mock.module('@/lib/events/capture-event', { exports: { loadCaptureEvent: async () => ({ name: 'x', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) } });
   mockTheme(t, null);
   const { generateViewport } = await importLayout('no-theme');
   assert.equal((await generateViewport({ params })).themeColor, CAMERA_DEFAULT_CTA_BRAND_COLOR);
 });
 
 test('the layout never asks for a zoom lock: zoom stays the browser default outside the camera steps', async (t) => {
-  t.mock.module('@/lib/events/capture-event', { namedExports: { loadCaptureEvent: async () => ({ name: 'x' }) } });
+  t.mock.module('@/lib/events/capture-event', { exports: { loadCaptureEvent: async () => ({ name: 'x' }) } });
   mockTheme(t, CAMERA_DEFAULT_BRAND_COLOR);
 
   const { generateViewport } = await importLayout('zoom');
@@ -56,7 +56,7 @@ test('the layout never asks for a zoom lock: zoom stays the browser default outs
 });
 
 test('an unknown event gets no manifest link and the default theme colour', async (t) => {
-  t.mock.module('@/lib/events/capture-event', { namedExports: { loadCaptureEvent: async () => null } });
+  t.mock.module('@/lib/events/capture-event', { exports: { loadCaptureEvent: async () => null } });
   mockTheme(t, CAMERA_DEFAULT_BRAND_COLOR);
 
   const { generateMetadata, generateViewport } = await importLayout('unknown');
@@ -66,7 +66,7 @@ test('an unknown event gets no manifest link and the default theme colour', asyn
 });
 
 test('a malformed event id gets a plain title and no manifest', async (t) => {
-  t.mock.module('@/lib/events/capture-event', { namedExports: { loadCaptureEvent: async () => null } });
+  t.mock.module('@/lib/events/capture-event', { exports: { loadCaptureEvent: async () => null } });
 
   const { generateMetadata } = await importLayout('malformed');
   const metadata = await generateMetadata({ params: Promise.resolve({ eventId: 'nope' }) });

@@ -23,22 +23,22 @@ function world(t: TestContext, options: { frames?: boolean; frameFetchFails?: bo
   const uploads: string[] = [];
   const screenFor: string[] = [];
   t.mock.module('@/lib/api', {
-    namedExports: { ...apiReal, requireAuth: async () => ({ user: { id: 'u1', email: 'manager@example.test', name: 'Mia' } }), checkRateLimit: async () => undefined },
+    exports: { ...apiReal, requireAuth: async () => ({ user: { id: 'u1', email: 'manager@example.test', name: 'Mia' } }), checkRateLimit: async () => undefined },
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { assertGlobalAdminOrPartnerEventAccess: async () => ({ role: 'manager', partnerId: 'p1' }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/partners/authorization', { exports: { assertGlobalAdminOrPartnerEventAccess: async () => ({ role: 'manager', partnerId: 'p1' }) } });
   t.mock.module('@/lib/imgbb/upload', {
-    namedExports: { uploadImage: async (_data: string, o: { name?: string }) => (uploads.push(o.name ?? ''), { imageUrl: `https://store.test/${o.name}.jpg`, deleteUrl: '', imageId: 'i', fileSize: 999, mimeType: 'image/png' }) },
+    exports: { uploadImage: async (_data: string, o: { name?: string }) => (uploads.push(o.name ?? ''), { imageUrl: `https://store.test/${o.name}.jpg`, deleteUrl: '', imageId: 'i', fileSize: 999, mimeType: 'image/png' }) },
   });
   t.mock.module('@/lib/media/image-buffer', {
-    namedExports: {
+    exports: {
       fetchImageBuffer: async (url: string) => {
         if (options.frameFetchFails) throw new Error('the frame is gone');
         return url.includes('f1') ? frameOf() : photoOf();
       },
     },
   });
-  t.mock.module('@/lib/submissions/screen-picture', { namedExports: { ensureScreenPicture: async (_db: unknown, s: { imageUrl: string }) => void screenFor.push(s.imageUrl) } });
+  t.mock.module('@/lib/submissions/screen-picture', { exports: { ensureScreenPicture: async (_db: unknown, s: { imageUrl: string }) => void screenFor.push(s.imageUrl) } });
   return { seeded, uploads, screenFor };
 }
 

@@ -20,9 +20,9 @@ function setup(t: TestContext) {
     partners: [{ partnerId: 'P', name: 'Partner P' }],
     events: [{ _id: EVENT_MONGO_ID, eventId: 'evt-uuid', partnerId: 'P', brandColor: hex('1b3a69'), brandBorderColor: hex('189cd8'), brandColorsOverridden: true }],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { assertGlobalAdminOrPartnerEventAccess: async () => ({ role: 'admin', partnerId: 'P' }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN } });
+  t.mock.module('@/lib/partners/authorization', { exports: { assertGlobalAdminOrPartnerEventAccess: async () => ({ role: 'admin', partnerId: 'P' }) } });
   return seeded;
 }
 

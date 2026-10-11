@@ -11,7 +11,7 @@ async function load(t: TestContext, tag: string, mirror: 'hangs' | 'works'): Pro
   t.after(() => { delete process.env.IMGBB_API_KEY; });
   puts.length = 0;
   t.mock.module('@vercel/blob', {
-    namedExports: {
+    exports: {
       put: async (name: string, body: Buffer, options: { contentType: string }) => {
         puts.push({ name, body, contentType: options.contentType });
         return { url: 'https://blob.example.test/photo.png' };
@@ -22,7 +22,7 @@ async function load(t: TestContext, tag: string, mirror: 'hangs' | 'works'): Pro
     ? () => new Promise(() => undefined)
     : async () => ({ data: { success: true, data: { id: 'abc', url: 'https://i.ibb.co/abc/photo.png', display_url: 'https://i.ibb.co/abc/photo.png', delete_url: 'https://ibb.co/abc/del' } } });
   const axios = { post, get: async () => ({ data: { destroy: () => undefined } }), isAxiosError: () => false };
-  t.mock.module('axios', { defaultExport: axios, namedExports: { AxiosError: class extends Error {} } });
+  t.mock.module('axios', { exports: { default: axios, AxiosError: class extends Error {} } });
   return (await import('./upload?case=' + tag)) as UploadModule;
 }
 

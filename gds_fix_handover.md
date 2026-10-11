@@ -2,6 +2,8 @@
 
 > **Written before the try-on removal (issue 557, 2026-10-10).** Where this document mentions try-on, it describes the app as it was on its date; the integration has been removed from the app, see [TRYON_REMOVED.md](docs/TRYON_REMOVED.md). Read those places as history.
 
+> **A dated snapshot, not a status.** It was written at camera `11ac207` with GDS 6.3.0. Since then the vendored GDS is 6.8.0 (camera#184, 2026-10-10), the hand-copied `components/gds/gds-theme.css` is deleted and the official stylesheet is imported (camera#183), the undefined `--gds-*` references were repaired (the update at the end), and the try-on files named below no longer exist. Which work packages of section 8 are done is on the board (#24), not here.
+
 Date: 2026-10-02
 GDS line: camera runs 6.3.0 (vendored tarballs); the current GDS line is 6.7.0 (released), with 6.8.0 work on `main`.
 Tracking issue: https://github.com/sovereignsquad/general-design-system/issues/746

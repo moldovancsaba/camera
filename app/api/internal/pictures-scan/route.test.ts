@@ -17,10 +17,10 @@ function setup(t: TestContext, secret: string | undefined) {
   if (secret === undefined) delete process.env.CRON_SECRET;
   else process.env.CRON_SECRET = secret;
   t.after(() => delete process.env.CRON_SECRET);
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   // The photos have their own tests (lib/media/broken.test.ts): here the walk over them is empty, and the other pictures are asked of a fake host that has lost the logo.
   t.mock.module('@/lib/media/broken', {
-    namedExports: {
+    exports: {
       scanBatch: async () => ({ processed: 0, counts: {}, next: null, remaining: 0 }),
       checkPicture: async (url: string) => (checked.push(url), 'broken'),
     },

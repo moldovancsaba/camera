@@ -29,9 +29,9 @@ function setup(t: TestContext, eventLogos: unknown[] = [], on: { eventSlots?: Re
     partners: [{ partnerId: 'P', name: 'Partner P', library: { frames: [], logos: ['g1', 'g3'] }, ...(on.partnerSlots ? { slots: on.partnerSlots } : {}) }],
     events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', isActive: true, logos: eventLogos, ...(on.eventSlots ? { slots: on.eventSlots } : {}), ...(on.eventExtra ?? {}) }],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/auth/session', { namedExports: { getSession: async () => ADMIN } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { getPartnerScopedAccessForEvent: async () => ({ allowed: true, role: 'admin', partnerId: 'P' }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/auth/session', { exports: { getSession: async () => ADMIN } });
+  t.mock.module('@/lib/partners/authorization', { exports: { getPartnerScopedAccessForEvent: async () => ({ allowed: true, role: 'admin', partnerId: 'P' }) } });
   return seeded;
 }
 

@@ -37,7 +37,7 @@ function mockDeps(
   const event = { _id: new ObjectId(EVENT_ID), isActive: true, ...options.event };
   const session = options.session ?? null;
   t.mock.module('@/lib/api', {
-    namedExports: {
+    exports: {
       ...apiReal,
       optionalAuth: async () => session,
       requireAuth: async () => {
@@ -47,13 +47,13 @@ function mockDeps(
     },
   });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       ...authorizationReal,
       getPartnerScopedAccessForEvent: async () => ({ allowed: options.partnerAllowed ?? false }),
     },
   });
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: (name: string) => ({
           findOne: async () => (name === 'partners' && options.partner ? options.partner : event),
@@ -129,7 +129,7 @@ test('GET as a guest carries the kill switch of the journey recording, on by def
 
 test('GET as a guest says journeyRecording: false when the owner switched the recording off, so the page sends nothing', async (t) => {
   mockDeps(t, { event: { customPages: [] } });
-  t.mock.module('@/lib/journey/setting', { namedExports: { journeyRecordingEnabled: async () => false } });
+  t.mock.module('@/lib/journey/setting', { exports: { journeyRecordingEnabled: async () => false } });
   const { GET } = await importRouteModule('get-guest-journey-off');
   const guest = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: Record<string, unknown> } };
   assert.equal(guest.data.event.journeyRecording, false);

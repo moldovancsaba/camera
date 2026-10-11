@@ -26,7 +26,7 @@ set:
 - [docs/GDS_CAMERA_ADOPTION.md](GDS_CAMERA_ADOPTION.md)
 - [docs/GDS_COMPONENT_RULES.md](GDS_COMPONENT_RULES.md)
 - [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)
-- [docs/CAMERA_MODULE_PLAN.md](CAMERA_MODULE_PLAN.md) — capture reliability, full-frame original, reframe step, front default and lens choice (camera#203)
+- [docs/CAMERA_MODULE_PLAN.md](CAMERA_MODULE_PLAN.md) — the 2026-10-06 plan for capture reliability (camera#203); a record: the stored original and the lens choice were dropped (see its update banners and RUNBOOK)
 - [docs/DEFAULT_FRAME_PLAN.md](DEFAULT_FRAME_PLAN.md) — generated default event frame from messmass data: layers, geometry, messages, work packages (camera#231)
 - [docs/TRYON_REMOVED.md](TRYON_REMOVED.md) — the try-on integration that was removed (issue 557): what existed, what it left in the database, what a rebuild as an add-on needs; the old code is at git tag `tryon-integration-final`
 - Records of the removed integration (banner at the top of each, not current behaviour): [TRYON_ARCHITECTURE.md](TRYON_ARCHITECTURE.md), [TRYON_LOW_LEVEL_DESIGN.md](TRYON_LOW_LEVEL_DESIGN.md), [TRYON_OPERATIONS.md](TRYON_OPERATIONS.md), [TRYON_ANALYTICS.md](TRYON_ANALYTICS.md), [IMAGE_DIRECT_INTEGRATION.md](IMAGE_DIRECT_INTEGRATION.md) (the planned renderer contract, never live)
@@ -44,10 +44,17 @@ stale `verified @ <sha>` stamps warn or fail):
 - [docs/_audit/camera-in-the-fleet.md](_audit/camera-in-the-fleet.md)
 - [docs/_audit/contract-first-rule.md](_audit/contract-first-rule.md)
 
-Not yet classified (owner decision: index or archive):
-[docs/EMAIL_TEMPLATES.md](EMAIL_TEMPLATES.md) is linked from no other doc.
+Feature references (describe what the code does and are kept current with it):
 
-Everything else under `docs/` (planning docs, one-off handovers, superseded
+- [docs/JOURNEY_DEFAULT_PAGES.md](JOURNEY_DEFAULT_PAGES.md) — the default pages of the user flow, the checkbox settings, the acceptance on the Who-are-you page
+- [docs/WELCOME_STEP.md](WELCOME_STEP.md), [docs/SCREEN_DESIGN.md](SCREEN_DESIGN.md), [docs/JOURNEY_IMAGES.md](JOURNEY_IMAGES.md), [docs/CAPTURE_MESSAGES.md](CAPTURE_MESSAGES.md) — the welcome step, the giant-screen design, the journey pictures, the messages of the capture flow
+- [docs/LIBRARIES.md](LIBRARIES.md), [docs/FRAME_BASE.md](FRAME_BASE.md), [docs/LOGO_STORAGE.md](LOGO_STORAGE.md), [docs/SHORT_LINKS.md](SHORT_LINKS.md) — the three-level libraries, frames from the designers' picture, the logo store, tracked short links
+- [docs/TEXT_LEVELS.md](TEXT_LEVELS.md), [docs/UI_LANGUAGE.md](UI_LANGUAGE.md), [docs/EMAIL_TEMPLATES.md](EMAIL_TEMPLATES.md) — the Dictionary and the text levels, the language of an event, the e-mails
+- [docs/ANALYTICS.md](ANALYTICS.md), [docs/JOURNEY_RECORDING.md](JOURNEY_RECORDING.md), [docs/PRIVACY_DATA.md](PRIVACY_DATA.md) — the Analytics view, the anonymous journey recording, and what is stored about a user and for how long
+
+Plans, audits and research (records of a decision or a reading at a date; each says what has been built, but the code is the truth): [docs/BUILDING_BRICKS.md](BUILDING_BRICKS.md), [docs/ELEMENT_INVENTORY.md](ELEMENT_INVENTORY.md), [docs/EXECUTION_ORDER.md](EXECUTION_ORDER.md), [docs/EMAIL_FORMAT_PLAN.md](EMAIL_FORMAT_PLAN.md), [docs/FRAME_LAYOUT_SELECTION_PLAN.md](FRAME_LAYOUT_SELECTION_PLAN.md), [docs/FRAME_SLOTS_PLAN.md](FRAME_SLOTS_PLAN.md), [docs/JOURNEY_DESIGN_PLAN.md](JOURNEY_DESIGN_PLAN.md), [docs/WELCOME_AND_DEFAULTS_PLAN.md](WELCOME_AND_DEFAULTS_PLAN.md), [docs/WELCOME_SCREEN_PHOTO_PLAN.md](WELCOME_SCREEN_PHOTO_PLAN.md), [docs/PHOTO_VETTING_PLAN.md](PHOTO_VETTING_PLAN.md), [docs/STORAGE_ARCHITECTURE.md](STORAGE_ARCHITECTURE.md), [docs/ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md), [docs/LIBRARY_AUDIT.md](LIBRARY_AUDIT.md), [docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md](PROFILE_PURPOSE_AND_CONSENT_DRAFT.md) (a draft, not decided), [docs/_research/SLIDESHOW_FREEZE_RESEARCH.md](_research/SLIDESHOW_FREEZE_RESEARCH.md), [docs/_research/GALLERY_MULTISELECT_RESEARCH.md](_research/GALLERY_MULTISELECT_RESEARCH.md). [docs/landing-page-css-handoff.md](landing-page-css-handoff.md) is an early hand-off for the landing page CSS.
+
+Anything under `docs/` that is in no list above (one-off handovers, superseded
 alignment plans) is historical — do not treat it as runtime truth.
 
 Historical and planning docs may exist, but they are not canonical runtime documentation unless explicitly refreshed.

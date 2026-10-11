@@ -14,10 +14,10 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 function setup(t: TestContext, options: { denied?: boolean; followUpEmail?: unknown } = {}) {
   const seeded = fakeDb({ partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'MTK Budapest', ...(options.followUpEmail !== undefined ? { followUpEmail: options.followUpEmail } : {}) }] });
   const roles: string[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertPartnerMongoWorkspaceAccess: async (db: { collection: (n: string) => { findOne: (f: unknown) => Promise<Record<string, unknown> | null> } }, _s: unknown, id: string, role: string) => {
         roles.push(role);
         if (options.denied) throw apiReal.apiError('Forbidden', 403);

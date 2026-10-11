@@ -8,17 +8,17 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 function setup(t: TestContext, options: { deny?: boolean } = {}) {
   const calls: Array<{ fn: string; args: unknown[] }> = [];
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/messmass/internal', {
-    namedExports: {
+    exports: {
       assertInternalMessmassSecret: () => {
         if (options.deny) throw apiReal.apiForbidden();
       },
     },
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({ marker: 'db' }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({ marker: 'db' }) } });
   t.mock.module('@/lib/theme/refresh', {
-    namedExports: {
+    exports: {
       markThemeStale: async (_db: unknown, ids: unknown) => (calls.push({ fn: 'mark', args: [ids] }), 4),
       refreshStaleEvents: async (_db: unknown, options: unknown) => (calls.push({ fn: 'refresh', args: [options] }), { refreshed: 3, unavailable: 0, failed: 0, remaining: 1 }),
     },

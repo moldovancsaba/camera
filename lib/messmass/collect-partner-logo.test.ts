@@ -11,7 +11,7 @@ async function setup(t: TestContext, options: { logoUrl?: string; fetchFails?: b
     partners: [{ partnerId: 'P', name: 'Vasas', ...(options.logoUrl === undefined ? { logoUrl: R2 } : options.logoUrl ? { logoUrl: options.logoUrl } : {}) }],
     events: [{ eventId: 'e1', partnerId: 'P', logos: [] }],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   const png = await sharp({ create: { width: 64, height: 64, channels: 4, background: { r: 10, g: 90, b: 40, alpha: 1 } } }).png().toBuffer();
   t.mock.method(globalThis, 'fetch', async () => {
     if (options.fetchFails) throw new Error('network down');

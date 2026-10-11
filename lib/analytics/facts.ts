@@ -161,7 +161,7 @@ function playsOf(doc: Record<string, unknown>): { plays: number; by: PhotoFacts[
 }
 
 /**
- * The facts of a `submissions` document. Null for what the report does not count at all: a try-on result (its own report) and a document with no way to tell when it was made is kept (with a null
+ * The facts of a `submissions` document. Null for what the report does not count at all: a stored try-on result (the integration that made it is removed, issue 557). A document with no way to tell when it was made is kept (with a null
  * time) so that it is still counted in the totals.
  */
 export function photoFactsOf(doc: Record<string, unknown> | null | undefined): PhotoFacts | null {

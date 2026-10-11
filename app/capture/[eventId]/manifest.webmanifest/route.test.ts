@@ -18,7 +18,7 @@ const call = (GET: RouteModule['GET'], id: string) =>
 test('a malformed event id is a 404 and the database is not read', async (t) => {
   let reads = 0;
   t.mock.module('@/lib/events/capture-event', {
-    namedExports: { loadCaptureEvent: async () => (reads++, null) },
+    exports: { loadCaptureEvent: async () => (reads++, null) },
   });
 
   const { GET } = await importRouteModule('bad-id');
@@ -29,7 +29,7 @@ test('a malformed event id is a 404 and the database is not read', async (t) => 
 });
 
 test('an unknown event is a 404', async (t) => {
-  t.mock.module('@/lib/events/capture-event', { namedExports: { loadCaptureEvent: async () => null } });
+  t.mock.module('@/lib/events/capture-event', { exports: { loadCaptureEvent: async () => null } });
 
   const { GET } = await importRouteModule('unknown-event');
 
@@ -38,11 +38,11 @@ test('an unknown event is a 404', async (t) => {
 
 test('a known event gets its own manifest, served as a manifest with a short shared cache', async (t) => {
   t.mock.module('@/lib/events/capture-event', {
-    namedExports: { loadCaptureEvent: async () => ({ name: 'Summer Fest', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) },
+    exports: { loadCaptureEvent: async () => ({ name: 'Summer Fest', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) },
   });
   // The manifest takes the page colour of the event's theme (camera#285); here the theme cannot be loaded, so the brand colour stays.
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({}) } });
-  t.mock.module('@/lib/theme/load', { namedExports: { loadEventTheme: async () => Promise.reject(new Error('no theme')) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({}) } });
+  t.mock.module('@/lib/theme/load', { exports: { loadEventTheme: async () => Promise.reject(new Error('no theme')) } });
 
   const { GET } = await importRouteModule('known-event');
   const res = await call(GET, eventId);
@@ -58,9 +58,9 @@ test('a known event gets its own manifest, served as a manifest with a short sha
 });
 
 test('the manifest takes the page colour of the event theme for the toolbar and the splash', async (t) => {
-  t.mock.module('@/lib/events/capture-event', { namedExports: { loadCaptureEvent: async () => ({ name: 'Derby', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) } });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({}) } });
-  t.mock.module('@/lib/theme/load', { namedExports: { loadEventTheme: async () => ({ background: CAMERA_DEFAULT_BRAND_COLOR }) } });
+  t.mock.module('@/lib/events/capture-event', { exports: { loadCaptureEvent: async () => ({ name: 'Derby', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({}) } });
+  t.mock.module('@/lib/theme/load', { exports: { loadEventTheme: async () => ({ background: CAMERA_DEFAULT_BRAND_COLOR }) } });
 
   const { GET } = await importRouteModule('themed');
   const manifest = await (await call(GET, eventId)).json();

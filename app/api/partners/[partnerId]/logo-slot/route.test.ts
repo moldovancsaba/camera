@@ -20,10 +20,10 @@ function setup(t: TestContext, options: { allowed?: boolean } = {}) {
     events: [{ eventId: 'e-uuid', partnerId: 'P', logos: [] }],
   });
   const roles: string[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertPartnerMongoWorkspaceAccess: async (db: typeof seeded.db, _session: unknown, _id: string, minRole: string) => {
         roles.push(minRole);
         if (options.allowed === false) throw apiReal.apiForbidden('Partner-level access is required');

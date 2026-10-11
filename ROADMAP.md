@@ -1,7 +1,7 @@
 # Roadmap
 
 **Version Context**: 12.3.41  
-**Last Updated**: 2026-10-06
+**Last Updated**: 2026-10-11
 
 This file is forward-looking only. Active work, with status, is on the GitHub
 project board [#24](https://github.com/users/moldovancsaba/projects/24); current
@@ -13,9 +13,11 @@ platform unless noted.
 
 ### Camera module overhaul
 
-- Reliable capture, a stored full-frame original with a reframe step, front
-  camera as the global default and lens selection. Plan:
-  `docs/CAMERA_MODULE_PLAN.md`; tracker camera#203.
+- Delivered: the same capture for every camera (the device's own camera app on touch
+  devices, zoom and pan in the reframe step, only the framed result is saved, camera#257)
+  and the camera as a setting on the partner and the event (issue 547). Left: the phone
+  checklist (#205) and a canary event (#213). The stored original and the lens picker
+  of the first plan were dropped. Record: `docs/CAMERA_MODULE_PLAN.md`; tracker camera#203.
 
 ### Try-on as an add-on
 
@@ -26,7 +28,7 @@ platform unless noted.
 ### GDS 6.8 alignment
 
 - Execute the ordered plan in `gds_fix_handover.md`: official stylesheet instead
-  of the forked CSS (done), bump from 6.3.0 to 6.8.0 (camera#184; live check pending), then the work packages and the
+  of the forked CSS (done), bump from 6.3.0 to 6.8.0 (done, camera#184; the live check of the admin may still be pending), then the work packages and the
   items that wait on GDS releases (board issues camera#183-#188).
 
 ### 0. Earlier carry-over (v2.15.0 items), now resolved or superseded
@@ -71,8 +73,8 @@ platform unless noted.
 
 ### 6. Slideshow operational hardening
 
-- playlist diagnostics and inactive slideshow/event guards added in v2.12.0
-- continue tuning playlist query cost
+- delivered with the freeze fixes (issue 476, `docs/SLIDESHOW_LOGIC.md`): diagnostics, bounded waits, a cheaper playlist call, screen-sized pictures, a watchdog and a scheduled reload
+- left (owner): the partial index for the playlist query and the function region (HANDOVER, step S6)
 - review playlist fairness and layout-cell desynchronization under heavier load
 
 ## Longer-term platform direction
@@ -88,7 +90,7 @@ Target direction:
 
 ### 9. Storage and media evolution
 
-- evaluate moving beyond imgbb if operational needs, governance, or scale require first-party storage/CDN control
+- Vercel Blob has been the primary store since v12.2.14 (imgbb only a best-effort mirror), the logos of messmass moved to Cloudflare R2 (`docs/LOGO_STORAGE.md`), and the plan so that no picture is ever lost (R2 as the primary store, a second copy elsewhere) is `docs/STORAGE_ARCHITECTURE.md` (recommendation of 2026-10-09; the owner's decision 295 is at its top); not built
 
 ### 10. Observability and governance
 

@@ -38,7 +38,7 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
       {
         href: '/admin',
         label: 'Dashboard',
-        description: 'Pending vetting, queue health, and events live today, in one place.',
+        description: 'Photos waiting for approval and events live today, in one place.',
         iconKey: 'layoutDashboard',
         tourId: 'admin-nav-dashboard',
         isVisible: (access) => access.isGlobalAdmin || access.hasAnyPartnerAccess,

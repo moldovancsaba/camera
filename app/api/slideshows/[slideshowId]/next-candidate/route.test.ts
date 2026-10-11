@@ -8,9 +8,9 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 test('the candidate query applies the shared visibility rule: not archived, not hidden, not pending or rejected, plain photos only (never a stored try-on result)', async (t) => {
   const filters: Array<{ $and: unknown[] }> = [];
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: (name: string) =>
           name === 'slideshows'
@@ -19,7 +19,7 @@ test('the candidate query applies the shared visibility rule: not archived, not 
       }),
     },
   });
-  t.mock.module('@/lib/slideshow/resolve-event', { namedExports: { findEventForSlideshow: async () => ({ _id: 'a'.repeat(24), eventId: 'evt-1' }) } });
+  t.mock.module('@/lib/slideshow/resolve-event', { exports: { findEventForSlideshow: async () => ({ _id: 'a'.repeat(24), eventId: 'evt-1' }) } });
 
   const { GET } = await importRoute('rule');
   const res = await GET(new NextRequest('http://localhost/api/slideshows/s1/next-candidate'), { params: Promise.resolve({ slideshowId: 's1' }) });

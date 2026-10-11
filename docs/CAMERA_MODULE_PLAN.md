@@ -11,6 +11,8 @@
 4. The back camera opens first; the default must be the front camera.
 5. No way to choose between all lenses.
 
+> **Update 2026-10-11:** this plan is a record of the 2026-10-06 design. What the app does now is in `RUNBOOK.md` ("How the photo is taken, and what is kept"): the camera is a setting on the partner and on the event with four ways (issue 547: automatic, live with view buttons, live with a real sensor photo, live with the picture as shown), the "Love it" screen is gone ("Continue" saves, camera#344), the full-size original is not stored (camera#257) and try-on is removed (issue 557, `docs/TRYON_REMOVED.md`), so the lines below about try-on, image.direct, lenses and the stored original are history. Issue #212 (lenses) is obsolete by the update that follows; #205 (harness and phone checklist) and #213 (canary) were never done.
+>
 > **Update 2026-10-09 (owner):** on a phone the page now opens the device's own camera app (camera#257), where the user changes between all the cameras. The "Use the back camera" button, the front/back switch of the live camera and their texts and tour step are **removed** from the page and the system; this plan's lens items (5 above and the switch described below) are obsolete.
 
 ## Owner decisions (2026-10-06)
@@ -80,7 +82,7 @@ Overlaps: camera#185 (GDS work package A, handover PR 10 restores the guest came
 
 ## Phone test protocol (owner)
 
-See `docs/CAMERA_DEVICE_TEST.md` once camera#205 lands. Until then, per device and browser: open the preview, take three photos with the front camera, switch cameras, and note whether any photo is black or dark, how much of the scene was visible, and which cameras the switch offered. Add `?cameraTest=<label>` to the URL once the diagnostics exist so the runs can be found in the logs.
+The checklist document that was planned for camera#205 (`docs/CAMERA_DEVICE_TEST.md`) was never written. Per device and browser: open the preview, take three photos with the front camera, switch cameras, and note whether any photo is black or dark, how much of the scene was visible, and which cameras the switch offered. Add `?cameraTest=<label>` to the URL once the diagnostics exist so the runs can be found in the logs.
 
 ## Progress (2026-10-06)
 
@@ -92,7 +94,8 @@ See `docs/CAMERA_DEVICE_TEST.md` once camera#205 lands. Until then, per device a
 | #211 privacy: file deletion, orphan report | merged (c8d1ff1); consent and retention wording waits for sign-off |
 | #222 app-like capture (no page scroll, no zoom, fits the viewport) | phase 1 merged (fefdc56); phase 2 (installable per-event app, both orientations, safe areas) in review |
 | #225 GDS server entry fails the Next build | backlog, to report upstream |
-| #212 lenses, #205 harness, #213 canary | not started |
+| #212 lenses | obsolete (the device's own camera app has the lens choice, see the update above) |
+| #205 harness, #213 canary | not started |
 
 ## Open questions
 

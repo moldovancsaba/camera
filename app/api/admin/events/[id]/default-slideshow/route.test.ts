@@ -24,18 +24,18 @@ function setup(t: TestContext, options: { denied?: boolean; ensure?: { ok: true;
   });
   const roles: string[] = [];
   refreshes.length = 0;
-  t.mock.module('@/lib/screen/welcome-screen-store', { namedExports: { scheduleWelcomeScreen: (eventId: unknown, options: unknown) => refreshes.push({ eventId, options }) } });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/screen/welcome-screen-store', { exports: { scheduleWelcomeScreen: (eventId: unknown, options: unknown) => refreshes.push({ eventId, options }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertGlobalAdminOrPartnerEventAccess: async (_db: unknown, _session: unknown, _id: string, minRole: string) => {
         roles.push(minRole);
         if (options.denied) throw apiReal.apiError('Forbidden', 403);
       },
     },
   });
-  t.mock.module('@/lib/slideshow/default-slideshow', { namedExports: { ensureDefaultSlideshow: async () => options.ensure ?? { ok: true, slideshowId: 's-old', created: false } } });
+  t.mock.module('@/lib/slideshow/default-slideshow', { exports: { ensureDefaultSlideshow: async () => options.ensure ?? { ok: true, slideshowId: 's-old', created: false } } });
   return { ...seeded, roles };
 }
 

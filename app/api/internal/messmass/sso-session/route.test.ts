@@ -21,7 +21,7 @@ const sessionsMinted: Array<{ userId: string; appRole: string | undefined }> = [
 
 const sessionReal = await import('@/lib/auth/session');
 mock.module('@/lib/auth/session', {
-  namedExports: {
+  exports: {
     ...sessionReal,
     createSession: async (user: { id: string }, _tokens: unknown, permission?: { appRole?: string }) => {
       sessionsMinted.push({ userId: user.id, appRole: permission?.appRole });

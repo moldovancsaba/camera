@@ -20,11 +20,11 @@ function setup(t: TestContext, options: { allowed?: boolean; event?: Record<stri
     events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', frames: [], logos: [], ...(options.event ?? {}) }],
   });
   const stored: string[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { getPartnerScopedAccessForEvent: async () => ({ allowed: options.allowed !== false, role: 'admin', partnerId: 'P' }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN } });
+  t.mock.module('@/lib/partners/authorization', { exports: { getPartnerScopedAccessForEvent: async () => ({ allowed: options.allowed !== false, role: 'admin', partnerId: 'P' }) } });
   t.mock.module('@/lib/imgbb/upload', {
-    namedExports: {
+    exports: {
       uploadImage: async (file: File) => {
         stored.push(file.name);
         return { success: true, imageUrl: 'https://blob.example/event-frame.png', thumbnailUrl: '', deleteUrl: '', imageId: '', fileSize: file.size, mimeType: file.type, fileName: file.name, provider: 'blob', mirrorImageUrl: null };

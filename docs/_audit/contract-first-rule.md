@@ -7,7 +7,8 @@ Enforced from 2026-08-20 (fleet remediation #355). Applies to all five fleet rep
 SAME COMMIT:
 - a shared MongoDB collection or its shape → update `docs/_audit/fleet-architecture.md`
   (canonical, in messmass) and, for camera/try-on, `docs/TRYON_ATLAS_CONTRACT.md`
-  (that file lives in the try-on repo; camera has no copy).
+  (that file lives in the try-on repo; camera has no copy; since issue 557 camera uses the try-on
+  collections no longer (only unreachable guest-path code is left, which phase R3 deletes), so for camera only the fleet map applies).
 - a cross-app endpoint or integration token → update the fleet map's affected
   edge card and re-stamp its `verified @ <sha>` on both sides.
 - an env var that gates a cross-app call → update the repo's

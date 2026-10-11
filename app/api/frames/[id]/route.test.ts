@@ -17,8 +17,8 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 function setup(t: TestContext) {
   const seeded = fakeDb({ frames: [{ _id: FRAME_OID, frameId: 'f1', name: 'Frame', isActive: true }], events: [] });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAdmin: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAdmin: async () => ADMIN } });
   return seeded;
 }
 
@@ -51,8 +51,8 @@ test('a message area that is not usable is refused and writes nothing', async (t
 
 function setupDelete(t: TestContext, extra: { events?: Array<Record<string, unknown>>; partners?: Array<Record<string, unknown>> } = {}) {
   const seeded = fakeDb({ frames: [{ _id: FRAME_OID, frameId: 'f1', name: 'Frame', isActive: true }], events: extra.events ?? [], partners: extra.partners ?? [] });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAdmin: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAdmin: async () => ADMIN } });
   return seeded;
 }
 const del = (id = String(FRAME_OID)) => [new NextRequest(`http://localhost/api/frames/${id}`, { method: 'DELETE' }), { params: Promise.resolve({ id }) }] as const;

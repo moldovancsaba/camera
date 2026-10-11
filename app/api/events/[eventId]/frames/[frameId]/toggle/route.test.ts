@@ -12,9 +12,9 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 function setup(t: TestContext) {
   const seeded = fakeDb({ events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', frames: [{ frameId: 'g1', isActive: true }] }] });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/auth/session', { namedExports: { getSession: async () => ADMIN } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { getPartnerScopedAccessForEvent: async () => ({ allowed: true, role: 'admin', partnerId: 'P' }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/auth/session', { exports: { getSession: async () => ADMIN } });
+  t.mock.module('@/lib/partners/authorization', { exports: { getPartnerScopedAccessForEvent: async () => ({ allowed: true, role: 'admin', partnerId: 'P' }) } });
   return seeded;
 }
 

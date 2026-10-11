@@ -14,18 +14,18 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 function setup(t: TestContext, options: { denied?: boolean; slideshow?: { ok: true; slideshowId: string; created: boolean } | { ok: false; reason: string }; screen?: { ok: true; url: string; created: boolean } | { ok: false; reason: string } } = {}) {
   const seeded = fakeDb({ events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', name: 'Event', partnerId: 'P' }] });
   const roles: string[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertGlobalAdminOrPartnerEventAccess: async (_db: unknown, _session: unknown, _id: string, minRole: string) => {
         roles.push(minRole);
         if (options.denied) throw apiReal.apiError('Forbidden', 403);
       },
     },
   });
-  t.mock.module('@/lib/slideshow/default-slideshow', { namedExports: { ensureDefaultSlideshow: async () => options.slideshow ?? { ok: true, slideshowId: 's1', created: true } } });
-  t.mock.module('@/lib/screen/welcome-screen-store', { namedExports: { ensureWelcomeScreen: async () => options.screen ?? { ok: true, url: 'https://blob.example/screens/e-uuid/welcome-1.png', created: true } } });
+  t.mock.module('@/lib/slideshow/default-slideshow', { exports: { ensureDefaultSlideshow: async () => options.slideshow ?? { ok: true, slideshowId: 's1', created: true } } });
+  t.mock.module('@/lib/screen/welcome-screen-store', { exports: { ensureWelcomeScreen: async () => options.screen ?? { ok: true, url: 'https://blob.example/screens/e-uuid/welcome-1.png', created: true } } });
   return { ...seeded, roles };
 }
 

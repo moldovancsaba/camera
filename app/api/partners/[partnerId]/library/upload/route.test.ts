@@ -16,10 +16,10 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 function setup(t: TestContext, options: { allowed?: boolean } = {}) {
   const seeded = fakeDb({ frames: [], logos: [], partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'Partner P' }] });
   const stored: unknown[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertPartnerMongoWorkspaceAccess: async (db: typeof seeded.db) => {
         if (options.allowed === false) throw apiReal.apiForbidden('Partner-level manager access is required');
         return { partner: await db.collection('partners').findOne({ _id: PARTNER_MONGO_ID }), role: 'admin', partnerId: 'P' };
@@ -27,7 +27,7 @@ function setup(t: TestContext, options: { allowed?: boolean } = {}) {
     },
   });
   t.mock.module('@/lib/imgbb/upload', {
-    namedExports: {
+    exports: {
       uploadImage: async (file: File) => {
         stored.push(file.name);
         return { success: true, imageUrl: 'https://blob.example/frame.png', thumbnailUrl: 'https://blob.example/frame.png', deleteUrl: '', imageId: '', fileSize: file.size, mimeType: file.type, fileName: file.name, provider: 'blob', mirrorImageUrl: null };

@@ -14,7 +14,7 @@ const PARTNER_DOC = { partnerId: 'partner-1', name: 'Test Partner', isActive: tr
 
 function mockDeps(t: import('node:test').TestContext, insertedDocs: Record<string, unknown>[]) {
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: (name: string) => ({
           // No existing savetheworld-linked event -> provisionEvent always creates.
@@ -28,7 +28,7 @@ function mockDeps(t: import('node:test').TestContext, insertedDocs: Record<strin
     },
   });
   t.mock.module('@/lib/db/events', {
-    namedExports: {
+    exports: {
       inheritPartnerDefaults: async () => ({
         brandColorsOverridden: false,
         framesOverridden: false,

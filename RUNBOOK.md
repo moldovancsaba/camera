@@ -1,14 +1,14 @@
 # Operations Runbook
 
-> **Try-on is removed from operations (issue 557).** It is switched off on every event, its worker is stopped and its cron is gone, and the integration is being deleted from this app in phases. Where a section below still mentions a held, queued or derived try-on, it describes code that is being deleted and nothing that can happen on a live event. What existed and how to read the old code: [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md) and git tag `tryon-integration-final`.
+> **Try-on is removed from operations (issue 557).** It is switched off on every event, its worker is stopped and its cron is gone, and the integration has been deleted from this app except the guest path (the garment selector on the capture page and the try-on fields of the save; phase R3, PR 576, held until after the match of 2026-10-16). Where a section below still mentions a held, queued or derived try-on, it describes code that is being deleted and nothing that can happen on a live event. What existed and how to read the old code: [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md) and git tag `tryon-integration-final`.
 
 ## Branching model
 
 Single long-lived branch `main` (production), plus short-lived per-task branches
 (`feature/*`, `fix/*`, `chore/*`, `dependabot/*`, …) merged in and then
-deleted; no `dev`/`preview` branch exists. Every push to `main` deploys. Policy
-and current practice (PRs recommended; most changes are pushed directly) in
-[docs/BRANCHING.md](docs/BRANCHING.md).
+deleted; no `dev`/`preview` branch exists. Every merge to `main` deploys, and
+`main` only takes a pull request with a green `Verify` check (see below). Policy
+and current practice in [docs/BRANCHING.md](docs/BRANCHING.md).
 
 ## Parallel branches in git worktrees: `npm run sync:main`
 
@@ -234,9 +234,8 @@ code), so the wording below is for the owner to paste where it fits; nothing her
 
 ## Generated default frame (camera#231)
 
-An event without a frame of its own gets a generated frame (plan: `docs/DEFAULT_FRAME_PLAN.md`). This section covers
-what is built so far, the data (`events.frameDesign`, camera#234); the renderer, the capture flow, the editor
-panel and the backfill follow (camera#235 to #238).
+An event without a frame of its own gets a generated frame (plan: `docs/DEFAULT_FRAME_PLAN.md`; frames composed from slots: `docs/FRAME_SLOTS_PLAN.md`). This section covers
+the data (`events.frameDesign`, camera#234), the renderer, the capture flow, the editor panel and the backfill (camera#235 to #238), all built and merged.
 
 - **Snapshot:** taken from messmass `GET /api/integrations/camera/events/[id]/frame-context` when messmass provisions
   the event, and when an admin calls `POST /api/admin/events/[id]/frame-design/refresh` (the editor panel gets a
@@ -314,9 +313,9 @@ panel and the backfill follow (camera#235 to #238).
 - **Fonts:** Inter, Roboto, Poppins and Montserrat and the colour emoji font are bundled in `assets/frame-fonts` (OFL,
   see its README). A custom partner font is fetched from the messmass origin at render time (a plain `/fonts/` path,
   3 MB, 5 s), kept in memory only, never stored. If it cannot be had the frame uses Inter and `font.note` says why.
-- **First check on Vercel:** the renderer was verified on macOS and by the Linux CI tests of the same code, but not
-  yet inside a deployed function. After the first deploy, refresh one event as an admin
-  (`POST /api/admin/events/<id>/frame-design/refresh`) and open `frameDesign.variants[0].imageUrl`: a frame with text
+- **First check on Vercel (the renderer has run in a deployed function: the production Blob store held about 1,000 generated frame images
+  when it was measured on 2026-10-09, `docs/STORAGE_ARCHITECTURE.md` section 2; nothing but the app draws them).** After a change to the drawing code or the
+  fonts, refresh one event as an admin (`POST /api/admin/events/<id>/frame-design/refresh`) and open `frameDesign.variants[0].imageUrl`: a frame with text
   and the logo (if the partner has one) means the canvas package and the fonts work there. A 502 with
   `frame images could not be generated` in the function log means they do not.
 
@@ -330,8 +329,8 @@ Every checkbox a user can meet is shown or not, and required or optional, set on
 
 ## Photo vetting (camera#261)
 
-Plan and decisions: [docs/PHOTO_VETTING_PLAN.md](docs/PHOTO_VETTING_PLAN.md). The setting is `events.photoVetting.required`; until the rollout
-package it is off for every event, so none of the behaviour below applies yet.
+Plan and decisions: [docs/PHOTO_VETTING_PLAN.md](docs/PHOTO_VETTING_PLAN.md). The setting is `events.photoVetting.required`; it is on for every event
+(rollout of 2026-10-06, and every new event starts with it on, see "Turning photo vetting on" below), so the behaviour below applies everywhere.
 
 - **A vetted photo** is saved `pending_review` with the plain photo in a private Blob object under `pending/<eventId>/`. No picture exists,
   nothing is mirrored to imgbb, no link is shown or emailed.
@@ -449,11 +448,11 @@ The giant-screen player reports what it does, so a freeze leaves evidence (`docs
 For whoever sets up the screen that shows `/slideshow/<id>` at a venue. The player now recovers from a stall by itself, but a good setup prevents most of them.
 
 - **What the page does by itself:** it keeps the display awake (Screen Wake Lock, re-asked when the page becomes visible again; needs https, which production has); if no slide has changed for two holds and five seconds while the page is visible it reports the stall and goes to the next slide; if the picture has not moved a minute after the stall began it **reloads the page** (the show restarts from the server's queue, nothing is lost), **at most 3 times in 10 minutes**, after that it only keeps skipping; a request to our server gives up after 8 s and a picture after 20 s, and a screen that cannot start retries by itself.
-- **Set up the screen's computer:** wired network if there is any; no display sleep and no screen saver (the wake lock helps but the operating system's own settings are the first line); the browser's window **full screen** (the **Full screen** button that appears in the top-right corner when the pointer moves, a **double-click** on the picture, or the F key; or the browser's kiosk mode) and **nothing laid over it**: a window that is covered counts as hidden, and a hidden page's timers are slowed or stopped (on Windows Chromium treats a fully covered window as hidden; the flag `--disable-features=CalculateNativeWinOcclusion` turns that off, **to be tested on the Chrome build in use**, I have not run it); no other app popping notifications over the show; browser auto-update not scheduled during the event.
+- **Set up the screen's computer:** wired network if there is any; no display sleep and no screen saver (the wake lock helps but the operating system's own settings are the first line); the browser's window **full screen** (the **Full screen** button at the right end of the transparent control bar that appears along the bottom when the pointer moves or the screen is touched, a **double-click** on the picture, or the F key; or the browser's kiosk mode; on an iPhone only the Home Screen app opens with no browser bars) and **nothing laid over it**: a window that is covered counts as hidden, and a hidden page's timers are slowed or stopped (on Windows Chromium treats a fully covered window as hidden; the flag `--disable-features=CalculateNativeWinOcclusion` turns that off, **to be tested on the Chrome build in use**, I have not run it); no other app popping notifications over the show; browser auto-update not scheduled during the event.
 - **Check before the event:** open the screen's address once with `?debug=1` and look at the corner panel for a minute: `slide_shown` lines with `dup=false`, `fetches=1`, a `heartbeat` every 10 s with `vis=visible` and a small `rafGapMs`, no `stall` or `error`.
 - **After a freeze:** Vercel runtime logs of `04_camera`, filter `camera.slideshow_diagnostic` (see "Slideshow diagnostics" above); a watchdog action appears as an `error` event with `watchdog: next slide` or `watchdog: reload`.
 - **It reloads itself every 3 hours** (owner answer 212), at a slide boundary, so a picture is never cut: the show restarts from the server's queue in a moment. A layout cell never reloads. **Reload the screen now:** the **Reload the screen** button on the slideshow's card in the event's slideshows list (an Events manager of the partner, or a global admin): every open copy reloads at its next picture, a few seconds later. **Saving the slideshow does the same** (every save in the slideshow editor sets the same reload token, owner 2026-10-09), so a changed text, colour or setting shows on the screens that are already open without anybody pressing the button. The reload is an `error` event in the diagnostics (`reload: scheduled`, `reload: admin`).
-- **Not built yet:** an editor guide of the giant screen (it comes in one messmass PR with the other guides).
+- **The editor guide of the giant screen** is in the messmass repository (`docs/guides/guides-tutorial-camera-giant-screen.md`).
 
 ## Screen pictures (camera#476, step S7)
 

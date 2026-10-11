@@ -30,13 +30,13 @@ const fakeDb = {
 const sessionReal = await import('@/lib/auth/session');
 const mongoReal = await import('@/lib/db/mongodb');
 mock.module('@/lib/auth/session', {
-  namedExports: { ...sessionReal, getSession: async () => currentSession },
+  exports: { ...sessionReal, getSession: async () => currentSession },
 });
 mock.module('@/lib/db/mongodb', {
-  namedExports: { ...mongoReal, connectToDatabase: async () => fakeDb },
+  exports: { ...mongoReal, connectToDatabase: async () => fakeDb },
 });
 mock.module('@/lib/imgbb/upload', {
-  namedExports: {
+  exports: {
     uploadImage: async (base64: string) => {
       uploadCalls.push(base64);
       return {

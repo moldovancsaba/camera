@@ -80,7 +80,8 @@ export const COLLECTIONS = {
 // ============================================================================
 
 /**
- * Which elements render on the Vetting moderation card. One global document
+ * Which elements rendered on the Vetting moderation card of the removed try-on integration (issue 557: the card and its settings page are gone,
+ * the stored document stays, unread; the type stays for it). One global document
  * (settingId: 'card-display') -- there is no per-admin-user preference
  * system in this app, so this is a shared, app-wide default for every admin.
  * Every field defaults to true (current behavior) so shipping this changes

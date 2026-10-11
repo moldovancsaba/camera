@@ -22,10 +22,10 @@ function setup(t: TestContext) {
     partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'Partner P', defaultLogos: [{ logoId: 'lp1', scenario: 'loading-capture', order: 0 }, { logoId: 'lg1', scenario: 'onboarding-thankyou', order: 1 }] }],
     events: [{ eventId: 'e-uuid', partnerId: 'P', logos: [{ logoId: 'lp2', scenario: 'onboarding-thankyou', order: 0, isActive: true }] }],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertPartnerMongoWorkspaceAccess: async (db: typeof seeded.db) => ({ partner: await db.collection('partners').findOne({ _id: PARTNER_MONGO_ID }), role: 'admin', partnerId: 'P' }),
     },
   });

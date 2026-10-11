@@ -25,12 +25,12 @@ interface Options {
 function setup(t: TestContext, options: Options = {}) {
   const calls = { access: [] as Array<{ id: string; role: unknown }>, updates: [] as Array<{ filter: unknown; update: Record<string, unknown> }> };
   const submission = options.submission === undefined ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review' } : options.submission;
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: { connectToDatabase: async () => ({ collection: () => ({ findOne: async () => submission, updateOne: async (filter: unknown, update: Record<string, unknown>) => (calls.updates.push({ filter, update }), { matchedCount: 1 }) }) }) },
+    exports: { connectToDatabase: async () => ({ collection: () => ({ findOne: async () => submission, updateOne: async (filter: unknown, update: Record<string, unknown>) => (calls.updates.push({ filter, update }), { matchedCount: 1 }) }) }) },
   });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       ...authorizationReal,
       assertGlobalAdminOrPartnerEventAccess: async (_db: unknown, _s: unknown, eventMongoId: string, role: unknown) => {
         calls.access.push({ id: eventMongoId, role });
@@ -39,7 +39,7 @@ function setup(t: TestContext, options: Options = {}) {
       },
     },
   });
-  t.mock.module('@/lib/email/submission-result-email', { namedExports: { resolveEventForSubmission: async () => (options.event === undefined ? { _id: eventId } : options.event) } });
+  t.mock.module('@/lib/email/submission-result-email', { exports: { resolveEventForSubmission: async () => (options.event === undefined ? { _id: eventId } : options.event) } });
   return calls;
 }
 

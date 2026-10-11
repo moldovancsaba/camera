@@ -18,10 +18,10 @@ function setup(t: TestContext, role: 'admin' | 'user') {
     activity_exports: [{ sentAt: '2026-10-09T06:00:00.000Z', fromAt: null, toAt: '2026-10-09T06:00:00.000Z', rows: 1, to: 'moldovancsaba@gmail.com' }],
   });
   const mails: unknown[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ({ user: { id: 'a1', email: 'x@example.test' }, appRole: role }), checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { isGlobalAdminSession: () => role === 'admin' } });
-  t.mock.module('@/lib/email/send', { namedExports: { sendEmail: async (input: unknown) => { mails.push(input); return { sent: true, messageId: 'm' }; } } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ({ user: { id: 'a1', email: 'x@example.test' }, appRole: role }), checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/partners/authorization', { exports: { isGlobalAdminSession: () => role === 'admin' } });
+  t.mock.module('@/lib/email/send', { exports: { sendEmail: async (input: unknown) => { mails.push(input); return { sent: true, messageId: 'm' }; } } });
   return { ...seeded, mails };
 }
 

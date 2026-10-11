@@ -3,11 +3,13 @@
  * 
  * DELETE /api/submissions/[submissionId]
  * 
- * Permanently deletes a submission from the database. This action cannot be
- * undone. Users can only delete their own submissions (verified by userId).
+ * Permanently deletes a submission: first its stored files (lib/submissions/delete-files.ts), then the
+ * database record. This action cannot be undone. Users can only delete their own submissions (verified by userId).
  * Admins can delete any submission except a stored try-on result (409: the results of the removed try-on integration are kept as they are).
  *
- * Note: Images on imgbb.com are not deleted, only the database record.
+ * Files: those in this project's own Blob store are deleted (a file another submission still points at
+ * is kept); the imgbb delete link is requested, best effort, and never blocks the delete; when a file
+ * cannot be deleted the answer is 502 and the record stays (RUNBOOK, "Deleting a submission").
  * 
  * Auth: Requires user session (must own submission OR be admin)
  */

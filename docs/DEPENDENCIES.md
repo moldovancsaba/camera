@@ -48,7 +48,7 @@ The try-on removal (issue 557) left no unused package: the integration talked to
 | `@tailwindcss/postcss`, `tailwindcss` | Named in `postcss.config.mjs`; `tailwindcss` is imported by the global CSS. |
 | `baseline-browser-mapping` | `scripts/patch-baseline-browser-mapping.mjs` (the `postinstall` step) patches the installed copy by a text marker; the env flags in the npm scripts belong to it. After a bump, `npm run postinstall` must still say "Patched" for the two `dist` files. |
 | `@sovereignsquad/gds-compliance` | Binary `gds-compliance` in the `gds:*` scripts. |
-| `@types/node` | Used implicitly by `tsc` for `process`, `Buffer` and the `node:` modules. It is the 20 line while the runtime is Node 24 (see section 5). |
+| `@types/node` | Used implicitly by `tsc` for `process`, `Buffer` and the `node:` modules. It was the 20 line while the runtime is Node 24; it is `^24.19.2` since the obsolete-information sweep (2026-10-11), which needed it for the non-deprecated `mock.module` options. |
 | `@types/archiver`, `@types/qrcode`, `@types/react`, `@types/react-dom` | Types of used packages. |
 | `typescript`, `eslint`, `eslint-config-next`, `tsx`, `@playwright/test` | Binaries in npm scripts or imported by a config. |
 
@@ -84,7 +84,7 @@ Anything that is a framework line, a major, or a library the gate cannot exercis
 | `eslint` | 9.39.5 > 10.12.0 | Major; ESLint 9.x is deprecated (section 6). `eslint-config-next` 16.4 (`eslint >=9`) and `gds-eslint-config` 6.8.0 (`^9 \|\| ^10`) both allow 10; the plugins inside the Next config still have to be checked | S-M | low (dev only) |
 | `archiver`, `@types/archiver` | 7.0.1 > 8.0.0; 6.0.4 > 8.0.0 | Major; one route (`app/api/admin/events/[id]/export/images/route.ts`). **8.0.0 no longer depends on `archiver-utils` and `glob` 10** (its registry manifest and those of `zip-stream` 7, `compress-commons` 7 and `readdir-glob` 3 show no `glob`), so it should also remove the deprecated `glob` from the production tree | S-M | medium: stream behaviour on a real export (capped at 500 files); test one on a preview |
 | `typescript` | 5.9.3 > 7.0.2 | Two majors ahead (a new compiler line); support of Next, typescript-eslint and the GDS types is not verified | M-L | high |
-| `@types/node` | 20.19.43 > 26.6.5 | Types only; the runtime is Node 24, so `^24` is the right target. Major, can surface new type errors | S | low-medium |
+| `@types/node` | 20.19.43 > 26.6.5 | **Done as `^24.19.2`** (obsolete-information sweep, 2026-10-11; type-check, lint, unit tests and build unchanged); 26 is not the target, the runtime is Node 24 | S | low |
 | `@upstash/ratelimit`, `@upstash/redis` | 2.0.8 > 2.2.0; 1.38.0 > 1.39.0 | Minor, but they talk to a live Redis the gate cannot reach | S | low: afterwards hit one rate-limited route on a preview with Upstash configured |
 | `resend` | 6.16.0 > 6.32.1 | Sixteen minors of a live mail API the gate cannot reach | S | low-medium: send one test mail (`npm run email:test`) from a preview |
 | `@playwright/test` | 1.61.1 > 1.64.0 | Minor; the e2e suite is not part of the gate and needs the disposable `camera_test` database | S | low |
@@ -119,7 +119,7 @@ Tested on 2026-10-11 by removing one override at a time in a scratch copy and ru
 | `TECH_STACK.md` | Next 16, React 19, TypeScript 5.9, Tailwind 4, Mantine 8.3, GDS 6.8.0, ESLint 9, Node 24 all match what is installed. **Fixed:** the Hosting line (Next `^16.2.11` / lockfile 16.3.2 with two open Dependabot advisories; now `^16.3.8` / 16.3.8 and none), the Playwright count (said 24 tests in 8 files; `npx playwright test --list` says 18 in 4, also in `README.md`), the Vercel Node note (now points to camera#182), and an "Installed versions" table was added |
 | Node | `engines.node` `>=24.0.0 <25.0.0`, `.nvmrc` `24`, CI reads `.nvmrc`; local 24.19.0. The Vercel dashboard value (recorded as Node 22.x on 2026-10-05, camera#182, open) can only be read in the dashboard, so it is not verified here. `HANDOVER.md` repeats the same open item |
 | GDS | 6.8.0 in `package.json`, the five tarballs in `vendor/gds/`, `gds-adoption.json` (`gdsVersion`) and `TECH_STACK.md`. messmass still has 6.3.0 (its own `vendor/gds/`), a gap of five minors in the GDS line |
-| `@types/node` | 20 line against a Node 24 runtime (section 5) |
+| `@types/node` | 20 line against a Node 24 runtime: **fixed**, now `^24.19.2` (section 5) |
 
 ## 9. Repeat the audit
 

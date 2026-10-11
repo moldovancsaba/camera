@@ -9,7 +9,7 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 function setup(t: TestContext, options: { deny?: boolean } = {}) {
   const calls: Array<{ fn: string; args: unknown[] }> = [];
   t.mock.module('@/lib/api', {
-    namedExports: {
+    exports: {
       ...apiReal,
       requireAdmin: async () => {
         if (options.deny) throw apiReal.apiForbidden('Admin access required for this app');
@@ -18,9 +18,9 @@ function setup(t: TestContext, options: { deny?: boolean } = {}) {
       checkRateLimit: async () => undefined,
     },
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({ marker: 'db' }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({ marker: 'db' }) } });
   t.mock.module('@/lib/photo-vetting/rollout', {
-    namedExports: {
+    exports: {
       rolloutDryRun: async () => (calls.push({ fn: 'dryRun', args: [] }), { toTurnOn: 5 }),
       runRollout: async (_db: unknown, email: unknown) => (calls.push({ fn: 'run', args: [email] }), { turnedOn: 5 }),
     },

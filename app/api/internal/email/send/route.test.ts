@@ -25,7 +25,7 @@ function importRouteModule(caseId: string): Promise<RouteModule> {
 function mockDeps(t: import('node:test').TestContext) {
   const sent: Array<{ to: string; from?: string }> = [];
   t.mock.module('@/lib/email/send', {
-    namedExports: {
+    exports: {
       getVerifiedSendingDomain: () => 'mail.example.test',
       sendEmail: async (input: { to: string; from?: string }) => {
         sent.push({ to: input.to, from: input.from });

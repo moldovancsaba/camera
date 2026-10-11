@@ -2,7 +2,7 @@
 
 Owner request 2026-10-10 (task 254, issue 540): upload or use a selfie for the **Welcome page screen**: (a) upload a general one, (b) assign one from the event's clean selfies, (c) use the real slideshow. "I want to have it by design generated from the general elements including general selfies in the system, so that I should be able to add images to that, and the system provides them to the partner until the partner selects or uploads their own, and the event receives a random photo from the parent. Break it down, check the existing solution and make a plan to make it UX friendly, layout and consequent."
 
-Status: **decided by the owner on 2026-10-10 (answers 255 to 260, section 7); steps 1 to 5 are being built, steps 6 to 8 follow after the match.** It continues step 5 of `docs/BUILDING_BRICKS.md` (the sample selfie, owner question 181) and the "photo window" row of section 6.2.
+Status: **decided by the owner on 2026-10-10 (answers 255 to 260, section 7); steps 1 to 5 are built (HANDOVER; `docs/LIBRARIES.md` "Sample selfies", `docs/SCREEN_DESIGN.md`), steps 6 to 8 follow after the match.** It continues step 5 of `docs/BUILDING_BRICKS.md` (the sample selfie, owner question 181) and the "photo window" row of section 6.2.
 
 ## 1. What the three letters mean (my reading)
 

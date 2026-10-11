@@ -28,7 +28,7 @@ function setup(t: TestContext, options: { off?: boolean; hang?: boolean } = {}) 
   resetJourneyEventCache();
   resetJourneyIndexCheck();
   const seeded = fakeDb({ events: [{ _id: new ObjectId(MONGO_ID), eventId: UUID }], ...(options.off ? { admin_settings: [{ settingId: JOURNEY_SETTING_ID, enabled: false }] } : {}) });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: options.hang ? () => new Promise(() => undefined) : async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: options.hang ? () => new Promise(() => undefined) : async () => seeded.db } });
   return seeded;
 }
 
@@ -86,7 +86,7 @@ test('the answer does not wait for the database: with a database that never answ
 test('a database that fails does not turn into an error for the page: still 204', async (t) => {
   resetJourneySettingCache();
   resetJourneyEventCache();
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => { throw new Error('database down'); } } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => { throw new Error('database down'); } } });
   const { POST } = await load('db-down');
   assert.equal((await POST(request(batch([['photo.retake', null, 5]])))).status, 204);
 });

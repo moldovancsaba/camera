@@ -23,10 +23,10 @@ function setup(t: TestContext) {
       logo('e1', { scope: 'event', eventId: 'e-uuid' }),
     ],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAdmin: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAdmin: async () => ADMIN } });
   t.mock.module('@/lib/imgbb/upload', {
-    namedExports: {
+    exports: {
       uploadImage: async () => ({ success: true, imageUrl: 'https://blob.example/logo.png', thumbnailUrl: 'https://blob.example/logo.png', deleteUrl: '', imageId: '', fileSize: 10, mimeType: 'image/png', fileName: 'logo.png', provider: 'blob', mirrorImageUrl: null }),
     },
   });

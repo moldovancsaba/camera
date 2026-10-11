@@ -8,7 +8,7 @@ import { fakeDb } from './fake-db';
 for (const key of ['IMGBB_API_KEY', 'NEXT_PUBLIC_IMG_BB_API_KEY', 'IMG_BB_API_KEY']) delete process.env[key];
 const stored: Array<{ name: string; contentType: string; bytes: number }> = [];
 mock.module('@vercel/blob', {
-  namedExports: {
+  exports: {
     put: async (name: string, body: Buffer, options: { contentType: string }) => {
       stored.push({ name, contentType: options.contentType, bytes: body.byteLength });
       return { url: `https://store.example.test/${name}` };
