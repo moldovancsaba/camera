@@ -47,7 +47,7 @@ jobs:
     # needs no registry token and is immune to the org's Packages quota
     # (v12.3.29: two days of 403s at npm ci were the trigger).
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # WHAT: gitleaks over the checked-out tree, before anything is installed
       #       or built (so node_modules and .next are never in scope).
@@ -82,13 +82,13 @@ jobs:
 
       - name: Upload scan report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gitleaks-report
           path: /tmp/gitleaks.json
           if-no-files-found: ignore
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: npm
