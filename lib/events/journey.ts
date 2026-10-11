@@ -39,7 +39,7 @@ const isDefaultPage = (page: CustomPage) => page.pageId === DEFAULT_WELCOME_PAGE
 
 const REASON: Record<string, string> = {
   [DEFAULT_WELCOME_PAGE_ID]: "The first thing a user sees: the giant screen drawn from this event's default slideshow and a Start button. This page is used until you make your own welcome page.",
-  [DEFAULT_CONSENT_PAGE_ID]: 'Every user accepts the terms, the cookies and the privacy policy first. This page is used until you make your own consent page.',
+  [DEFAULT_CONSENT_PAGE_ID]: 'Every user accepts the terms, the cookies and the privacy policy first (each can be switched off or made optional in the consent page settings above). This page is used until you make your own consent page.',
   [DEFAULT_IDENTITY_PAGE_ID]: 'A photo that is checked before it is shown needs an e-mail or a social login. This page is used until you make your own login page.',
 };
 
