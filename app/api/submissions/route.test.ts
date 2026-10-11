@@ -81,11 +81,11 @@ function withStoreToken(): () => void {
 
 const record = toReframeRecord(defaultView(1440, 1920), 1440, 1920, 9 / 16, true);
 
-function submissionRequest(extra: Record<string, unknown> = {}): NextRequest {
+function submissionRequest(extra: Record<string, unknown> = {}, headers: Record<string, string> = {}): NextRequest {
   ipCounter += 1;
   return new NextRequest('http://localhost/api/submissions', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-forwarded-for': `198.51.100.${ipCounter}` },
+    headers: { 'content-type': 'application/json', 'x-forwarded-for': `198.51.100.${ipCounter}`, ...headers },
     body: JSON.stringify({
       imageData: 'data:image/jpeg;base64,AAAA',
       frameId: null,
@@ -592,4 +592,65 @@ test('the acceptance sentence set to required needs a record for each shown chec
   assert.equal((await run('acceptance-required-saved', event, null, { consents: records })).status, 201);
   const optional = { ...event, consentSettings: { acceptance: { required: false } } };
   assert.equal((await run('acceptance-optional-none', optional, null, {})).status, 201);
+});
+
+// Decision 243 (issue 521, phase 2): a new photo stores a coarse device and no IP address, and not the user agent.
+const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5.1 Mobile/15E148 Safari/604.1';
+const ANDROID_FB_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/UD1A.231105.004; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0.6478.122 Mobile Safari/537.36 [FB_IAB/FB4A;FBAV/470.0.0.0.0]';
+
+test('a new photo stores a device class and a browser family and NOT the IP address or the user agent, whatever the request carried', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead);
+    const { POST } = await importRouteModule('coarse-device');
+    const response = await POST(submissionRequest({}, { 'user-agent': IPHONE_UA, 'x-forwarded-for': '203.0.113.77, 10.1.2.3', 'x-real-ip': '203.0.113.78' }));
+    assert.equal(response.status, 201);
+    const doc = h.inserted[0] as Record<string, unknown> & { metadata: Record<string, unknown> };
+    assert.equal(doc.metadata.deviceClass, 'ios');
+    assert.equal(doc.metadata.browserFamily, 'safari');
+    assert.equal(doc.metadata.deviceType, 'mobile_ios');
+    for (const gone of ['ipAddress', 'ip', 'deviceInfo', 'device']) assert.equal(gone in doc.metadata, false, `metadata.${gone} is not written`);
+    const stored = JSON.stringify(doc);
+    for (const forbidden of ['203.0.113', '10.1.2.3', 'AppleWebKit', '17_5_1', '15E148', 'Mozilla']) assert.equal(stored.includes(forbidden), false, `${forbidden} must not be stored anywhere in the photo`);
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('the coarse device of an in-app browser on Android, and of a request with no user agent', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead);
+    const { POST } = await importRouteModule('coarse-device-2');
+    await POST(submissionRequest({}, { 'user-agent': ANDROID_FB_UA }));
+    await POST(submissionRequest());
+    const [first, second] = h.inserted.map((doc) => (doc as { metadata: Record<string, unknown> }).metadata);
+    assert.deepEqual([first.deviceClass, first.browserFamily, first.deviceType], ['android', 'in-app', 'mobile_android']);
+    assert.deepEqual([second.deviceClass, second.browserFamily, second.deviceType], ['unknown', 'unknown', 'unknown']);
+    assert.equal(JSON.stringify(h.inserted).includes('Pixel 8'), false);
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('a vetted event stores the same coarse device and no address either', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead, { event: VETTED });
+    const { POST } = await importRouteModule('coarse-device-vetted');
+    const response = await POST(submissionRequest({ userInfo: { name: 'Ann', email: 'ann@example.test' } }, { 'user-agent': IPHONE_UA, 'x-forwarded-for': '203.0.113.79' }));
+    assert.equal(response.status, 201);
+    const stored = JSON.stringify(h.inserted[0]);
+    assert.equal(stored.includes('203.0.113'), false);
+    assert.equal(stored.includes('AppleWebKit'), false);
+    assert.equal((h.inserted[0] as { metadata: { deviceClass: string } }).metadata.deviceClass, 'ios');
+  } finally {
+    quiet();
+    restore();
+  }
 });

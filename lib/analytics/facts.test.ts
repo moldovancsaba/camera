@@ -167,3 +167,19 @@ test('the projection never asks for a field and its parent together (a path coll
     assert.ok(!parent || !paths.includes(parent), `${path} collides with ${parent}`);
   }
 });
+
+test('the Devices figure keeps working for old and new photos (decision 243): a new photo stores the class, an old one its user agent, classified when read; the class wins; nothing is rewritten', () => {
+  const newPhoto = photoFactsOf(vetted({ metadata: { deviceClass: 'android', browserFamily: 'chrome', deviceType: 'mobile_android', emailSent: true } }));
+  assert.equal(newPhoto?.device, 'android', 'a new photo has no user agent, only the class');
+  const oldPhoto = photoFactsOf(vetted({ metadata: { deviceInfo: ANDROID, ipAddress: '203.0.113.5' } }));
+  assert.equal(oldPhoto?.device, 'android', 'an old photo is classified from its stored string, at read time');
+  const both = photoFactsOf(vetted({ metadata: { deviceClass: 'desktop', deviceInfo: IPHONE } }));
+  assert.equal(both?.device, 'desktop', 'the stored class is what the photo says');
+  const editorUpload = photoFactsOf(vetted({ metadata: { adminGalleryUpload: true } }));
+  assert.equal(editorUpload?.device, 'unknown', 'an editor\u2019s upload stores no device any more');
+  const bad = photoFactsOf(vetted({ metadata: { deviceClass: 'iPhone 15', deviceInfo: IPHONE } }));
+  assert.equal(bad?.device, 'ios', 'a stored class that is not one of the four is ignored and the string is used');
+  assert.ok(Object.keys(PHOTO_PROJECTION).includes('metadata.deviceClass'));
+  assert.ok(Object.keys(PHOTO_PROJECTION).includes('metadata.deviceInfo'), 'the old string is still read');
+  assert.equal(Object.keys(PHOTO_PROJECTION).some((key) => /ipAddress|\.ip$/.test(key)), false, 'the address is read by nothing');
+});

@@ -6,11 +6,15 @@
  * holds counts, never an address) and the e-mail of the person who decided (the Vetting tab already shows it to the same people).
  */
 
+import { deviceClassOf, storedDeviceClass, type DeviceClass } from '@/lib/device/coarse';
+
+export { deviceClassOf };
+
 export type ReviewState = 'approved' | 'rejected' | 'waiting' | 'none';
 /** `user`: the photo was taken or uploaded by a user. `editor`: an editor added it in the gallery (it is shown on the screens but nobody "took" it). */
 export type PhotoSource = 'user' | 'editor';
 export type CaptureMethod = 'camera' | 'upload' | 'unknown';
-export type DeviceClass = 'ios' | 'android' | 'desktop' | 'unknown';
+export type { DeviceClass };
 export type Identity = 'signed_in' | 'email' | 'none';
 
 export interface Decision {
@@ -98,6 +102,7 @@ export const PHOTO_PROJECTION = {
   slideshowPlays: 1,
   people: 1,
   peopleReview: 1,
+  'metadata.deviceClass': 1,
   'metadata.deviceInfo': 1,
   'metadata.device': 1,
   'metadata.adminGalleryUpload': 1,
@@ -114,16 +119,6 @@ export const PHOTO_PROJECTION = {
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {});
-
-/** What kind of device a user agent is, from the user agent alone. An iPad that asks for the desktop site looks like a Mac and counts as a desktop: a limit of the user agent, not of the count. */
-export function deviceClassOf(userAgent: unknown): DeviceClass {
-  const ua = typeof userAgent === 'string' ? userAgent : '';
-  if (!ua) return 'unknown';
-  if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
-  if (/android/i.test(ua)) return 'android';
-  if (/windows nt|macintosh|x11|cros|linux/i.test(ua)) return 'desktop';
-  return 'unknown';
-}
 
 const PLACEHOLDER_EMAILS = new Set(['anonymous@event', 'admin@upload']);
 
@@ -220,7 +215,8 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
     source,
     excluded: doc.isArchived === true ? 'archived' : mediaHealth.broken === true ? 'broken' : null,
     method,
-    device: deviceClassOf(metadata.deviceInfo ?? metadata.device),
+    // A new photo stores the class itself (issue 521, phase 2, decision 243: no device string); an older photo stores the user agent, classified here at read time.
+    device: storedDeviceClass(metadata.deviceClass) ?? deviceClassOf(metadata.deviceInfo ?? metadata.device),
     review,
     submittedAt: text(photoReview.submittedAt) ?? createdAt,
     decisions,

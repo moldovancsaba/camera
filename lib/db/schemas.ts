@@ -860,13 +860,15 @@ export interface Submission {
   
   // Comprehensive metadata for tracking and analytics
   metadata: {
-    // Device information
+    // Device information. New photos store only a coarse device (decision 243, issue 521 phase 2; lib/device/coarse.ts): the class and the browser family, never the user agent or an IP address.
     deviceType: DeviceType;
-    deviceInfo?: string;             // User agent string
-    browserInfo?: string;            // Browser name and version
+    deviceClass?: 'ios' | 'android' | 'desktop' | 'unknown';  // New photos: the class, made from the user agent at the request
+    browserFamily?: string;          // New photos: safari, chrome, firefox, edge, samsung, opera, in-app, other (no version)
+    deviceInfo?: string;             // LEGACY: the full user agent string of photos taken before decision 243; no longer written. Read only to classify the device at read time.
+    browserInfo?: string;            // Declared, never filled
     
-    // Location data (if available and user consented)
-    ipAddress?: string;              // User's IP address
+    // Location data (declared, never filled)
+    ipAddress?: string;              // LEGACY: the IP address of photos taken before decision 243; no longer written, read by nothing. Old values stay until the owner decides.
     country?: string;                // Derived from IP
     city?: string;                   // Derived from IP
     geolocation?: {                  // GPS coordinates if available

@@ -16,6 +16,7 @@ import { blobStoreHostFromToken, verifyOriginalImage } from '@/lib/submissions/o
 import { logWarn } from '@/lib/observability/logger';
 import { dispatchArrivedEmail } from '@/lib/email/triggers';
 import { runAfterResponse } from '@/lib/api/run-after-response';
+import { deviceMetadataOf } from '@/lib/device/coarse';
 import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import { sanitizeFrameVariant, type RecordedFrameVariant } from '@/lib/frame/capture';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
@@ -26,7 +27,6 @@ import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-roll
 import { guestIdentity, newShareToken, storePendingPhoto } from '@/lib/photo-vetting/pending';
 import {
   COLLECTIONS,
-  DeviceType,
   SubmissionMethod,
   SubmissionStatus,
   type UserConsent,
@@ -412,9 +412,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       method: SubmissionMethod.CAMERA_CAPTURE,
       status: SubmissionStatus.COMPLETED,
       metadata: {
-        deviceType: DeviceType.UNKNOWN,
-        deviceInfo: request.headers.get('user-agent') || undefined,
-        ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+        // Only a coarse device (decision 243, issue 521): the class and the browser family, made from the user agent, which is not kept; and no IP address. Photos taken before this change still hold both; the
+        // Analytics Devices figure reads the class, else classifies the stored string (lib/analytics/facts.ts).
+        ...deviceMetadataOf(request.headers.get('user-agent')),
         originalWidth: verifiedOriginal?.width ?? (imageWidth || frame?.width || 1920),
         originalHeight: verifiedOriginal?.height ?? (imageHeight || frame?.height || 1080),
         originalFileSize: verifiedOriginal?.fileSize ?? (uploadResult?.fileSize || pendingPhoto?.size || 0),
