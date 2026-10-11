@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import type { CustomPage } from '@/lib/db/schemas';
 import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, sanitizeDefaultPageOrders, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
+import { documentSettings, effectiveCheckboxes } from './checkbox-settings';
 import { customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, moveTarget, setSubmitSeparate, type JourneyContext, type JourneyRow } from './journey';
 
 const page = (pageType: string, order: number, isActive = true, pageId = `${pageType}-${order}`): CustomPage =>
@@ -236,4 +237,17 @@ test('unticking "Submit is part of this page" puts a Submit page right after the
   assert.deepEqual(sequence(again), sequence(rows), 'ticked again: the journey is the one it was');
   // without a Submit page twice
   assert.equal(setSubmitSeparate(rows, true, () => 'a', NOW).pages.filter((p) => p.pageType === 'submit').length, 1);
+});
+
+test('the journey the editor builds and the pages the user gets agree when the documents of the default consent page are set (issue 558): the same checkboxes, off ones missing, optional ones marked', () => {
+  const documents = documentSettings(effectiveCheckboxes({ consentSettings: { terms: { shown: true, required: true }, cookies: { shown: false }, privacy: { shown: true, required: false } } }, null));
+  const own = [page('take-photo', 0)];
+  const context: JourneyContext = { ...ALL, vettingRequired: false, documents };
+  const row = effectiveJourney(own, context, NOW).find((r) => r.kind === 'default' && r.page.pageId === DEFAULT_CONSENT_PAGE_ID);
+  const forUser = withDefaultJourneyPages(own, { vettingRequired: false, consentDefault: true, language: 'en', now: NOW, documents }).find((p) => p.pageId === DEFAULT_CONSENT_PAGE_ID);
+  assert.ok(row && row.kind === 'default' && forUser);
+  assert.deepEqual(row.page.config, forUser.config);
+  assert.deepEqual((row.page.config as { checkboxes: unknown[] }).checkboxes.length, 2);
+  const standard = effectiveJourney(own, { ...ALL, vettingRequired: false }, NOW).find((r) => r.kind === 'default' && r.page.pageId === DEFAULT_CONSENT_PAGE_ID);
+  assert.equal((standard?.kind === 'default' ? (standard.page.config as { checkboxes: unknown[] }).checkboxes.length : 0), 3);
 });

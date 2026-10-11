@@ -65,3 +65,13 @@ test('a consent page with another list of checkboxes is shown as its own texts o
   assert.deepEqual(parts.filter((p) => p.linkUrl).map((p) => p.linkUrl), ['https://example.test/rules']);
   assert.equal(sentenceText(acceptanceSentence([], 'en')), '');
 });
+
+test('a consent page whose checkboxes are all switched off (issue 558) is not the one the Who-are-you page shows, and the next one is', () => {
+  const off = { ...page(CustomPageType.ACCEPT, 1, true, 'off'), config: { checkboxes: [{ text: 'A', shown: false }] } };
+  const on = { ...page(CustomPageType.ACCEPT, 2, true, 'on'), config: { checkboxes: [{ text: 'A' }] } };
+  const flow = [page(CustomPageType.WELCOME, 0), off, on, page(CustomPageType.WHO_ARE_YOU, 3), page(CustomPageType.TAKE_PHOTO, 4)];
+  const out = acceptanceOnLogin(flow, true);
+  assert.equal(out.acceptPage, on);
+  assert.deepEqual(out.pages, flow.filter((p) => p !== on));
+  assert.equal(acceptanceOnLogin([page(CustomPageType.WHO_ARE_YOU, 1), off, page(CustomPageType.TAKE_PHOTO, 4)], true).acceptPage, null, 'nothing to show, nothing merged');
+});
