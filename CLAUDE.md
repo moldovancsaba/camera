@@ -125,6 +125,7 @@ check it.
   waiting for a human unless explicitly told to.
 - Clean up local test infrastructure (dev servers, scratch scripts) before
   considering a task done.
+- **Parallel work happens in worktrees outside `.claude`** (`/Users/Shared/Projects/_worktrees/nav/<name>`, a name without `tokens` or `theme`, a real `npm ci`, never a symlinked `node_modules`), and **before every push run `npm run sync:main`** (rebase onto `origin/main`, regenerate the generated `docs/_audit/*.json`), then `inventory:check` and `release:check`. `main` needs an up-to-date branch and auto-merge is off, so a green pull request goes `BEHIND` every time something else merges: `gh pr update-branch <n> --repo moldovancsaba/camera`, wait for `Verify`, merge. Parallel streams do not edit `RELEASE_NOTES.md`, `HANDOVER.md`, `ARCHITECTURE.md`; the lead consolidates per wave. The failures seen, their causes and fixes are in `docs/PR_AND_MERGE_PLAYBOOK.md`.
 
 ### Definition of done for a fixing session (owner directive 2026-10-09)
 
@@ -226,6 +227,7 @@ any auth code here:
 - **Colours in admin code come from `--mantine-*` tokens, not from `--gds-*` role tokens** (`--gds-border-card`, `--gds-text-meta`, `--gds-bg-*` are declared with
   `light-dark()`, which the production build turns into an invalid value; `gds_fix_handover.md`, update of 2026-10-09). `scripts/check-gds-boundaries.mjs`
   fails on an undefined `--gds-*` name or a `light-dark()` role token.
+- **A Vercel preview that stays `pending` for hours while `Verify` is green is a stuck preview, not a failure** (it is not a required check; the pull request shows `UNSTABLE`): after 20 minutes say so and merge on `Verify`, then watch the production deployment. The CI `Secret scan` (gitleaks) runs only in CI: never name a test fixture `token` or `secret` next to a random-looking value (use `'a1b2c3'.repeat(16)` as `LONG_ID`). Delete `.next` after a rebase that removed routes (stale `.next/types` break `tsc`).
 - Vercel preview deployments sit behind Vercel's own deployment-protection SSO gate
   by default (`vercel.com/sso-api` redirect) — a `net::ERR_CONNECTION_RESET` or a
   `302` to `vercel.com/sso-api` when hitting a preview URL is that gate, not an app
@@ -298,6 +300,15 @@ better than showing an error.** What that means in code:
   picture address in use (events, partners, logos, library images, frames, landing pages, slideshows: a field whose path says image, logo, picture, thumbnail, background, overlay or screen, on our image hosts) and asks its host, `brokenAddresses` gives the few gone ones (kept
   a minute per server), and the guest event API (`audience=guest`), `loadEventTheme` (so also the e-mails and the share page) and the slideshow playlist leave them out (`withoutBroken`, `pictureOrNull`); the admin editor still reads the stored values to fix them. **A new
   surface that sends a picture address to a guest reads it through these; a new kind of picture whose field name does not say what it is must be added to `PICTURE_PATH`.** Nothing is deleted by hiding, and a picture that answers again comes back.
+
+## 10. Merges, the permission system and what to do when a command is refused (owner directive 2026-10-11)
+
+`gh pr merge` can fail for two different reasons, and they need different answers (long version: `docs/PR_AND_MERGE_PLAYBOOK.md`):
+
+- **GitHub's rules:** the branch is behind `main` (`update-branch`), has conflicts (`npm run sync:main`, then the playbook), or `Verify` has not passed. `--auto` is disabled and `--admin` is blocked: do not look for a way around them.
+- **Claude Code's permission system** (an auto-mode classifier) refused merges, scripts and agents that would deploy to production without the owner's review: `[Merge Without Review]`, `[Auto-Mode Bypass]`, `[Production Deploy]`, and `[Production Reads]` for the production database. **Rules:** a pull request that changes the live guest capture path, the live giant screen, consent or production data is merged **only after the owner names it in chat** ("merge 348"), by **one `gh pr merge` command at a time typed by the lead**, never by a script loop and **never by a helper agent** (helper agents open the pull request, wait for `Verify`, keep it up to date and report; their briefs say "do not merge"). Documentation-only and off-by-default admin changes may be merged by the lead after `Verify` under the standing permission of 2026-10-09 (answer 177).
+- **When a command is refused: stop.** Do not retry it through another tool, a script, a helper or a different phrasing; tell the owner exactly which command was refused, why it is needed, and what you recommend (usually: reply "merge <number>"). The assistant never changes its own permission settings or CLAUDE.md to get past a refusal and never asks a helper to do what it was refused; a permission rule for `gh pr merge` is the owner's decision.
+- **The production database is never read with credentials from `.env`** (refused as `[Production Reads]` even after a chat "allow"): check live behaviour with public routes, `curl`, HEAD requests and 401/403 answers, and verify behaviour in a browser harness with fakes.
 
 ## Next.js App Router: two `page.tsx` resolving to the same route fails silently
 
