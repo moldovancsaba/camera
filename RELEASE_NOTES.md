@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — two leftovers removed (camera#598 items 3 and 4; owner answer 360 "yes", the safe ones now)
+
+- **Removed:** the five unreferenced create-next-app pictures in `public/` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`; nothing in the code, docs or pages names them) and the third target of `scripts/patch-baseline-browser-mapping.mjs` (`next/dist/compiled/browserslist/index.js`: the marker is not in that file any more, so every install printed "marker not found"; the other two targets still carry it and are patched).
+- **Not done, on purpose (after the match, they touch the capture path or wait for the try-on guest-path phase):** the original-upload route and its claim handling, `ORIGINAL_UPLOAD_ENDPOINT`, `npm run blob:orphans`, `config/leather-suits.example.json` (camera#598 items 1, 2, 5).
+
 ## Unreleased — the welcome page screen and the default slideshow: redraw, backfill card, stadium backgrounds, QR texts; the slideshow look-before-switching-on and reload guard (issues 326, 327, 476; owner answers 353 and 352; PRs 587, 588, 589, 590, 584, 585)
 
 - **Owner:** answer 353 "yes" (merge the four welcome PRs), answer 352 "merge if safe" (the two slideshow PRs; judged safe because each only delays or adds behind a switch and was compared with main side by side).
