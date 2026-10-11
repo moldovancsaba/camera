@@ -8,13 +8,57 @@ this file is the short current-state summary. Previous rewrite: 2026-08-17
 (v2.23.0 era); everything from v12.2.0 to v12.3.37 is in `RELEASE_NOTES.md`.
 Open work is tracked on the GitHub project board, not in this file (next section).
 
-## Status 2026-10-11 (v12.3.42)
+## Status 2026-10-11, end of day (v12.3.42)
 
-- **Version 12.3.42 (fleet release 2026-10-11):** all five apps carry it; the detail is in `RELEASE_NOTES.md` under "v12.3.42" and the dated "Unreleased" entries below it. Nothing the guest meets changed for an existing event; the journey recording and the stop of storing IP addresses with photos are the two things that touch the capture path, and both are live (a read-only look at the MTK x Vasas event after each deployment showed it unchanged).
-- **Welcome page screen and default slideshow (merged 2026-10-11, issues 326/327/476):** the redraw after an editor's change, the backfill card for existing events (not run), stadium backgrounds and QR texts (libraries empty), the crossfade look (`?crossfade=1`) and the reload guard are live and change no event; see the "Unreleased" entry in `RELEASE_NOTES.md`. The backfill run waits for the owner (recommendation: dry run after the match).
-- **Held until after the match on 2026-10-16:** try-on removal phase R3 (PR 576, the guest path), `ENFORCE_STANDARD_REQUIREMENTS` (issue 578), any change of the capture path or the giant screen.
-- **How pull requests are merged, and why some were refused:** `docs/PR_AND_MERGE_PLAYBOOK.md` and CLAUDE.md sections 3, 5 and 10. A branch is brought up to date with `npm run sync:main` (never in a primary checkout).
-- **Owner steps still open:** delete the eight Vercel variables of the removed integration (`docs/TRYON_REMOVED.md`, 3.11); `npm run db:ensure-indexes` once; set `CRON_SECRET` (issue 529; both crons answer 403 until then); decide about the IP addresses and user agents stored with earlier photos; align the privacy notice with `docs/PRIVACY_DATA.md`; the Vercel dashboard Node setting (issue 182).
+One page to start from: **what is done, what happens next, what is still not delivered but needed.** The detail of each item is in `RELEASE_NOTES.md` (the "v12.3.42" entry and the "Unreleased" entries below it); the open work and its order is the board (project #24, **Order** column; rules and waves in `docs/EXECUTION_ORDER.md`). Live state at the end of the day: all five repos on 12.3.42, `main` green in all five, the only open camera pull request is the held try-on draft #576, the MTK x Vasas event read-only unchanged (device camera mode, vetting required, 5 pages, journey recording on).
+
+### 1. Done since 12.3.41 (all merged, all live)
+1. **Fleet release 12.3.42** in camera, messmass, fanmass, try-on and savetheworld (version-only in the four; `docs/_audit/fleet-version-policy.md` in messmass).
+2. **Analytics, phases 1 and 2** (issue 521): the Analytics menu rebuilt on the data that exists; the anonymous **journey recording** with a kill switch on the Journey tab; no IP address and no full user agent stored with a photo any more (`docs/ANALYTICS.md`, `docs/JOURNEY_RECORDING.md`, `docs/PRIVACY_DATA.md`).
+3. **Consent settings** (issue 558): every kind of checkbox is shown or not and required or optional, per partner, event and checkbox; the public gallery permission is a setting; the sentence says "public campaign wall". No setting is stored, so no event changed.
+4. **Camera mode** selector (device, live, still, frame) and **marking the people** in each photo at vetting (required in the big view and on the server), both live.
+5. **Try-on removed from the camera app** except the guest path (R0, R1, R2, R4 merged; R3 is the held draft #576, issue 579); `docs/TRYON_REMOVED.md`, tag `tryon-integration-final`.
+6. **Outbound deadlines and outcome logs** (issue 178), **long links in e-mails** (issue 382), **the follow-up e-mail job** (issue 559; built and dormant), **Hungarian for the pages above the event** (issue 352).
+7. **Welcome page screen and default slideshow** (issues 326, 327): the redraw after an editor's change, the backfill card for existing events (not run), the **stadium backgrounds** and **QR texts** libraries (empty), and the slideshow's **look at the crossfade** (`?crossfade=1`) and **reload guard**. #476 (the slideshow freeze) is complete on main; the crossfade is off until a slideshow ticks it.
+8. **Tooling and rules:** the stable inventory and `npm run sync:main`, the playbook `docs/PR_AND_MERGE_PLAYBOOK.md` (why green pull requests could not merge, why conflicts happened, what the permission system refuses, the lessons of the fleet release), CLAUDE.md sections 3, 5 and 10, the dependency audit (`docs/DEPENDENCIES.md`), the obsolete and deprecated sweep, the CI actions moved to Node 24 versions in all five repos, the messmass drift register re-verified (80 entries).
+9. **messmass guides:** approving photos, camera mode, analytics, checkbox settings, gallery permission, sample selfies, giant screen, and one for the stadium backgrounds and QR texts.
+
+### 2. Next required steps, in time order
+**Before the match (Friday 2026-10-16); the capture path, the live giant screen and the approver's screens are frozen from Wednesday 14 October, fixes found in the rehearsal only:**
+1. **The approver (issue 373, owner tasks 403 to 407):** add the MTK approver as a partner user; share the approver guide and the Hungarian text review sheet with MTK; rehearse approving on a throw-away event under MTK Budapest that is not linked to messmass (the recipe is the 2026-10-08 comment on issue 373; not on the savetheworld event, its wall is live); the phone checks that a desktop cannot confirm (issue 406: the one photo screen after the shutter, vetting on a phone, the colours of the user flow, the Hungarian pages, the guided tour switch, the default consent and login pages, the event editor pages and the brand colours panel), plus the camera ways, marking in the big view and the beacons on a real iPhone; the first real upload on the new Images pages (issue 407; not on the match event's welcome page).
+2. **Two small answers:** the label of the MTK welcome page button, START or INDÍTÁS (issue 409); MTK's Hungarian text suggestions when they arrive (issue 410).
+3. **Owner platform steps:** delete the eight Vercel variables of the removed integration (`docs/TRYON_REMOVED.md`, 3.11; `CRON_SECRET` stays); run `npm run db:ensure-indexes` once (the 30-day journey retention); align the privacy notice with `docs/PRIVACY_DATA.md`; decide what to do with the IP addresses and user agents stored with earlier photos (`scripts/count-stored-photo-addresses.ts` counts them, read-only); the Vercel dashboard Node setting (issue 182).
+4. **Look at the crossfade** on a spare screen (`/slideshow/<id>?crossfade=1`); nothing is saved.
+5. **Do not** run the welcome-screen backfill, switch the follow-up e-mail on, or merge #576 before the match.
+
+**On the day (issue 271, first-day checks):** an MTK person approves live; watch the Vercel runtime logs (`camera.slideshow_diagnostic`, the `reload held` lines, the outbound outcome lines); the journey recording can be switched off from the Journey tab within 30 seconds if anything looks wrong.
+
+**After the match (from Saturday 2026-10-17), in this order:**
+1. Server also refuses the standard required checkboxes (issue 578, owner answer 349): then turn `ENFORCE_STANDARD_REQUIREMENTS` on (the switch is off now, so nothing is refused).
+2. Try-on R3 (PR 576, issue 579) and the cleanup that goes with it (issue 561: the original-upload route and its claim handling, `ORIGINAL_UPLOAD_ENDPOINT`, `npm run blob:orphans`, the old logo fields and routes, `config/leather-suits.example.json`, the 8 places listed on PR 594). Only on the owner's go.
+3. The welcome-screen backfill for existing events: the dry run first, then the events the owner names (issues 326, 327); the screen-sized pictures backfill of existing photos (#476 S7, its card on the Slideshows page).
+4. `CRON_SECRET` on the Vercel project (issue 529): until then the follow-up e-mail job and the weekly activity log mail answer 403.
+5. The admin kit, the gate and the fail-safe snapshot (issues 415, 418, 421), then the page defaults 3a, 3b, 3f (issues 330, 333, 339), the welcome page composition (issue 412) and the rest of the default slideshow and global defaults (issues 326, 327, 332).
+6. Then the I cards and the P cards in Order.
+
+### 3. Not delivered yet, but needed
+1. **Needed for legal and privacy:** the server-side enforcement of required checkboxes (578); the privacy notice matching `docs/PRIVACY_DATA.md`; the decision about old IP addresses; the profile across events (purposes A, B and C decided on 2026-10-10 in `docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md`, the texts are Dictionary drafts and are shown nowhere, the profile itself, its consent checkbox, the user's page to see, export and delete it, and the 24-month deletion job are **not built**).
+2. **Needed so the service runs by itself:** `CRON_SECRET` (529); the follow-up e-mail's test send with a real address; the messmass route and the triggers and switch for the push of the journey counters (the counters stay off until the owner decides).
+3. **Analytics phase 3 (issue 521):** which QR or poster a visit came from, plays by hour, sign-ins by provider, the fixed decline reasons.
+4. **Never lose an image (issue 509) and storage (owner decision 295):** the unframed crop is deleted at approval and the ImgBB mirror is best effort and unrecorded; the final place of the unframed originals is ImgBB; logos on R2 and the other images still on ImgBB (305, 306) are open.
+5. **Vetting:** the approver chooses the rejection reason (442), a keyboard way to mark people, an accessibility audit, editing the people of an approved photo (560).
+6. **Layouts and messages at an event** (epic 444: S6 to S9, issues 450 to 453, 331); **a partner URL** (374); the **library audit leftovers** (393 to 396).
+7. **Selfie in the photo window:** the remaining steps (issues 540, 328).
+8. **Testing and hardening:** the fake-camera test harness and a canary rollout (205, 213), the export end-to-end proof (198), image optimizer hosts, SSO hardening, the environment prefix decision, react-hooks rules (193 to 196), the capture module overhaul (203, 207).
+9. **Design system:** GDS work packages A and B and the upstream tracker (185 to 187), the owner decisions D1 to D10 (188), the sidebar row height on the deployed admin (184), camera's own tour onto the GDS tour (S22).
+10. **In messmass:** report-config legacy partner field (430), deprecated code (465), the Bitly status endpoint that may fail on the strict database connection (469, **check first**), the other drift findings (470), messmass still on GDS 6.3.0.
+11. **Roadmap, later:** the try-on add-on and image.direct (camera 189, 190, 192; image.direct 14 to 43; try-on 51, 52), the default event frame backfill (231, 238), the ideabank (323 to 325 are future options: the stage showing the event logo and teams, more kinds of bricks, an event language setting, a Known issues menu, fonts and colours as library items, a garment library, an app icon per event, `public/fff`).
+
+### 4. Rules in force
+1. **Merging:** after `Verify` and the full local chain with the real exit code; one `gh pr merge` per command, by the lead; a live guest-path, giant-screen, consent or production-data pull request only after the owner names it in chat; when a command is refused, stop and tell the owner (`docs/PR_AND_MERGE_PLAYBOOK.md`, CLAUDE.md section 10).
+2. **Production data:** no test data into production messmass, no database read with the `.env` credentials from here, live looks are read-only (`curl`, the guest event answer needs `?audience=guest`).
+3. **The 19 October runner change:** `ubuntu-latest` becomes Ubuntu 26 on 2026-10-19 and the workflows are not pinned; if the first `Verify` after that date fails for the image, pin `runs-on: ubuntu-24.04` until it is understood.
+4. **Numbering:** every list and question sent to the owner is numbered from the continuous register; the owner answers by number.
 
 ## Status 2026-10-10 (v12.3.41)
 
