@@ -7,10 +7,10 @@ type RouteModule = typeof import('./route');
 const importRoute = (caseId: string) => import('./route?case=' + caseId) as Promise<RouteModule>;
 
 function setup(t: TestContext, submission: Record<string, unknown> | null) {
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/savetheworld/internal', { namedExports: { assertInternalSavetheworldSecret: () => undefined } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/savetheworld/internal', { exports: { assertInternalSavetheworldSecret: () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: (name: string) => ({
           findOne: async () => (name === 'events' ? { _id: 'e', eventId: 'event-uuid' } : submission),

@@ -13,8 +13,8 @@ function setup(t: TestContext, secret: string | undefined, sendResult: { sent: b
   if (secret === undefined) delete process.env.CRON_SECRET;
   else process.env.CRON_SECRET = secret;
   t.after(() => { delete process.env.CRON_SECRET; delete process.env.ACTIVITY_EXPORT_TO; });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/email/send', { namedExports: { sendEmail: async (input: Record<string, unknown>) => { mails.push(input); return sendResult.sent ? { sent: true, messageId: 'm' } : { sent: false, error: sendResult.error ?? 'x' }; } } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/email/send', { exports: { sendEmail: async (input: Record<string, unknown>) => { mails.push(input); return sendResult.sent ? { sent: true, messageId: 'm' } : { sent: false, error: sendResult.error ?? 'x' }; } } });
   return { ...seeded, mails };
 }
 

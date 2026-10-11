@@ -9,15 +9,15 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 function setup(t: import('node:test').TestContext, options: { limited?: boolean } = {}) {
   const reports: unknown[] = [];
   t.mock.module('@/lib/api', {
-    namedExports: {
+    exports: {
       ...apiReal,
       checkRateLimit: async () => {
         if (options.limited) throw apiReal.apiError('Too many requests', 429);
       },
     },
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({}) } });
-  t.mock.module('@/lib/media/broken', { namedExports: { reportBroken: async (_db: unknown, id: unknown) => (reports.push(id), 'marked') } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({}) } });
+  t.mock.module('@/lib/media/broken', { exports: { reportBroken: async (_db: unknown, id: unknown) => (reports.push(id), 'marked') } });
   return { reports };
 }
 const post = (body?: unknown) => new NextRequest('http://localhost/api/media/broken', { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });

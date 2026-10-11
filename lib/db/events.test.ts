@@ -24,7 +24,7 @@ function setup(t: TestContext, partner: Record<string, unknown>) {
       { eventId: 'elsewhere', partnerId: 'OTHER', brandColor: OWN_A, brandColorsOverridden: false },
     ],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   return seeded;
 }
 const eventDoc = (data: Record<string, Array<Record<string, unknown>>>, eventId: string) => data.events.find((e) => e.eventId === eventId) as Record<string, unknown>;
@@ -88,7 +88,7 @@ test('a frame the partner removes from its library stays on the events that use 
       { eventId: 'does-not', partnerId: 'P', frames: [assigned('f2')] },
     ],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   const { updateChildEventsFromPartner } = await importEvents('library-removal');
 
   const partner = seeded.data.partners[0];
@@ -116,7 +116,7 @@ test('a logo the partner removes from its library stays on the events that use i
       { eventId: 'does-not', partnerId: 'P', logos: [assigned('l2', 1)] },
     ],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   const { updateChildEventsFromPartner } = await importEvents('library-removal-logos');
 
   const saved = await savePartnerLibrary(seeded.db, seeded.data.partners[0], 'logos', { remove: ['l1'] }, NOW);

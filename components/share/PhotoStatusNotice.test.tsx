@@ -7,7 +7,7 @@ type NoticeModule = typeof import('./PhotoStatusNotice');
 
 // The refresher reads the app router, which does not exist outside Next: the router is mocked for the whole file.
 async function render(t: TestContext, state: 'waiting' | 'not_approved', settings?: { texts?: Record<string, string> }, language?: 'en' | 'hu'): Promise<string> {
-  t.mock.module('next/navigation', { namedExports: { useRouter: () => ({ refresh: () => undefined }) } });
+  t.mock.module('next/navigation', { exports: { useRouter: () => ({ refresh: () => undefined }) } });
   const { default: PhotoStatusNotice } = (await import('./PhotoStatusNotice?case=' + state + (settings ? '-own' : '') + (language ? `-${language}` : ''))) as NoticeModule;
   return renderToStaticMarkup(
     <MantineProvider>

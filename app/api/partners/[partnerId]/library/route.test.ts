@@ -25,12 +25,12 @@ function setup(t: TestContext, options: { allowed?: boolean } = {}) {
     events: [{ eventId: 'e-uuid', partnerId: 'P', frames: [{ frameId: 'g2', isActive: true }] }],
   });
   const cascades: Array<{ partnerId: string; updates: unknown }> = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   t.mock.module('@/lib/api', {
-    namedExports: { ...apiReal, requireAuth: async () => ADMIN },
+    exports: { ...apiReal, requireAuth: async () => ADMIN },
   });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertPartnerMongoWorkspaceAccess: async (db: typeof seeded.db) => {
         if (options.allowed === false) throw apiReal.apiForbidden('Partner-level manager access is required');
         const partner = await db.collection('partners').findOne({ _id: PARTNER_MONGO_ID });
@@ -39,7 +39,7 @@ function setup(t: TestContext, options: { allowed?: boolean } = {}) {
     },
   });
   t.mock.module('@/lib/db/events', {
-    namedExports: {
+    exports: {
       updateChildEventsFromPartner: async (partnerId: string, updates: unknown) => {
         cascades.push({ partnerId, updates });
         return { brandColorsUpdated: 0, framesUpdated: 1, logosUpdated: 0 };

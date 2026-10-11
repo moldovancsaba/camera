@@ -8,11 +8,11 @@ type Props = { message: string; logoUrl?: string | null; logoAlt?: string };
 // next/image needs the Next runtime; here it is a plain <img>.
 async function load(t: TestContext, tag: string) {
   t.mock.module('next/image', {
-    defaultExport: ({ src, alt, fill, unoptimized, ...rest }: Record<string, unknown>) => {
+    exports: { default: ({ src, alt, fill, unoptimized, ...rest }: Record<string, unknown>) => {
       void fill; void unoptimized;
       // eslint-disable-next-line @next/next/no-img-element
       return <img src={String(src)} alt={String(alt)} {...(rest as object)} />;
-    },
+    } },
   });
   const { default: ProcessingOverlay } = (await import('./ProcessingOverlay?case=' + tag)) as { default: (props: Props) => React.ReactElement };
   return (props: Partial<Props> = {}) =>

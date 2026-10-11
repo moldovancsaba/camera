@@ -32,9 +32,9 @@ function mockDeps(
   extra: { event?: Record<string, unknown>; partner?: Record<string, unknown> | null; session?: Record<string, unknown> | null } = {}
 ): Harness {
   const h: Harness = { inserted: [], uploads: 0, heads: [], puts: [] };
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, optionalAuth: async () => extra.session ?? null } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, optionalAuth: async () => extra.session ?? null } });
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: (name: string) => ({
           findOne: async () => (name === 'events' ? { _id: 'event-1', name: 'Test event', ...(extra.event ?? {}) } : name === 'partners' ? (extra.partner ?? null) : null),
@@ -47,7 +47,7 @@ function mockDeps(
     },
   });
   t.mock.module('@/lib/imgbb/upload', {
-    namedExports: {
+    exports: {
       uploadImage: async () => {
         h.uploads += 1;
         return { success: true, imageUrl: COMPOSITE, thumbnailUrl: COMPOSITE, deleteUrl: '', imageId: '', fileSize: 4321, mimeType: 'image/jpeg', fileName: 'x.jpg', provider: 'blob', mirrorImageUrl: null };
@@ -55,7 +55,7 @@ function mockDeps(
     },
   });
   t.mock.module('@vercel/blob', {
-    namedExports: {
+    exports: {
       head: async (url: string) => {
         h.heads.push(url);
         return head(url);

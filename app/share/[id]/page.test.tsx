@@ -36,7 +36,7 @@ function matches(doc: Doc, filter: Record<string, unknown>): boolean {
 
 function mockDb(t: TestContext, docs: Doc[], eventExtra: Record<string, unknown> = {}) {
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: (name: string) => ({
           findOne: async (filter: Record<string, unknown>) => {
@@ -291,9 +291,9 @@ test('the photo page shows the photo and its download, and nothing about try-on,
 // The anonymous journey recording (issue 521, phase 2): the public photo page opened by a person is counted for the photo's event, after the page; a chat app's link preview is not.
 function spyOnViews(t: TestContext, userAgent: string | null, agent: { current: string | null } = { current: userAgent }): Array<{ event: unknown; name: unknown }> {
   const records: Array<{ event: unknown; name: unknown }> = [];
-  t.mock.module('@/lib/journey/store', { namedExports: { recordServerJourney: async (_db: unknown, event: unknown, name: unknown) => { records.push({ event, name }); } } });
-  t.mock.module('@/lib/api/run-after-response', { namedExports: { runAfterResponse: (task: () => Promise<void>) => { void task(); } } });
-  t.mock.module('next/headers', { namedExports: { headers: async () => new Headers(agent.current ? { 'user-agent': agent.current } : {}) } });
+  t.mock.module('@/lib/journey/store', { exports: { recordServerJourney: async (_db: unknown, event: unknown, name: unknown) => { records.push({ event, name }); } } });
+  t.mock.module('@/lib/api/run-after-response', { exports: { runAfterResponse: (task: () => Promise<void>) => { void task(); } } });
+  t.mock.module('next/headers', { exports: { headers: async () => new Headers(agent.current ? { 'user-agent': agent.current } : {}) } });
   return records;
 }
 

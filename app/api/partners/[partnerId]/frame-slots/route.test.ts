@@ -8,10 +8,10 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 function setup(t: import('node:test').TestContext, options: { deny?: boolean } = {}) {
   const calls: Array<{ fn: string; scope: unknown; arg?: unknown; role?: unknown }> = [];
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ({ user: { email: 'm@example.test' } }), checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({}) } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ({ user: { email: 'm@example.test' } }), checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({}) } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertPartnerMongoWorkspaceAccess: async (_db: unknown, _s: unknown, _id: string, role: unknown) => {
         calls.push({ fn: 'access', scope: null, role });
         if (options.deny) throw apiReal.apiForbidden('No access to this partner');
@@ -20,7 +20,7 @@ function setup(t: import('node:test').TestContext, options: { deny?: boolean } =
     },
   });
   t.mock.module('@/lib/frame/default-slots', {
-    namedExports: {
+    exports: {
       defaultSlotsView: async (_db: unknown, scope: unknown) => (calls.push({ fn: 'view', scope }), { slots: null, inherited: null, messages: ['Go'], sampleEvent: null, followers: 0 }),
       saveDefaultSlots: async (_db: unknown, scope: unknown, body: unknown) => (calls.push({ fn: 'save', scope, arg: body }), { slots: null, followers: [{ id: 'e1', eventId: 'x', name: 'MTK x Vasas' }] }),
       runDefaultSlotsAction: async (_db: unknown, scope: unknown, body: unknown) => (calls.push({ fn: 'action', scope, arg: body }), { total: 1, generated: 1, reused: 0 }),

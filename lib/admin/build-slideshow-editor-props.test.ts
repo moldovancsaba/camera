@@ -20,7 +20,7 @@ const DESIGN = {
 function load(t: TestContext, slideshow: Record<string, unknown>, tag: string): Promise<PropsModule> {
   const doc = { _id: new ObjectId(), slideshowId: 's-1', name: 'Main screen', isActive: true, createdAt: '2026-10-07T10:00:00.000Z', eventId: 'event-uuid', ...slideshow };
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: { connectToDatabase: async () => ({ collection: (name: string) => ({ findOne: async () => (name === 'events' ? EVENT : doc) }) }) },
+    exports: { connectToDatabase: async () => ({ collection: (name: string) => ({ findOne: async () => (name === 'events' ? EVENT : doc) }) }) },
   });
   return import('./build-slideshow-editor-props?case=' + tag) as Promise<PropsModule>;
 }

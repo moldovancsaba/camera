@@ -22,11 +22,11 @@ function setup(t: TestContext, options: { session?: typeof EDITOR; allowed?: boo
   });
   const sent: SubmissionNotificationInput[] = [];
   const roles: string[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => options.session ?? EDITOR, checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/theme/load', { namedExports: { loadEventTheme: async () => resolveEventTheme({}) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => options.session ?? EDITOR, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/theme/load', { exports: { loadEventTheme: async () => resolveEventTheme({}) } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       getPartnerScopedAccessForEvent: async (_db: unknown, _id: string, _s: unknown, role: string) => {
         roles.push(role);
         return { allowed: options.allowed ?? true, role: 'admin', partnerId: 'P' };
@@ -34,7 +34,7 @@ function setup(t: TestContext, options: { session?: typeof EDITOR; allowed?: boo
     },
   });
   t.mock.module('@/lib/email/submission-notification', {
-    namedExports: { sendSubmissionResultEmail: async (input: SubmissionNotificationInput) => (sent.push(input), options.result ?? { sent: true, provider: 'resend', messageId: 'm', recipientEmail: input.recipientEmail ?? '' }) },
+    exports: { sendSubmissionResultEmail: async (input: SubmissionNotificationInput) => (sent.push(input), options.result ?? { sent: true, provider: 'resend', messageId: 'm', recipientEmail: input.recipientEmail ?? '' }) },
   });
   return { sent, roles };
 }

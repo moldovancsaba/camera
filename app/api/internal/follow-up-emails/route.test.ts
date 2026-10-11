@@ -33,9 +33,9 @@ function setup(t: TestContext, secret: string | undefined, eventDate: string | n
     delete process.env.CRON_SECRET;
     delete process.env.FOLLOW_UP_MAX_AGE_DAYS;
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   t.mock.module('@/lib/email/submission-notification', {
-    namedExports: {
+    exports: {
       sendSubmissionResultEmail: async (input: Record<string, unknown>) => {
         mails.push(input);
         return { sent: true, provider: 'resend', messageId: 'm', recipientEmail: String(input.recipientEmail) };

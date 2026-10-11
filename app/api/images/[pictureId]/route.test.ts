@@ -18,9 +18,9 @@ function setup(t: TestContext, options: { admin?: boolean } = {}) {
     partners: [{ partnerId: 'P', name: 'Partner P', library: { frames: [], logos: [], images: ['g1', 'g2'] } }, { partnerId: 'Q', name: 'Partner Q' }],
     events: [{ eventId: 'E', partnerId: 'P', emailFooterImageUrl: 'https://img.example/g1.png' }],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   t.mock.module('@/lib/api', {
-    namedExports: {
+    exports: {
       ...apiReal,
       requireAdmin: async () => {
         if (options.admin === false) throw apiReal.apiForbidden('Admin access required for this app');

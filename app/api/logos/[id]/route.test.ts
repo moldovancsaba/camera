@@ -14,8 +14,8 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 function setup(t: TestContext, extra: { events?: Array<Record<string, unknown>>; partners?: Array<Record<string, unknown>> } = {}) {
   const seeded = fakeDb({ logos: [{ _id: LOGO_OID, logoId: 'l1', name: 'Logo', isActive: true }], events: extra.events ?? [], partners: extra.partners ?? [] });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAdmin: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAdmin: async () => ADMIN } });
   return seeded;
 }
 const del = (id = String(LOGO_OID)) => [new NextRequest(`http://localhost/api/logos/${id}`, { method: 'DELETE' }), { params: Promise.resolve({ id }) }] as const;

@@ -55,10 +55,10 @@ function mockRouteDeps(
   writes: Array<Record<string, unknown>>
 ) {
   t.mock.module('@/lib/api', {
-    namedExports: { ...apiReal, optionalAuth: async () => options.session },
+    exports: { ...apiReal, optionalAuth: async () => options.session },
   });
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: () => ({
           findOne: async () => buildSubmission(options.finalized),
@@ -71,12 +71,12 @@ function mockRouteDeps(
     },
   });
   t.mock.module('@/lib/email/submission-result-email', {
-    namedExports: {
+    exports: {
       dispatchPendingSubmissionEmailForSubmission: async () => null,
     },
   });
   // The "arrived" e-mail (epic 463) is its own module: here it has nothing to send.
-  t.mock.module('@/lib/email/triggers', { namedExports: { dispatchArrivedEmail: async () => null } });
+  t.mock.module('@/lib/email/triggers', { exports: { dispatchArrivedEmail: async () => null } });
 }
 
 function buildPatch(): NextRequest {
@@ -147,10 +147,10 @@ function mockDeleteDeps(
   deletes: unknown[]
 ) {
   t.mock.module('@/lib/api', {
-    namedExports: { ...apiReal, requireAuth: async () => options.session },
+    exports: { ...apiReal, requireAuth: async () => options.session },
   });
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: () => ({
           findOne: async () => options.submission,
@@ -163,9 +163,9 @@ function mockDeleteDeps(
     },
   });
   t.mock.module('@/lib/email/submission-result-email', {
-    namedExports: { dispatchPendingSubmissionEmailForSubmission: async () => null },
+    exports: { dispatchPendingSubmissionEmailForSubmission: async () => null },
   });
-  t.mock.module('@/lib/email/triggers', { namedExports: { dispatchArrivedEmail: async () => null } });
+  t.mock.module('@/lib/email/triggers', { exports: { dispatchArrivedEmail: async () => null } });
 }
 
 function buildDelete(): NextRequest {
@@ -224,7 +224,7 @@ test('DELETE: stored files are deleted before the row, and the response counts t
   let rowsDeletedWhenFilesWent = -1;
   mockDeleteDeps(t, { session: buildUserSession('user-1'), submission: buildSubmission(true) }, deletes);
   t.mock.module('@/lib/submissions/delete-files', {
-    namedExports: {
+    exports: {
       deleteSubmissionFiles: async () => {
         rowsDeletedWhenFilesWent = deletes.length;
         return { deleted: ['a', 'b'], keptShared: [], imgbbRequested: 1, imgbbFailed: 0 };
@@ -245,7 +245,7 @@ test('DELETE: when the stored files cannot be deleted the answer is 502 and the 
   const deletes: unknown[] = [];
   mockDeleteDeps(t, { session: buildUserSession('user-1'), submission: buildSubmission(true) }, deletes);
   t.mock.module('@/lib/submissions/delete-files', {
-    namedExports: {
+    exports: {
       deleteSubmissionFiles: async () => {
         throw apiReal.apiError('Could not delete the stored image files, so the submission was kept. Try again.', 502);
       },

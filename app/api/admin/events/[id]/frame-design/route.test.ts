@@ -24,16 +24,16 @@ function setup(t: import('node:test').TestContext, options: { event?: Record<str
   const access: Array<{ id: string; role: unknown }> = [];
   const updates: unknown[] = [];
   const event = options.event === undefined ? { _id: new ObjectId(id), name: 'E', partnerId: 'p', frameDesign: design } : options.event;
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => session, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => session, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: () => ({ findOne: async () => event, updateOne: async (_f: unknown, u: unknown) => (updates.push(u), { matchedCount: 1 }) }),
       }),
     },
   });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertGlobalAdminOrPartnerEventAccess: async (_db: unknown, _s: unknown, eventId: string, role: unknown) => {
         access.push({ id: eventId, role });
         if (options.deny) throw apiReal.apiForbidden('No access to this event');
@@ -41,7 +41,7 @@ function setup(t: import('node:test').TestContext, options: { event?: Record<str
     },
   });
   t.mock.module('@/lib/frame/variants', {
-    namedExports: {
+    exports: {
       generateFrameVariants: async (_db: unknown, e: { frameDesign: object }) => {
         generated.push(e.frameDesign);
         if (options.imagesFail) throw new Error('blob down');

@@ -27,19 +27,19 @@ function setup(t: TestContext, options: { allowed?: boolean } = {}) {
   });
   draws.length = 0;
   const roles: string[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertGlobalAdminOrPartnerEventAccess: async (_db: unknown, _session: unknown, _id: string, role: string) => {
         roles.push(role);
         if (options.allowed === false) throw apiReal.apiForbidden('Partner-level access is required');
       },
     },
   });
-  t.mock.module('@/lib/slideshow/default-slideshow', { namedExports: { ensureDefaultSlideshow: async () => ({ ok: true }) } });
+  t.mock.module('@/lib/slideshow/default-slideshow', { exports: { ensureDefaultSlideshow: async () => ({ ok: true }) } });
   t.mock.module('@/lib/screen/welcome-screen-store', {
-    namedExports: {
+    exports: {
       ensureWelcomeScreen: async (_db: unknown, event: { welcomeWindow?: { source?: string } }, _deps: unknown, o: { again?: boolean } = {}) => {
         draws.push({ again: o.again, source: event.welcomeWindow?.source });
         return { ok: true, url: 'https://blob.example/w.png', created: true };

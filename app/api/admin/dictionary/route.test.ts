@@ -13,9 +13,9 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 function setup(t: TestContext, session: typeof ADMIN) {
   const seeded = fakeDb({ admin_settings: [] });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => session, checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { ...authReal } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => session, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/partners/authorization', { exports: { ...authReal } });
   return seeded;
 }
 const url = 'http://localhost/api/admin/dictionary';

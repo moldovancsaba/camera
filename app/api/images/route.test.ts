@@ -23,9 +23,9 @@ function setup(t: TestContext, options: { admin?: boolean } = {}) {
     events: [{ eventId: 'E', name: 'MTK x Vasas' }],
   });
   stored.length = 0;
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   t.mock.module('@/lib/api', {
-    namedExports: {
+    exports: {
       ...apiReal,
       requireAdmin: async () => {
         if (options.admin === false) throw apiReal.apiForbidden('Admin access required for this app');
@@ -34,7 +34,7 @@ function setup(t: TestContext, options: { admin?: boolean } = {}) {
     },
   });
   t.mock.module('@/lib/imgbb/upload', {
-    namedExports: {
+    exports: {
       uploadImage: async (file: File) => {
         stored.push(file.name);
         return { success: true, imageUrl: 'https://blob.example/global.png', thumbnailUrl: 'https://blob.example/global.png', deleteUrl: '', imageId: '', fileSize: file.size, mimeType: file.type, fileName: file.name, provider: 'blob', mirrorImageUrl: null };

@@ -13,7 +13,7 @@ const ctx = { params: Promise.resolve({ id }) };
 function setup(t: import('node:test').TestContext) {
   const state: { doc: Record<string, unknown> | null } = { doc: null };
   t.mock.module('@/lib/db/mongodb', {
-    namedExports: {
+    exports: {
       connectToDatabase: async () => ({
         collection: () => ({ findOne: async () => state.doc, find: () => ({ toArray: async () => [], sort: () => ({ toArray: async () => [] }) }) }),
       }),
@@ -98,8 +98,8 @@ test('the photo is offered as <id>:camera-result and nothing else is downloadabl
 // The anonymous journey recording (issue 521, phase 2): a download by a person is counted for the photo's event, after the answer; a crawler's is not; the download itself is unchanged.
 function spyOnRecording(t: import('node:test').TestContext): Array<{ event: unknown; name: unknown }> {
   const records: Array<{ event: unknown; name: unknown }> = [];
-  t.mock.module('@/lib/journey/store', { namedExports: { recordServerJourney: async (_db: unknown, event: unknown, name: unknown) => { records.push({ event, name }); } } });
-  t.mock.module('@/lib/api/run-after-response', { namedExports: { runAfterResponse: (task: () => Promise<void>) => { void task(); } } });
+  t.mock.module('@/lib/journey/store', { exports: { recordServerJourney: async (_db: unknown, event: unknown, name: unknown) => { records.push({ event, name }); } } });
+  t.mock.module('@/lib/api/run-after-response', { exports: { runAfterResponse: (task: () => Promise<void>) => { void task(); } } });
   return records;
 }
 

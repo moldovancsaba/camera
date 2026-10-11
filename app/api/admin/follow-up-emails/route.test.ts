@@ -29,11 +29,11 @@ function setup(t: TestContext, role: 'admin' | 'user') {
     email_follow_ups: [],
   });
   const mails: Array<Record<string, unknown>> = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ({ user: { id: 'a1', email: 'x@example.test' }, appRole: role }), checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { isGlobalAdminSession: () => role === 'admin' } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ({ user: { id: 'a1', email: 'x@example.test' }, appRole: role }), checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/partners/authorization', { exports: { isGlobalAdminSession: () => role === 'admin' } });
   t.mock.module('@/lib/email/submission-notification', {
-    namedExports: {
+    exports: {
       sendSubmissionResultEmail: async (input: Record<string, unknown>) => {
         mails.push(input);
         return { sent: true, provider: 'resend', messageId: 'm', recipientEmail: String(input.recipientEmail) };

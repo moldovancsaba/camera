@@ -25,10 +25,10 @@ interface Options {
 function setup(t: TestContext, options: Options = {}) {
   const calls = { access: [] as Array<{ id: string; role: unknown }>, approve: [] as unknown[][], reject: [] as unknown[][] };
   const submission = options.submission === undefined ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review', peopleReview: { by: 'u1', at: '2026-10-10T10:00:00.000Z' } } : options.submission;
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({ collection: () => ({ findOne: async () => submission }) }) } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({ collection: () => ({ findOne: async () => submission }) }) } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       ...authorizationReal,
       assertGlobalAdminOrPartnerEventAccess: async (_db: unknown, _s: unknown, eventMongoId: string, role: unknown) => {
         calls.access.push({ id: eventMongoId, role });
@@ -38,10 +38,10 @@ function setup(t: TestContext, options: Options = {}) {
     },
   });
   t.mock.module('@/lib/email/submission-result-email', {
-    namedExports: { resolveEventForSubmission: async () => (options.event === undefined ? { _id: eventId } : options.event) },
+    exports: { resolveEventForSubmission: async () => (options.event === undefined ? { _id: eventId } : options.event) },
   });
   t.mock.module('@/lib/photo-vetting/review', {
-    namedExports: {
+    exports: {
       approvePhoto: async (...args: unknown[]) => (calls.approve.push(args), options.outcome ?? { ok: true, email: 'sent' }),
       rejectPhoto: async (...args: unknown[]) => (calls.reject.push(args), options.outcome ?? { ok: true, email: 'sent' }),
     },

@@ -13,9 +13,9 @@ const req = (method: string, body?: unknown) => new NextRequest('http://localhos
 function setup(t: TestContext, role: 'admin' | 'user') {
   resetJourneySettingCache();
   const seeded = fakeDb();
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ({ user: { id: 'a1', email: 'owner@example.test' }, appRole: role }), checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { isGlobalAdminSession: () => role === 'admin' } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ({ user: { id: 'a1', email: 'owner@example.test' }, appRole: role }), checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/partners/authorization', { exports: { isGlobalAdminSession: () => role === 'admin' } });
   return seeded;
 }
 

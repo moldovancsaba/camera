@@ -19,10 +19,10 @@ function setup(t: TestContext, options: { accepted?: boolean } = {}) {
   });
   const registered: Array<{ event: Record<string, unknown>; input: unknown }> = [];
   const limits: unknown[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, checkRateLimit: async (_request: unknown, limit: unknown) => void limits.push(limit) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, checkRateLimit: async (_request: unknown, limit: unknown) => void limits.push(limit) } });
   t.mock.module('@/lib/email/triggers', {
-    namedExports: { registerVisitor: async (_db: unknown, event: Record<string, unknown>, input: unknown) => (registered.push({ event, input }), options.accepted ?? true) },
+    exports: { registerVisitor: async (_db: unknown, event: Record<string, unknown>, input: unknown) => (registered.push({ event, input }), options.accepted ?? true) },
   });
   return { registered, limits };
 }

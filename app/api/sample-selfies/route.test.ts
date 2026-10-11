@@ -15,9 +15,9 @@ function setup(t: TestContext, options: { admin?: boolean } = {}) {
   const seeded = fakeDb({
     images: [picture('s1', { tags: ['sample-selfie'] }), picture('s2', { tags: ['sample-selfie'], isActive: false }), picture('plain'), picture('sp', { tags: ['sample-selfie'], scope: 'partner', partnerId: 'P' })],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAdmin: async () => { if (options.admin === false) throw apiReal.apiForbidden('Admin access required for this app'); return ADMIN; } } });
-  t.mock.module('@/lib/imgbb/upload', { namedExports: { uploadImage: async (file: File) => ({ success: true, imageUrl: 'https://blob.example/selfie.png', thumbnailUrl: 'https://blob.example/selfie.png', deleteUrl: '', imageId: '', fileSize: file.size, mimeType: file.type, fileName: file.name }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAdmin: async () => { if (options.admin === false) throw apiReal.apiForbidden('Admin access required for this app'); return ADMIN; } } });
+  t.mock.module('@/lib/imgbb/upload', { exports: { uploadImage: async (file: File) => ({ success: true, imageUrl: 'https://blob.example/selfie.png', thumbnailUrl: 'https://blob.example/selfie.png', deleteUrl: '', imageId: '', fileSize: file.size, mimeType: file.type, fileName: file.name }) } });
   return seeded;
 }
 

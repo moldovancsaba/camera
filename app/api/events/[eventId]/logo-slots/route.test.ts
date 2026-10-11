@@ -20,10 +20,10 @@ function setup(t: TestContext, options: { allowed?: boolean; role?: string; even
     events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', isActive: true, logos: [], ...options.event }],
   });
   const roles: string[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       getPartnerScopedAccessForEvent: async (_db: unknown, _id: string, _session: unknown, minRole: string) => {
         roles.push(minRole);
         return { allowed: options.allowed ?? true, role: options.role ?? 'admin', partnerId: 'P' };

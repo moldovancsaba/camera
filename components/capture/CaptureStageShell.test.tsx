@@ -16,11 +16,11 @@ type ShellModule = typeof import('./CaptureStageShell');
 // next/image needs the Next runtime; here it is a plain <img>.
 async function load(t: TestContext, tag: string): Promise<ShellModule['default']> {
   t.mock.module('next/image', {
-    defaultExport: ({ src, alt, unoptimized, ...rest }: Record<string, unknown>) => {
+    exports: { default: ({ src, alt, unoptimized, ...rest }: Record<string, unknown>) => {
       void unoptimized;
       // eslint-disable-next-line @next/next/no-img-element
       return <img src={String(src)} alt={String(alt)} {...(rest as object)} />;
-    },
+    } },
   });
   return ((await import('./CaptureStageShell?case=' + tag)) as ShellModule).default;
 }

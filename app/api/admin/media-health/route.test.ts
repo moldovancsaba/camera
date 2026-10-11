@@ -9,17 +9,17 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 function setup(t: import('node:test').TestContext, options: { admin?: boolean } = {}) {
   const batches: unknown[] = [];
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ({ user: { email: 'a@example.test' } }), checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({ collection: () => ({ countDocuments: async () => 7 }) }) } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { isGlobalAdminSession: () => options.admin !== false } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ({ user: { email: 'a@example.test' } }), checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({ collection: () => ({ countDocuments: async () => 7 }) }) } });
+  t.mock.module('@/lib/partners/authorization', { exports: { isGlobalAdminSession: () => options.admin !== false } });
   t.mock.module('@/lib/media/broken', {
-    namedExports: {
+    exports: {
       scanFilter: () => ({}),
       scanBatch: async (_db: unknown, o: unknown) => (batches.push(o), { processed: 3, counts: { fine: 2, marked: 1 }, next: null, remaining: 0 }),
     },
   });
   t.mock.module('@/lib/media/pictures', {
-    namedExports: {
+    exports: {
       brokenPictureRows: async () => [{ url: 'https://i.ibb.co/x/logo.png', reason: 'the picture is gone (http 404)', checkedAt: '2026-10-10T06:00:00.000Z', where: ['events: MTK'] }],
       scanPictures: async (_db: unknown, o: unknown) => (batches.push(o), { processed: 2, broken: 1, cleared: 0, unknown: 0, remaining: 0 }),
     },

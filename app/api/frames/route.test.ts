@@ -19,7 +19,7 @@ function setup(t: TestContext) {
       frame('e1', { scope: 'event', eventId: 'e-uuid' }),
     ],
   });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   return seeded;
 }
 

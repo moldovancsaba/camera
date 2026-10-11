@@ -8,10 +8,10 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 function setup(t: TestContext, options: { deny?: boolean } = {}) {
   const calls: unknown[] = [];
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/messmass/internal', { namedExports: { assertInternalMessmassSecret: () => { if (options.deny) throw apiReal.apiForbidden(); } } });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({ marker: 'db' }) } });
-  t.mock.module('@/lib/frame/backfill', { namedExports: { runBackfillBatch: async (_db: unknown, options: unknown) => (calls.push(options), { processed: 3, done: false, nextAfter: 'abc' }) } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/messmass/internal', { exports: { assertInternalMessmassSecret: () => { if (options.deny) throw apiReal.apiForbidden(); } } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({ marker: 'db' }) } });
+  t.mock.module('@/lib/frame/backfill', { exports: { runBackfillBatch: async (_db: unknown, options: unknown) => (calls.push(options), { processed: 3, done: false, nextAfter: 'abc' }) } });
   return calls;
 }
 

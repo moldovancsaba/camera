@@ -24,14 +24,14 @@ function setup(t: TestContext) {
     events: [{ eventId: 'e-uuid', partnerId: 'P', frames: [{ frameId: 'f1', isActive: true }], emailFooterImageUrl: 'https://img.example/g1.png' }],
   });
   const cascades: unknown[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertPartnerMongoWorkspaceAccess: async (db: typeof seeded.db) => ({ partner: await db.collection('partners').findOne({ _id: PARTNER_MONGO_ID }), role: 'admin', partnerId: 'P' }),
     },
   });
-  t.mock.module('@/lib/db/events', { namedExports: { updateChildEventsFromPartner: async (...args: unknown[]) => { cascades.push(args); return {}; } } });
+  t.mock.module('@/lib/db/events', { exports: { updateChildEventsFromPartner: async (...args: unknown[]) => { cascades.push(args); return {}; } } });
   return { ...seeded, cascades };
 }
 

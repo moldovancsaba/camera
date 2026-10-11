@@ -8,11 +8,11 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 function setup(t: import('node:test').TestContext, options: { admin?: boolean } = {}) {
   const calls: Array<{ fn: string; scope: unknown; arg?: unknown }> = [];
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ({ user: { email: 'a@example.test' } }), checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({}) } });
-  t.mock.module('@/lib/partners/authorization', { namedExports: { isGlobalAdminSession: () => options.admin !== false } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ({ user: { email: 'a@example.test' } }), checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({}) } });
+  t.mock.module('@/lib/partners/authorization', { exports: { isGlobalAdminSession: () => options.admin !== false } });
   t.mock.module('@/lib/frame/default-slots', {
-    namedExports: {
+    exports: {
       defaultSlotsView: async (_db: unknown, scope: unknown) => (calls.push({ fn: 'view', scope }), { slots: null, inherited: null, messages: [], sampleEvent: null, followers: 3 }),
       saveDefaultSlots: async (_db: unknown, scope: unknown, body: unknown) => (calls.push({ fn: 'save', scope, arg: body }), { slots: null, followers: [] }),
       runDefaultSlotsAction: async (_db: unknown, scope: unknown, body: unknown) => (calls.push({ fn: 'action', scope, arg: body }), { total: 2, generated: 2, reused: 0 }),

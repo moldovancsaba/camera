@@ -23,17 +23,17 @@ function setup(t: TestContext) {
     events: [],
   });
   const cascades: unknown[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAdmin: async () => ADMIN, requireAuth: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAdmin: async () => ADMIN, requireAuth: async () => ADMIN } });
   t.mock.module('@/lib/db/events', {
-    namedExports: {
+    exports: {
       updateChildEventsFromPartner: async (partnerId: string, updates: unknown) => {
         cascades.push({ partnerId, updates });
         return { brandColorsUpdated: 0, framesUpdated: 0, logosUpdated: 0 };
       },
     },
   });
-  t.mock.module('@/lib/messmassClient', { namedExports: { pushPartnerToMessmass: async () => null } });
+  t.mock.module('@/lib/messmassClient', { exports: { pushPartnerToMessmass: async () => null } });
   return { ...seeded, cascades };
 }
 

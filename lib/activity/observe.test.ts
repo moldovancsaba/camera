@@ -10,8 +10,8 @@ function setup(t: TestContext, session: { user: { id: string; email: string }; a
   const seeded = fakeDb({});
   process.env.ACTIVITY_LOG = enabled;
   t.after(() => { delete process.env.ACTIVITY_LOG; });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/auth/session', { namedExports: { getSession: async () => session } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/auth/session', { exports: { getSession: async () => session } });
   return seeded;
 }
 const ADMIN = { user: { id: 'u1', email: 'Admin@Example.test' }, appRole: 'admin' };
@@ -72,8 +72,8 @@ test('nothing is written when the log is off (a preview deployment or a local ru
 test('a log that cannot be written never breaks the request', async (t) => {
   process.env.ACTIVITY_LOG = '1';
   t.after(() => { delete process.env.ACTIVITY_LOG; });
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => { throw new Error('down'); } } });
-  t.mock.module('@/lib/auth/session', { namedExports: { getSession: async () => ADMIN } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => { throw new Error('down'); } } });
+  t.mock.module('@/lib/auth/session', { exports: { getSession: async () => ADMIN } });
   const { withErrorHandler } = await load('db-down');
   const response = await wrap(withErrorHandler, async () => NextResponse.json({ ok: true }))(request('PATCH', '/api/slideshows?id=abc'));
   assert.equal(response.status, 200);

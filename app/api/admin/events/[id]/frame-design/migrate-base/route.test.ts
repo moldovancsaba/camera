@@ -24,10 +24,10 @@ function setup(t: TestContext, options: { allowed?: boolean; withBase?: boolean 
     events: [{ _id: EVENT_OID, eventId: 'evt-uuid', partnerId: 'P', name: 'MTK x Vasas', frames: [], frameDesign: { messages: ['HAJRÁ', 'MTK SZÍV!'], messagesOverridden: true, context: {}, updatedAt: 'x', ...(options.withBase === false ? {} : { base: BASE }) } }],
   });
   const drawn: string[] = [];
-  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/partners/authorization', {
-    namedExports: {
+    exports: {
       assertGlobalAdminOrPartnerEventAccess: async () => {
         if (options.allowed === false) throw apiReal.apiForbidden('Partner-level Events manager access is required');
         return { role: 'admin', partnerId: 'P' };
@@ -35,7 +35,7 @@ function setup(t: TestContext, options: { allowed?: boolean; withBase?: boolean 
     },
   });
   t.mock.module('@/lib/frame/variants', {
-    namedExports: {
+    exports: {
       generateFrameVariants: async (_db: unknown, event: { eventId: string }) => (drawn.push(event.eventId), { design: { variants: [{}, {}] }, generated: 2, reused: 0 }),
     },
   });

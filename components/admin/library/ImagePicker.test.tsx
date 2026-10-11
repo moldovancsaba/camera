@@ -8,11 +8,11 @@ type PickerModule = typeof import('./ImagePicker');
 // next/image needs the Next runtime; here it is a plain <img> with the props the thumbnail sets.
 async function load(t: TestContext, tag: string): Promise<PickerModule> {
   t.mock.module('next/image', {
-    defaultExport: ({ src, alt, unoptimized, ...rest }: Record<string, unknown>) => {
+    exports: { default: ({ src, alt, unoptimized, ...rest }: Record<string, unknown>) => {
       void unoptimized;
       // eslint-disable-next-line @next/next/no-img-element
       return <img src={String(src)} alt={String(alt)} {...(rest as object)} />;
-    },
+    } },
   });
   return (await import('./ImagePicker?case=' + tag)) as PickerModule;
 }

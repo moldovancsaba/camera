@@ -8,7 +8,7 @@ type NotificationModule = typeof import('./submission-notification');
 async function setup(t: TestContext) {
   const sent: Array<{ to: string; subject: string; html: string; text?: string }> = [];
   t.mock.module('@/lib/email/send', {
-    namedExports: {
+    exports: {
       getResendApiKey: () => 'key',
       sendEmail: async (message: { to: string; subject: string; html: string; text?: string }) => (sent.push(message), { sent: true, messageId: 'm1' }),
     },

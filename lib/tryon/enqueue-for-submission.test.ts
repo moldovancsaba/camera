@@ -23,18 +23,18 @@ function setup(t: TestContext) {
   const db = {
     collection: () => ({ findOne: async () => ({ _id: new ObjectId() }) }),
   };
-  t.mock.module('@/lib/imgbb/upload', { namedExports: { uploadImage: async (base64: string) => (uploads.push(base64), { imageUrl: 'https://store.test/source.jpg', deleteUrl: '', imageId: '' }) } });
+  t.mock.module('@/lib/imgbb/upload', { exports: { uploadImage: async (base64: string) => (uploads.push(base64), { imageUrl: 'https://store.test/source.jpg', deleteUrl: '', imageId: '' }) } });
   t.mock.module('@/lib/tryon/jobs', {
-    namedExports: {
+    exports: {
       insertOrGetTryOnJob: async (_db: unknown, input: Record<string, unknown>) => (jobs.push(input), { deduplicated: false, job: { jobId: 'job-1', status: 'queued', result: { publicResultUrl: null, imgbbDeleteUrl: null, provider: null } } }),
       patchSubmissionTryOnState: async (_db: unknown, _id: unknown, patch: Record<string, unknown>) => void patches.push(patch),
       upsertSubmissionTryOnLink: async () => undefined,
       buildSubmissionTryOnLink: () => ({}),
     },
   });
-  t.mock.module('@/lib/tryon/suits', { namedExports: { assertValidLeatherSuitId: async () => ({ garmentType: 'motorsport_suit', sleeveStyle: null }) } });
-  t.mock.module('@/lib/tryon/setup-resolution', { namedExports: { findDefaultSetupForGarmentType: async () => null } });
-  t.mock.module('@/lib/tryon/prompts', { namedExports: { buildTryOnPromptSnapshot: () => ({ ok: true, snapshot: {} }) } });
+  t.mock.module('@/lib/tryon/suits', { exports: { assertValidLeatherSuitId: async () => ({ garmentType: 'motorsport_suit', sleeveStyle: null }) } });
+  t.mock.module('@/lib/tryon/setup-resolution', { exports: { findDefaultSetupForGarmentType: async () => null } });
+  t.mock.module('@/lib/tryon/prompts', { exports: { buildTryOnPromptSnapshot: () => ({ ok: true, snapshot: {} }) } });
   return { db: db as never, patches, jobs, uploads };
 }
 

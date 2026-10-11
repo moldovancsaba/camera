@@ -7,11 +7,11 @@ type CtaModule = typeof import('./CTAPage');
 // next/image needs the Next runtime; here it is a plain <img>.
 async function load(t: TestContext, tag: string): Promise<CtaModule> {
   t.mock.module('next/image', {
-    defaultExport: ({ src, alt, fill, unoptimized, priority, sizes, ...rest }: Record<string, unknown>) => {
+    exports: { default: ({ src, alt, fill, unoptimized, priority, sizes, ...rest }: Record<string, unknown>) => {
       void fill; void unoptimized; void priority; void sizes;
       // eslint-disable-next-line @next/next/no-img-element
       return <img src={String(src)} alt={String(alt)} {...(rest as object)} />;
-    },
+    } },
   });
   return (await import('./CTAPage?case=' + tag)) as CtaModule;
 }
