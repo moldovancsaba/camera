@@ -13,6 +13,7 @@ import { itemView } from '@/lib/library/db';
 import { SAMPLE_SELFIE_TAG } from '@/lib/library/sample-selfie';
 import { createLibraryItem } from '@/lib/library/upload';
 import { addSelfieToEventSlot } from '@/lib/slots/selfie-store';
+import { scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
 
 export const POST = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ eventId: string }> }) => {
   const session = await requireAuth();
@@ -36,5 +37,7 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
   if (!result.ok) throw apiBadRequest(result.reason);
   const added = await addSelfieToEventSlot(db, event, String(result.item.pictureId), generateTimestamp());
   if (!added.ok) throw apiBadRequest(added.reason);
+  // The new selfie joins what the event uses: its welcome page screen (if it has one) is drawn again after the response when the pick changes (lib/screen/welcome-redraw.ts).
+  scheduleWelcomeRedraw(event, 'sample-selfie');
   return apiCreated({ item: itemView('images', result.item) });
 });

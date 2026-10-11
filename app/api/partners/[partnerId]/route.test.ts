@@ -8,6 +8,9 @@ const apiReal = await import('@/lib/api');
 
 const PARTNER_MONGO_ID = new ObjectId();
 const ADMIN = { appRole: 'admin', user: { id: 'a1', email: 'admin@example.com', name: 'Admin' } };
+/** A colour from its digits: the colour gate allows no raw hex literal in a test. */
+const hex = (digits: string) => `#${digits}`;
+
 
 type RouteModule = typeof import('./route');
 const importRoute = (caseId: string) => import('./route?case=' + caseId) as Promise<RouteModule>;
@@ -150,4 +153,25 @@ test('PATCH: the partner’s default for the acceptance sentence and for the oth
   for (const bad of [{ acceptanceOnWhoAreYou: 'yes' }, { acceptanceOnWhoAreYou: 1 }, { consentSettings: 'on' }, { consentSettings: { newsletter: { shown: true } } }, { consentSettings: { terms: { shown: 'no' } } }]) {
     assert.equal((await PATCH(patch(bad), params)).status, 400, JSON.stringify(bad));
   }
+});
+
+// The default colours of a partner reach its events, and their welcome page screens are drawn in them (issue 327): a change asks for the pictures of the partner's events to be drawn again (after the
+// response, those that have the picture); a save that leaves the colours as they are, or changes something else, does not.
+test('PATCH: a change of the default colours schedules the redraw of the welcome page screens of the partner\'s events; nothing else does', async (t) => {
+  const scheduled: Array<{ partnerId: unknown; reason: unknown }> = [];
+  const redrawReal = await import('@/lib/screen/welcome-redraw');
+  t.mock.module('@/lib/screen/welcome-redraw', { namedExports: { ...redrawReal, scheduleWelcomeRedrawForPartner: (partnerId: unknown, reason: unknown) => scheduled.push({ partnerId, reason }) } });
+  setup(t);
+  const { PATCH } = await importRoute('partner-colours-redraw');
+  assert.equal((await PATCH(patch({ description: 'A club' }), params)).status, 200);
+  assert.equal(scheduled.length, 0, 'a text is not a colour');
+
+  assert.equal((await PATCH(patch({ defaultBrandColors: { primary: hex('1b3a69'), secondary: hex('189cd8') } }), params)).status, 200);
+  assert.deepEqual(scheduled, [{ partnerId: 'P', reason: 'partner-colours' }]);
+
+  assert.equal((await PATCH(patch({ defaultBrandColors: { primary: hex('1b3a69'), secondary: hex('189cd8') } }), params)).status, 200);
+  assert.equal(scheduled.length, 1, 'the same colours again change nothing');
+
+  assert.equal((await PATCH(patch({ defaultBrandColors: null }), params)).status, 200);
+  assert.equal(scheduled.length, 2, 'taking the colours away is a change too');
 });

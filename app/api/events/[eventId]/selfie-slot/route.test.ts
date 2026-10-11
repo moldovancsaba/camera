@@ -71,3 +71,18 @@ test('a user without the right is refused', async (t) => {
   assert.equal((await GET(new NextRequest(url), params)).status, 403);
   assert.equal((await PUT(put({ value: {} }), params)).status, 403);
 });
+
+// The sample selfie is what the window of the welcome page screen shows (issue 540): a saved choice asks for the picture to be drawn again (after the response, if the event has it; the pick decides
+// whether anything changes). A refused choice and a read ask for nothing.
+test('PUT: a saved choice schedules the redraw of the welcome page screen picture of the event; a refused one and a read do not', async (t) => {
+  const scheduled: Array<{ eventId: unknown; reason: unknown }> = [];
+  const redrawReal = await import('@/lib/screen/welcome-redraw');
+  t.mock.module('@/lib/screen/welcome-redraw', { namedExports: { ...redrawReal, scheduleWelcomeRedraw: (event: { eventId?: unknown }, reason: unknown) => scheduled.push({ eventId: event.eventId, reason }) } });
+  setup(t);
+  const { GET, PUT } = await importRoute('redraw');
+  await GET(new NextRequest(url), params);
+  assert.equal((await PUT(put({ value: { items: ['e2'] } }), params)).status, 400);
+  assert.equal(scheduled.length, 0);
+  assert.equal((await PUT(put({ value: { items: ['e1'] } }), params)).status, 200);
+  assert.deepEqual(scheduled, [{ eventId: 'E', reason: 'sample-selfie' }]);
+});

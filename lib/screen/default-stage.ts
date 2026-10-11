@@ -8,7 +8,7 @@
  * not in the picture: the stage draws them (and the server renderer of the welcome page screen draws them the same way).
  */
 
-import { createCanvas, type SKRSContext2D } from '@napi-rs/canvas';
+import { createCanvas, loadImage, type SKRSContext2D } from '@napi-rs/canvas';
 import { CAMERA_STAGE_BLACK, CAMERA_STAGE_QR_DARK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 import { bestOfWhiteOrBlack, isDark, mix } from '@/lib/theme/color';
 
@@ -25,6 +25,11 @@ export const DEFAULT_STAGE = {
   window: { left: 2.075, top: 3.081, width: 69.274, height: 69.273 },
   qr: { x: 73.54, y: 28.33, size: 24.375 },
   addressText: { x: 2.075, y: 78.6, width: 69.274, size: 12 },
+  /**
+   * Where a QR text of the library goes (issue 326, item 4): one line in the panel of the right column, above the QR code, as wide as the QR code and scaled to fill that width. There is no such
+   * line unless the library has a QR text for the event, so the stage is what it was while the library is empty.
+   */
+  qrText: { x: 73.54, y: 11, width: 24.375, size: 8 },
 } as const;
 
 /** The space the band keeps above and below the address line, % of the stage height. */
@@ -56,10 +61,8 @@ function roundedRect(ctx: SKRSContext2D, x: number, y: number, w: number, h: num
   ctx.closePath();
 }
 
-/** The picture of the default stage as a PNG, 1920 x 1080, transparent where the photos play. Deterministic for the same colours. */
-export function renderDefaultOverlay(colours: StageColours): Buffer {
-  const canvas = createCanvas(STAGE_WIDTH, STAGE_HEIGHT);
-  const ctx = canvas.getContext('2d');
+/** The built-in background: the page colour fading to a deeper one, the glow of the floodlights, the pitch circle and the half-way line. */
+function paintBuiltInBackground(ctx: SKRSContext2D, colours: StageColours): void {
   const { background, accent } = colours;
   const deep = mix(CAMERA_STAGE_BLACK, background, 0.4);
   const dark = isDark(background);
@@ -92,6 +95,13 @@ export function renderDefaultOverlay(colours: StageColours): Buffer {
   ctx.moveTo(wx + ww / 2, 0);
   ctx.lineTo(wx + ww / 2, STAGE_HEIGHT);
   ctx.stroke();
+}
+
+/** The panels, the QR panel and the window with its accent border, drawn over whatever background is under them; the window is cut out, transparent. */
+function paintPanels(ctx: SKRSContext2D, colours: StageColours): void {
+  const { background, accent } = colours;
+  const w = DEFAULT_STAGE.window;
+  const wx = px(w.left, STAGE_WIDTH), wy = px(w.top, STAGE_HEIGHT), ww = px(w.width, STAGE_WIDTH), wh = px(w.height, STAGE_HEIGHT);
 
   // The panel of the right column and the band under the window for the written address.
   const panelFill = mix(accent, background, 0.28);
@@ -121,6 +131,47 @@ export function renderDefaultOverlay(colours: StageColours): Buffer {
   roundedRect(ctx, wx, wy, ww, wh, 26);
   ctx.fill();
   ctx.globalCompositeOperation = 'source-over';
+}
 
+/** The picture of the default stage as a PNG, 1920 x 1080, transparent where the photos play. Deterministic for the same colours. */
+export function renderDefaultOverlay(colours: StageColours): Buffer {
+  const canvas = createCanvas(STAGE_WIDTH, STAGE_HEIGHT);
+  const ctx = canvas.getContext('2d');
+  paintBuiltInBackground(ctx, colours);
+  paintPanels(ctx, colours);
+  return canvas.toBuffer('image/png');
+}
+
+/** How much of the event's page colour lies over a stadium background: enough that the event's colours rule, little enough that the stadium shows. */
+export const BACKGROUND_VEIL = 0.62;
+
+/**
+ * The picture of the default stage on a **stadium background** from the library (issue 326, plan item 1: "a stadium background from the library, with the event's messmass colours"): the
+ * background fills the stage (cropped to it), the event's page colour lies over it as a veil, the glow of the floodlights is drawn in its accent colour, and the same panels, QR panel and
+ * transparent window as the built-in stage are drawn over that. **With no background (`null`) it is exactly `renderDefaultOverlay`**, the stage every event had before the library existed.
+ */
+export async function renderStageOverlay(colours: StageColours, background: Buffer | null): Promise<Buffer> {
+  if (!background) return renderDefaultOverlay(colours);
+  const canvas = createCanvas(STAGE_WIDTH, STAGE_HEIGHT);
+  const ctx = canvas.getContext('2d');
+  const image = await loadImage(background);
+  // Cover: the picture fills the stage, cropped, centred.
+  const scale = Math.max(STAGE_WIDTH / image.width, STAGE_HEIGHT / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  ctx.drawImage(image as never, (STAGE_WIDTH - width) / 2, (STAGE_HEIGHT - height) / 2, width, height);
+  // The event's colours over it, and the floodlights in its accent colour.
+  ctx.globalAlpha = BACKGROUND_VEIL;
+  ctx.fillStyle = colours.background;
+  ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+  ctx.globalAlpha = 1;
+  for (const [cx, cy] of [[0, 0], [STAGE_WIDTH, 0]] as const) {
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 760);
+    glow.addColorStop(0, `${colours.accent}66`);
+    glow.addColorStop(1, `${colours.accent}00`);
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+  }
+  paintPanels(ctx, colours);
   return canvas.toBuffer('image/png');
 }

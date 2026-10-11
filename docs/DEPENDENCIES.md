@@ -1,6 +1,6 @@
 # Dependencies
 
-**Version**: 12.3.41  
+**Version**: 12.3.42  
 **Last Updated**: 2026-10-11
 
 The dependency audit of 2026-10-11 (owner request "check dependencies", after the try-on removal, the analytics and consent settings, GDS 6.8.0 and Next 16.3.8). It covers camera in full; messmass has the short form in its `docs/architecture.md` ("Dependency audit"). `package.json` and `package-lock.json` stay the source of truth for versions; this page records what was checked, what was decided and why, so the next audit starts here.

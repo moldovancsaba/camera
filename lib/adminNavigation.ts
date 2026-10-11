@@ -113,6 +113,20 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
+        href: '/admin/stadium-backgrounds',
+        label: 'Stadium backgrounds',
+        description: 'The general pictures the stage of an event’s default slideshow is drawn on, until a partner or an event chooses its own.',
+        iconKey: 'photo',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+      {
+        href: '/admin/qr-texts',
+        label: 'QR texts',
+        description: 'The short lines next to the QR code on the default slideshow’s stage; a random one is picked when an event’s default slideshow is made.',
+        iconKey: 'adjustments',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+      {
         href: '/admin/images',
         label: 'Global Images',
         description: 'Pictures for the welcome page, the CTA page, the email footer and the giant screen, for partners to take.',

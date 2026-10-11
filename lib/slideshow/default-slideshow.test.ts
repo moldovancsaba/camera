@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fakeDb } from '@/lib/library/fake-db';
 import { parseScreenDesign } from './screen-design';
-import { DEFAULT_STAGE } from '@/lib/screen/default-stage';
+import { createHash } from 'node:crypto';
+import sharp from 'sharp';
+import { DEFAULT_STAGE, renderDefaultOverlay } from '@/lib/screen/default-stage';
+import { clearBrokenCache } from '@/lib/media/pictures';
+import { loadEventTheme } from '@/lib/theme/load';
+import { COLLECTIONS } from '@/lib/db/schemas';
 import { GIANT_SCREEN_PLACEMENT, ensureDefaultSlideshow, findDefaultSlideshow, writtenAddress, type DefaultSlideshowDeps } from './default-slideshow';
 import { en } from '@/lib/i18n/messages.en';
 import { hu } from '@/lib/i18n/messages.hu';
@@ -105,4 +110,123 @@ test('the written address is the event\'s own short address whenever it has one,
   const design = (data.slideshows[0] as { screenDesign: { qr: { url: string }; texts: Array<{ text: string }> } }).screenDesign;
   assert.equal(design.texts[0].text, 'go.messmass.com/mtk-vasas');
   assert.equal(design.qr.url, `https://go.messmass.com/${data.short_links[0].slug}`, 'the QR code still points at the tracked link, so its scans are counted on their own');
+});
+
+// ---- the stadium background of the stage (issue 326) ----
+
+const stadium = (pictureId: string, extra: Record<string, unknown> = {}) => ({ pictureId, name: `Stadium ${pictureId}`, imageUrl: `https://store.public.blob.vercel-storage.com/${pictureId}.png`, thumbnailUrl: null, isActive: true, tags: ['stadium-background'], scope: 'global', createdAt: '2026-10-01T00:00:00.000Z', ...extra });
+const stadiumPicture = () => sharp({ create: { width: 1920, height: 1080, channels: 3, background: { r: 20, g: 160, b: 40 } } }).png().toBuffer();
+
+/** The address the stage of the event is stored at when it is drawn by code: the hash of `renderDefaultOverlay` in the event's colours, the function the stage was always made with. */
+async function builtInStagePath(seeded: ReturnType<typeof fakeDb>): Promise<string> {
+  const theme = await loadEventTheme(seeded.db, EVENT);
+  const png = renderDefaultOverlay({ background: theme.background, accent: theme.buttonBackground });
+  return `screens/event-uuid-1/default-${createHash('sha256').update(png).digest('hex').slice(0, 16)}.png`;
+}
+
+test('an event that chooses nothing gets the stage it always got while the library has no stadium background: the same picture at the same address, no pick stored, nothing fetched', async () => {
+  clearBrokenCache();
+  const seeded = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }] });
+  const uploads: Array<{ pathname: string; bytes: number }> = [];
+  const fetched: string[] = [];
+  const result = await ensureDefaultSlideshow(seeded.db, EVENT, { ...deps(uploads), background: { fetchImage: async (url) => (fetched.push(url), null) } });
+  assert.ok(result.ok && result.created);
+  assert.deepEqual(uploads.map((upload) => upload.pathname), [await builtInStagePath(seeded)], 'the stage is the one renderDefaultOverlay draws, at its own address');
+  assert.deepEqual(fetched, []);
+  assert.equal((seeded.data[COLLECTIONS.EVENTS][0] as { stageBackground?: unknown }).stageBackground, undefined);
+});
+
+test('with a stadium background in the library the new stage is drawn on it, the pick is stored on the event, and everything else of the slideshow is exactly what it is without one', async () => {
+  clearBrokenCache();
+  const plain = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }] });
+  const withLibrary = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }], images: [stadium('a')] });
+  const picture = await stadiumPicture();
+  const uploads: Array<{ pathname: string; bytes: number }> = [];
+  await ensureDefaultSlideshow(plain.db, EVENT, deps());
+  const result = await ensureDefaultSlideshow(withLibrary.db, EVENT, { ...deps(uploads), background: { fetchImage: async () => picture, random: () => 0 } });
+  assert.ok(result.ok && result.created);
+  assert.notEqual(uploads[0].pathname, await builtInStagePath(plain), 'another picture, at another address');
+  assert.deepEqual(withLibrary.data[COLLECTIONS.EVENTS][0].stageBackground, { pictureId: 'a', pickedAt: '2026-10-09T10:00:00.000Z' });
+  const strip = (slideshow: Record<string, unknown>) => {
+    const { slideshowId, screenDesign, ...rest } = slideshow as { slideshowId: string; screenDesign: Record<string, unknown> };
+    const { overlayImageUrl, qr, texts, ...design } = screenDesign as { overlayImageUrl: string; qr: { url: string }; texts: unknown[] };
+    void slideshowId;
+    void overlayImageUrl;
+    return { ...rest, design, qrPath: qr.url.replace(/[^/]+$/, ''), textCount: texts.length };
+  };
+  assert.deepEqual(strip(withLibrary.data[COLLECTIONS.SLIDESHOWS][0]), strip(plain.data[COLLECTIONS.SLIDESHOWS][0]), 'the window, the QR code, the texts and the settings do not depend on the background');
+});
+
+test('a stadium background that cannot be fetched is skipped: the built-in stage is drawn and no pick is stored', async () => {
+  clearBrokenCache();
+  const seeded = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }], images: [stadium('a')] });
+  const uploads: Array<{ pathname: string; bytes: number }> = [];
+  const result = await ensureDefaultSlideshow(seeded.db, EVENT, { ...deps(uploads), background: { fetchImage: async () => null } });
+  assert.ok(result.ok && result.created);
+  assert.deepEqual(uploads.map((upload) => upload.pathname), [await builtInStagePath(seeded)]);
+  assert.equal((seeded.data[COLLECTIONS.EVENTS][0] as { stageBackground?: unknown }).stageBackground, undefined);
+});
+
+// ---- the QR text of the library (issue 326) ----
+
+const qrRow = (qrTextId: string, text: string, language = 'en', extra: Record<string, unknown> = {}) => ({ qrTextId, text, language, isActive: true, createdAt: `2026-10-0${qrTextId.length}T00:00:00.000Z`, ...extra });
+type Design = { texts: Array<{ text: string; x: number; y: number; width: number; size: number; align: string; fit?: boolean; color?: string }> };
+
+test('an event that chooses nothing gets the default slideshow it always got while the library has no QR text: one line, the written address, and no pick stored', async () => {
+  const seeded = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }] });
+  const result = await ensureDefaultSlideshow(seeded.db, EVENT, deps());
+  assert.ok(result.ok && result.created);
+  const design = seeded.data[COLLECTIONS.SLIDESHOWS][0].screenDesign as Design;
+  assert.equal(design.texts.length, 1);
+  assert.equal((seeded.data[COLLECTIONS.EVENTS][0] as { qrText?: unknown }).qrText, undefined);
+  // The same event with texts in the library that are all switched off, or in another language only: still the same slideshow.
+  const off = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan', 'en', { isActive: false }), qrRow('bb', 'Szkenneld!', 'hu')] });
+  await ensureDefaultSlideshow(off.db, EVENT, deps());
+  assert.equal((off.data[COLLECTIONS.SLIDESHOWS][0].screenDesign as Design).texts.length, 1, 'no active English text (a Hungarian one is not for an English event): no line');
+  assert.equal((off.data[COLLECTIONS.EVENTS][0] as { qrText?: unknown }).qrText, undefined);
+});
+
+test('with a QR text in the library the new slideshow has one more line above the QR code, in its panel, scaled to the QR code\'s width, and the pick is stored on the event; the written address stays the first line', async () => {
+  const seeded = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan & smile')] });
+  const result = await ensureDefaultSlideshow(seeded.db, EVENT, { ...deps(), random: () => 0 });
+  assert.ok(result.ok && result.created);
+  const show = seeded.data[COLLECTIONS.SLIDESHOWS][0];
+  const design = show.screenDesign as Design;
+  assert.equal(design.texts.length, 2);
+  assert.match(design.texts[0].text, /^go\.messmass\.com\//, 'the address is still the first line');
+  assert.deepEqual({ ...design.texts[1], color: undefined }, { text: 'Scan & smile', x: DEFAULT_STAGE.qrText.x, y: DEFAULT_STAGE.qrText.y, width: DEFAULT_STAGE.qrText.width, size: DEFAULT_STAGE.qrText.size, align: 'center', fit: true, color: undefined });
+  assert.equal(design.texts[1].color, design.texts[0].color, 'readable on the panel, like the address');
+  assert.ok(parseScreenDesign(show.screenDesign).ok, 'the stored design passes the same check as an editor\'s');
+  assert.deepEqual(seeded.data[COLLECTIONS.EVENTS][0].qrText, { qrTextId: 'a', pickedAt: '2026-10-09T10:00:00.000Z' });
+});
+
+test('a Hungarian event gets a Hungarian QR text, and an English one when there is none in Hungarian', async () => {
+  const hungarian = { ...EVENT, uiLanguage: 'hu' };
+  const both = fakeDb({ events: [hungarian], partners: [{ partnerId: 'p1', name: 'MTK' }], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan'), qrRow('bb', 'Szkenneld!', 'hu')] });
+  await ensureDefaultSlideshow(both.db, hungarian, { ...deps(), random: () => 0 });
+  assert.equal((both.data[COLLECTIONS.SLIDESHOWS][0].screenDesign as Design).texts[1].text, 'Szkenneld!');
+  const englishOnly = fakeDb({ events: [hungarian], partners: [{ partnerId: 'p1', name: 'MTK' }], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan')] });
+  await ensureDefaultSlideshow(englishOnly.db, hungarian, deps());
+  assert.equal((englishOnly.data[COLLECTIONS.SLIDESHOWS][0].screenDesign as Design).texts[1].text, 'Scan');
+});
+
+test('the QR text is picked once: asking again for an event that has its default slideshow changes nothing and picks nothing', async () => {
+  const seeded = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan'), qrRow('bb', 'Join')] });
+  await ensureDefaultSlideshow(seeded.db, EVENT, { ...deps(), random: () => 0 });
+  const before = JSON.stringify(seeded.data);
+  const again = await ensureDefaultSlideshow(seeded.db, EVENT, { ...deps(), random: () => 0.99 });
+  assert.ok(again.ok && !again.created);
+  assert.equal(JSON.stringify(seeded.data), before);
+});
+
+test('with both libraries filled the new slideshow gets a stadium background and a QR text, and both picks are stored on the event', async () => {
+  clearBrokenCache();
+  const seeded = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }], images: [stadium('a')], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan & smile')] });
+  const picture = await stadiumPicture();
+  const result = await ensureDefaultSlideshow(seeded.db, EVENT, { ...deps(), random: () => 0, background: { fetchImage: async () => picture, random: () => 0 } });
+  assert.ok(result.ok && result.created);
+  const event = seeded.data[COLLECTIONS.EVENTS][0] as { stageBackground?: unknown; qrText?: unknown };
+  assert.deepEqual(event.stageBackground, { pictureId: 'a', pickedAt: '2026-10-09T10:00:00.000Z' });
+  assert.deepEqual(event.qrText, { qrTextId: 'a', pickedAt: '2026-10-09T10:00:00.000Z' });
+  assert.equal((seeded.data[COLLECTIONS.SLIDESHOWS][0].screenDesign as Design).texts.length, 2);
 });

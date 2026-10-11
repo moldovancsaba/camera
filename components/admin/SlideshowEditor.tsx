@@ -389,7 +389,7 @@ export default function SlideshowEditor({
 
             <Field
               label="Crossfade"
-              helper="Off: a picture is replaced by the next one (with the fade above). On: the next picture fades in over the one before, which stays until it is fully shown. It is new: try it on a test screen first."
+              helper="Off: a picture is replaced by the next one (with the fade above). On: the next picture fades in over the one before, which stays until it is fully shown. It is new: to look at it first without changing this slideshow, open the screen's address with ?crossfade=1 added at the end (?crossfade=0 shows it off)."
             >
               <Checkbox checked={crossfade} onChange={(e) => setCrossfade(e.target.checked)} label="Crossfade between pictures" />
             </Field>
