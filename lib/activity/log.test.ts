@@ -58,6 +58,8 @@ test('paths, outcomes and the switch', () => {
   assert.equal(isManagementPath('/api/events'), true);
   assert.equal(isManagementPath('/api/stadium-backgrounds'), true, 'the stadium backgrounds and the sample selfies are libraries managed by admins (issue 326, issue 540)');
   assert.equal(isManagementPath('/api/sample-selfies'), true);
+  assert.equal(isManagementPath('/api/qr-texts'), true, 'the QR text library (issue 326)');
+  assert.equal(isManagementPath('/api/qr-texts/abc'), true);
   assert.equal(isManagementPath('/api/events/e1/register'), true, 'a sub-path of events is under the prefix; the register call of a guest is a POST that is ok without a signed-in person and so not recorded');
   assert.equal(isManagementPath('/api/eventsfoo'), false);
   assert.equal(isManagementPath('/api/submissions'), false);

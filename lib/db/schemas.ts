@@ -42,6 +42,8 @@ export const COLLECTIONS = {
   LOGOS: 'logos',
   /** The Images library (camera#368): pictures a picture field chooses, on the three levels of docs/LIBRARIES.md. */
   IMAGES: 'images',
+  /** The QR texts of the default slideshow (issue 326, lib/library/qr-texts.ts): the short lines next to the QR code on the stage, a library of global items with an active flag; one is picked at random, once, when an event's default slideshow is made. */
+  QR_TEXTS: 'qr_texts',
   SUBMISSIONS: 'submissions',
   /** Who registered at an event (epic 463, lib/email/triggers.ts): one row for each event and e-mail address, with whether the welcome e-mail went. */
   EMAIL_REGISTRATIONS: 'email_registrations',
