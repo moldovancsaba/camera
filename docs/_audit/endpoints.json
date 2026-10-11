@@ -128,6 +128,8 @@
   {"path": "/api/partners/[partnerId]/users/[accessId]", "methods": ["PATCH", "DELETE"], "file": "app/api/partners/[partnerId]/users/[accessId]/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/partners/[partnerId]/users", "methods": ["GET", "POST"], "file": "app/api/partners/[partnerId]/users/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/partners", "methods": ["GET", "POST"], "file": "app/api/partners/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAdmin", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/qr-texts/[qrTextId]", "methods": ["PATCH", "DELETE"], "file": "app/api/qr-texts/[qrTextId]/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/qr-texts", "methods": ["GET", "POST"], "file": "app/api/qr-texts/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/sample-selfies", "methods": ["GET", "POST"], "file": "app/api/sample-selfies/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/share/[id]/download", "methods": ["GET"], "file": "app/api/share/[id]/download/route.ts", "auth_markers": [], "no_auth_marker": true},
   {"path": "/api/slideshow-layouts/[layoutId]", "methods": ["GET"], "file": "app/api/slideshow-layouts/[layoutId]/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},

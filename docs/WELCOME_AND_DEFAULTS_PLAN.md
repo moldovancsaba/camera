@@ -1,6 +1,6 @@
 # Welcome page, default slideshow, global defaults and page defaults (plan)
 
-Planned with the owner on 2026-10-07, in small confirmed steps. The epic [camera#332](https://github.com/moldovancsaba/camera/issues/332) tracks it; the delivery issues hold the acceptance boxes. **Nothing in this plan is built yet except the button design (#334, PR #335).**
+Planned with the owner on 2026-10-07, in small confirmed steps. The epic [camera#332](https://github.com/moldovancsaba/camera/issues/332) tracks it; the delivery issues hold the acceptance boxes. **Most of it is built since: this document is the plan; the live status of every item and delivery issue is in the epic [camera#332](https://github.com/moldovancsaba/camera/issues/332), and the checklist at the end of this file is the plan's list, not the status.**
 
 ## Dictionary
 

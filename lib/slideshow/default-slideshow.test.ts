@@ -166,3 +166,67 @@ test('a stadium background that cannot be fetched is skipped: the built-in stage
   assert.deepEqual(uploads.map((upload) => upload.pathname), [await builtInStagePath(seeded)]);
   assert.equal((seeded.data[COLLECTIONS.EVENTS][0] as { stageBackground?: unknown }).stageBackground, undefined);
 });
+
+// ---- the QR text of the library (issue 326) ----
+
+const qrRow = (qrTextId: string, text: string, language = 'en', extra: Record<string, unknown> = {}) => ({ qrTextId, text, language, isActive: true, createdAt: `2026-10-0${qrTextId.length}T00:00:00.000Z`, ...extra });
+type Design = { texts: Array<{ text: string; x: number; y: number; width: number; size: number; align: string; fit?: boolean; color?: string }> };
+
+test('an event that chooses nothing gets the default slideshow it always got while the library has no QR text: one line, the written address, and no pick stored', async () => {
+  const seeded = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }] });
+  const result = await ensureDefaultSlideshow(seeded.db, EVENT, deps());
+  assert.ok(result.ok && result.created);
+  const design = seeded.data[COLLECTIONS.SLIDESHOWS][0].screenDesign as Design;
+  assert.equal(design.texts.length, 1);
+  assert.equal((seeded.data[COLLECTIONS.EVENTS][0] as { qrText?: unknown }).qrText, undefined);
+  // The same event with texts in the library that are all switched off, or in another language only: still the same slideshow.
+  const off = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan', 'en', { isActive: false }), qrRow('bb', 'Szkenneld!', 'hu')] });
+  await ensureDefaultSlideshow(off.db, EVENT, deps());
+  assert.equal((off.data[COLLECTIONS.SLIDESHOWS][0].screenDesign as Design).texts.length, 1, 'no active English text (a Hungarian one is not for an English event): no line');
+  assert.equal((off.data[COLLECTIONS.EVENTS][0] as { qrText?: unknown }).qrText, undefined);
+});
+
+test('with a QR text in the library the new slideshow has one more line above the QR code, in its panel, scaled to the QR code\'s width, and the pick is stored on the event; the written address stays the first line', async () => {
+  const seeded = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan & smile')] });
+  const result = await ensureDefaultSlideshow(seeded.db, EVENT, { ...deps(), random: () => 0 });
+  assert.ok(result.ok && result.created);
+  const show = seeded.data[COLLECTIONS.SLIDESHOWS][0];
+  const design = show.screenDesign as Design;
+  assert.equal(design.texts.length, 2);
+  assert.match(design.texts[0].text, /^go\.messmass\.com\//, 'the address is still the first line');
+  assert.deepEqual({ ...design.texts[1], color: undefined }, { text: 'Scan & smile', x: DEFAULT_STAGE.qrText.x, y: DEFAULT_STAGE.qrText.y, width: DEFAULT_STAGE.qrText.width, size: DEFAULT_STAGE.qrText.size, align: 'center', fit: true, color: undefined });
+  assert.equal(design.texts[1].color, design.texts[0].color, 'readable on the panel, like the address');
+  assert.ok(parseScreenDesign(show.screenDesign).ok, 'the stored design passes the same check as an editor\'s');
+  assert.deepEqual(seeded.data[COLLECTIONS.EVENTS][0].qrText, { qrTextId: 'a', pickedAt: '2026-10-09T10:00:00.000Z' });
+});
+
+test('a Hungarian event gets a Hungarian QR text, and an English one when there is none in Hungarian', async () => {
+  const hungarian = { ...EVENT, uiLanguage: 'hu' };
+  const both = fakeDb({ events: [hungarian], partners: [{ partnerId: 'p1', name: 'MTK' }], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan'), qrRow('bb', 'Szkenneld!', 'hu')] });
+  await ensureDefaultSlideshow(both.db, hungarian, { ...deps(), random: () => 0 });
+  assert.equal((both.data[COLLECTIONS.SLIDESHOWS][0].screenDesign as Design).texts[1].text, 'Szkenneld!');
+  const englishOnly = fakeDb({ events: [hungarian], partners: [{ partnerId: 'p1', name: 'MTK' }], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan')] });
+  await ensureDefaultSlideshow(englishOnly.db, hungarian, deps());
+  assert.equal((englishOnly.data[COLLECTIONS.SLIDESHOWS][0].screenDesign as Design).texts[1].text, 'Scan');
+});
+
+test('the QR text is picked once: asking again for an event that has its default slideshow changes nothing and picks nothing', async () => {
+  const seeded = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan'), qrRow('bb', 'Join')] });
+  await ensureDefaultSlideshow(seeded.db, EVENT, { ...deps(), random: () => 0 });
+  const before = JSON.stringify(seeded.data);
+  const again = await ensureDefaultSlideshow(seeded.db, EVENT, { ...deps(), random: () => 0.99 });
+  assert.ok(again.ok && !again.created);
+  assert.equal(JSON.stringify(seeded.data), before);
+});
+
+test('with both libraries filled the new slideshow gets a stadium background and a QR text, and both picks are stored on the event', async () => {
+  clearBrokenCache();
+  const seeded = fakeDb({ events: [{ ...EVENT }], partners: [{ partnerId: 'p1', name: 'MTK' }], images: [stadium('a')], [COLLECTIONS.QR_TEXTS]: [qrRow('a', 'Scan & smile')] });
+  const picture = await stadiumPicture();
+  const result = await ensureDefaultSlideshow(seeded.db, EVENT, { ...deps(), random: () => 0, background: { fetchImage: async () => picture, random: () => 0 } });
+  assert.ok(result.ok && result.created);
+  const event = seeded.data[COLLECTIONS.EVENTS][0] as { stageBackground?: unknown; qrText?: unknown };
+  assert.deepEqual(event.stageBackground, { pictureId: 'a', pickedAt: '2026-10-09T10:00:00.000Z' });
+  assert.deepEqual(event.qrText, { qrTextId: 'a', pickedAt: '2026-10-09T10:00:00.000Z' });
+  assert.equal((seeded.data[COLLECTIONS.SLIDESHOWS][0].screenDesign as Design).texts.length, 2);
+});

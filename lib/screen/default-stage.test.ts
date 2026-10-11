@@ -58,11 +58,12 @@ test('the texts are readable on the panel: white on a dark event, black on a lig
 });
 
 test('every part sits inside the stage and the parts do not overlap each other', () => {
-  const { window, qr, addressText } = DEFAULT_STAGE;
+  const { window, qr, addressText, qrText } = DEFAULT_STAGE;
   const boxes = {
     window: [window.left, window.top, window.left + window.width, window.top + window.height],
     qr: [qr.x, qr.y, qr.x + qr.size, qr.y + (qr.size * STAGE_WIDTH) / STAGE_HEIGHT],
     addressText: [addressText.x, addressText.y, addressText.x + addressText.width, addressText.y + addressText.size * 1.15],
+    qrText: [qrText.x, qrText.y, qrText.x + qrText.width, qrText.y + qrText.size * 1.15],
   };
   for (const [name, [l, t, r, b]] of Object.entries(boxes)) assert.ok(l >= 0 && t >= 0 && r <= 100 && b <= 100, `${name} is inside the stage`);
   const overlap = (a: number[], b: number[]) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
@@ -137,4 +138,14 @@ test('a picture of another shape fills the stage, cropped, and the same inputs g
   assert.ok(a.equals(b));
   const corner = await pixel(a, STAGE_WIDTH / 2, STAGE_HEIGHT - 3);
   assert.equal(corner.a, 255, 'no uncovered edge');
+});
+
+test('the QR text goes in the panel of the right column, above the QR code, as wide as the QR code, clear of the white QR panel', () => {
+  const { qr, qrText } = DEFAULT_STAGE;
+  assert.equal(qrText.x, qr.x);
+  assert.equal(qrText.width, qr.size);
+  const textBottom = qrText.y + qrText.size * 1.15;
+  const whitePanelTop = qr.y - (18 / STAGE_HEIGHT) * 100;
+  assert.ok(textBottom < whitePanelTop, 'the line ends above the white panel of the QR code');
+  assert.ok(qrText.y > 2, 'and starts inside the column\'s panel, which starts at 2 % of the height');
 });

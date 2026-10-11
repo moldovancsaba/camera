@@ -25,6 +25,11 @@ export const DEFAULT_STAGE = {
   window: { left: 2.075, top: 3.081, width: 69.274, height: 69.273 },
   qr: { x: 73.54, y: 28.33, size: 24.375 },
   addressText: { x: 2.075, y: 78.6, width: 69.274, size: 12 },
+  /**
+   * Where a QR text of the library goes (issue 326, item 4): one line in the panel of the right column, above the QR code, as wide as the QR code and scaled to fill that width. There is no such
+   * line unless the library has a QR text for the event, so the stage is what it was while the library is empty.
+   */
+  qrText: { x: 73.54, y: 11, width: 24.375, size: 8 },
 } as const;
 
 /** The space the band keeps above and below the address line, % of the stage height. */
