@@ -6,6 +6,7 @@
  */
 
 import { PERSON_OPTIONS, EMOTION_OPTIONS, MERCH_OPTIONS } from '@/lib/photo-vetting/people';
+import { isRecorded, type JourneySummary } from './journey';
 import type { EventReport } from './report';
 import type { SourcesReport } from './sources';
 
@@ -13,7 +14,7 @@ export type ExportRow = [section: string, item: string, value: string | number |
 
 export const ANALYTICS_CSV_HEADER = ['section', 'item', 'value'] as const;
 
-export function analyticsRows(report: EventReport, sources?: SourcesReport): ExportRow[] {
+export function analyticsRows(report: EventReport, sources?: SourcesReport, journey?: JourneySummary | null): ExportRow[] {
   const rows: ExportRow[] = [];
   const add = (section: string, item: string, value: string | number | null) => rows.push([section, item, value]);
   const tallies = (section: string, list: ReadonlyArray<{ label: string; count: number }>) => list.forEach((row) => add(section, row.label, row.count));
@@ -138,6 +139,39 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport): Exp
     add('sources', 'through links', sources.totals.link);
     for (const row of sources.rows) add('visits by link', `${row.placement} (${row.slug})`, row.visits);
     for (const day of sources.days) add('visits per day (UTC)', day.day, day.visits);
+  }
+
+  // The journey recording (issue 521, phase 2): UTC days, from the day the recording started. An event with no record has no rows here, never a row of zeros.
+  if (isRecorded(journey)) {
+    add('journey', 'recording since (UTC day)', journey.since);
+    add('journey', 'last record on (UTC day)', journey.lastDay);
+    add('journey', 'opens', journey.opens);
+    add('journey', 'returns from a sign-in (not opens)', journey.resumed);
+    tallies('journey devices', journey.devices);
+    for (const step of journey.steps) add('journey steps reached', step.label, step.count);
+    add('journey', 'completed (saved a photo)', journey.completed);
+    add('journey', 'completion rate (0 to 1)', journey.completionRate === null ? null : Math.round(journey.completionRate * 1000) / 1000);
+    tallies('journey time to the first saved photo', journey.timeToComplete);
+    add('journey', 'median seconds to the first saved photo (last 30 days)', journey.medianCompleteSeconds);
+    add('journey camera', 'permission granted', journey.camera.granted);
+    add('journey camera', 'permission denied', journey.camera.denied);
+    add('journey camera', 'no camera or in use', journey.camera.unavailable);
+    add('journey photos', 'taken', journey.photos.taken);
+    tallies('journey photos taken with', journey.photos.byMethod);
+    add('journey photos', 'retakes', journey.photos.retakes);
+    add('journey photos', 'saved', journey.saves.ok);
+    add('journey photos', 'save failed', journey.saves.failed);
+    add('journey consent', 'shown', journey.consent.shown);
+    add('journey consent', 'accepted', journey.consent.accepted);
+    add('journey consent', 'abandoned (shown, not accepted)', journey.consent.abandoned);
+    add('journey shares', 'share button presses', journey.shares.clicks);
+    tallies('journey shares by channel', journey.shares.byChannel);
+    add('journey shares', 'photo page views', journey.shares.views);
+    add('journey shares', 'downloads', journey.shares.downloads);
+    for (const day of journey.days) {
+      add('journey per day (UTC)', `${day.day}: opens`, day.opens);
+      add('journey per day (UTC)', `${day.day}: completed`, day.completed);
+    }
   }
   return rows;
 }

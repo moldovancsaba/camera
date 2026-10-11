@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-10T20:49:53+00:00",
+  "generated": "2026-10-11T05:09:44+00:00",
   "repo": "camera",
-  "head": "ec0c357c",
+  "head": "758b9ae0",
   "counts": {
-   "endpoints": 131,
+   "endpoints": 133,
    "collections": 7,
    "env": 55,
    "outbound-hosts": 31,
-   "docs": 71
+   "docs": 72
   }
  },
  "items": [
@@ -438,6 +438,20 @@
     "PATCH"
    ],
    "file": "app/api/admin/settings/defaults-rollout/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/settings/journey-recording",
+   "methods": [
+    "GET",
+    "PATCH"
+   ],
+   "file": "app/api/admin/settings/journey-recording/route.ts",
    "auth_markers": [
     "isGlobalAdminSession",
     "requireAuth",
@@ -1179,6 +1193,15 @@
     "POST"
    ],
    "file": "app/api/observability/client-error/route.ts",
+   "auth_markers": [],
+   "no_auth_marker": true
+  },
+  {
+   "path": "/api/observability/journey",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/observability/journey/route.ts",
    "auth_markers": [],
    "no_auth_marker": true
   },

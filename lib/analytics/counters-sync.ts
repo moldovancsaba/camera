@@ -16,6 +16,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { pushPhotoStatsToMessmass, type PhotoStatsPayload } from '@/lib/messmassClient';
 import { buildCounters, hasCounters, parseCounterSet, sameCounters, type CounterSet } from './counters';
 import { getCountersSetting } from './counters-setting';
+import { loadJourneyRows, summarizeJourney } from './journey';
 import { loadPhotoFacts } from './load';
 import { buildEventReport } from './report';
 
@@ -36,10 +37,10 @@ export interface CounterSyncDeps {
   now: () => Date;
 }
 
-/** The counters of the whole event (no range of days: a counter is a running total), read from the photos. */
+/** The counters of the whole event (no range of days: a counter is a running total), read from the photos and from the journey recording. */
 export async function loadEventCounters(db: Db, event: Pick<SyncedEvent, 'eventId'>): Promise<CounterSet> {
-  const photos = await loadPhotoFacts(db, event);
-  return buildCounters(buildEventReport({ photos }, { timeZone: 'UTC' }));
+  const [photos, journeyRows] = await Promise.all([loadPhotoFacts(db, event), loadJourneyRows(db, event.eventId)]);
+  return buildCounters(buildEventReport({ photos }, { timeZone: 'UTC' }), summarizeJourney(journeyRows));
 }
 
 const realDeps: CounterSyncDeps = { push: pushPhotoStatsToMessmass, counters: loadEventCounters, now: () => new Date() };

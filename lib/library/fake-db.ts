@@ -2,7 +2,8 @@
  * A database of plain arrays for the tests of the libraries: just the calls lib/library and its routes make (find with sort and limit,
  * findOne, countDocuments, insertOne (a duplicate `_id` is refused, as MongoDB does), updateOne with $set, $push and $pull (and `upsert` with plain filters), updateMany with $set, $unset and $pull (also on a dotted path such as
  * `library.images`), deleteOne). Filters: equality (null matches a missing field),
- * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`; a plain value also matches an array that holds it); $set (also `frames.$.isActive`), $unset, $push and $pull. Not part of the app.
+ * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`; a plain value also matches an array that holds it); $set (also `frames.$.isActive`), $unset, $push and $pull; $inc and
+ * $setOnInsert on an update or an upsert, insertMany, createIndex (recorded, nothing indexed) and bulkWrite (updateOne and insertOne operations) for the journey recording. Not part of the app.
  */
 
 import type { Db } from 'mongodb';
@@ -92,6 +93,10 @@ function unsetPath(doc: Doc, path: string): void {
   if (target) delete target[parts[parts.length - 1]];
 }
 
+function getPath(doc: Doc, path: string): unknown {
+  return path.split('.').reduce<unknown>((at, part) => (at && typeof at === 'object' ? (at as Doc)[part] : undefined), doc);
+}
+
 function setPath(doc: Doc, path: string, value: unknown, filter: Doc = {}): void {
   const parts = path.split('.');
   let target = doc;
@@ -110,6 +115,32 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
   for (const [name, docs] of Object.entries(seed)) data[name] = docs.map((d) => ({ ...d }));
   const calls: Array<{ collection: string; op: string; args: unknown[] }> = [];
   const list = (name: string): Doc[] => (data[name] ??= []);
+  const updateOneIn = async (name: string, filter: Doc, update: Doc, options?: { upsert?: boolean }) => {
+    calls.push({ collection: name, op: 'updateOne', args: [filter, update] });
+    const doc = list(name).find((d) => matches(d, filter));
+    if (!doc) {
+      // An upsert inserts a document made of the plain equalities of the filter, the $setOnInsert, the $inc (from zero) and the $set.
+      if (options?.upsert) {
+        const fresh: Doc = Object.fromEntries(Object.entries(filter).filter(([key, value]) => !key.startsWith('$') && (value === null || typeof value !== 'object')));
+        for (const [path, value] of Object.entries((update.$setOnInsert as Doc) ?? {})) setPath(fresh, path, value, filter);
+        for (const [path, value] of Object.entries((update.$inc as Doc) ?? {})) setPath(fresh, path, value as number, filter);
+        for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(fresh, path, value, filter);
+        list(name).push(fresh);
+        return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1 };
+      }
+      return { matchedCount: 0, modifiedCount: 0 };
+    }
+    for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
+    for (const [path, value] of Object.entries((update.$inc as Doc) ?? {})) setPath(doc, path, ((getPath(doc, path) as number | undefined) ?? 0) + (value as number), filter);
+    for (const path of Object.keys((update.$unset as Doc) ?? {})) unsetPath(doc, path);
+    for (const [path, value] of Object.entries((update.$push as Doc) ?? {})) {
+      const arr = (doc[path] as unknown[] | undefined) ?? [];
+      const each = value && typeof value === 'object' && Array.isArray((value as Doc).$each) ? ((value as Doc).$each as unknown[]) : [value];
+      doc[path] = [...arr, ...each];
+    }
+    for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) pullFrom(doc, path, cond);
+    return { matchedCount: 1, modifiedCount: 1 };
+  };
   const db = {
     collection(name: string) {
       return {
@@ -147,28 +178,23 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           list(name).push({ ...doc });
           return { insertedId: doc._id ?? 'new' };
         },
-        updateOne: async (filter: Doc, update: Doc, options?: { upsert?: boolean }) => {
-          calls.push({ collection: name, op: 'updateOne', args: [filter, update] });
-          const doc = list(name).find((d) => matches(d, filter));
-          if (!doc) {
-            // An upsert inserts a document made of the plain equalities of the filter and the $set.
-            if (options?.upsert) {
-              const fresh: Doc = Object.fromEntries(Object.entries(filter).filter(([key, value]) => !key.startsWith('$') && (value === null || typeof value !== 'object')));
-              for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(fresh, path, value, filter);
-              list(name).push(fresh);
-              return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1 };
-            }
-            return { matchedCount: 0, modifiedCount: 0 };
+        updateOne: (filter: Doc, update: Doc, options?: { upsert?: boolean }) => updateOneIn(name, filter, update, options),
+        createIndex: async (keys: Doc, options?: { name?: string }) => {
+          calls.push({ collection: name, op: 'createIndex', args: [keys, options] });
+          return options?.name ?? Object.keys(keys).join('_');
+        },
+        insertMany: async (docs: Doc[]) => {
+          calls.push({ collection: name, op: 'insertMany', args: [docs] });
+          for (const doc of docs) list(name).push({ ...doc });
+          return { insertedCount: docs.length };
+        },
+        bulkWrite: async (ops: Array<{ updateOne?: { filter: Doc; update: Doc; upsert?: boolean }; insertOne?: { document: Doc } }>) => {
+          calls.push({ collection: name, op: 'bulkWrite', args: [ops] });
+          for (const op of ops) {
+            if (op.updateOne) await updateOneIn(name, op.updateOne.filter, op.updateOne.update, { upsert: op.updateOne.upsert });
+            else if (op.insertOne) list(name).push({ ...op.insertOne.document });
           }
-          for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
-          for (const path of Object.keys((update.$unset as Doc) ?? {})) unsetPath(doc, path);
-          for (const [path, value] of Object.entries((update.$push as Doc) ?? {})) {
-            const arr = (doc[path] as unknown[] | undefined) ?? [];
-            const each = value && typeof value === 'object' && Array.isArray((value as Doc).$each) ? ((value as Doc).$each as unknown[]) : [value];
-            doc[path] = [...arr, ...each];
-          }
-          for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) pullFrom(doc, path, cond);
-          return { matchedCount: 1, modifiedCount: 1 };
+          return { ok: 1 };
         },
         updateMany: async (filter: Doc, update: Doc) => {
           calls.push({ collection: name, op: 'updateMany', args: [filter, update] });

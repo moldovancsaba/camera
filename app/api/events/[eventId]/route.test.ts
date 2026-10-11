@@ -118,6 +118,23 @@ test('GET as a guest: an event that does not require vetting gets no page added'
   assert.deepEqual(body.data.event.customPages, []);
 });
 
+test('GET as a guest carries the kill switch of the journey recording, on by default; the editor\u2019s answer does not carry it (issue 521, phase 2)', async (t) => {
+  mockDeps(t, { event: { customPages: [] } });
+  const { GET } = await importRouteModule('get-guest-journey-on');
+  const guest = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: Record<string, unknown> } };
+  assert.equal(guest.data.event.journeyRecording, true);
+  const editor = (await (await GET(getRequest(), params)).json()) as { data: { event: Record<string, unknown> } };
+  assert.equal('journeyRecording' in editor.data.event, false);
+});
+
+test('GET as a guest says journeyRecording: false when the owner switched the recording off, so the page sends nothing', async (t) => {
+  mockDeps(t, { event: { customPages: [] } });
+  t.mock.module('@/lib/journey/setting', { namedExports: { journeyRecordingEnabled: async () => false } });
+  const { GET } = await importRouteModule('get-guest-journey-off');
+  const guest = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: Record<string, unknown> } };
+  assert.equal(guest.data.event.journeyRecording, false);
+});
+
 test('GET without the guest audience (the admin editor) returns the stored pages untouched', async (t) => {
   mockDeps(t, { event: { photoVetting: STORED_VETTING, customPages: [] } });
   const { GET } = await importRouteModule('get-editor');

@@ -11,6 +11,7 @@ import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { analyticsEventOf, loadEventAnalytics, type EventAnalytics } from '@/lib/analytics/load';
 import { loadCounterState, type CounterState } from '@/lib/analytics/counters-sync';
 import { parseAnalyticsQuery } from '@/lib/analytics/query';
+import { getJourneySetting } from '@/lib/journey/setting';
 import { defaultTimeZone } from '@/lib/analytics/time';
 import { formatCount } from '@/lib/analytics/format';
 
@@ -40,9 +41,12 @@ export default async function EventAnalyticsTab({ params, searchParams }: { para
 
   let analytics: EventAnalytics | null = null;
   let counterState: CounterState | null = null;
+  let journeySetting: Awaited<ReturnType<typeof getJourneySetting>> | null = null;
   let dbError = null;
   try {
     analytics = await loadEventAnalytics(db, event, { timeZone: query.timeZone, from: query.from, to: query.to });
+    // The kill switch of the journey recording, shown on the Journey tab (issue 521, phase 2).
+    journeySetting = await getJourneySetting(db);
     // The Messmass tab (global admins) previews what would be sent; it reads the whole event, whatever days are chosen, and sends nothing.
     if (query.view === 'messmass' && globalAdmin) counterState = await loadCounterState(db, { eventId: event.eventId, messmassEventId: event.messmassEventId, counterSync: (eventDoc as { counterSync?: { pushedAt?: unknown; counters?: unknown } }).counterSync });
   } catch (error) {
@@ -55,7 +59,7 @@ export default async function EventAnalyticsTab({ params, searchParams }: { para
     <AdminListPageShell
       eyebrow={event.name}
       title="Analytics"
-      description="Photos, vetting, users, screens, links, e-mails and consents of this event, from the data that exists today."
+      description="The journey, photos, vetting, users, screens, links, e-mails and consents of this event."
       stats={
         report
           ? [
@@ -75,6 +79,8 @@ export default async function EventAnalyticsTab({ params, searchParams }: { para
           defaultTimeZone={fallbackZone}
           report={analytics.report}
           sources={analytics.sources}
+          journey={analytics.journey}
+          journeySetting={{ enabled: journeySetting?.enabled ?? true, updatedAt: journeySetting?.updatedAt ?? '', updatedBy: journeySetting?.updatedBy ?? null, canChange: globalAdmin }}
           eventMongoId={id}
           exportHref={`/api/admin/events/${id}/export/analytics?${new URLSearchParams({ tz: query.timeZone, ...(query.from ? { from: query.from } : {}), ...(query.to ? { to: query.to } : {}) }).toString()}`}
           showMessmass={globalAdmin}

@@ -4,6 +4,7 @@ import type { PhotoFacts } from './facts';
 import { analyticsCsv, analyticsRows } from './export';
 import { buildEventReport } from './report';
 import { buildSourcesReport } from './sources';
+import { summarizeJourney } from './journey';
 
 const photo = (extra: Partial<PhotoFacts> = {}): PhotoFacts => ({
   id: 'p', eventKey: 'e', eventKeys: ['e'], createdAt: '2026-10-16T18:00:00.000Z', source: 'user', excluded: null, method: 'camera', device: 'ios', review: 'approved', submittedAt: '2026-10-16T18:00:00.000Z',
@@ -39,4 +40,23 @@ test('the file has a header and CRLF lines; a user’s words that look like a fo
   assert.ok(csv.includes("'@Not me"), 'a decline reason that starts with @ is not a formula');
   assert.ok(/consents by wording,"accept: \+I accept, the ""terms""",2/.test(csv), 'the consent sentence is quoted whole, its quotes doubled (it does not begin the cell, so it needs no guard)');
   for (const line of lines.slice(1, -1)) assert.equal(line.split(',').length >= 3, true);
+});
+
+test('the journey rows are in the file only for an event that has a record, and carry its counts (UTC days); no record, no rows and no zeros', () => {
+  const journey = summarizeJourney([
+    { day: '2026-10-16', name: 'journey.start', key: 'ios', count: 10 }, { day: '2026-10-16', name: 'step.reach', key: 'camera', count: 8 }, { day: '2026-10-16', name: 'journey.complete', key: '1-3m', count: 5 },
+    { day: '2026-10-16', name: 'share.click', key: 'copy', count: 3 }, { day: '2026-10-16', name: 'download', key: '', count: 2 },
+  ]);
+  const rows = analyticsRows(report, undefined, journey);
+  const value = (section: string, item: string) => rows.find((row) => row[0] === section && row[1] === item)?.[2];
+  assert.equal(value('journey', 'opens'), 10);
+  assert.equal(value('journey', 'completed (saved a photo)'), 5);
+  assert.equal(value('journey', 'recording since (UTC day)'), '2026-10-16');
+  assert.equal(value('journey steps reached', 'Camera'), 8);
+  assert.equal(value('journey shares by channel', 'Copy the link'), 3);
+  assert.equal(value('journey shares', 'downloads'), 2);
+  assert.equal(value('journey per day (UTC)', '2026-10-16: opens'), 10);
+  assert.ok(rows.every((row) => row.length === 3));
+  assert.equal(analyticsRows(report, undefined, summarizeJourney([])).some((row) => row[0].startsWith('journey')), false);
+  assert.equal(analyticsRows(report).some((row) => row[0].startsWith('journey')), false);
 });

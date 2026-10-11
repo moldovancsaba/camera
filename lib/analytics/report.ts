@@ -499,19 +499,18 @@ export function buildEventsTable(photos: readonly PhotoFacts[], events: Readonly
 export interface NotMeasured {
   what: string;
   why: string;
-  waitsFor: 'journey recording' | 'decline reasons' | 'share page recording' | 'photo address change' | 'sign-in log';
+  waitsFor: 'link redirect' | 'decline reasons' | 'screen recording' | 'sign-in log' | 'a decision';
 }
 
-/** What the audit asks for and the data cannot give yet. Shown on the Overview, so a missing number is explained and never a silent zero. */
+/**
+ * What the audit asks for and the data cannot give yet. Shown on the Overview, so a missing number is explained and never a silent zero. The journey (opens, steps, camera permission,
+ * retakes, consent left, shares, downloads) is no longer here: the journey recording of issue 521 phase 2 measures it, on the Journey tab, from the day it was switched on.
+ */
 export const NOT_MEASURED: readonly NotMeasured[] = [
-  { what: 'People who opened the link, the step they reached and left at, time per step, and how many finished', why: 'No page view or step is recorded anywhere; only a saved photo leaves a trace.', waitsFor: 'journey recording' },
-  { what: 'Camera permission asked, granted or denied; retakes', why: 'The user sees the camera error; the server sees nothing. The camera diagnostics are log lines only.', waitsFor: 'journey recording' },
-  { what: 'Consent left without accepting', why: 'Only acceptances are stored (on the photo); someone who leaves at the consent page leaves nothing.', waitsFor: 'journey recording' },
-  { what: 'Shares by channel, share page views, downloads', why: 'The share and download counters exist on every photo and are only ever set to 0; the share buttons make no server call.', waitsFor: 'share page recording' },
-  { what: 'Which QR or poster a photo came from', why: 'The link redirect drops the placement, so a photo cannot be tied to the link that brought the user (the visits per link are shown under Sources).', waitsFor: 'journey recording' },
+  { what: 'Which QR or poster a visit or a photo came from', why: 'The link redirect (go.messmass.com) drops the placement, so a visit to the capture page cannot be tied to the link that brought the user, and passing it on changes the live redirect (the visits per link are shown under Sources).', waitsFor: 'link redirect' },
   { what: 'Why a photo was declined, as counts by reason', why: 'The reason is free text today; counts by reason need the fixed list of reasons (decision 244).', waitsFor: 'decline reasons' },
-  { what: 'Country and city of the users', why: 'The fields exist and are never filled; the IP address of every photo is stored and read by nothing, and storing it is to stop (decision 243).', waitsFor: 'photo address change' },
-  { what: 'Plays on the screens by hour or by screen', why: 'Only a running count and the time of the last play are kept per photo and slideshow.', waitsFor: 'journey recording' },
+  { what: 'Country and city of the users', why: 'The fields are never filled, and a place would need the IP address of the photo, which decision 243 stops keeping.', waitsFor: 'a decision' },
+  { what: 'Plays on the screens by hour or by screen', why: 'Only a running count and the time of the last play are kept per photo and slideshow; recording each play touches the giant screen, which is frozen until after the match.', waitsFor: 'screen recording' },
   { what: 'Sign-ins by provider', why: 'The last sign-in is declared and never written; sign-ins are console lines.', waitsFor: 'sign-in log' },
-  { what: 'E-mail opens, clicks and bounces', why: 'Not tracked; the audit does not propose a tracking pixel.', waitsFor: 'journey recording' },
+  { what: 'E-mail opens, clicks and bounces', why: 'Not tracked; the audit does not propose a tracking pixel.', waitsFor: 'a decision' },
 ];

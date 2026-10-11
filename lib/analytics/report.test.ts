@@ -315,9 +315,10 @@ test('the table of events: one row per event, the busiest first, with the same c
   assert.deepEqual(rows.map((r) => [r.id, r.name, r.taken, r.approved, r.waiting, r.plays, r.users, r.avgDecisionSeconds]), [[null, 'Ferencváros', 3, 0, 3, 8, 3, null], ['m1', 'Vasas', 2, 1, 1, 0, 2, 120]]);
 });
 
-test('what the data cannot give yet is listed, each with the reason and what it waits for', () => {
-  assert.ok(NOT_MEASURED.length >= 8);
+test('what the data cannot give yet is listed, each with the reason and what it waits for; the journey is measured now and no longer listed', () => {
+  assert.ok(NOT_MEASURED.length >= 6);
   for (const row of NOT_MEASURED) assert.ok(row.what && row.why && row.waitsFor);
   const text = NOT_MEASURED.map((row) => row.what).join(' | ');
-  for (const needle of ['step', 'Camera permission', 'Shares', 'QR', 'declined', 'Country']) assert.match(text, new RegExp(needle, 'i'));
+  for (const needle of ['QR', 'declined', 'Country', 'Plays', 'Sign-ins', 'opens, clicks']) assert.match(text, new RegExp(needle, 'i'));
+  for (const measured of ['Camera permission', 'Shares by channel', 'opened the link', 'Consent left']) assert.doesNotMatch(text, new RegExp(measured, 'i'));
 });

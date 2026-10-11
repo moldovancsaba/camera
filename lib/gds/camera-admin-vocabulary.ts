@@ -23,6 +23,12 @@ export const cameraAdminVocabularyPacks = [
   createGdsVocabularyPack('defaults-rollout', {
     save: { defaultMessage: 'Save', icon: GdsIcons.Save, feedback: savedFeedback },
   }),
+  createGdsVocabularyPack('journey-recording', {
+    'switch-on': { defaultMessage: 'Switch the recording on', icon: GdsIcons.Toggle, feedback: savedFeedback },
+    'switch-off': { defaultMessage: 'Switch the recording off', icon: GdsIcons.Toggle, feedback: savedFeedback },
+    'confirm-switch-off': { defaultMessage: 'Confirm: switch it off', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    cancel: { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
+  }),
   createGdsVocabularyPack('landing-pages', {
     create: { defaultMessage: 'Create landing page', icon: GdsIcons.Add, feedback: savedFeedback },
     edit: { defaultMessage: 'Edit landing page', icon: GdsIcons.Edit, feedback: savedFeedback },
