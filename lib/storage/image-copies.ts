@@ -78,6 +78,19 @@ export async function readBack(url: string, expectedBytes: number, now: string, 
   return { state: 'unverified', verifiedAt: null, error: `the read-back could not tell: ${probe.reason}` };
 }
 
+/**
+ * `readBack` for a file that was just written by us: a "gone" or "could not tell" answer is asked again after a short wait (up to `readBackAttempts` times in all), because a CDN can need a moment before it serves a new
+ * file. A size that is known and wrong is never asked again, and a file that answers is not either.
+ */
+export async function readBackFresh(url: string, expectedBytes: number, deps: Pick<ImageCopyDeps, 'fetch' | 'now' | 'probeTimeoutMs' | 'readBackAttempts' | 'readBackDelayMs'>): Promise<ReadBack> {
+  let back = await readBack(url, expectedBytes, deps.now(), deps.fetch, deps.probeTimeoutMs);
+  for (let attempt = 1; attempt < deps.readBackAttempts && back.state !== 'verified' && !(back.error ?? '').startsWith('wrong size'); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, deps.readBackDelayMs));
+    back = await readBack(url, expectedBytes, deps.now(), deps.fetch, deps.probeTimeoutMs);
+  }
+  return back;
+}
+
 const keyOf = (copy: Pick<ImageCopy, 'role' | 'store'>) => ({ role: copy.role, store: copy.store });
 
 /** The copies recorded on a submission (none for a photo that has none). */
@@ -107,6 +120,9 @@ export async function recordImageCopy(db: Db, submissionId: ObjectId, copy: Imag
 
 export interface ImageCopyDeps {
   fetch: typeof fetch;
+  /** How many times a file that was only just uploaded is read back while the host answers "gone" or cannot tell (a CDN may need a moment before it serves a new file), and how long to wait between tries. */
+  readBackAttempts: number;
+  readBackDelayMs: number;
   uploadToImgbb: (base64: string, name: string) => Promise<MirrorResult>;
   deleteFromImgbb: (deleteUrl: string) => Promise<boolean>;
   now: () => string;
@@ -117,6 +133,8 @@ export interface ImageCopyDeps {
 
 export const defaultImageCopyDeps: ImageCopyDeps = {
   fetch: (input, init) => fetch(input, init),
+  readBackAttempts: 3,
+  readBackDelayMs: 1500,
   // One retry at most, and no validation request of its own: the read-back below is the check.
   uploadToImgbb: (base64, name) => uploadToImgbbOnly(base64, { name, maxRetries: 2, validatePublicUrl: false }),
   deleteFromImgbb: deleteImage,
@@ -167,8 +185,8 @@ export async function verifyAndRecord(
   deps: ImageCopyDeps = defaultImageCopyDeps
 ): Promise<ImageCopy> {
   const startedAt = Date.now();
+  const back = await readBackFresh(entry.url, entry.bytes, deps);
   const now = deps.now();
-  const back = await readBack(entry.url, entry.bytes, now, deps.fetch, deps.probeTimeoutMs);
   const copy: ImageCopy = { role: entry.role, store: entry.store, state: back.state, url: entry.url, bytes: entry.bytes, verifiedAt: back.verifiedAt, recordedAt: now, error: back.error };
   if (entry.deleteUrl) copy.deleteUrl = entry.deleteUrl;
   if (entry.externalId) copy.externalId = entry.externalId;
@@ -206,8 +224,8 @@ export async function makeImgbbCopy(
   } catch (error) {
     return recordFailure(db, input.submissionId, { role: input.role, store: 'imgbb', bytes, error: `the upload to imgbb failed: ${errorMessage(error)}` }, deps);
   }
+  const back = await readBackFresh(uploaded.imageUrl, bytes, deps);
   const now = deps.now();
-  const back = await readBack(uploaded.imageUrl, bytes, now, deps.fetch, deps.probeTimeoutMs);
   const copy: ImageCopy = {
     role: input.role,
     store: 'imgbb',

@@ -330,6 +330,8 @@ function withRealCopies(photo: Buffer, frame: Buffer, mode: 'works' | 'fails' | 
     },
     deleteFromImgbb: async () => true,
     now: () => AT,
+    readBackAttempts: 1,
+    readBackDelayMs: 0,
     probeTimeoutMs: 1000,
     imgbbTimeoutMs: 30,
     mirrorWaitMs: 30,

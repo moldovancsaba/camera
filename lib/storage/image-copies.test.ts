@@ -8,6 +8,7 @@ import {
   makeImgbbCopy,
   probeStoredSize,
   readBack,
+  readBackFresh,
   readCopies,
   recordApprovalCopies,
   recordImageCopy,
@@ -66,6 +67,8 @@ function setup(options: { files?: Record<string, { size?: number; status?: numbe
     },
     deleteFromImgbb: async (link) => (deleted.push(link), true),
     now: () => AT,
+    readBackAttempts: 1,
+    readBackDelayMs: 0,
     probeTimeoutMs: 1000,
     imgbbTimeoutMs: 40,
     mirrorWaitMs: 40,
@@ -277,4 +280,25 @@ test('the work never throws: a database that fails to write is logged and the ap
   const broken = { collection: () => ({ findOne: async () => { throw new Error('mongo down'); }, updateOne: async () => { throw new Error('mongo down'); }, countDocuments: async () => { throw new Error('mongo down'); } }) };
   const made = await recordApprovalCopies(broken as never, approval(id), deps);
   assert.ok(Array.isArray(made));
+});
+
+test('a file that was only just uploaded is read back again while the host says gone or cannot tell, and a wrong size is never asked again', async () => {
+  const answers = [404, 503, 206];
+  let asked = 0;
+  const flaky = (async () => {
+    const status = answers[Math.min(asked, answers.length - 1)];
+    asked += 1;
+    return status === 206 ? new Response(null, { status: 206, headers: { 'content-type': 'image/jpeg', 'content-range': 'bytes 0-0/50' } }) : new Response(null, { status });
+  }) as typeof fetch;
+  const base = { fetch: flaky, now: () => AT, probeTimeoutMs: 1000, readBackAttempts: 3, readBackDelayMs: 0 };
+  const settled = await readBackFresh(COMPOSED, 50, base);
+  assert.deepEqual([settled.state, asked], ['verified', 3], 'a CDN that needs a moment is waited for');
+
+  asked = 0;
+  const never = await readBackFresh(COMPOSED, 50, { ...base, readBackAttempts: 2, fetch: (async () => (asked++, new Response(null, { status: 404 }))) as typeof fetch });
+  assert.deepEqual([never.state, asked], ['failed', 2], 'a file that stays gone ends failed after the attempts');
+
+  asked = 0;
+  const wrong = await readBackFresh(COMPOSED, 49, { ...base, fetch: (async () => (asked++, new Response(null, { status: 206, headers: { 'content-type': 'image/jpeg', 'content-range': 'bytes 0-0/50' } }))) as typeof fetch });
+  assert.deepEqual([wrong.state, asked], ['failed', 1], 'a size that is known and wrong is not asked again');
 });

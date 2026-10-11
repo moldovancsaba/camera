@@ -3,7 +3,7 @@
  *
  * Approval is where the picture is made: the plain photo and the frame image the photo recorded (the generated frame variant, or the
  * event's own frame) are composed on the server, stored, and only then does the photo become visible. A photo whose frame cannot be
- * fetched or composed stays pending: the brand's frame is never skipped silently. The guest gets the share link by email. The private plain
+ * fetched or composed stays pending: the brand's frame is never skipped silently. The user gets the share link by email. The private plain
  * photo (the unframed crop) is KEPT (issue 509, "never lose an image": it used to be deleted here, which left the framed picture as the only copy); after the
  * answer is sent a second copy of it goes to ImgBB (owner decision 295) and every copy that exists is recorded and read back (`Submission.imageCopies`,
  * lib/storage/image-copies.ts). How long it is kept is a later decision (owner answer 226: 90 days after the event, then deleted on request); nothing deletes it automatically.
