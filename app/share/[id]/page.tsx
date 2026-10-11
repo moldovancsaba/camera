@@ -10,6 +10,7 @@ import { ObjectId } from 'mongodb';
 import type { Db } from 'mongodb';
 import Image from 'next/image';
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { findShareSubmission, shareStateOf, type ShareLookup } from '@/lib/submissions/share-lookup';
 import PhotoStatusNotice from '@/components/share/PhotoStatusNotice';
@@ -27,6 +28,9 @@ import {
 import { DEFAULT_UI_LANGUAGE, normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
 import { loadEventTexts, type TextOverrides } from '@/lib/i18n/overrides';
 import { formatDateTime } from '@/lib/i18n/date';
+import { runAfterResponse } from '@/lib/api/run-after-response';
+import { isCountableVisit } from '@/lib/short-links/device';
+import { recordServerJourney } from '@/lib/journey/store';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -306,6 +310,17 @@ export default async function SharePage({ params }: Props) {
   const language = event?.language ?? DEFAULT_UI_LANGUAGE;
   const texts = event?.texts ?? null;
   const sharePageSettings = event?.sharePageSettings ?? FALLBACK_SHARE_PAGE_SETTINGS;
+
+  // The anonymous journey recording (issue 521, phase 2): the public photo page opened by a person (not a chat app's link preview, a crawler or a prefetch) is counted for the photo's event, after
+  // the page is sent. It never delays or changes the page, and does nothing while the owner has the recording switched off.
+  if (event?.mongoId) {
+    const eventMongoId = event.mongoId;
+    try {
+      if (isCountableVisit('GET', await headers())) runAfterResponse(() => recordServerJourney(db, eventMongoId, 'share.view'));
+    } catch {
+      // the count is never worth the page
+    }
+  }
 
   // The page shows the photo itself and offers it for download. (It also showed the approved try-on pictures of the photo, the settings
   // for which are gone, until the try-on integration was removed: issue 557, docs/TRYON_REMOVED.md.)
