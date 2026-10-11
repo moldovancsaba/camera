@@ -10,7 +10,7 @@ The Analytics view of an event, and of all events together. **Phase 1** says wha
 | Operations **Analytics** (`/admin/analytics`; the old address `/admin/tryon/analytics` is redirected) | global admins | the same numbers over every event, and one row per event (the name opens that event's tab) |
 | `GET /api/admin/events/<id>/export/analytics` | like the tab | the figures of every tab as one CSV (`section,item,value`), with the same days and clock |
 
-Tabs are links (`?view=`), and the days and the clock are in the address too, so a report can be shared as a link. The tabs: **Overview** (the key figures, photos per day and per hour, what is not measured), **Journey** (one event: visits, steps reached, photos saved, camera permission, retakes, consent left, shares and downloads, and the kill switch of the recording; the days are UTC days), **Photos and users**, **Vetting and people**, **Screens**, **Sources** (one event), **E-mails and consent**, **Try-on**.
+Tabs are links (`?view=`), and the days and the clock are in the address too, so a report can be shared as a link. The tabs: **Overview** (the key figures, photos per day and per hour, what is not measured), **Journey** (one event: visits, steps reached, photos saved, camera permission, retakes, consent left, shares and downloads, and the kill switch of the recording; the days are UTC days), **Photos and users**, **Vetting and people**, **Screens**, **Sources** (one event), **E-mails and consent**, **Messmass** (global admins: a preview of the counters that would go to messmass, nothing is sent). There is no Try-on tab any more (it went with the try-on integration, issue 557; an old `?view=tryon` address shows the Overview).
 
 ## What is counted
 

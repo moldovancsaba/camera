@@ -1,7 +1,7 @@
 # messmass + fanmass integration
 
 **Version**: 12.3.41
-**Last Updated**: 2026-09-28
+**Last Updated**: 2026-10-11
 _Verified @ a87d78f_
 
 Camera integrates with three other apps in the SEYU fan-engagement stack:
@@ -20,7 +20,7 @@ savetheworld  --(partners/events, pledge wall, publish)-->  camera
 camera        --(browser handoff: post-selfie CTA)----->  savetheworld
 ```
 
-Camera is mostly inbound but DOES call messmass outbound in three cases (see §4): it reads the resolved theme of an event for its generated default frame from `GET {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/frame-context` (`fetchFrameContext`, [lib/messmassClient.ts](../lib/messmassClient.ts), bounded at 5000 ms, null on any failure; called when messmass provisions an event and when an admin refreshes the event's frame design, see RUNBOOK "Generated default frame"), and it
+Camera is mostly inbound but DOES call messmass outbound in five cases (see §4): two more than the three described here are the tracked-link totals (`pushLinkStatsToMessmass`, `POST {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/link-stats`, camera#320, [SHORT_LINKS.md](SHORT_LINKS.md)) and the photo counters (`pushPhotoStatsToMessmass`, `.../photo-stats`, issue 521, switched off and never called, [ANALYTICS.md](ANALYTICS.md)). The three: it reads the resolved theme of an event for its generated default frame from `GET {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/frame-context` (`fetchFrameContext`, [lib/messmassClient.ts](../lib/messmassClient.ts), bounded at 5000 ms, null on any failure; called when messmass provisions an event and when an admin refreshes the event's frame design, see RUNBOOK "Generated default frame"), and it
 pushes partners it creates natively to `POST {MESSMASS_BASE_URL}/api/integrations/camera/partners`
 (`pushPartnerToMessmass`, [lib/messmassClient.ts:79-102](../lib/messmassClient.ts),
 called from [app/api/partners/route.ts:136](../app/api/partners/route.ts) and
@@ -278,7 +278,7 @@ in Camera, not duplicated between the internal API and Camera's own feature.
 ## 4. What Camera does NOT do
 
 - Camera is inbound for the §1-§3 routes, but see §4: camera → messmass partner
-  push, the sso-session mint and the frame-context read are outbound (lib/messmassClient.ts), and camera is
+  push, the sso-session mint, the frame-context read and the link-stats push are outbound (lib/messmassClient.ts), and camera is
   the fleet's email transport (POST /api/internal/email/send). Not inbound-only.
 - Camera does not know about `launchmass` — no code, config, or data path
   connects them.

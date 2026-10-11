@@ -50,8 +50,7 @@ and the giant screen start from; an editor changes it, or makes another slidesho
   needs the owner's go.
 - **The default flag:** `Slideshow.isDefault`, at most one per event. **Make default** on any slideshow's card sets it (`PUT` of the same route; the new one is flagged before the old flag is
   taken off, so an event is never without one). The default slideshow cannot be deleted: make another the default first.
-- **Not yet:** the sample selfie in the window when no photo exists (needs the picture slots, step 5), the stored picture of the welcome page screen drawn from this layout (step 8), the
-  text levels (global, partner, event) for the call to action (step 6).
+- **Built since this list was written:** the sample selfie in the photo window (issue 540, below), the stored picture of the welcome page screen drawn from this layout (step 8, the next section). The text levels for the call to action (step 6) no longer matter for the default: it has no call-to-action line (see above); a slideshow that has one keeps its own text.
 
 ## The welcome page screen picture (issue 327; step 8a of docs/BUILDING_BRICKS.md section 8)
 

@@ -13,7 +13,7 @@ This document records the current technical stack in use and the parts of the pr
 - server components for page/data composition
 - client components for interactive admin, capture, and slideshow surfaces
 - route handlers for REST-style APIs
-- root middleware for auth and host-based rewrites
+- root proxy (`proxy.ts`, the Next 16 name of middleware) for the session gate and host-based rewrites
 
 ### React 19
 
@@ -74,7 +74,7 @@ Used for:
 
 - OAuth2/OIDC + PKCE login
 - app-level permission lookup
-- Camera session creation and refresh flow
+- Camera session creation (a fixed 30-day session; there is no token refresh, the tokens are only revoked at logout)
 
 ### Upstash Redis (optional)
 
@@ -148,7 +148,7 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 
 ### Try-on (removed)
 
-- There is no try-on renderer or worker in this stack. The integration was switched off on 2026-09-30 and is being removed from the app (issue 557); what existed and what a rebuild as an add-on needs is in [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md), the old code at git tag `tryon-integration-final`.
+- There is no try-on renderer or worker in this stack. The integration was switched off on 2026-09-30 and has been removed from the app (issue 557) except the guest path (the garment selector on the capture page and the try-on fields of `POST /api/submissions`), which the last phase deletes after the match of 2026-10-16; what existed and what a rebuild as an add-on needs is in [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md), the old code at git tag `tryon-integration-final`.
 - The try-on data it left in MongoDB Atlas stays, unreferenced.
 
 ### `@vercel/blob`

@@ -1,7 +1,7 @@
 # Naming Guide
 
 **Version**: 12.3.41  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-10-11
 
 Practical naming rules for the current Camera codebase.
 
@@ -62,7 +62,7 @@ Match the real contract of the route:
 
 - `[id]` for generic Mongo `_id` pages where context is clear
 - `[eventId]` only when the route already uses that convention, even if the actual value is a Mongo `_id`
-- `[slideshowId]`, `[layoutId]`, `[lessonId]` for business identifiers
+- `[slideshowId]`, `[layoutId]` for business identifiers
 
 Because the codebase predates some current conventions, prefer preserving established route names over cosmetic renaming that would break links.
 

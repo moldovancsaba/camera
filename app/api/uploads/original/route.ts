@@ -7,6 +7,9 @@
  * `originals/<eventId>/`, a JPEG, at most ORIGINAL_MAX_BYTES, with a random suffix so the URL
  * cannot be guessed. POST /api/submissions later accepts the resulting URL only if it is inside
  * the same folder and passes a lookup. Nothing is uploaded through this function.
+ *
+ * No page calls this route since camera#257 (the full-size original is no longer uploaded); it stays only for a
+ * capture page that was opened before that change. RUNBOOK ("Full-frame originals") lists what to remove with it.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

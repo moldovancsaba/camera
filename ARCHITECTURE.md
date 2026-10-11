@@ -1,7 +1,7 @@
 # Architecture
 
 **Version**: 12.3.41  
-**Last Updated**: 2026-09-28
+**Last Updated**: 2026-10-11
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -24,7 +24,7 @@ Camera is no longer just a flat event-photo tool. The system now behaves as:
 ```text
 Browser / Public Screens
   -> Next.js App Router pages and client components
-  -> API routes / edge middleware
+  -> API routes / the proxy (proxy.ts)
   -> business logic in lib/*
   -> MongoDB Atlas + Vercel Blob (imgbb mirror) + SSO
 ```
@@ -38,7 +38,7 @@ Browser / Public Screens
 ### API layer
 
 - Next.js route handlers under `app/api/**`
-- root edge proxy in `proxy.ts`
+- root proxy in `proxy.ts` (Next 16's name for middleware; it runs on the Node.js runtime, not the edge)
 - shared API helpers in `lib/api/*`
 - structured error logging in `lib/observability/*` (see §5)
 
@@ -123,30 +123,23 @@ Partner detail pages are the primary daily operational surface. They expose:
 ### Contextual menus (issue 426)
 
 Inside an event or a partner the sidebar shows that item's own menu (`lib/adminNavigation.ts`, `components/admin/AdminChrome.tsx`), with "Back to the main menu" first; a test fails when a page
-under `app/admin/events/[id]` or `app/admin/partners/[id]` is not an item of its menu. The **event** menu: Overview, Edit and pages, Vetting, **Gallery**, Queue, Analytics, Logos, Frames, Images,
-Texts, Slideshows, Landing pages (and Emails with the e-mail epic). **The event gallery has its own page** (`app/admin/events/[id]/gallery/page.tsx`, the query in `lib/gallery/submissions.ts`, the component `components/admin/EventGallery.tsx`;
+under `app/admin/events/[id]` or `app/admin/partners/[id]` is not an item of its menu. The **event** menu (`EVENT_CONTEXT_MENU` in `lib/adminNavigation.ts`): Overview, Edit and pages, Vetting, **Gallery**, Analytics, Logos, Frames, Images,
+Texts, Emails, Slideshows, Landing pages. **The event gallery has its own page** (`app/admin/events/[id]/gallery/page.tsx`, the query in `lib/gallery/submissions.ts`, the component `components/admin/EventGallery.tsx`;
 camera#488): the overview only counts the photos and links to it. **The event's frame on a gallery photo** (camera#488): `lib/gallery/frame.ts` picks the frames the event offers (its own complete frames, else the generated frame's images, as for guests) and `composeUploadWithFrame` (`lib/photo-vetting/compose.ts`) crops the photo to the frame's shape and lays the frame over it; used when an editor uploads with the option (`POST /api/admin/events/<id>/gallery-upload`, field `withFrame`) and for selected photos (`POST /api/admin/events/<id>/gallery-frame`, at most 25, only photos uploaded in the gallery without a frame; the plain upload is kept as `originalImageUrl`, `metadata.galleryFrame` marks it). Selecting several photos (Shift+click range, a dragged box, Select mode, Ctrl+A, Esc) is `lib/gallery/selection.ts`; the research is `docs/_research/GALLERY_MULTISELECT_RESEARCH.md`. The **partner** menu: Overview, Edit, Logos, Frames, Images, Pictures, Texts, Emails. The global **Settings** group:
-Vetting card display, Journey defaults, Dictionary, Emails (the general level).
+Journey defaults, Dictionary, Frame slots, Activity log, Emails (the general level).
 
 ### Cross-cutting admin preferences
 
-The first admin-preferences surface not scoped to a specific partner, event, or app: a top-level
-"Settings" nav entry (`/admin/settings/card-display`) reads and writes a single global document
-via `GET`/`PATCH /api/admin/settings/card-display`:
-
-```
-Admin browser -> GET/PATCH /api/admin/settings/card-display
-  -> lib/admin/card-display-settings.ts (getCardDisplaySettings, DEFAULT_CARD_DISPLAY_SETTINGS)
-  -> admin_settings collection, single document keyed by settingId:'card-display'
-  -> read by every admin session rendering the Vetting/moderation card
-```
-
-Global, not per-admin-user -- one admin's change affects what every admin sees. Defaults to all
-fields/actions visible; the settings only ever narrow what renders, never add new capability.
+Admin preferences that belong to no partner, event or app are single global documents in the `admin_settings` collection, one per `settingId`
+(`dictionary`, `email-legal`, `defaults-rollout`, `journey-recording`, `messmass-counters`, and others), read and written by their own
+Settings page and route under `app/admin/settings` and `app/api/admin/settings`. They are global, not per admin user: one admin's change
+affects every admin and, for the defaults, every event that follows them. (The first such page, "Vetting card display" at
+`/admin/settings/card-display`, configured the try-on moderation card; it was removed with the try-on integration, issue 557. Its
+`card-display` document is still in the collection, unread.)
 
 ### Try-on is not part of the camera app (issue 557, owner answer 294)
 
-The try-on integration was removed completely: no `lib/tryon`, no try-on admin pages, internal or guest routes, no worker callback target, no try-on fields on events or submissions. The separate try-on repository and service are untouched and have nothing to call. The old code is at the git tag `tryon-integration-final`; `docs/TRYON_REMOVED.md` says what existed, what it left in the database (nothing was deleted: stored `tryon_result` submissions and the try-on collections stay, unreferenced) and what a rebuild as an add-on needs (section 7: a way to attach a derived picture to a submission, a moderation hook, a share and download choice). **Public visibility is one rule** (`lib/submissions/visibility.ts`): a photo is public only if `submissionKind` is missing or `original` and it is not pending or rejected, so a stored `tryon_result` is never shown on any surface. Shared helpers that lived in the old module moved: `lib/media/image-buffer.ts`, `lib/admin/active-events.ts`, `lib/events/stats.ts`.
+The try-on integration has been removed from the app, except the guest path that the last phase (R3, PR 576, held until after the match of 2026-10-16) deletes: the garment selector on the capture page, the try-on fields of `POST /api/submissions`, `GET /api/tryon/suits`, the rest of `lib/tryon` that those import, and the `Event.tryOn` / `Submission.tryOnRequest` types. No event enables try-on, so none of that is reachable. There are no try-on admin pages, no internal routes and no worker callback target. The separate try-on repository and service are untouched and have nothing to call. The old code is at the git tag `tryon-integration-final`; `docs/TRYON_REMOVED.md` says what existed, what it left in the database (nothing was deleted: stored `tryon_result` submissions and the try-on collections stay, unreferenced) and what a rebuild as an add-on needs (section 7: a way to attach a derived picture to a submission, a moderation hook, a share and download choice). **Public visibility is one rule** (`lib/submissions/visibility.ts`): a photo is public only if `submissionKind` is missing or `original` and it is not pending or rejected, so a stored `tryon_result` is never shown on any surface. Shared helpers that lived in the old module moved: `lib/media/image-buffer.ts`, `lib/admin/active-events.ts`, `lib/events/stats.ts`.
 
 ## 5. Authorization architecture
 
@@ -183,11 +176,11 @@ Purpose:
 
 ### Current enforcement model
 
-- edge middleware (`proxy.ts`) gates `/admin` on session presence/expiry
+- the proxy (`proxy.ts`) gates `/admin` on session presence/expiry
   only — it deliberately does **not** check `appAccess` there. The `v:2`
   session-pointer cookie caches `appAccess` at login time and never
-  refreshes for the life of a 30-day session; gating on that cached value at
-  the edge caused a real infinite-reload bug when it went stale relative to
+  refreshes for the life of a 30-day session; gating on that cached value in
+  the proxy caused a real infinite-reload bug when it went stale relative to
   the live database value (v2.19.0, PR #101). `appAccess` denial is enforced
   once, by the layout below, from a live read.
 - admin layout (`app/admin/layout.tsx`) resolves global admin vs
@@ -219,7 +212,7 @@ Reference:
 
 ## 6. Middleware and routing behavior
 
-Root edge proxy in [proxy.ts](proxy.ts) does three important jobs:
+Root proxy in [proxy.ts](proxy.ts) (Next 16 renamed middleware to proxy and runs it on the Node.js runtime) does three important jobs:
 
 1. gate `/admin` by session presence/expiry (not `appAccess` — see §5); explicitly
    passes `/admin/login` through unchecked, since it's the redirect target and
@@ -238,7 +231,7 @@ navigation — matching messmass's equivalent page (v2.19.0, PR #100).
 
 `app/admin/layout.tsx` wraps every route under `app/admin/`, `/admin/login`
 included — Next.js has no way to exclude one child route from an ancestor
-layout. The layout skips its own auth check when the edge-injected
+layout. The layout skips its own auth check when the proxy-injected
 `x-camera-pathname` request header (set by `proxy.ts`'s `passThroughWithPathname`)
 is `/admin/login`, since that page already does its own session check and
 doesn't want the authenticated `AdminShell` chrome (v2.19.0, PR #99).
@@ -301,10 +294,9 @@ Core collections:
 - `partner_user_access`
 - `users_cache`
 - `web_sessions`
-- `camera_setup_preferences`
 - `admin_settings`
 
-Schema definitions live in [lib/db/schemas.ts](lib/db/schemas.ts).
+Schema definitions live in [lib/db/schemas.ts](lib/db/schemas.ts). The collections of the removed try-on integration (`leather_suits`, `tryon_jobs`, `tryon_setups`, `camera_setup_preferences`, `tryon_moderation_events`, `tryon_worker_heartbeats`) are not core collections any more: their data is kept and unread (see the try-on section above).
 
 **Libraries.** `frames` and `logos` form three levels, Global -> Partner -> Event, one way only (camera#361): an item is global unless it carries `scope`
 `partner` or `event`; a partner's library is `Partner.library` plus its own uploads; an event takes items from its partner's library or uploads its own
@@ -379,7 +371,7 @@ Major API groups:
 - admin users/submissions utilities: `/api/admin/**`
 - event data exports: `/api/admin/events/[id]/export/emails` and `/api/admin/events/[id]/export/images` (manager-gated; CSV + ZIP, shared logic in `lib/events/event-export.ts`)
 - go-short redirects: `/api/go-short/**`
-- internal service-to-service: `/api/internal/messmass/**` (messmass provisions organisations/partners/events; messmass is master), `/api/internal/fanmass/**` (fanmass pulls events + media, read-only), `/api/internal/tryon/**` (try-on worker callbacks), `/api/internal/savetheworld/**` (savetheworld provisions partners/events, reads the pledge wall, bulk-publishes an event's selfies; `x-savetheworld-secret`), `/api/internal/email/send` (shared cross-app email via Resend; accepts the messmass or fanmass caller secret) — each gated by a shared secret, not a user session. See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
+- internal service-to-service: `/api/internal/messmass/**` (messmass provisions organisations/partners/events; messmass is master), `/api/internal/fanmass/**` (fanmass pulls events + media, read-only), `/api/internal/savetheworld/**` (savetheworld provisions partners/events, reads the pledge wall, bulk-publishes an event's selfies; `x-savetheworld-secret`), `/api/internal/email/send` (shared cross-app email via Resend; accepts the messmass or fanmass caller secret) — each gated by a shared secret, not a user session. See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
 
 The exact route list should be taken from `app/api/**/route.ts`, not from memory.
 
@@ -460,7 +452,7 @@ event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`
   (a text that is cut, slots that overlap); the editor is `components/admin/FrameSlotsEditor.tsx` (generic, wired by an adapter), on the event's Frames page as `FrameSlotsPanel`.
   **Defaults** (segment 5, owner answer 220; the brick rule "own, else the partner's, else the general default, else built-in", no copy): `Partner.defaultFrameSlots` and the setting `frame-slots-default` (`lib/frame/slots-inherit.ts`); `generateFrameVariants` draws an event with no slots of its own with what it follows, and never stores that on the event; the key of an image holds the slots, so a changed default redraws only what changed. `GET`/`PUT`/`POST /api/partners/<id>/frame-slots` and `/api/admin/frame-slots` (global admins) read, save, preview and redraw one follower at a time (`lib/frame/default-slots.ts`); the editors are `DefaultSlotsPanel` on the partner's Frames page and the Settings page Frame slots. Slots an event saves that equal what it follows are stored as none.
 - **Broken pictures** (owner rule 2026-10-09, CLAUDE.md section 9): `lib/media/broken.ts` asks a picture's own host (`checkPicture`), records `Submission.mediaHealth`, and the one visibility rule
-  (`lib/submissions/visibility.ts`), the playlist, the gallery filter and greatest hits leave a broken photo out. The screens report a picture that failed (`POST /api/media/broken`, public, rate limited, the server
+  (`lib/submissions/visibility.ts`), the playlist and the gallery filter leave a broken photo out. The screens report a picture that failed (`POST /api/media/broken`, public, rate limited, the server
   checks for itself); the admin checks them all (`GET`/`POST /api/admin/media-health`, card on the Slideshows page, `scripts/scan-broken-pictures.ts`).
   **The other pictures** (issue 514): `lib/media/pictures.ts` + collection `picture_health` (one row per address: `broken`, `reason`, `checkedAt`, `where`; index on `broken`). `collectPictureAddresses` walks events, partners, logos, library images, frames, landing pages and slideshows
   for picture fields on our image hosts; `scanPictures` checks the ones not checked in 6 days in bounded batches (an unclear answer records the try, so the loop ends); `brokenAddresses` (cached a minute) feeds `withoutBroken`/`pictureOrNull`, used by the guest event API
@@ -494,8 +486,8 @@ event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`
   no value is left out. `{eventlink}` and the "take another photo" link use the event's own short link when it has a URL slug (`lib/email/event-link.ts`).
 - **The legal part** is one slot with three levels per language (general, partner, event; `lib/email/legal-rules.ts`, stores in `lib/email/legal.ts`, routes `/api/admin/emails/legal`,
   `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`), drawn as small print after the button.
-- **Triggers** (`lib/email/triggers.ts`): **welcome** when somebody registers (`POST /api/events/<id>/register`, called by the capture page once the user is identified and only when the event has welcome on; one row for each event and address in `email_registrations`, claimed before the send so it goes once), **arrived** when a photo is submitted (`dispatchArrivedEmail` after `POST /api/submissions`, and at the finalize call when the address is known only then; `metadata.arrivedEmailSentAt`). **Follow up** has its text and switch but no trigger and no job yet.
-- **Event page:** `Emails` in the event menu (`/admin/events/<id>/emails`, route `GET`/`PUT /api/admin/events/<id>/emails`, view in `lib/email/event-emails.ts`, merge of the stored settings in `lib/email/notification-settings.ts`): the five types, the sender and terms, the two try-on e-mails and the event's legal part. The e-mail fields are no longer in the event form or the new-event form.
+- **Triggers** (`lib/email/triggers.ts`): **welcome** when somebody registers (`POST /api/events/<id>/register`, called by the capture page once the user is identified and only when the event has welcome on; one row for each event and address in `email_registrations`, claimed before the send so it goes once), **arrived** when a photo is submitted (`dispatchArrivedEmail` after `POST /api/submissions`, and at the finalize call when the address is known only then; `metadata.arrivedEmailSentAt`). **Follow up** is sent by the daily job (`lib/email/follow-up.ts`, issue 559, see the e-mail rendering and follow-up job above), a week after the event.
+- **Event page:** `Emails` in the event menu (`/admin/events/<id>/emails`, route `GET`/`PUT /api/admin/events/<id>/emails`, view in `lib/email/event-emails.ts`, merge of the stored settings in `lib/email/notification-settings.ts`): the five types, the sender and terms and the event's legal part. The e-mail fields are no longer in the event form or the new-event form.
 - **Test e-mail** (`POST /api/admin/emails/test`): the e-mail as drawn, sent through the same sender to the signed-in editor's own address only.
 - **Editors:** the toolbar editor (`components/admin/kit/EmailTextEditor.tsx`, pure operations in `lib/email/editor-ops.ts`) with the live preview (`EmailPreview.tsx`); pages `Emails` at the general
   level (`/admin/settings/emails`) and at the partner level (`/admin/partners/<id>/emails`).

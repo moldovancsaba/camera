@@ -1,7 +1,7 @@
 # Camera GDS Adoption
 
 **Version**: 12.3.41  
-**Last Updated**: 2026-09-28
+**Last Updated**: 2026-10-11
 
 ## SSOT statement
 
@@ -28,7 +28,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Stylesheet | `app/layout.tsx` imports `@sovereignsquad/gds-theme/styles.css` (which inlines the Mantine core and notifications sheets) before `app/globals.css` since 2026-10-06; the former hand-copied fork `components/gds/gds-theme.css` is deleted. Inter is loaded by React resource hints (`preinit`/`preconnect`) in the root layout, because the package sheet's own Inter `@import` is dropped by Turbopack (see `LEARNINGS.md` FRONT-009) |
 | Root provider | `components/gds/CameraGdsProvider.tsx` wrapping `@sovereignsquad/gds-theme/client` `GdsProvider` without local theme extension; v3.5 document color-scheme and root CSS variable selector are enabled |
 | Notifications | Root `GdsNotificationProvider` / `GdsToastProvider` from `@sovereignsquad/gds-core/client` plus `showGdsNotification` from `@sovereignsquad/gds-theme/client` |
-| Modals / confirm | Root `GdsConfirmProvider` / `OverlayManagerProvider` from `@sovereignsquad/gds-core/client`; legacy `lib/gds/confirm-destructive.tsx` remains a migration bridge |
+| Modals / confirm | Root `GdsConfirmProvider` / `OverlayManagerProvider` from `@sovereignsquad/gds-core/client`; every destructive confirm calls `useGdsConfirm().confirmDestructive` (the old bridge `lib/gds/confirm-destructive.tsx` is deleted) |
 | Adoption manifest | `gds-adoption.json` |
 | Release gate | `.github/workflows/ci.yml` (`inventory:check` + `release:check`), [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md) |
 
@@ -49,9 +49,9 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Status badge | direct `@sovereignsquad/gds-core` import | Package-direct |
 | State block | direct `@sovereignsquad/gds-core` import | Package-direct |
 | Form section | direct `@sovereignsquad/gds-admin` import | Package-direct |
-| Editor scaffold | `app/admin/{events,events/[id],partners,partners/[id],frames,logos,tryon}/**` | Domain composition `components/admin/AdminEditorScaffold.tsx` over package `EditorScaffold` and `WorkspaceHeader` |
+| Editor scaffold | `app/admin/{events,events/[id],partners,partners/[id],frames,logos}/**` | Domain composition `components/admin/AdminEditorScaffold.tsx` over package `EditorScaffold` and `WorkspaceHeader` |
 | Upload dropzone | direct `@sovereignsquad/gds-core` import | Package-direct |
-| Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — delete/remove admin actions |
+| Destructive confirm | `useGdsConfirm().confirmDestructive` from `@sovereignsquad/gds-core/client` | Package-direct — delete/remove admin actions |
 | Root provider adapter | `components/gds/CameraGdsProvider.tsx` | Active |
 | Public shell | `components/public/PublicPageShell.tsx` | Domain-owned composition over package `PublicShell` |
 | App shell (admin) | `components/admin/AdminChrome.tsx` | Domain-owned composition over package `AppShell` |
@@ -70,10 +70,8 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 ### Retained package-boundary adapters
 
 - `components/gds/CameraGdsProvider.tsx`
-- `lib/gds/confirm-destructive.tsx`
 
-  - `CameraGdsProvider` is the single root composition point for official GDS providers.
-  - `lib/gds/confirm-destructive.tsx` is a legacy bridge and must migrate to `GdsConfirmProvider`.
+  - `CameraGdsProvider` is the single root composition point for official GDS providers. (The legacy bridge `lib/gds/confirm-destructive.tsx` that stood here has been deleted: the admin pages use `useGdsConfirm`.)
 
 ### Domain-owned composition moved out of `components/gds`
 
@@ -99,6 +97,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 - `components/gds/ResponsiveDataView.tsx`
 - `components/gds/EditorScaffold.tsx`
 - `components/gds/SemanticNavLink.tsx`
+- `lib/gds/confirm-destructive.tsx`
 - former `components/gds` shell/card wrappers replaced by domain-owned components or direct package usage
 
 ## Approved exceptions
@@ -111,7 +110,7 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 | Residual public surface helper layer (`app/globals.css` helper classes and `--app-panel-*` tokens) | Migration bridge | Limited public/capture helper styling outside `/admin/**` | No second shell system, no admin reuse, no raw package bypass, accessibility and contrast still enforced | Remove once public/capture surfaces no longer depend on local helper classes |
 | Landing page custom CSS (`landing_pages.customCss`, public `/landing/[slug]`) | Product-authored experience | Creator-authored presentation inside the landing experience surface only | GDS-governed admin/editor chrome, safe rendering order, accessibility baseline for shared controls and consent surfaces | Long-lived approved exception unless GDS later formalizes creator-authored experience theming |
 | Slideshow player (`components/slideshow/**`, `/slideshow/**`) | Runtime constraint | Timing-sensitive queue orchestration, fullscreen behavior, and media-first presentation | GDS runtime boundary, `PlaybackSurface` framing, surrounding admin configuration surfaces, visible error/empty states, keyboard-safe exit where applicable | Keep narrowing until only timing-sensitive queue, fullscreen behavior, and media internals remain outside direct package ownership |
-| Guided tour spotlight overlay (`components/tour/**`, `lib/tour/**`) | Package coverage gap | Full-viewport spotlight/backdrop rendering, step sequencing, tooltip position math — no Tour/Spotlight contract or usable positioning primitive exists in `@sovereignsquad/gds-core` 6.3.0 either (only exported overlay primitive is `Tooltip`, a plain hover label) — confirmed still true at 6.3.0, not just stale from the 3.9.0 era | `OverlayManagerProvider` registration for stacking with other overlays, GDS-approved primitives via `components/gds/PublicPrimitives.tsx` for tour controls, keyboard/focus/reduced-motion accessibility baseline | Replace the custom spotlight/backdrop and step engine once GDS publishes a Tour/Spotlight contract |
+| Guided tour spotlight overlay (`components/tour/**`, `lib/tour/**`) | Package coverage gap | Full-viewport spotlight/backdrop rendering, step sequencing, tooltip position math — the premise of this exception ("no Tour/Spotlight contract exists in `@sovereignsquad/gds-core`") is **no longer true**: the installed 6.8.0 exports `GdsGuidedTour`, `GdsTourProvider`, `GdsTourButton`, `GdsTourStep` and `useGdsTour` (`gds_fix_handover.md` item 19 had already flagged the 6.3.0 claim); whether camera's own tour should move onto it is an open decision, so the exception stays until someone makes it | `OverlayManagerProvider` registration for stacking with other overlays, GDS-approved primitives via `components/gds/PublicPrimitives.tsx` for tour controls, keyboard/focus/reduced-motion accessibility baseline | Replace the custom spotlight/backdrop and step engine once GDS publishes a Tour/Spotlight contract |
 
 ### The Google and Facebook sign-in buttons are drawn in the camera app (camera#462)
 

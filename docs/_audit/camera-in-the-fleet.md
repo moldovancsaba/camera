@@ -1,18 +1,21 @@
 # camera in the SEYU fleet
 
 camera is the fan photo-capture app. It runs on Vercel. (It used to be the
-fleet's try-on job producer; that integration is switched off and being removed,
+fleet's try-on job producer; that integration is switched off and has been removed,
+except the guest path that the last phase deletes after the match of 2026-10-16,
 see `docs/TRYON_REMOVED.md`.)
 
 - **camera ↔ messmass** (bidirectional): messmass is master and provisions
   organizations/partners/events INTO camera (`/api/internal/messmass/*`). camera
   also calls messmass OUTBOUND — it pushes natively-created partners to
   `/api/integrations/camera/partners` and mints a cross-app session via
-  `/api/integrations/camera/sso-session` (`lib/messmassClient.ts`). camera is also
+  `/api/integrations/camera/sso-session` (`lib/messmassClient.ts`); it also reads an
+  event's resolved theme (`.../events/[id]/frame-context`) and pushes the totals of an
+  event's tracked short links (`.../events/[id]/link-stats`). camera is also
   the fleet's only email sender (`POST /api/internal/email/send`, used by messmass
   and fanmass with a shared secret).
 - **camera ↔ try-on (removed, issue 557)**: the integration is switched off since
-  2026-09-30 and is being deleted from camera (git tag `tryon-integration-final`,
+  2026-09-30 and is deleted from camera except its guest path (git tag `tryon-integration-final`,
   `docs/TRYON_REMOVED.md`). Its data stays in the database, unreferenced. The
   try-on repository is not touched; a rebuild will be a separate add-on.
 - **camera → image.direct (planned, never live, no longer planned in this form)**:

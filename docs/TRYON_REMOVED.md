@@ -21,9 +21,9 @@ Try-on (a guest picks a garment on the capture page, an AI worker dresses the gu
 |---|---|---|
 | R0 | This inventory, the tag, this document | merged (PR 564) |
 | R1 | Admin: pages, menu, settings panels, admin API routes, tests, action vocabulary. The cross-event photo vetting page moves out of `/admin/tryon/vetting` first (section 6): it is `/admin/vetting` now, the old address and the messmass link to it are redirected | merged (PR 568) |
-| R2 | Server: `lib/tryon`, internal routes, e-mails, share page and download, visibility rule, wall, slideshow clauses, vetting hold, scripts. **Kept for R3 because `POST /api/submissions` (the guest path) still imports it:** `lib/tryon/{enqueue-for-submission, jobs, suits, setup-resolution, prompts, hash, time}`, the test support `sync.fake-db.ts`, `GET /api/tryon/suits` and the suit selector | merged |
-| R3 | Guest path: suit selector, try-on fields of `POST /api/submissions`, journey texts. Not merged until after the match of 2026-10-16 | planned |
-| R4 | Types and indexes of what no code uses any more (the type for stored fields stays), environment variables, remaining docs, board cards. The schema and index parts that the held guest path still needs (`Event.tryOn`, `Submission.tryOnRequest`, the job, setup and garment types, their indexes) go with R3 | merged |
+| R2 | Server: `lib/tryon`, internal routes, e-mails, share page and download, visibility rule, wall, slideshow clauses, vetting hold, scripts. **Kept for R3 because `POST /api/submissions` (the guest path) still imports it:** `lib/tryon/{enqueue-for-submission, jobs, suits, setup-resolution, prompts, hash, time}`, the test support `sync.fake-db.ts`, `GET /api/tryon/suits` and the suit selector | merged (PR 574) |
+| R3 | Guest path: suit selector, try-on fields of `POST /api/submissions`, journey texts. Not merged until after the match of 2026-10-16 | PR 576, open, held |
+| R4 | Types and indexes of what no code uses any more (the type for stored fields stays), environment variables, remaining docs, board cards. The schema and index parts that the held guest path still needs (`Event.tryOn`, `Submission.tryOnRequest`, the job, setup and garment types, their indexes) go with R3 | merged (PR 575) |
 
 ## 2. How to read the old code
 

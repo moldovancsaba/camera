@@ -2,7 +2,7 @@
 
 > **Written before the try-on removal (issue 557, 2026-10-10).** Where this document mentions try-on, it describes the app as it was on its date; the integration has been removed from the app, see [TRYON_REMOVED.md](TRYON_REMOVED.md). Read those places as history.
 
-Status: **plan, decisions confirmed by the owner on 2026-10-06 (below); work packages not started.** Related: `docs/DEFAULT_FRAME_PLAN.md` (the frames), `RUNBOOK.md` ("How the photo is taken, and what is kept").
+Status 2026-10-11: **built and live.** Packages V1 to V10 are merged and the rollout was made on 2026-10-06 (238 of 238 events then; every new event starts with vetting on; RUNBOOK, "Photo vetting"); "inert until V10" below is history. What came later is at the end (marking the people at vetting, the big view). Original status: plan, decisions confirmed by the owner on 2026-10-06 (below); work packages not started. Related: `docs/DEFAULT_FRAME_PLAN.md` (the frames), `RUNBOOK.md` ("How the photo is taken, and what is kept").
 
 ## The request
 
@@ -121,7 +121,7 @@ Epic: [camera#261](https://github.com/moldovancsaba/camera/issues/261). Status o
 | V7 [camera#268](https://github.com/moldovancsaba/camera/issues/268) | **Built, inert until V10 (photos are vetted in the event's Vetting tab, `/admin/events/<id>/vetting`, next to the try-on results: vetting is one place):** Moderation UI for photos, event setting in the editor, roles (event managers and above) | V6 | GDS components |
 | V8 [camera#269](https://github.com/moldovancsaba/camera/issues/269) | **Built, inert until V10:** Public pages: share page states (waiting / not approved / approved), `noindex`, download, share token | V1, V5 | |
 | V9 [camera#270](https://github.com/moldovancsaba/camera/issues/270) | **Built, inert until V10:** Feeds: savetheworld wall and `publish-selfies`, fanmass, slideshows, emails, the manual email script, admin badges | V1, V6 | |
-| V10 [camera#271](https://github.com/moldovancsaba/camera/issues/271) | **Tool built; the runs wait for the owner's test and go-ahead:** Rollout: dry runs, owner review, enable by default, RUNBOOK, release notes, first-day checks | all | |
+| V10 [camera#271](https://github.com/moldovancsaba/camera/issues/271) | **Done (run on 2026-10-06, RUNBOOK "Turning photo vetting on"); the text that follows is the original scope:** Rollout: dry runs, owner review, enable by default, RUNBOOK, release notes, first-day checks | all | |
 
 Testing: unit tests for the rule and the event default; route tests for the pending save and the approval; a browser run of the
 whole journey (capture, waiting, approve, share page, email) on the viewport matrix; a check per surface that a pending photo
@@ -158,5 +158,5 @@ The owner's sketch (six screens, VETTING 1 to 6): a vetting view where the photo
 1. **Is a typed email enough, or must it be verified?** The existing "who are you" page offers a typed name and email ("pseudo
    registration") and Google / Facebook login through SSO. A typed address is unverified: a guest could type someone else's address and
    that person would get the approval or rejection email. Recommendation: accept a typed email as the existing page does, send only
-   short fixed-text emails, rate-limit them, and add a verification step later if abuse shows up. (Owner's answer: pending.)
+   short fixed-text emails, rate-limit them, and add a verification step later if abuse shows up. (Owner's answer: not recorded. It works that way today: a typed email is accepted without verification, and ticket #264 was closed on 2026-10-10 on the owner's instruction "close what can be closed" (answer 313) with that behaviour live. Whoever can, record yes or no here.)
 2. The rejection email follows a literal reading of answer 6; say so if no email should go out.

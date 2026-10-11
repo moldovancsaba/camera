@@ -1,8 +1,9 @@
 /**
  * Removes the stored image files of a submission that is being deleted for good (camera#211).
  *
- * Deleting only the database row left every image reachable at its URL, which matters more now
- * that a second, wider full-frame original is stored per fan (camera#210). Order and failure
+ * Deleting only the database row left every image reachable at its URL, which mattered more once a
+ * second, wider full-frame original was stored per fan (camera#210; the page has not uploaded one since
+ * camera#257, but older submissions still carry it, so it is still deleted here). Order and failure
  * policy, in one place:
  *
  *  1. Files first, row second. A failed Blob delete throws 502 and the row stays, so the caller

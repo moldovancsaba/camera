@@ -303,7 +303,7 @@ export async function getSession(): Promise<Session | null> {
     }
 
     // Return session without modifying cookies
-    // Token refresh and sliding expiration happen in middleware or API routes
+    // There is no token refresh and no sliding expiration anywhere (see the header): the session ends 30 days after it was created
     return session;
     
   } catch (error) {

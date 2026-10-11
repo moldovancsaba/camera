@@ -1,7 +1,7 @@
 /**
  * Backfill utility that generates a smaller `previewImageUrl` for existing submissions
- * that only have a full-size `imageUrl`/`finalImageUrl`. Grid/list pages (greatest-hits,
- * admin galleries, profile, etc.) prefer `previewImageUrl` when set, so this makes those
+ * that only have a full-size `imageUrl`/`finalImageUrl`. Grid/list pages (admin galleries,
+ * profile, etc.) prefer `previewImageUrl` when set, so this makes those
  * already-uploaded photos load fast without waiting for a future re-upload.
  *
  * Usage:

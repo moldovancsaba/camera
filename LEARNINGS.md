@@ -1331,4 +1331,21 @@ _Use this template for new learnings:_
 
 ---
 
+### [FRONT-019] The journey pages could be pinch-zoomed: the lock existed, but only the camera steps mounted it — 2026-10-09T00:00:00.000Z
+
+**Issue**: On a phone a pinch zoomed the welcome, Who-are-you, CTA and restart pages (camera#490, owner report 208). The zoom lock of camera#222 (`AppShellLock`) had always been there, but it was only mounted around the camera steps; those four pages are rendered by an earlier branch of the capture page that never mounted it.
+
+**Context**:
+- iOS Safari ignores `user-scalable=no` for the page and fires the non-standard `gesturestart`, `gesturechange` and `gestureend` events, which honour `preventDefault`; the lock cancels those and sets `touch-action` for the other browsers.
+- The full lock also stops scrolling (`html[data-app-lock]`), which these pages cannot have: a form or a picture can be taller than a small phone.
+- The consent page is a text to read; the owner decided with camera#224 that it stays zoomable, because enlarging a text is a legibility need.
+
+**Solution**: `AppShellLock` takes `zoomOnly`, which sets `html[data-app-zoom-lock]` (no pinch, the page still scrolls) and cancels the same gesture events; the capture page mounts it for the journey pages. The rule of which page is locked is one pure function, `phasePageLock(pageType)` in `lib/capture/page-lock.ts` (`accept` is `none`, every other page `zoom`), with a unit test.
+
+**Key Decisions**: a lock for a kind of screen belongs where the screens are drawn, so a page type added later is locked by default and the consent page is the one named exception; lock the zoom without locking the scroll. Not confirmed on a phone: a desktop browser cannot pinch, so the issue stays open until the owner's phone check (CLAUDE.md section 7).
+
+**Last Updated**: 2026-10-09T00:00:00.000Z
+
+---
+
 **Note**: This document should be updated immediately when issues are encountered and resolved. It serves as the institutional memory of the project, preventing repeated mistakes and preserving the reasoning behind key decisions.

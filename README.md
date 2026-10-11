@@ -186,7 +186,7 @@ See [TECH_STACK.md](TECH_STACK.md).
 - `slideshow_layouts` — multi-cell videowall configs
 - `landing_pages` — reusable experience surfaces
 - `partner_user_access` — partner-scoped app assignments
-- `leather_suits`, `tryon_jobs`, `tryon_setups`, `camera_setup_preferences`, `tryon_moderation_events`, `tryon_worker_heartbeats` — collections of the removed try-on integration; their data is kept and nothing reads it (see [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md))
+- `leather_suits`, `tryon_jobs`, `tryon_setups`, `camera_setup_preferences`, `tryon_moderation_events`, `tryon_worker_heartbeats` — collections of the removed try-on integration; their data is kept and nothing reads it except the guest path that the last removal phase (R3, held until after the match of 2026-10-16) still has to delete (see [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md))
 - `admin_settings` — global admin-preference documents, one per `settingId`, not per-admin-user (the `card-display` document of the removed try-on moderation card is still there, unread)
 
 See [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -277,7 +277,7 @@ Canonical docs:
 - [docs/SLIDESHOW_LOGIC.md](docs/SLIDESHOW_LOGIC.md)
 - [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
 - [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md) — the removed try-on integration: what existed, what it left, what a rebuild needs
-- Records of the removed integration (banner on each): [docs/TRYON_LOW_LEVEL_DESIGN.md](docs/TRYON_LOW_LEVEL_DESIGN.md), [docs/TRYON_ANALYTICS.md](docs/TRYON_ANALYTICS.md), [docs/IMAGE_DIRECT_INTEGRATION.md](docs/IMAGE_DIRECT_INTEGRATION.md)
+- Records of the removed integration (banner on each): [docs/TRYON_ARCHITECTURE.md](docs/TRYON_ARCHITECTURE.md), [docs/TRYON_LOW_LEVEL_DESIGN.md](docs/TRYON_LOW_LEVEL_DESIGN.md), [docs/TRYON_OPERATIONS.md](docs/TRYON_OPERATIONS.md), [docs/TRYON_ANALYTICS.md](docs/TRYON_ANALYTICS.md), [docs/IMAGE_DIRECT_INTEGRATION.md](docs/IMAGE_DIRECT_INTEGRATION.md)
 - [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md)
 
 Tracker handover:

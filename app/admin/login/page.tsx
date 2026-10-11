@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
     const check = async () => {
       // WHAT: an error/message param always wins over the "already signed
       //     in" fast path below -- never fetched or overridden by it.
-      // WHY: this page can be reached with ?error=no_access after the edge
+      // WHY: this page can be reached with ?error=no_access after the proxy
       //     or the admin layout already decided this exact session
       //     shouldn't be on /admin. If the "already signed in" check below
       //     ran first and disagreed (e.g. from a stale cached cookie
