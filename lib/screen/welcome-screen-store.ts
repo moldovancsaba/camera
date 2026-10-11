@@ -63,9 +63,6 @@ export async function ensureWelcomeScreen(db: Db, event: Document, deps: Welcome
   if (!parsed.ok || !parsed.value) return { ok: false, reason: 'The default slideshow has no screen design.' };
   const design = parsed.value;
 
-  const overlay = await deps.fetchImage(design.overlayImageUrl);
-  if (!overlay) return { ok: false, reason: 'The overlay picture of the screen design could not be fetched.' };
-
   const theme = await loadEventTheme(db, event);
   const colours = { background: theme.background, accent: theme.buttonBackground };
   const font = await deps.resolveFont({ fontFamily: design.fontFamily ?? theme.font.family, fontSource: design.fontFamily ? 'google' : theme.font.source, fontFile: design.fontFamily ? null : theme.font.file });
@@ -81,6 +78,10 @@ export async function ensureWelcomeScreen(db: Db, event: Document, deps: Welcome
     await storePick(db, event, first?.kind === 'selfie' ? first.id : null, deps.now());
     return { ok: true, url: stored.url, created: false };
   }
+
+  // The overlay is fetched only when something is drawn (since the automatic redraw, issue 327, asks after every change of a source, "nothing changed" must not cost a network call).
+  const overlay = await deps.fetchImage(design.overlayImageUrl);
+  if (!overlay) return { ok: false, reason: 'The overlay picture of the screen design could not be fetched.' };
 
   const window = await fetchWindow(plan, deps);
   // The key says what was really drawn: when the first sample selfie could not be fetched, the next one is what is in the picture (and becomes the pick).

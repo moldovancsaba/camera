@@ -29,6 +29,7 @@ import { parseCameraMode } from '@/lib/camera/mode';
 import { parseGalleryConsent } from '@/lib/events/gallery-consent';
 import { parseCheckboxSettings } from '@/lib/events/checkbox-settings';
 import { parseLogoDefaults, type LogoDefault } from '@/lib/library/logos';
+import { scheduleWelcomeRedrawForPartner } from '@/lib/screen/welcome-redraw';
 
 export const GET = withErrorHandler(async (
   _request: NextRequest,
@@ -230,6 +231,9 @@ export const PATCH = withErrorHandler(async (
     if (defaultFrames !== undefined) cascadeUpdates.defaultFrames = defaultFrames;
     if (logoDefaults !== undefined) cascadeUpdates.defaultLogos = logoDefaults;
     cascadeResult = await updateChildEventsFromPartner(existingPartner.partnerId, cascadeUpdates);
+    // The colours reach the partner's events that follow it, and their welcome page screens are drawn in them (issue 327): the ones that have the picture are drawn again after the response, a few at a time
+    // (lib/screen/welcome-redraw.ts). Only when the default colours really changed.
+    if (brandDefaults?.ok && JSON.stringify(existingPartner.defaultBrandColors ?? null) !== JSON.stringify(brandDefaults.value ?? null)) scheduleWelcomeRedrawForPartner(existingPartner.partnerId, 'partner-colours');
   }
 
   return apiSuccess({
