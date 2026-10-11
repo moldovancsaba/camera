@@ -1,12 +1,19 @@
 # Handover
 
-**Version**: 12.3.41
-**Last Updated**: 2026-10-09
+**Version**: 12.3.42
+**Last Updated**: 2026-10-11
 
 `RELEASE_NOTES.md` is kept current on every release and is the detailed record;
 this file is the short current-state summary. Previous rewrite: 2026-08-17
 (v2.23.0 era); everything from v12.2.0 to v12.3.37 is in `RELEASE_NOTES.md`.
 Open work is tracked on the GitHub project board, not in this file (next section).
+
+## Status 2026-10-11 (v12.3.42)
+
+- **Version 12.3.42 (fleet release 2026-10-11):** all five apps carry it; the detail is in `RELEASE_NOTES.md` under "v12.3.42" and the dated "Unreleased" entries below it. Nothing the guest meets changed for an existing event; the journey recording and the stop of storing IP addresses with photos are the two things that touch the capture path, and both are live (a read-only look at the MTK x Vasas event after each deployment showed it unchanged).
+- **Held until after the match on 2026-10-16:** try-on removal phase R3 (PR 576, the guest path), `ENFORCE_STANDARD_REQUIREMENTS` (issue 578), any change of the capture path or the giant screen.
+- **How pull requests are merged, and why some were refused:** `docs/PR_AND_MERGE_PLAYBOOK.md` and CLAUDE.md sections 3, 5 and 10. A branch is brought up to date with `npm run sync:main` (never in a primary checkout).
+- **Owner steps still open:** delete the eight Vercel variables of the removed integration (`docs/TRYON_REMOVED.md`, 3.11); `npm run db:ensure-indexes` once; set `CRON_SECRET` (issue 529; both crons answer 403 until then); decide about the IP addresses and user agents stored with earlier photos; align the privacy notice with `docs/PRIVACY_DATA.md`; the Vercel dashboard Node setting (issue 182).
 
 ## Status 2026-10-10 (v12.3.41)
 
