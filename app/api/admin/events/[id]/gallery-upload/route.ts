@@ -161,10 +161,8 @@ export const POST = withErrorHandler(
       hiddenFromPartner: false,
       hiddenFromEvents: [] as string[],
       metadata: {
-        device: request.headers.get('user-agent'),
-        ip:
-          request.headers.get('x-forwarded-for') ||
-          request.headers.get('x-real-ip'),
+        // No device string and no IP address of the editor who uploads (decision 243, issue 521): the photo was not taken by a user, so there is no user device to describe, and an address of
+        // a person is not kept for nothing. `adminUploadedBy` says who uploaded it.
         finalFileSize: framed?.upload.fileSize ?? uploadResult.fileSize,
         finalWidth: framed?.upload.width ?? (imageWidth || 1920),
         finalHeight: framed?.upload.height ?? (imageHeight || 1080),

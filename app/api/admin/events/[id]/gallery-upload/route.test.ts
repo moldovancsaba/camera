@@ -93,3 +93,20 @@ test('when the frame cannot be fetched the photo is still added, unframed, and t
   assert.match(String(data.frameNote), /could not be added/);
   assert.equal(w.uploads.length, 1);
 });
+
+test('an editor’s upload stores no IP address and no device string, whatever the request carried (decision 243), and says who uploaded it', async (t) => {
+  const w = world(t);
+  const { POST } = await importRoute('no-address');
+  const form = new FormData();
+  form.append('file', new File([new Uint8Array(await photoOf())], 'a.png', { type: 'image/png' }));
+  form.append('imageWidth', '600');
+  form.append('imageHeight', '400');
+  const res = await POST(new NextRequest('http://localhost/api/admin/events/x/gallery-upload', { method: 'POST', body: form, headers: { 'x-forwarded-for': '203.0.113.40', 'x-real-ip': '203.0.113.41', 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15' } }), { params: Promise.resolve({ id: String(EVENT_ID) }) });
+  assert.equal(res.status, 201);
+  const stored = w.seeded.data.submissions[0] as { metadata: Record<string, unknown> };
+  for (const gone of ['ip', 'ipAddress', 'device', 'deviceInfo']) assert.equal(gone in stored.metadata, false, `metadata.${gone}`);
+  assert.equal(JSON.stringify(stored).includes('203.0.113'), false);
+  assert.equal(JSON.stringify(stored).includes('Macintosh'), false);
+  assert.equal(stored.metadata.adminUploadedBy, 'u1');
+  assert.equal(stored.metadata.adminGalleryUpload, true);
+});
