@@ -33,6 +33,7 @@
   {"path": "/api/admin/follow-up-emails", "methods": ["GET", "POST"], "file": "app/api/admin/follow-up-emails/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/frame-backfill", "methods": ["POST"], "file": "app/api/admin/frame-backfill/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/frame-slots", "methods": ["GET", "POST", "PUT"], "file": "app/api/admin/frame-slots/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/admin/image-safety", "methods": ["GET", "POST"], "file": "app/api/admin/image-safety/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/media-health", "methods": ["GET", "POST"], "file": "app/api/admin/media-health/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/migrate-frames", "methods": ["POST"], "file": "app/api/admin/migrate-frames/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/nav-context", "methods": ["GET"], "file": "app/api/admin/nav-context/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},

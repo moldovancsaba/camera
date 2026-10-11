@@ -14,6 +14,8 @@ const ALLOWED: Record<string, string> = {
   'lib/db/schemas.ts': 'type definition',
   'lib/library/fake-db.ts': 'the in-memory test database; a comment names the field as an example of a positional update',
   'lib/storage/image-copies.ts': 'records and reads the copies; server only',
+  'app/api/admin/image-safety/route.ts': 'admin API (global admins only): the Image safety card; a comment names the field, the answers carry counts, ids and public addresses, never a delete link or the private file address',
+  'lib/storage/image-safety.ts': 'reads the copies to count and to make the missing ones (admin API only); its answers name the private crop by photo id, never by address',
   'lib/photo-vetting/review.ts': 'names the dependency that records the copies after an approval; reads no copy',
   'lib/submissions/delete-files.ts': 'reads the addresses and delete links only to delete the files with the submission; returns counts and public ImgBB addresses, never a delete link',
 };

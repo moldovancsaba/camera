@@ -6,6 +6,7 @@ import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import ScreenPicturesCard from '@/components/admin/ScreenPicturesCard';
 import MediaHealthCard from '@/components/admin/MediaHealthCard';
+import ImageSafetyCard from '@/components/admin/ImageSafetyCard';
 import WelcomeScreenBackfillCard from '@/components/admin/WelcomeScreenBackfillCard';
 import SlideshowsInventoryList, {
   type SerializedSlideshowRow,
@@ -161,6 +162,7 @@ export default async function SlideshowsInventoryPage({
       dbError={dbError}
     >
       <MediaHealthCard />
+      <ImageSafetyCard />
       <ScreenPicturesCard />
       <WelcomeScreenBackfillCard />
       <SlideshowsInventoryList slideshows={slideshowRows} />
