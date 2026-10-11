@@ -30,7 +30,8 @@ export interface FlowPosition {
 /** The step of the funnel the user is on, or null for a place that is not one (a page type the funnel does not name, the share step before the save). */
 export function stepKeyOf(position: FlowPosition): StepKey | null {
   if (position.flowPhase === 'thankyou') return 'thank-you';
-  if (position.flowPhase === 'onboarding' || position.flowPhase === 'presubmit') return position.pageType ? (PAGE_STEP[position.pageType] ?? null) : null;
+  // A page type is a word of the editor's page list: only an own key of the table is a step (never `constructor` or `__proto__`).
+  if (position.flowPhase === 'onboarding' || position.flowPhase === 'presubmit') return position.pageType && Object.prototype.hasOwnProperty.call(PAGE_STEP, position.pageType) ? PAGE_STEP[position.pageType] : null;
   switch (position.step) {
     case 'select-frame':
       return 'frame';

@@ -14,6 +14,7 @@ test('the pages before the photo are the steps of the funnel by their type', () 
   assert.equal(at('presubmit', 'who-are-you'), 'who-are-you', 'the Who-are-you page between the photo and the save is the same step');
   assert.equal(at('onboarding', 'take-photo'), null);
   assert.equal(at('onboarding', null), null);
+  for (const odd of ['constructor', '__proto__', 'toString', 'hasOwnProperty', '']) assert.equal(at('onboarding', odd), null, odd);
 });
 
 test('the capture steps map to the funnel, and the preview is "saved" only once the photo is saved', () => {
