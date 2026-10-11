@@ -55,6 +55,7 @@
   {"file": "docs/PHOTO_VETTING_PLAN.md", "title": "Photo vetting by default: plan"},
   {"file": "docs/PRIVACY_DATA.md", "title": "What camera stores about a user, and for how long"},
   {"file": "docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md", "title": "Profiles across events: purpose and consent (owner decisions 2026-10-10)"},
+  {"file": "docs/PR_AND_MERGE_PLAYBOOK.md", "title": "Pull requests and merges in a busy repository (what failed on 2026-10-10 and 11, and the rules that follow)"},
   {"file": "docs/SCREEN_DESIGN.md", "title": "Giant-screen design (slideshow screen design)"},
   {"file": "docs/SHORT_LINKS.md", "title": "Tracked short links (camera#320)"},
   {"file": "docs/SLIDESHOW_LOGIC.md", "title": "Slideshow Logic"},
