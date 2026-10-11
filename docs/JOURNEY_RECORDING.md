@@ -23,7 +23,7 @@ One record is a **name** from a fixed list, a **key** from that name's fixed lis
 | `journey.resume` | none | the page opened again after a sign-in (`?resume=true`) | the page; not counted as a visit |
 | `step.reach` | `welcome`, `consent`, `who-are-you`, `cta`, `restart`, `frame`, `layout`, `message`, `camera`, `reframe`, `saved`, `thank-you` | a step reached for the first time in the visit | the page |
 | `consent.shown`, `consent.accept` | `page` (the consent page) or `box` (the box on the Who-are-you page) | once per visit and form | the page |
-| `camera.permission` | `granted`, `denied`, `unavailable` | the live camera of a desktop was asked for | the camera component |
+| `camera.permission` | `granted`, `denied`, `unavailable` | the live camera of a desktop was asked for (one record of each kind per visit) | the camera component |
 | `photo.taken` | `system` (the phone's own camera app), `still`, `frame` | a photo was taken | the page |
 | `photo.retake` | none | back from the move-and-zoom step to the camera | the page |
 | `photo.save` | `ok`, `failed` | the save answered | the page |
@@ -63,7 +63,7 @@ Defined in `lib/analytics/journey.ts`; the same numbers feed the CSV export and 
 - **Visits** = `journey.start`: one load of the capture page with the event, not a person. The same user opening the link twice is two visits; a return from a sign-in is not one.
 - **Saved a photo** = `journey.complete`: visits that saved at least one photo; **completion rate** = saved over visits.
 - **Steps reached** = `step.reach` per step, each visit once per step.
-- **Camera denied / granted / no camera** = `camera.permission`. **Only the live camera of a desktop asks**; a phone takes the photo with its own camera app and asks nothing on the page, so a phone never appears here.
+- **Camera denied / granted / not available** = `camera.permission` (not available: no camera, in use by another program, or it failed). **Only the live camera of a desktop asks**; a phone takes the photo with its own camera app and asks nothing on the page, so a phone never appears here.
 - **Retakes** = `photo.retake`; per photo taken = retakes over `photo.taken`.
 - **Consent left** = shown minus accepted, for the consent page and for the box on the Who-are-you page separately, never below zero.
 - **Shares** = `share.click`; **photo page views** = `share.view`; **downloads** = `download`.

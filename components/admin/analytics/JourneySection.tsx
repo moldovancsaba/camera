@@ -81,7 +81,7 @@ function Recorded({ journey }: { journey: JourneySummary }) {
           items={[
             { label: 'Camera permission granted', value: formatCount(camera.granted) },
             { label: 'Camera permission denied', value: formatCount(camera.denied) },
-            { label: 'No camera or in use', value: formatCount(camera.unavailable) },
+            { label: 'Camera not available', value: formatCount(camera.unavailable), description: 'No camera, in use by another program, or it failed' },
             { label: 'Photos taken', value: formatCount(photos.taken), description: 'Counted on the page, before saving' },
             { label: 'Saved', value: formatCount(saves.ok) },
             { label: 'Save failed', value: formatCount(saves.failed), description: 'The user saw an error and could try again' },

@@ -155,7 +155,7 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport, jour
     add('journey', 'median seconds to the first saved photo (last 30 days)', journey.medianCompleteSeconds);
     add('journey camera', 'permission granted', journey.camera.granted);
     add('journey camera', 'permission denied', journey.camera.denied);
-    add('journey camera', 'no camera or in use', journey.camera.unavailable);
+    add('journey camera', 'camera not available (none, in use or failed)', journey.camera.unavailable);
     add('journey photos', 'taken', journey.photos.taken);
     tallies('journey photos taken with', journey.photos.byMethod);
     add('journey photos', 'retakes', journey.photos.retakes);

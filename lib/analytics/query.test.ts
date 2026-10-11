@@ -12,7 +12,7 @@ test('the query: the view, the days, the clock and the event, each checked; anyt
 test('the views are the tabs of the page', () => {
   assert.ok(isAnalyticsView('emails'));
   assert.ok(!isAnalyticsView('tryon'), 'the Try-on tab went with the try-on integration (issue 557)');
-  assert.ok(!isAnalyticsView('journey'));
+  assert.ok(isAnalyticsView('journey'), 'the Journey tab (issue 521, phase 2)');
   assert.ok(!isAnalyticsView(undefined));
 });
 
