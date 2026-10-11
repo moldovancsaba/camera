@@ -130,11 +130,13 @@ test('a body over 4 KB answers 413, by its declared length and by its real lengt
 
 test('it is rate limited per IP address: a flood is answered 429, another address is not affected', async (t) => {
   setup(t);
+  // The clock stands still, so the token bucket does not refill while the flood is sent (a slow machine would otherwise refill it and make the count of refused requests depend on its speed).
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const { POST } = await load('rate');
   const flood = '198.51.100.250';
-  let refused = 0;
   const over = 20;
+  let refused = 0;
   for (let i = 0; i < RATE_LIMITS.JOURNEY.max + over; i += 1) if ((await POST(request(batch([['photo.retake', null, 1]]), {}, flood))).status === 429) refused += 1;
-  assert.ok(refused >= over - 5 && refused <= over + 5, `refused ${refused}`);
+  assert.equal(refused, over, 'exactly the requests over the cap');
   assert.equal((await POST(request(batch([['photo.retake', null, 1]]), {}, '198.51.100.251'))).status, 204);
 });
