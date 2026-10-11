@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — CI: the workflow actions move to the Node 24 versions (camera#597; owner answer 361, "deliver what we can do")
+
+- **Changed:** `actions/checkout`, `actions/setup-node` and `actions/upload-artifact` in `.github/workflows/ci.yml` go from v4 to v7, so the Verify job no longer prints the Node 20 deprecation notice. The same change is made in messmass, fanmass, try-on and savetheworld (fanmass and try-on also `actions/setup-python` v5 to v7). No product change; the pull request's own Verify run is the test.
+- **Not done:** `ubuntu-latest` becomes Ubuntu 26 on 2026-10-19; the workflow is not pinned and not tried on it yet, so the first Verify run after that date is the first run on the new image (if it fails for the image, pin `runs-on: ubuntu-24.04` until it is understood).
+
 ## v12.3.42 — fleet release 2026-10-11 (owner instruction "Fix all and also document", 2026-10-11)
 
 - **Version:** camera, messmass, fanmass, try-on and savetheworld rise to 12.3.42 in one coordinated change (`docs/_audit/fleet-version-policy.md` in messmass). Each "Unreleased" entry below, down to the v12.3.41 heading, is part of this release. The headline items since 12.3.41: journey recording and no IP address stored with a photo (analytics phase 2), a shown/required setting for every kind of checkbox, the public gallery permission as a setting, the four-way camera mode, the removal of the try-on integration from the app (`docs/TRYON_REMOVED.md`; the guest-path phase, PR 576, is held until after the match), outbound deadlines, the follow-up e-mail job (built, dormant), a dependency audit, and the parallel-branch tooling with its playbook.
