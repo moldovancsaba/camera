@@ -40,13 +40,13 @@ test('with a theme the email is drawn in the event\'s colours with a button to t
 const theme = () => resolveEventTheme({ context: nativeFrameContext({ eventName: 'Derby', partnerName: 'Club', partnerLogoUrl: null }, '2026-10-06T12:00:00.000Z') });
 const defaultsOnly = { recipientEmail: 'ann@example.com', recipientName: 'Ann', eventName: 'Derby', shareUrl: 'https://camera.test/share/abc123', termsUrl: 'https://seyuselfies.com/en/policies/' };
 
-test('in English the default email is word for word what it always was, and the button says Open your photo', async (t) => {
+test('in English the default email is what it always was except that the link reads "Visit your selfie" (issue 382), and the button says Open your photo', async (t) => {
   const { sent, send } = await setup(t);
   await send({ ...defaultsOnly, theme: theme() });
   assert.equal(sent[0].subject, 'Your photo from Derby');
   assert.equal(
     sent[0].text,
-    'Hi Ann,\n\nThank you for enjoying the Derby experience.\n\nYour photo is ready. Don\'t forget to share it on your social media!\nhttps://camera.test/share/abc123\n\nAI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.\n\nWishing you an unforgettable time at Derby.\n\nPolicies and General Terms and Conditions:\nhttps://seyuselfies.com/en/policies/'
+    'Hi Ann,\n\nThank you for enjoying the Derby experience.\n\nYour photo is ready. Don\'t forget to share it on your social media!\nVisit your selfie (https://camera.test/share/abc123)\n\nAI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.\n\nWishing you an unforgettable time at Derby.\n\nPolicies and General Terms and Conditions:\nhttps://seyuselfies.com/en/policies/'
   );
   assert.ok(sent[0].html.includes('>Open your photo</a>'));
 });

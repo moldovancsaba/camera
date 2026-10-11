@@ -9,8 +9,23 @@ import {
   emailTemplateIn,
 } from './submission-template-defaults';
 
-// The English texts as they were written in this file before the language existed: they must not change by a byte.
+// The English texts: they must not change by a byte, except the link line of the first one (issue 382: "[Visit your selfie]({link})").
 const ENGLISH_BODY = `Hi {name},
+
+Thank you for enjoying the {event} experience.
+
+Your photo is ready. Don't forget to share it on your social media!
+[Visit your selfie]({link})
+
+AI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.
+
+Wishing you an unforgettable time at {event}.
+
+Policies and General Terms and Conditions:
+{terms}`;
+
+// The text before issue 382 (the whole address on its own line): an event may still hold it as if it were its own.
+const LEGACY_ENGLISH_BODY = `Hi {name},
 
 Thank you for enjoying the {event} experience.
 
@@ -63,6 +78,14 @@ test('a stored template is sent as written in English; in Hungarian a stored Eng
   assert.equal(emailTemplateIn('hu', 'Your {event} photo!'), 'Your {event} photo!', 'an English text the editor wrote is the editor’s own');
   assert.equal(emailTemplateIn('hu', null), null);
   assert.equal(emailTemplateIn('hu', ''), null);
+});
+
+test('a stored copy of the replaced English default follows the new default in English and in Hungarian; an own text stays (issue 382)', () => {
+  assert.equal(emailTemplateIn('en', LEGACY_ENGLISH_BODY), ENGLISH_BODY);
+  assert.equal(emailTemplateIn('en', LEGACY_ENGLISH_BODY.replace(/\n/g, '\r\n')), ENGLISH_BODY, 'line ends saved by a browser are the same text');
+  assert.equal(emailTemplateIn('hu', LEGACY_ENGLISH_BODY), emailDefaults('hu').body);
+  assert.equal(emailTemplateIn('en', LEGACY_ENGLISH_BODY.replace('Hi {name}', 'Dear {name}')), LEGACY_ENGLISH_BODY.replace('Hi {name}', 'Dear {name}'), 'an edited copy is the editor’s own');
+  assert.ok(emailDefaults('en').body.includes('[Visit your selfie]({link})') && emailDefaults('hu').body.includes('[Nézd meg a szelfidet]({link})'));
 });
 
 test('a wording written for the partner or the event replaces the default text, the others stay', async () => {
