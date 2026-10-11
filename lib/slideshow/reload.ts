@@ -25,3 +25,24 @@ export function reloadReason(input: {
   if (input.now - input.openedAt >= RELOAD_EVERY_MS) return 'scheduled';
   return null;
 }
+
+/**
+ * Why a reload that is due is held back for now (camera#476, step S8b; the owner's rule: the live screen is never cut, and never sent to a page that cannot load).
+ *
+ * - `offline`: the browser says it has no network. A reload then would not bring the show back, it would show the browser's own error page, and a screen on a wall has
+ *   nobody to press anything. (`navigator.onLine` is only trusted when it says offline.) Held for the scheduled reload and for the admin's.
+ * - `next picture not ready` (the scheduled reload only): the next picture of the queue is not loaded yet, so after the reload the show would have to start from nothing on a
+ *   link that is already slow. The admin's own request is not held for this: it is what is pressed when the screen is in trouble.
+ *
+ * There is no "during a fade" hold on purpose: the reload runs at the slide boundary, a whole hold after the picture appeared, so a fade shorter than the hold is over; a fade as
+ * long as the hold would be "in progress" at every boundary and the reload would never come.
+ *
+ * A held reload is not given up: the reason stays due and the next slide boundary asks again. Pure, so it is unit-tested.
+ */
+export type ReloadHold = 'offline' | 'next picture not ready';
+
+export function reloadHeldBy(reason: ReloadReason, state: { online: boolean; nextReady: boolean }): ReloadHold | null {
+  if (!state.online) return 'offline';
+  if (reason === 'scheduled' && !state.nextReady) return 'next picture not ready';
+  return null;
+}
