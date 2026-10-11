@@ -62,6 +62,8 @@ import { viewsOverride } from '@/lib/camera/view';
 import { captureSettingsOf, type CameraMode } from '@/lib/camera/mode';
 import { pickRandom } from '@/lib/slots/resolve';
 import { detectTouchPrimaryDevice } from '@/lib/camera/constraints';
+import { journey } from '@/lib/journey/client';
+import { useJourneyRecorder } from '@/lib/journey/useJourneyRecorder';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -377,6 +379,21 @@ export default function EventCapturePage({
       : t('flow.shareCaption.plain');
   const eventButtonSize = normalizeEventButtonSize(event?.visualSettings?.buttonSize);
 
+  // The anonymous journey recording (issue 521, phase 2, docs/JOURNEY_RECORDING.md): the hook reads where the user is and records the steps. It starts nothing unless the event answer said the
+  // recording is on (the owner's kill switch), it never waits and never throws, and it cannot change what this page does.
+  const [journeyOn, setJourneyOn] = useState(false);
+  useJourneyRecorder({
+    enabled: !isLoading && journeyOn,
+    eventId,
+    flowPhase,
+    pageType: flowPhase === 'capture' ? null : (flowPhase === 'onboarding' ? onboardingPages : flowPhase === 'presubmit' ? presubmitPages : thankYouPages)[currentPageIndex]?.pageType ?? null,
+    step,
+    acceptanceBox: Boolean(acceptanceBox),
+    consentGiven: collectedData.consents.some((consent) => consent.pageType === 'accept'),
+    captureMethod,
+    saved: Boolean(savedSubmissionId),
+  });
+
   // The guided tour is off by design; only an event that turns it on gets it (camera#356).
   const tourEnabled = event?.tourEnabled === true;
   const selectFrameTour = useTourController('capture:select-frame:v1', getCaptureSelectFrameSteps(language), {
@@ -516,6 +533,9 @@ export default function EventCapturePage({
           effectiveAcceptanceRequired: eventData.effectiveAcceptanceRequired !== false,
         });
         
+        // The owner's kill switch of the journey recording (issue 521, phase 2): the page records nothing unless the answer says true.
+        setJourneyOn(eventData.journeyRecording === true);
+
         // Fetch logos for loading-capture and onboarding-thankyou scenarios
         try {
           const logoResponse = await fetch(`/api/events/${eventId}/logos`);
@@ -1011,6 +1031,7 @@ export default function EventCapturePage({
         throw new Error(t('flow.noSubmissionId'));
       }
       setSavedSubmissionId(submissionId);
+      journey.saved(true);
       setHasFinalizedSubmissionEmail(false);
       // A photo of a vetted event is saved and waits for approval: no share link yet, the guest gets it by email.
       if ((data.data ?? data).pending === true) {
@@ -1033,6 +1054,7 @@ export default function EventCapturePage({
       notifyCapture('success', finalSuccessMessage);
     } catch (error: unknown) {
       console.error('Error saving submission:', error);
+      journey.saved(false);
       // The editor's own save-error text keeps its way (its ": Please try again." ending is dropped); the default is the dictionary's "Failed to save photo".
       const saveFailed = errorSaveMessage === t('flow.errorSave') ? t('flow.saveFailedPrefix') : errorSaveMessage.replace(': Please try again.', '');
       notifyCapture('error', `${saveFailed}: ${errorText(language, getErrorMessage(error, language))}`);
@@ -1121,6 +1143,7 @@ export default function EventCapturePage({
 
   const handleCopyLink = async () => {
     if (!shareUrl) return;
+    journey.record('share.click', 'copy');
 
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -1156,6 +1179,7 @@ export default function EventCapturePage({
     }
 
     if (url) {
+      journey.record('share.click', platform);
       window.open(url, '_blank', 'width=600,height=400');
     }
   };

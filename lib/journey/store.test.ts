@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
-import { ObjectId } from 'mongodb';
+import { ObjectId, type Db } from 'mongodb';
 import { fakeDb } from '@/lib/library/fake-db';
 import { JOURNEY_RETENTION_SECONDS } from '@/lib/db/ensure-indexes';
 import type { JourneyBatch, JourneyEvent } from './events';
@@ -119,4 +119,10 @@ test('recordServerJourney: the share page view and the download are recorded aga
 test('the day is the UTC day', () => {
   assert.equal(dayOf(new Date('2026-10-16T23:59:59.000Z')), '2026-10-16');
   assert.equal(dayOf(new Date('2026-10-17T00:00:00.000Z')), '2026-10-17');
+});
+
+test('recordServerJourney never throws: a database that fails on any call changes nothing for the page or the download', async () => {
+  const db = { collection: () => ({ findOne: async () => { throw new Error('down'); }, bulkWrite: async () => { throw new Error('down'); }, insertMany: async () => { throw new Error('down'); }, createIndex: async () => { throw new Error('down'); } }) } as unknown as Db;
+  await assert.doesNotReject(recordServerJourney(db, UUID, 'download', NOW));
+  await assert.doesNotReject(recordServerJourney(db, MONGO_ID, 'share.view', NOW));
 });

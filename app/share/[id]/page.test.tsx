@@ -287,3 +287,43 @@ test('the photo page shows the photo and its download, and nothing about try-on,
   assert.match(json, new RegExp(`/api/share/${doc._id.toHexString()}/download\\?variant=${doc._id.toHexString()}%3Acamera-result`), 'the download link of the photo');
   assert.deepEqual(withProp(element, 'alt').map((image) => image.props.alt), ['Photo with Camera frame']);
 });
+
+// The anonymous journey recording (issue 521, phase 2): the public photo page opened by a person is counted for the photo's event, after the page; a chat app's link preview is not.
+function spyOnViews(t: TestContext, userAgent: string | null, agent: { current: string | null } = { current: userAgent }): Array<{ event: unknown; name: unknown }> {
+  const records: Array<{ event: unknown; name: unknown }> = [];
+  t.mock.module('@/lib/journey/store', { namedExports: { recordServerJourney: async (_db: unknown, event: unknown, name: unknown) => { records.push({ event, name }); } } });
+  t.mock.module('@/lib/api/run-after-response', { namedExports: { runAfterResponse: (task: () => Promise<void>) => { void task(); } } });
+  t.mock.module('next/headers', { namedExports: { headers: async () => new Headers(agent.current ? { 'user-agent': agent.current } : {}) } });
+  return records;
+}
+
+test('the photo page opened by a person is recorded as a view of the photo\u2019s event, and the page is the same', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'approved' })]);
+  const records = spyOnViews(t, 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) Safari/604.1');
+  const page = await importPage('journey-view');
+  const { notFound, element } = await render(page, TOKEN);
+  assert.equal(notFound, false);
+  assert.ok(element);
+  assert.deepEqual(records, [{ event: String(EVENT_ID), name: 'share.view' }]);
+});
+
+test('a link preview of a chat app, a crawler and a request with no user agent are not views', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'approved' })]);
+  const agent: { current: string | null } = { current: null };
+  const records = spyOnViews(t, null, agent);
+  const page = await importPage('journey-bots');
+  for (const userAgent of ['WhatsApp/2.23.20 A', 'facebookexternalhit/1.1', 'Mozilla/5.0 (compatible; Googlebot/2.1)', null]) {
+    agent.current = userAgent;
+    await render(page, TOKEN);
+    assert.deepEqual(records, [], String(userAgent));
+  }
+});
+
+test('a waiting photo, a rejected one and an unknown link are not views', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'pending_review' })]);
+  const records = spyOnViews(t, 'Mozilla/5.0 (iPhone)');
+  const page = await importPage('journey-waiting');
+  await render(page, TOKEN);
+  await render(page, 'tok_doesnotexistdoesnot');
+  assert.deepEqual(records, []);
+});
