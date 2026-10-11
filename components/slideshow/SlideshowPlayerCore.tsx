@@ -14,6 +14,7 @@ import SlideshowDebugPanel from '@/components/slideshow/SlideshowDebugPanel';
 import { useSlideshowDiagnostics } from '@/components/slideshow/useSlideshowDiagnostics';
 import { hostOf, shortId } from '@/lib/slideshow/diagnostics';
 import { PRELOAD_FAIL_TTL_MS, createPreloader } from '@/lib/slideshow/preload';
+import { crossfadeEnabled } from '@/lib/slideshow/crossfade';
 import { fetchWithTimeout, nextBackoffMs } from '@/lib/slideshow/resilience';
 import { reloadReason } from '@/lib/slideshow/reload';
 import { recentReloads, watchdogAction } from '@/lib/slideshow/watchdog';
@@ -734,7 +735,9 @@ export function SlideshowPlayerCore({
   }, [headFadeKey, preloader, record]);
 
   // Crossfade: the slide that was shown stays underneath until the next one has faded in over it (then it is dropped, so only two pictures are ever drawn).
-  const crossfade = settings?.crossfade === true;
+  // The slideshow's switch decides (off unless an editor ticked it); `?crossfade=1` / `?crossfade=0` on the screen's address forces it for that page only, so it can be looked at
+  // on a test screen first (lib/slideshow/crossfade.ts). The address is read only once the settings are here, which happens in the browser, so the server render is never affected.
+  const crossfade = settings ? crossfadeEnabled(settings.crossfade, window.location.search) : false;
   useEffect(() => {
     const head = headFadeKey ? slideQueueRef.current[0] : undefined;
     const previous = shownSlideRef.current;
