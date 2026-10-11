@@ -1,6 +1,6 @@
 # Documentation Maintenance
 
-**Last Updated**: 2026-09-28
+**Last Updated**: 2026-10-11
 _Verified @ a87d78f_
 
 The running code is the source of truth. Documentation must be updated from the implementation, not from memory.
@@ -13,6 +13,7 @@ set:
 - [README.md](../README.md)
 - [ARCHITECTURE.md](../ARCHITECTURE.md)
 - [TECH_STACK.md](../TECH_STACK.md)
+- [docs/DEPENDENCIES.md](DEPENDENCIES.md) — the dependency audit of 2026-10-11: advisories, removed, updated and deprecated packages, major updates not done, and how to repeat it
 - [RUNBOOK.md](../RUNBOOK.md)
 - [docs/BRANCHING.md](BRANCHING.md)
 - [docs/DOCUMENTATION.md](DOCUMENTATION.md)

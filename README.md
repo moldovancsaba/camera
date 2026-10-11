@@ -1,7 +1,7 @@
 # Camera
 
 **Version**: 12.3.41  
-**Last Updated**: 2026-09-28  
+**Last Updated**: 2026-10-11  
 **Status**: Production system
 
 Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and reusable shared resources on the same identity, media, and MongoDB foundations.
@@ -225,7 +225,7 @@ Current package note:
 
 ## E2E test reliability
 
-The Playwright E2E suite (24 tests across 8 spec files, including admin smoke rendering and
+The Playwright E2E suite (18 tests across 4 spec files, including admin smoke rendering and
 the manager-gated export contract) runs serially against a dedicated `camera_test` MongoDB
 database. `npm run test:e2e:safe` is the recommended entry point — it preflights the
 environment and enforces the disposable-database guard before any test runs.

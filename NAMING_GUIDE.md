@@ -1,6 +1,6 @@
 # Naming Guide
 
-**Version**: 2.9.0  
+**Version**: 12.3.41  
 **Last Updated**: 2026-05-20
 
 Practical naming rules for the current Camera codebase.
