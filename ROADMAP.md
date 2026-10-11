@@ -1,6 +1,6 @@
 # Roadmap
 
-**Version Context**: 12.3.41  
+**Version Context**: 12.3.42  
 **Last Updated**: 2026-10-11
 
 This file is forward-looking only. Active work, with status, is on the GitHub

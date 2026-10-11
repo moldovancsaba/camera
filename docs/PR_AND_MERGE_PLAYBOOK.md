@@ -1,6 +1,6 @@
 # Pull requests and merges in a busy repository (what failed on 2026-10-10 and 11, and the rules that follow)
 
-**Version**: 12.3.41
+**Version**: 12.3.42
 **Last Updated**: 2026-10-11
 
 Why this exists: on 10 and 11 October 2026 about a dozen parallel streams (analytics, the try-on removal, consent settings, the follow-up e-mail, journey recording, documentation) each prepared pull requests in their own git worktree while `main` moved every ten minutes. Many pull requests could not be merged at the moment they were green, and merge commands failed for two different reasons: **GitHub's own rules** and **Claude Code's permission system**. This file says what failed, how each case was fixed, how to avoid it, and the routine to follow. The short rules are in `CLAUDE.md` sections 3, 5 and 10; this is the long version. The tooling it mentions (`npm run sync:main`, the stable inventory scanner; camera PR 592, 2026-10-11) is described in `RUNBOOK.md` ("Parallel branches in git worktrees").
