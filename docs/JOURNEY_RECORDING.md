@@ -10,7 +10,7 @@ The recording **must never slow, block or break the capture.** So:
 
 - The page sends its records **fire and forget** (`lib/journey/client.ts`): nothing is awaited, every failure is swallowed, a hanging request is cut after a few seconds, at most one request is in flight, a visit sends at most 40 records, and the whole thing is a no-op unless the event answer says `journeyRecording: true`.
 - The route answers **204 before it writes anything** (`app/api/observability/journey/route.ts`); the write runs after the answer. A slow or broken database cannot slow a beacon, and a failed beacon is simply lost.
-- The route is rate limited (600 a minute per IP address, `RATE_LIMITS.JOURNEY`), takes at most 4 KB, and keeps only what the vocabulary allows.
+- The route is rate limited (1,500 a minute per IP address, `RATE_LIMITS.JOURNEY`: a venue shares one), takes at most 4 KB, and keeps only what the vocabulary allows.
 - **A kill switch** (below) stops it without a deploy.
 
 ## What is recorded
@@ -52,7 +52,7 @@ The Analytics view and the counters for messmass read the **daily counts**. The 
 `admin_settings` document `journey-recording` (`lib/journey/setting.ts`). **On unless switched off**: only a stored `enabled: false` turns it off.
 
 - Switch it from the **Journey tab** of the Analytics view (global admins; the button asks first, in the page). `PATCH /api/admin/settings/journey-recording { enabled }`.
-- Off: the guest event answer carries `journeyRecording: false`, so a page opened from now on sends nothing at all; and the beacon route, for the pages opened before, answers 204 and **writes nothing**; the server's own records (`share.view`, `download`) stop too.
+- Off: the event answer for the capture page carries `journeyRecording: false`, so a page opened from now on sends nothing at all; and the beacon route, for the pages opened before, answers 204 and **writes nothing**; the server's own records (`share.view`, `download`) stop too.
 - It takes effect on every server within 30 seconds (the value is kept in memory that long) and at once on the one that handled the switch. What was recorded stays.
 - If the setting cannot be read the recording stays on (a recording that stops by accident would lose the match without anyone having decided it).
 

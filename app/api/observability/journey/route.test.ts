@@ -3,6 +3,7 @@ import { test, type TestContext } from 'node:test';
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { fakeDb } from '@/lib/library/fake-db';
+import { RATE_LIMITS } from '@/lib/api/rateLimiter';
 import { JOURNEY_MAX_BYTES } from '@/lib/journey/events';
 import { JOURNEY_SETTING_ID, resetJourneySettingCache } from '@/lib/journey/setting';
 import { resetJourneyEventCache, resetJourneyIndexCheck } from '@/lib/journey/store';
@@ -132,7 +133,8 @@ test('it is rate limited per IP address: a flood is answered 429, another addres
   const { POST } = await load('rate');
   const flood = '198.51.100.250';
   let refused = 0;
-  for (let i = 0; i < 620; i += 1) if ((await POST(request(batch([['photo.retake', null, 1]]), {}, flood))).status === 429) refused += 1;
-  assert.ok(refused >= 15 && refused <= 25, `refused ${refused}`);
+  const over = 20;
+  for (let i = 0; i < RATE_LIMITS.JOURNEY.max + over; i += 1) if ((await POST(request(batch([['photo.retake', null, 1]]), {}, flood))).status === 429) refused += 1;
+  assert.ok(refused >= over - 5 && refused <= over + 5, `refused ${refused}`);
   assert.equal((await POST(request(batch([['photo.retake', null, 1]]), {}, '198.51.100.251'))).status, 204);
 });

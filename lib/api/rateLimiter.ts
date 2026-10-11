@@ -116,10 +116,10 @@ export const RATE_LIMITS = {
   ORIGINAL_UPLOAD_TOKEN: { max: 30, windowMs: 60 * 1000 },
 
   /**
-   * Anonymous journey beacon (issue 521, phase 2, public). One batch is sent at each step change, about ten a visit; a whole stadium can share one IP (venue Wi-Fi, carrier NAT), so the
-   * cap is high and only stops a flood. A refused beacon is lost and the page never notices.
+   * Anonymous journey beacon (issue 521, phase 2, public). One batch is sent at each step change, about seven a visit; a whole stadium can share one IP (venue Wi-Fi, carrier NAT), so the
+   * cap is high (25 a second) and only stops a flood. A refused beacon is lost and the page never notices.
    */
-  JOURNEY: { max: 600, windowMs: 60 * 1000 },
+  JOURNEY: { max: 1500, windowMs: 60 * 1000 },
 } as const;
 
 /**

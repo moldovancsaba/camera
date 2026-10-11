@@ -4,7 +4,7 @@
  * GET   /api/admin/settings/journey-recording   { enabled, updatedAt, updatedBy }  (global admin)
  * PATCH /api/admin/settings/journey-recording   { enabled: boolean }               (global admin)
  *
- * On unless switched off. Off: the guest event answer carries `journeyRecording: false`, so the capture page sends nothing, and the beacon route answers 204 without writing. Takes effect on
+ * On unless switched off. Off: the event answer for the capture page carries `journeyRecording: false`, so the capture page sends nothing, and the beacon route answers 204 without writing. Takes effect on
  * every server within 30 seconds (the value is kept in memory that long) and at once on the one that handled the switch.
  */
 

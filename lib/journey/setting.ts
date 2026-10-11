@@ -3,11 +3,11 @@
  * off**: only a stored `enabled: false` turns the recording off; a missing document, a missing field or a read that fails leaves it on (a recording that stops because of a database
  * hiccup would lose the match without anybody having decided that). While it is off:
  *
- * - the guest event answer carries `journeyRecording: false`, so the capture page starts nothing and sends no beacon at all (app/api/events/[eventId]/route.ts), and
+ * - the event answer for the capture page carries `journeyRecording: false`, so the capture page starts nothing and sends no beacon at all (app/api/events/[eventId]/route.ts), and
  * - the endpoint answers 204 without writing, for the pages that were opened before the switch (app/api/observability/journey/route.ts).
  *
  * The owner switches it from the Journey tab of the Analytics view (global admins), without a deploy. The value is kept in memory for `JOURNEY_SETTING_TTL_MS` per server instance, so the
- * guest event answer and a flood of beacons cost no database read each; a switch therefore takes effect everywhere within that time (and at once on the instance that handled the switch).
+ * event answer for the capture page and a flood of beacons cost no database read each; a switch therefore takes effect everywhere within that time (and at once on the instance that handled the switch).
  * Server side; unit-tested in setting.test.ts.
  */
 
