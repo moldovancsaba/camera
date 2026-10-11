@@ -35,7 +35,7 @@ import {
 } from '@/lib/tour/config/captureTourSteps';
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
-import { consentCheckboxes, consentRecords } from '@/lib/events/consent';
+import { consentCheckboxes, consentRecords, shownCheckboxes } from '@/lib/events/consent';
 import { acceptanceOnLogin, acceptanceSentence, sentenceText } from '@/lib/events/acceptance';
 import { welcomeScreenImage, welcomeScreenOf } from '@/lib/events/welcome-screen-url';
 import { forgetConsents, recallConsents, rememberConsents } from '@/lib/capture/consent-memory';
@@ -110,6 +110,10 @@ interface EventData {
   welcomeEmailEnabled?: boolean;
   /** The event asks for the user's own permission to show the photo in the public gallery (issue 554, lib/events/gallery-consent.ts): its own choice, else its partner's, else not. */
   effectiveGalleryConsent?: boolean;
+  /** The permission must be ticked before the photo can be saved (issue 558, lib/events/checkbox-settings.ts); the server refuses a save without it. */
+  effectiveGalleryRequired?: boolean;
+  /** The acceptance sentence on the Who-are-you page must be ticked (the standard) or may stay unticked (issue 558). */
+  effectiveAcceptanceRequired?: boolean;
   /** How the photo is taken (issue 547, lib/camera/mode.ts): the event's own choice, else its partner's, else the standard. */
   effectiveCameraMode?: CameraMode;
   /** How users get the layout and the message (epic 444): the editor's setting; the page reads it through `generatedFrame.selection`, and for the event's own frames from here. */
@@ -162,6 +166,8 @@ interface CollectedData {
     linkUrl?: string;
     accepted: boolean;
     acceptedAt: string;
+    shownText?: string;
+    required?: false;
   }>;
 }
 
@@ -285,6 +291,8 @@ export default function EventCapturePage({
   // The optional, unticked checkbox of an event that asks for the permission to show the photo in the public gallery (issue 554): ticked only by the user, for this photo only.
   const [galleryTick, setGalleryTick] = useState(false);
   const asksGallery = event?.effectiveGalleryConsent === true;
+  // The permission is required when the event chose so (issue 558): Continue on the photo step waits for the tick, and the server refuses a save without it.
+  const galleryRequired = asksGallery && event?.effectiveGalleryRequired === true;
   // Photo vetting (camera#265): the photo is saved and waits for approval. No share link exists yet.
   const [pendingApproval, setPendingApproval] = useState(false);
   // An own frame as a 50% black silhouette, shown instead of the real frame while the photo of a vetted event waits.
@@ -504,6 +512,8 @@ export default function EventCapturePage({
           photoVettingRequired: eventData.photoVettingRequired === true,
           effectiveCameraMode: eventData.effectiveCameraMode,
           effectiveGalleryConsent: eventData.effectiveGalleryConsent === true,
+          effectiveGalleryRequired: eventData.effectiveGalleryRequired === true,
+          effectiveAcceptanceRequired: eventData.effectiveAcceptanceRequired !== false,
         });
         
         // Fetch logos for loading-capture and onboarding-thankyou scenarios
@@ -865,6 +875,8 @@ export default function EventCapturePage({
 
   // The frame-less crop continues through the composite step, as the old capture did, and the photo is saved as soon as its picture is made (camera#344).
   const handleReframeDone = (result: ReframeResult) => {
+    // A required permission that is not ticked cannot be skipped (issue 558); Continue is off meanwhile, this is the same rule for any other way in.
+    if (galleryRequired && !galleryTick) return;
     setCapturedImage(result.dataUrl);
     // An event whose editor made saving a step of its own (a Submit page after the take-photo page, issue 535) runs the pages between the two first; the picture is made meanwhile and the
     // photo is saved after the last of them. Without such pages Continue saves at once, as it always did.
@@ -885,6 +897,18 @@ export default function EventCapturePage({
     setCapturedOriginal(null);
     setGalleryTick(false);
     setStep('capture-photo');
+  };
+
+  /**
+   * The records of an acceptance on the Who-are-you page that was optional and left unticked (issue 558): one per checkbox it stands for, with the sentence the user saw and `accepted: false`. None when the
+   * acceptance is required (the page did not let the user pass without it), was ticked, or is not on the Who-are-you page.
+   */
+  const declinedAcceptance = () => {
+    if (!acceptanceBox || event?.effectiveAcceptanceRequired !== false) return [];
+    if (collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.accepted)) return [];
+    const items = shownCheckboxes(consentCheckboxes(acceptanceBox.config));
+    const shownText = sentenceText(acceptanceSentence(items, language, uiTexts));
+    return consentRecords({ pageId: acceptanceBox.pageId, pageType: 'accept' }, { accepted: true, acceptedAt: new Date().toISOString(), unticked: items, shownText });
   };
 
   const handleSave = async () => {
@@ -955,8 +979,10 @@ export default function EventCapturePage({
       if (collectedData.userInfo) {
         submissionData.userInfo = collectedData.userInfo;
       }
-      if (collectedData.consents.length > 0) {
-        submissionData.consents = collectedData.consents;
+      // The acceptance on the Who-are-you page, when the event made it optional and the user left it unticked, is kept as shown and not ticked (issue 558).
+      const consents = [...collectedData.consents, ...declinedAcceptance()];
+      if (consents.length > 0) {
+        submissionData.consents = consents;
       }
       
       const response = await fetch('/api/submissions', {
@@ -1184,7 +1210,7 @@ export default function EventCapturePage({
    * or taken away. They are recorded when the box is ticked, not when the page is left, because a sign-in leaves the page and brings the user back to it.
    */
   const handleAcceptanceChange = (page: CustomPage, checked: boolean, shownText: string) => {
-    const items = consentCheckboxes(page.config);
+    const items = shownCheckboxes(consentCheckboxes(page.config));
     const others = collectedData.consents.filter((record) => record.pageId !== page.pageId);
     const consents = checked ? [...others, ...consentRecords({ pageId: page.pageId, pageType: 'accept', checkboxText: page.config.checkboxText }, { accepted: true, acceptedAt: new Date().toISOString(), items, shownText })] : others;
     setCollectedData(prev => ({ ...prev, consents }));
@@ -1376,9 +1402,10 @@ export default function EventCapturePage({
             acceptance={
               acceptanceBox
                 ? (() => {
-                    const sentence = acceptanceSentence(consentCheckboxes(acceptanceBox.config), language, uiTexts);
+                    const sentence = acceptanceSentence(shownCheckboxes(consentCheckboxes(acceptanceBox.config)), language, uiTexts);
                     return {
                       sentence,
+                      required: event.effectiveAcceptanceRequired !== false,
                       checked: collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId),
                       onChange: (checked: boolean) => handleAcceptanceChange(acceptanceBox, checked, sentenceText(sentence)),
                     };
@@ -1800,13 +1827,16 @@ export default function EventCapturePage({
               onDone={handleReframeDone}
               onRetake={handleReframeRetake}
               busy={saveRequested || isProcessing || isSaving}
+              continueBlocked={galleryRequired && !galleryTick}
             >
               {asksGallery ? (
                 <Checkbox
                   checked={galleryTick}
                   onChange={(changed) => setGalleryTick(changed.currentTarget.checked)}
-                  label={t('share.publicGalleryConsent')}
-                  description={t('share.publicGalleryConsentHelp')}
+                  // The wording is the Dictionary's; a required permission has its own sentence, which does not say "optional" (issue 558).
+                  label={t(galleryRequired ? 'share.publicGalleryConsentRequired' : 'share.publicGalleryConsent')}
+                  description={t(galleryRequired ? 'share.publicGalleryConsentHelpRequired' : 'share.publicGalleryConsentHelp')}
+                  {...(galleryRequired ? { required: true } : {})}
                   disabled={saveRequested || isProcessing || isSaving}
                   data-gallery-consent
                 />

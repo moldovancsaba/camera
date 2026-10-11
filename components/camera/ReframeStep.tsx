@@ -65,6 +65,8 @@ export interface ReframeStepProps {
   labels?: { continue?: string; retake?: string; reset?: string };
   /** True while the page makes the picture and saves it: the buttons stay locked and Continue shows its spinner. */
   busy?: boolean;
+  /** True while something the page must have before the photo can be saved is missing (a required checkbox, issue 558): Continue stays off, Retake still works. */
+  continueBlocked?: boolean;
   /** Shown above the buttons: a notice before the save, the try-on choice. */
   children?: ReactNode;
 }
@@ -98,6 +100,7 @@ export default function ReframeStep({
   onRetake,
   labels,
   busy = false,
+  continueBlocked = false,
   children,
 }: ReframeStepProps) {
   const [source, setSource] = useState<Source | null>(null);
@@ -463,7 +466,7 @@ export default function ReframeStep({
           >
             {labels?.reset ?? t('reframe.reset')}
           </Button>
-          <Button type="button" size={buttonSize} radius="md" onClick={() => void finish()} disabled={!source || locked} loading={locked}>
+          <Button type="button" size={buttonSize} radius="md" onClick={() => void finish()} disabled={!source || locked || continueBlocked} loading={locked}>
             {labels?.continue ?? t('reframe.continue')}
           </Button>
         </div>
