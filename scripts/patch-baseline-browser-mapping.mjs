@@ -4,7 +4,6 @@ import path from 'node:path';
 const targets = [
   path.resolve('node_modules/baseline-browser-mapping/dist/index.cjs'),
   path.resolve('node_modules/baseline-browser-mapping/dist/index.js'),
-  path.resolve('node_modules/next/dist/compiled/browserslist/index.js'),
 ];
 
 const needle = 'console.warn("[baseline-browser-mapping] The data in this module is over two months old';
