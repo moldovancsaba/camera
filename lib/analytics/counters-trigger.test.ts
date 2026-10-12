@@ -14,6 +14,7 @@ const event = (id = 'mongo-1'): SyncedEvent => ({ _id: id as unknown as ObjectId
 function setup(options: { on?: boolean; result?: CounterSyncResult | 'throw' } = {}) {
   const seeded = fakeDb({ [COLLECTIONS.ADMIN_SETTINGS]: options.on ? [{ settingId: COUNTERS_SETTING_ID, enabled: true }] : [] });
   const synced: Array<{ id: string }> = [];
+  const sleeps: number[] = [];
   let clock = 1_000_000;
   const deps: CounterTriggerDeps = {
     sync: async (_db, e) => {
@@ -22,9 +23,13 @@ function setup(options: { on?: boolean; result?: CounterSyncResult | 'throw' } =
       return options.result ?? 'pushed';
     },
     now: () => clock,
+    sleep: async (ms) => {
+      sleeps.push(ms);
+      clock += ms;
+    },
     slots: new Map(),
   };
-  return { ...seeded, deps, synced, advance: (ms: number) => void (clock += ms), slots: deps.slots };
+  return { ...seeded, deps, synced, sleeps, advance: (ms: number) => void (clock += ms), slots: deps.slots };
 }
 
 const quiet = async <T>(run: () => Promise<T>): Promise<T> => {
@@ -56,25 +61,40 @@ test('ON: one call asks the sync for the event, once', async () => {
   assert.deepEqual(s.synced, [{ id: 'mongo-1' }]);
 });
 
-test('repeated calls inside 30 seconds make one sync, and the next window makes another; each event has its own window', async () => {
+test('a burst makes one sync at once and one more when the window ends, so the last call is always counted; the next window starts again; each event has its own window', async () => {
   const s = setup({ on: true });
   assert.equal(await requestCounterSync(s.db, event(), s.deps), 'pushed');
   s.advance(1000);
-  assert.equal(await requestCounterSync(s.db, event(), s.deps), 'debounced');
-  s.advance(COUNTER_TRIGGER_WINDOW_MS - 2000);
-  assert.equal(await requestCounterSync(s.db, event(), s.deps), 'debounced', 'still inside the window');
+  assert.equal(await requestCounterSync(s.db, event(), s.deps), 'pushed', 'inside the window: it waits for the end of it and syncs then');
+  assert.deepEqual(s.sleeps, [COUNTER_TRIGGER_WINDOW_MS - 1000]);
+  assert.equal(s.synced.length, 2);
   assert.equal(await requestCounterSync(s.db, event('mongo-2'), s.deps), 'pushed', 'another event is not held back by this one');
-  s.advance(2000);
-  assert.equal(await requestCounterSync(s.db, event(), s.deps), 'pushed', 'the window has passed');
-  assert.deepEqual(s.synced.map((row) => row.id), ['mongo-1', 'mongo-2', 'mongo-1']);
-  assert.equal(COUNTER_TRIGGER_WINDOW_MS, 30_000);
+  s.advance(COUNTER_TRIGGER_WINDOW_MS + 1);
+  assert.equal(await requestCounterSync(s.db, event(), s.deps), 'pushed', 'the window has passed: a new leading sync, no wait');
+  assert.deepEqual(s.synced.map((row) => row.id), ['mongo-1', 'mongo-1', 'mongo-2', 'mongo-1']);
+  assert.equal(s.sleeps.length, 1);
+  assert.equal(COUNTER_TRIGGER_WINDOW_MS, 15_000);
 });
 
-test('calls that arrive together make one sync (the slot is taken in the same step as the check)', async () => {
+test('calls that arrive together make one leading sync and one shared sync after the window, never one each', async () => {
   const s = setup({ on: true });
   const results = await Promise.all([1, 2, 3, 4, 5].map(() => requestCounterSync(s.db, event(), s.deps)));
-  assert.deepEqual(results.filter((r) => r === 'pushed').length, 1);
-  assert.deepEqual(results.filter((r) => r === 'debounced').length, 4);
+  assert.deepEqual(results, ['pushed', 'pushed', 'pushed', 'pushed', 'pushed']);
+  assert.equal(s.synced.length, 2, 'the leading one and the shared one');
+  assert.equal(s.sleeps.length, 1);
+});
+
+test('switching the counters off while a shared sync waits stops it', async () => {
+  const s = setup({ on: true });
+  assert.equal(await requestCounterSync(s.db, event(), s.deps), 'pushed');
+  const waiting = requestCounterSync(s.db, event(), {
+    ...s.deps,
+    sleep: async (ms) => {
+      await s.deps.sleep(ms);
+      await s.db.collection(COLLECTIONS.ADMIN_SETTINGS).updateOne({ settingId: COUNTERS_SETTING_ID }, { $set: { enabled: false } });
+    },
+  });
+  assert.equal(await waiting, 'disabled');
   assert.equal(s.synced.length, 1);
 });
 
