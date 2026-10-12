@@ -14,7 +14,7 @@
 
 'use client';
 
-import { Fragment, type ReactNode, useState, useEffect, use, useCallback, useMemo, useRef } from 'react';
+import { Fragment, type CSSProperties, type ReactNode, useState, useEffect, use, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { Button, Checkbox } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
@@ -57,6 +57,7 @@ import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, layoutIdOf, layouts
 import { storedFrameSelection } from '@/lib/frame/selection';
 import { darkAreaUrl } from '@/lib/frame/dark-area';
 import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
+import { PREVIEW_PANEL_CLASS, PREVIEW_PICTURE_CLASS, PREVIEW_ROW_CLASS } from '@/components/capture/preview-layout';
 import { captureOverride, chooseCaptureMethod, hasStillCapture, type CaptureMethod } from '@/lib/camera/still-capture';
 import { viewsOverride } from '@/lib/camera/view';
 import { captureSettingsOf, type CameraMode } from '@/lib/camera/mode';
@@ -192,11 +193,6 @@ interface SubmissionEmailMetadata {
   emailError?: string | null;
   emailSendAfterRelatedPending?: boolean;
 }
-
-// The actions beside or below the preview image. The options scroll inside the panel; the buttons stay
-// pinned, so a tall try-on selector never pushes them off screen (camera#222).
-const PREVIEW_PANEL_CLASS =
-  'flex w-full max-w-md min-h-0 shrink flex-col gap-2 overflow-y-auto px-3 [&>:first-child]:my-auto landscape:h-full landscape:w-[22rem] landscape:max-w-[45%] landscape:shrink-0';
 
 function getErrorMessage(error: unknown, language: UiLanguage): string {
   return error instanceof Error ? error.message : translate(language, 'flow.unexpectedError');
@@ -877,6 +873,8 @@ export default function EventCapturePage({
     ? frameIntrinsicAspect ??
       (selectedFrame.width > 0 && selectedFrame.height > 0 ? selectedFrame.width / selectedFrame.height : 16 / 9)
     : 16 / 9;
+  // Width over height of the photo on the preview step (the final picture once it is made, else the frame's shape).
+  const previewAspect = imageDimensions ? imageDimensions.width / imageDimensions.height : captureAspect;
 
   // The camera records the whole image; the fan then moves and zooms it inside the frame in the
   // reframe step (camera#209), whose default is the largest crop that fills the frame.
@@ -1890,13 +1888,13 @@ export default function EventCapturePage({
         {/* Step 3: Preview */}
         {step === 'preview' && compositeImage && (
           <div className="h-full w-full py-2">
-            <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col items-center gap-3 landscape:flex-row landscape:gap-4">
-              {/* The image takes the space the actions leave; it is never scrolled past (camera#222) */}
-              <div className="relative min-h-[20dvh] w-full flex-1 landscape:h-full landscape:min-h-0 landscape:min-w-0">
+            <div className={PREVIEW_ROW_CLASS}>
+              {/* The image takes the space the actions leave; it is never scrolled past (camera#222). On a large landscape window its box has the photo's shape (issue 619, components/capture/preview-layout.ts). */}
+              <div className={PREVIEW_PICTURE_CLASS} style={{ '--preview-aspect': String(previewAspect) } as CSSProperties}>
                 {vetted ? (
                   <PendingPhotoPreview
                     photoUrl={compositeImage}
-                    aspect={imageDimensions ? imageDimensions.width / imageDimensions.height : captureAspect}
+                    aspect={previewAspect}
                     territories={selectedFrame?.generated?.territories}
                     silhouetteUrl={selectedFrame?.generated ? null : silhouetteUrl}
                     alt={t('flow.alt.territories')}

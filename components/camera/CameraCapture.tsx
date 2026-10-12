@@ -29,6 +29,7 @@ import {
 } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 import FrameTerritories from '@/components/capture/FrameTerritories';
+import { STAGE_TOP_CLASS } from '@/components/camera/stage-text';
 import type { Territory } from '@/lib/frame/capture';
 import {
   CAPTURE_MAX_ATTEMPTS,
@@ -954,36 +955,50 @@ export default function CameraCapture({
               }
             />
 
-            {viewControls && stream && !isLoading && videoSize.width > 0 && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-9 z-20 px-2 text-center text-xs" style={{ color: CAMERA_STAGE_WHITE }} data-camera-readout>
-                {`${videoSize.width}×${videoSize.height}${askedSize ? ` (asked ${askedSize})` : ''}${shapeIgnored ? ' · this phone keeps its own shape: cut to the view' : ''}`}
-              </div>
-            )}
+            {/* The top of the stage is one column: the view controls, then the lines of text (getting ready, the capture notice, the frame hint, the readout). A line of text is never at the
+                bottom: the shutter is a fixed button at the bottom centre of the window, and wherever the stage reaches the bottom of the window (any desktop window, a tall phone stage) it covers
+                the bottom of the stage, which half hid the hint (issue 618; the placement is tested in components/camera/stage-text.test.ts). One column, so a line can never sit on another. */}
+            <div className={STAGE_TOP_CLASS} data-camera-stage-top>
+              {viewControls && stream && !isLoading && (
+                <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2" role="group" aria-label={t('camera.view.group')}>
+                  <div className="flex gap-1" role="group" aria-label={t('camera.view.shape')}>
+                    {(['portrait', 'landscape'] as const).map((shape: ViewShape) => {
+                      const on = (view.shape === 'auto' ? (cameraAspect !== null && cameraAspect < 1 ? 'portrait' : 'landscape') : view.shape) === shape;
+                      return (
+                        <Button key={shape} type="button" size="xs" radius="md" variant={on ? 'filled' : 'light'} aria-pressed={on} onClick={() => chooseView(withShape(viewRef.current, shape))}>
+                          {t(shape === 'portrait' ? 'camera.view.portrait' : 'camera.view.landscape')}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-1" role="group" aria-label={t('camera.view.field')}>
+                    {(['wide', 'tight'] as const).map((field: ViewField) => {
+                      const on = view.field === field;
+                      return (
+                        <Button key={field} type="button" size="xs" radius="md" variant={on ? 'filled' : 'light'} aria-pressed={on} onClick={() => chooseView(withField(viewRef.current, field))}>
+                          {t(field === 'wide' ? 'camera.view.wide' : 'camera.view.tight')}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-            {viewControls && stream && !isLoading && (
-              <div className="absolute inset-x-0 top-2 z-20 flex flex-wrap items-center justify-center gap-2 px-2" role="group" aria-label={t('camera.view.group')}>
-                <div className="flex gap-1" role="group" aria-label={t('camera.view.shape')}>
-                  {(['portrait', 'landscape'] as const).map((shape: ViewShape) => {
-                    const on = (view.shape === 'auto' ? (cameraAspect !== null && cameraAspect < 1 ? 'portrait' : 'landscape') : view.shape) === shape;
-                    return (
-                      <Button key={shape} type="button" size="xs" radius="md" variant={on ? 'filled' : 'light'} aria-pressed={on} onClick={() => chooseView(withShape(viewRef.current, shape))}>
-                        {t(shape === 'portrait' ? 'camera.view.portrait' : 'camera.view.landscape')}
-                      </Button>
-                    );
-                  })}
+              {/* Shutter warm-up and capture messages (announced, not colour-only) */}
+              {stream && !isLoading && !isShutterReady && <div role="status">{t('camera.gettingReady')}</div>}
+              {captureNotice && <div role="status">{captureNotice}</div>}
+              {!captureNotice && stream && frameGuide && isShutterReady && (
+                <div role="note" style={{ color: CAMERA_STAGE_WHITE }}>
+                  {t('camera.frameGuideHint')}
                 </div>
-                <div className="flex gap-1" role="group" aria-label={t('camera.view.field')}>
-                  {(['wide', 'tight'] as const).map((field: ViewField) => {
-                    const on = view.field === field;
-                    return (
-                      <Button key={field} type="button" size="xs" radius="md" variant={on ? 'filled' : 'light'} aria-pressed={on} onClick={() => chooseView(withField(viewRef.current, field))}>
-                        {t(field === 'wide' ? 'camera.view.wide' : 'camera.view.tight')}
-                      </Button>
-                    );
-                  })}
+              )}
+
+              {viewControls && stream && !isLoading && videoSize.width > 0 && (
+                <div style={{ color: CAMERA_STAGE_WHITE }} data-camera-readout>
+                  {`${videoSize.width}×${videoSize.height}${askedSize ? ` (asked ${askedSize})` : ''}${shapeIgnored ? ' · this phone keeps its own shape: cut to the view' : ''}`}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Frame guide: dims what the frame will not keep; the whole image is still recorded. */}
             {stream && frameGuide && (
@@ -1011,23 +1026,6 @@ export default function CameraCapture({
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2  mx-auto mb-4"></div>
                   <p className="text-sm">{t('camera.starting')}</p>
                 </div>
-              </div>
-            )}
-
-            {/* Shutter warm-up and capture messages (announced, not colour-only) */}
-            {stream && !isLoading && !isShutterReady && (
-              <div className={`absolute inset-x-0 ${viewControls ? 'top-12' : 'top-2'} z-20 text-center text-xs`} role="status">
-                {t('camera.gettingReady')}
-              </div>
-            )}
-            {captureNotice && (
-              <div className="absolute inset-x-0 bottom-2 z-20 p-2 text-center text-xs" role="status">
-                {captureNotice}
-              </div>
-            )}
-            {!captureNotice && stream && frameGuide && isShutterReady && (
-              <div className="absolute inset-x-0 bottom-2 z-20 p-2 text-center text-xs" role="note" style={{ color: CAMERA_STAGE_WHITE }}>
-                {t('camera.frameGuideHint')}
               </div>
             )}
 
