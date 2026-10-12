@@ -9,7 +9,8 @@ import { useEffect, useState } from 'react';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { AdminCheckbox, FormSection } from '@sovereignsquad/gds-admin/client';
-import { InlineAlert, StateBlock, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import { notifyAdminError, notifyAdminSuccess } from '@/components/admin/notify';
 
 interface Rollout {
   applyToExistingEvents: boolean;
@@ -24,7 +25,6 @@ export default function JourneyDefaultsSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { notifyError, notifySuccess } = useGdsToasts();
 
   useEffect(() => {
     void (async () => {
@@ -55,10 +55,10 @@ export default function JourneyDefaultsSettingsPage() {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || 'Failed to save');
       setRollout(payload.data);
-      notifySuccess({ title: 'Saved', message: payload.data.applyToExistingEvents ? 'Existing events now get the journey defaults.' : 'Existing events keep what they have.' });
+      notifyAdminSuccess({ title: 'Saved', message: payload.data.applyToExistingEvents ? 'Existing events now get the journey defaults.' : 'Existing events keep what they have.' });
     } catch (saveError) {
       setError(messageOf(saveError));
-      notifyError({ title: 'Save failed', message: messageOf(saveError) });
+      notifyAdminError({ title: 'Save failed', message: messageOf(saveError) });
     } finally {
       setIsSaving(false);
     }

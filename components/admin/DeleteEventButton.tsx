@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SemanticButton, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import { SemanticButton, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { notifyAdminError } from '@/components/admin/notify';
 
 interface DeleteEventButtonProps {
   eventId: string;
@@ -17,7 +18,6 @@ export default function DeleteEventButton({ eventId, eventName }: DeleteEventBut
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
   const { confirmDestructive } = useGdsConfirm();
-  const { notifyError } = useGdsToasts();
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -32,7 +32,7 @@ export default function DeleteEventButton({ eventId, eventName }: DeleteEventBut
       router.push('/admin/events');
       router.refresh();
     } catch (error: unknown) {
-      notifyError({
+      notifyAdminError({
         title: 'Delete failed',
         message: getErrorMessage(error),
       });

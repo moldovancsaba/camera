@@ -8,7 +8,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SemanticButton, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import { SemanticButton, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { notifyAdminError } from '@/components/admin/notify';
 import CameraSemanticButton from '@/components/gds/CameraSemanticButton';
 
 interface StyleInheritanceIndicatorProps {
@@ -32,7 +33,6 @@ export default function StyleInheritanceIndicator({
   const router = useRouter();
   const [isResetting, setIsResetting] = useState(false);
   const { confirm } = useGdsConfirm();
-  const { notifyError } = useGdsToasts();
 
   const fieldNames = {
     brandColors: 'Brand Colors',
@@ -72,7 +72,7 @@ export default function StyleInheritanceIndicator({
 
       router.refresh();
     } catch (error: unknown) {
-      notifyError({ title: 'Reset failed', message: getErrorMessage(error) });
+      notifyAdminError({ title: 'Reset failed', message: getErrorMessage(error) });
     } finally {
       setIsResetting(false);
     }

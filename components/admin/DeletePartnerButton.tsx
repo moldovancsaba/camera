@@ -3,7 +3,8 @@
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { InlineAlert, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { notifyAdminError } from '@/components/admin/notify';
 
 interface DeletePartnerButtonProps {
   partnerId: string;
@@ -26,7 +27,6 @@ export default function DeletePartnerButton({
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { confirmDestructive } = useGdsConfirm();
-  const { notifyError } = useGdsToasts();
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -44,7 +44,7 @@ export default function DeletePartnerButton({
     } catch (deleteError) {
       const message = getErrorMessage(deleteError);
       setError(message);
-      notifyError({ title: 'Delete failed', message });
+      notifyAdminError({ title: 'Delete failed', message });
       setIsDeleting(false);
     }
   };
