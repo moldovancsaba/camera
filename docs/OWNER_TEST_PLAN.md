@@ -92,7 +92,8 @@ The throw-away event of section C is the only event you may change. Never save a
   - [T48. Open a messmass report: it still loads under the new limits](#t48-open-a-messmass-report-it-still-loads-under-the-new-limits), computer
   - [T49. Know the messmass limits before a day with many people on one network](#t49-know-the-messmass-limits-before-a-day-with-many-people-on-one-network), either
   - [T50. The report of an event whose partner has a report template](#t50-the-report-of-an-event-whose-partner-has-a-report-template), computer
-- [Dependency changes (what to watch after they are merged)](#dependency-changes-what-to-watch-after-they-are-merged) (pending)
+- [Dependency changes (what to watch after they are merged)](#dependency-changes-what-to-watch-after-they-are-merged) : T51
+  - [T51. Download the images ZIP of the throw-away event](#t51-download-the-images-zip-of-the-throw-away-event), computer
 - [H. The day of the match: run sheet](#h-the-day-of-the-match-run-sheet) : M1, M2, M3, M4
   - [M1. Before the doors](#m1-before-the-doors), either
   - [M2. During the match: what to watch](#m2-during-the-match-what-to-watch), either
@@ -1238,7 +1239,29 @@ PENDING: filled in when the pull request is merged.
 
 ## Dependency changes (what to watch after they are merged)
 
-PENDING: filled in when the pull request is merged.
+**When:** Tuesday 13 October, 5 minutes, after the rehearsal photos exist. Camera pull requests 610, 611 and 613 are merged: the zip maker for the image export was replaced (archiver 7 to 8), the lint chain and about 9 unused files and 13 old one-off scripts were removed. Nothing the users or the approver see changed; the image export is the one place a person can notice.
+
+### T51. Download the images ZIP of the throw-away event
+
+**Device:** computer. **Why:** The export that builds the ZIP now uses the next major version of its library (pull request 610). It was tested with an independent reader and a real-fetch harness, but never by a person on the live admin. It is admin only; no user and no approver touches it.
+
+**Where:** The admin on a computer, the throw-away event after the rehearsal photos were approved (about 5 minutes)
+
+**Steps**
+
+1. Open the admin, then the throw-away event (Events, the event's name). Scroll to the card **Images** (it says **Originals and finals**).
+2. Press **ZIP**. Your browser downloads a file ending in .zip.
+3. Open the file (double-click it). Look at the list of files inside.
+4. Open two of the pictures.
+
+**You should see**
+
+- The ZIP opens without a message that it is damaged. It holds one picture for every photo of the event that was approved in the rehearsal, with names you can read.
+- The pictures open and look like the photos you took. There is no file called _errors.txt (if there is one, it names the picture that could not be fetched).
+
+**Write back:** `T51 PASS` or `T51 FAIL: what the browser said or what the ZIP held`
+
+**If it fails:** Write what the download did (nothing, an error page, a damaged file) and how many files the ZIP held. Do not retry more than twice. This does not block the match.
 
 ## H. The day of the match: run sheet
 
