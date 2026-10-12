@@ -8,6 +8,7 @@ import {
   canReject,
   chooseOption,
   chosenReasons,
+  decisionNotice,
   describePerson,
   groupHeading,
   incompleteCount,
@@ -244,4 +245,14 @@ test('the group headings are the questions of the list, with "optional" on the g
   assert.equal(groupHeading('age'), 'Age, as the person looks in the photo');
   assert.equal(groupHeading('emotion'), 'How the person looks (optional)');
   assert.equal(groupHeading('merch'), 'What the person wears or holds (optional)');
+});
+
+test('after a decision the notice never says the user gets a message that did not go: failed is a warning, skipped says nothing was sent, sent and an old server read as before', () => {
+  assert.deepEqual(decisionNotice('approve', 'sent'), { text: 'Photo approved. The user gets the link by email.', warning: false });
+  assert.deepEqual(decisionNotice('reject', 'sent'), { text: 'Photo rejected. The user gets a short note.', warning: false });
+  assert.deepEqual(decisionNotice('approve', undefined), decisionNotice('approve', 'sent'));
+  assert.deepEqual(decisionNotice('approve', 'failed'), { text: 'Photo approved, but the e-mail with the link to the user could not be sent.', warning: true });
+  assert.deepEqual(decisionNotice('reject', 'failed'), { text: 'Photo rejected, but the note to the user could not be sent.', warning: true });
+  assert.deepEqual(decisionNotice('approve', 'skipped'), { text: 'Photo approved. No e-mail was sent to the user.', warning: false });
+  assert.deepEqual(decisionNotice('reject', 'skipped'), { text: 'Photo rejected. No e-mail was sent to the user.', warning: false });
 });

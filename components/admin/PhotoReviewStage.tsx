@@ -35,6 +35,7 @@ import {
   describePerson,
   groupHeading,
   isComplete,
+  decisionNotice,
   isRectangle,
   newPersonId,
   peopleToSave,
@@ -45,6 +46,7 @@ import {
   startDraft,
   toggleReason,
   whatIsMissing,
+  type DecisionNotice,
   type PersonGroup,
   type Point,
   type ReviewDraft,
@@ -106,8 +108,8 @@ interface WorkspaceProps {
   vocabulary: ResolvedVocabulary;
   markPeople: boolean;
   canSkip: boolean;
-  notice: string | null;
-  onDecided: (id: string, message: string) => void;
+  notice: DecisionNotice | null;
+  onDecided: (id: string, notice: DecisionNotice) => void;
   onSkip: (id: string) => void;
   onWorking: (working: boolean) => void;
 }
@@ -183,14 +185,15 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
           return;
         }
       }
+      let answer: Record<string, unknown> = {};
       try {
         const body = action === 'approve' ? { action } : { action, reasons: chosenReasons(reasons, vocabulary), ...(note.trim() ? { reason: note.trim() } : {}) };
-        await send(`/api/admin/submissions/${item.id}/review`, 'POST', body);
+        answer = await send(`/api/admin/submissions/${item.id}/review`, 'POST', body);
       } catch (failure) {
         setError(failure instanceof Error ? failure.message : 'The decision could not be saved');
         return;
       }
-      onDecided(item.id, action === 'approve' ? 'Photo approved. The user gets the link by email.' : 'Photo rejected. The user gets a short note.');
+      onDecided(item.id, decisionNotice(action, answer.email));
     } finally {
       setBusy(null);
       onWorking(false);
@@ -219,8 +222,8 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
           : 'Look at the photo, then approve or reject it. A rejection needs a reason.'}
       </p>
       {notice ? (
-        <p role="status" style={{ color: 'var(--mantine-color-teal-text)', fontSize: '0.8125rem', fontWeight: 600, margin: 0 }} data-review-notice>
-          {notice}
+        <p role="status" style={{ color: notice.warning ? 'var(--mantine-color-orange-text)' : 'var(--mantine-color-teal-text)', fontSize: '0.8125rem', fontWeight: 600, margin: 0 }} data-review-notice>
+          {notice.text}
         </p>
       ) : null}
       {error ? <InlineAlert title="That did not work" message={error} severity="error" /> : null}
@@ -385,7 +388,7 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
   // Photos decided here leave the queue at once (the server list catches up after router.refresh()); a photo skipped goes to the back and comes round again.
   const [decided, setDecided] = useState<string[]>([]);
   const [skipped, setSkipped] = useState<string[]>([]);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<DecisionNotice | null>(null);
   const [working, setWorking] = useState(false);
 
   const waiting = useMemo(() => {
@@ -404,7 +407,7 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
   }, [working, router]);
 
   const onDecided = useCallback(
-    (id: string, message: string) => {
+    (id: string, message: DecisionNotice) => {
       setDecided((current) => [...current, id]);
       setNotice(message);
       router.refresh();
@@ -419,7 +422,7 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
   if (!item) {
     return (
       <div style={{ display: 'grid', gap: '1rem' }} data-photo-review-empty>
-        {notice ? <InlineAlert title="Done" message={notice} severity="success" /> : null}
+        {notice ? <InlineAlert title="Done" message={notice.text} severity={notice.warning ? 'warning' : 'success'} /> : null}
         <StateBlock variant="empty" title={items.length === 0 ? 'Nothing is waiting' : 'All the photos are decided'} description="New photos of this event appear here until they are approved or rejected. This page looks for new photos by itself every 10 seconds." />
         {embedded ? null : <Link href={`/admin/events/${eventId}/vetting`}>Back to the Vetting tab</Link>}
       </div>
