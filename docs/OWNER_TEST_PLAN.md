@@ -84,7 +84,7 @@ The throw-away event of section C is the only event you may change. Never save a
   - [T42. The label of the MTK welcome button: START or INDÍTÁS](#t42-the-label-of-the-mtk-welcome-button-start-or-indítás), either
   - [T43. MTK's Hungarian suggestions: when do they have to arrive?](#t43-mtks-hungarian-suggestions-when-do-they-have-to-arrive), either
   - [T44. The welcome-screen backfill for existing events](#t44-the-welcome-screen-backfill-for-existing-events), either
-  - [T45. Keep the unframed photo at approval: merge pull request 609 now or after the match](#t45-keep-the-unframed-photo-at-approval-merge-pull-request-609-now-or-after-the-match), either
+  - [T45. Keep the unframed photo at approval: merge pull request 609, in one of two ways](#t45-keep-the-unframed-photo-at-approval-merge-pull-request-609-in-one-of-two-ways), either
   - [T46. The admin notices: build the fix?](#t46-the-admin-notices-build-the-fix), either
   - [T47. Report the two design-system findings to the GDS repository?](#t47-report-the-two-design-system-findings-to-the-gds-repository), either
 - [Image safety card (issue 509)](#image-safety-card-issue-509) (pending)
@@ -620,11 +620,11 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **Steps**
 
-1. This is the real match event: look, but never press the button that continues on the photo screen, because that would save a test photo in the live Waiting list. Use this long address and not the short one on the giant screen (FANSELFIE.ME/MTK): a visit through the short address is counted and sent to messmass. Each visit here is one anonymous visit in that event's Journey figures.
+1. This is the real match event: LOOK ONLY. Never type your name or e-mail there and never press anything that continues past the Who-are-you page, because that registers a test user on the live event and adds to its real figures. Use this long address and not the short one on the giant screen (FANSELFIE.ME/MTK): a visit through the short address is counted and sent to messmass. Each visit here is one anonymous visit in that event's Journey figures.
 2. Open the address in Safari. On the welcome page press the START button.
 3. On the consent page tick the boxes the page shows and press its button (it reads **Tovább**).
-4. On the Who-are-you page (**Ki vagy te?**) type your own name and e-mail address in the form and press **Tovább**. Do not press the Google or Facebook buttons. This may register your address for that event (and send you a welcome e-mail if the event has one): it is harmless, and it is the one thing this walk can leave behind.
-5. Press **Fotó készítése**, take a selfie, use it, and look at the photo screen. Leave it with **Újra** (Retake). Never press **Tovább** there.
+4. You are now on the Who-are-you page (**Ki vagy te?**). Look at it and read it. Do not type anything, do not press the Google or Facebook buttons, do not press **Tovább**. Go back or close the tab.
+5. The camera page and the photo screen are looked at on the throw-away event (T14), which takes its colours from the partner MTK Budapest. If its colours are not the same as the real event's, say so in your answer.
 6. On every page look at the colours of the text, the buttons, the boxes and the small grey lines.
 
 **You should see**
@@ -690,11 +690,12 @@ The throw-away event of section C is the only event you may change. Never save a
 **Steps**
 
 1. Start the walk of T23 on an iPhone in Safari, with the address bar and the bottom bar showing as usual.
-2. On the welcome page, the Who-are-you page and the camera page: try to scroll with one finger. The page must not move.
-3. On the welcome and Who-are-you pages: pinch with two fingers. The page must not zoom. (The consent page may zoom: that is on purpose.)
-4. On the photo screen: pinch on the photo. The photo zooms inside its frame (wanted); the page itself does not zoom.
-5. On every page look at the strip between the page and Safari's bottom bar, and at the strip at the top. It must be the event's blue (the page colour), never white or grey. Look hardest at the consent page and the photo screen.
-6. Turn the phone sideways on the camera page and on the photo screen, then back: the colour stays, nothing is cut off, the buttons stay reachable.
+2. Do the pages in this order: welcome, consent and Who-are-you on the real MTK address (look only, as in T23), then the camera page and the photo screen on the throw-away address.
+3. On the welcome page, the Who-are-you page and the camera page: try to scroll with one finger. The page must not move.
+4. On the welcome and Who-are-you pages: pinch with two fingers. The page must not zoom. (The consent page may zoom: that is on purpose.)
+5. On the photo screen: pinch on the photo. The photo zooms inside its frame (wanted); the page itself does not zoom.
+6. On every page look at the strip between the page and Safari's bottom bar, and at the strip at the top. It must be the event's blue (the page colour), never white or grey. Look hardest at the consent page and the photo screen.
+7. Turn the phone sideways on the camera page and on the photo screen, then back: the colour stays, nothing is cut off, the buttons stay reachable.
 
 **You should see**
 
@@ -1107,24 +1108,24 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **If it fails:** If you are unsure, answer LATER: nothing is lost by waiting.
 
-### T45. Keep the unframed photo at approval: merge pull request 609 now or after the match
+### T45. Keep the unframed photo at approval: merge pull request 609, in one of two ways
 
-**Device:** either. **Why:** Today the approval deletes the unframed crop of a photo, so the framed picture is then the only copy. Pull request 609 keeps the crop, copies it to ImgBB and records every copy of a photo (issue 509, decision 295). It changes the approval path and writes new fields on live photos, so it is merged only when you name it. A second pull request (612) adds the Image safety card to the Slideshows page; it follows 609 and is not merged either.
+**Device:** either. **Why:** Today the approval deletes the unframed crop of a photo, so the framed picture is then the only copy. Pull request 609 keeps the crop, copies it to ImgBB and records every copy of a photo (issue 509, decision 295). It changes the approval path and writes new fields on live photos, so it is merged only when you name it, and it has to be live by Tuesday 13 October because the approval path is frozen from Wednesday. A second pull request (612) adds the Image safety card to the Slideshows page; it follows 609, is admin only, and is merged by me after 609.
 
 **Where:** A decision, in the chat (about 2 minutes). Read T03 first
 
 **Steps**
 
-1. merge 609: it is merged before the freeze on Wednesday 14 October, so the photos of the match keep their unframed crop. The approver's screens, buttons and answers do not change; the extra work starts after the answer. Choose it only if T03 shows the Blob store has room (a Pro plan, or a Hobby store far below 1 GB): each approved photo adds about 0.43 MB.
-2. 609 B (the default): it is merged after the match, from Saturday 17 October. The photos of the match are approved as today (the unframed crop is deleted at approval), and nothing changes in the approval path before Friday.
+1. merge 609: the unframed crop is kept in our Vercel Blob store AND copied to ImgBB. Choose it only if T03 shows the Blob store has room (a Pro plan, or a Hobby store far below 1 GB): each approved photo adds about 0.43 MB to the store, and a full store stops every picture read and write.
+2. 609 B: the same, but once the ImgBB copy of the crop is verified, the crop is deleted from our Blob store. Nothing is ever without a verified copy and the Blob store does not grow. Choose it if T03 shows a Hobby plan close to its limit, or if you are unsure.
 
 **You should see**
 
-- If you do not answer, 609 B stays the plan. Either way you can write the answer in the chat in these words: merge 609, or 609 B.
+- If you do not answer by Tuesday 13 October at noon, I merge the 609 B way, because it keeps every photo safe and cannot fill the store. Write the answer in the chat in these words: merge 609, or 609 B.
 
 **Write back:** `T45 merge 609` or `T45 609 B`
 
-**If it fails:** If T03 shows a Hobby plan with the store above about 600 MB, answer 609 B, or upgrade the plan first and then answer merge 609. The pull request description says the same.
+**If it fails:** If T03 shows a Hobby plan with the store above about 600 MB, answer 609 B, or upgrade the plan first and then answer merge 609.
 
 ### T46. The admin notices: build the fix?
 
@@ -1258,7 +1259,7 @@ PENDING: filled in when the pull request is merged.
 5. Both phones: charged, power saver off, auto-lock on Never while approving.
 6. On the Vetting tab read **Photo vetting is on for this event** and **Marking the people is on for this event**.
 7. Analytics, tab **Journey** of the match event: **The journey recording is on for every event**.
-8. Optional, once: scan the QR code on the giant screen with your own phone. It is the first real scan: it is counted and sent to messmass, and it proves the link counting works end to end. Do it once, only today, not repeatedly.
+8. Do not scan the QR code yourself before the doors open: a scan is counted and sent to messmass as a real figure. After the doors open, the first fan's scan is the proof that the link counting works; look at the link's count in the event's Short links once, a few minutes in.
 
 **You should see**
 
