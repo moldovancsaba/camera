@@ -110,8 +110,14 @@ more than intended passed. The real ceiling is a Vercel Firewall rule:
   away. If guests report upload errors at a live event, raise the limit or
   disable the rule first, then look at `firewall overview`.
 - **Not in git.** This configuration lives in the Vercel project, like the
-  environment variables, so it is not restored by a redeploy. Recreate it with the
-  command in `HANDOVER.md` ("Firewall") if the project is ever rebuilt.
+  environment variables, so it is not restored by a redeploy. If the project is ever
+  rebuilt, recreate it with the command below (verified live on 2026-09-30: of 130
+  rapid requests, 100 reached camera and 30 were stopped by the firewall), then
+  `firewall publish`:
+
+  ```bash
+  npx --yes vercel@latest firewall rules add fan-upload-flood-ceiling --project 04_camera --scope narimato --action rate_limit --condition '{"type":"path","op":"eq","value":"/api/submissions"}' --condition '{"type":"method","op":"eq","value":"POST"}' --rate-limit-algo fixed_window --rate-limit-window 60 --rate-limit-requests 100 --rate-limit-keys ip --rate-limit-action rate_limit --yes
+  ```
 - **Upstash.** Distributed in-app limits need the two Upstash variables above
   (`.env.example`). Not planned; if it is ever enabled, retune `RATE_LIMITS.UPLOAD`
   first, because per-IP limits that start counting globally would tighten and
