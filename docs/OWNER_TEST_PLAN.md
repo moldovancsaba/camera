@@ -87,7 +87,6 @@ The throw-away event of section C is the only event you may change. Never save a
   - [T45. Keep the unframed photo at approval: pull request 609 goes live the B way unless you stop it](#t45-keep-the-unframed-photo-at-approval-pull-request-609-goes-live-the-b-way-unless-you-stop-it), either
   - [T46. The admin notices fix: done, nothing to answer](#t46-the-admin-notices-fix-done-nothing-to-answer), either
   - [T47. The design-system findings: one is reported, one is not](#t47-the-design-system-findings-one-is-reported-one-is-not), either
-- [Image safety card (issue 509)](#image-safety-card-issue-509) (pending)
 - [Rate limits (issue 470) and the report partner template (issue 430)](#rate-limits-issue-470-and-the-report-partner-template-issue-430) : T48, T49, T50
   - [T48. Open a messmass report: it still loads under the new limits](#t48-open-a-messmass-report-it-still-loads-under-the-new-limits), computer
   - [T49. Know the messmass limits before a day with many people on one network](#t49-know-the-messmass-limits-before-a-day-with-many-people-on-one-network), either
@@ -96,6 +95,10 @@ The throw-away event of section C is the only event you may change. Never save a
   - [T51. Download the images ZIP of the throw-away event](#t51-download-the-images-zip-of-the-throw-away-event), computer
 - [Fixes of 12 October: the capture flow on a big screen](#fixes-of-12-october-the-capture-flow-on-a-big-screen) : T52
   - [T52. Look at the capture flow on your big screen: the hint line and the waiting page](#t52-look-at-the-capture-flow-on-your-big-screen-the-hint-line-and-the-waiting-page), computer
+- [Image safety card (issue 509)](#image-safety-card-issue-509) : T53, T54, T55
+  - [T53. Count where every picture is held (reads only)](#t53-count-where-every-picture-is-held-reads-only), computer
+  - [T54. Check which addresses no longer answer (reads only)](#t54-check-which-addresses-no-longer-answer-reads-only), computer
+  - [T55. Make the missing copies: run now or later?](#t55-make-the-missing-copies-run-now-or-later), computer
 - [H. The day of the match: run sheet](#h-the-day-of-the-match-run-sheet) : M1, M2, M3, M4
   - [M1. Before the doors](#m1-before-the-doors), either
   - [M2. During the match: what to watch](#m2-during-the-match-what-to-watch), either
@@ -1165,10 +1168,6 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **If it fails:** If you want a different wording or a different place to report, say so.
 
-## Image safety card (issue 509)
-
-PENDING: filled in when the pull request is merged.
-
 ## Rate limits (issue 470) and the report partner template (issue 430)
 
 **When:** Any day before Friday, about 15 minutes. These are changes in messmass (pull requests 474 and 475), merged and live since the evening of 11 October. The image safety card and the dependency changes are still pending.
@@ -1287,6 +1286,70 @@ PENDING: filled in when the pull request is merged.
 **Write back:** `T52 PASS` or `T52 FAIL: the page, the window width and what you saw`
 
 **If it fails:** Write the window width and send a screenshot like the ones you sent on 12 October.
+
+## Image safety card (issue 509)
+
+**When:** Wednesday 14 October at the latest, 15 minutes for the two looks (T53 and T54). The run (T55) is your decision and needs T03. Camera pull requests 609 and 612 are merged: approval no longer loses the unframed photo, and the Slideshows page has a card that counts where every picture is held.
+
+### T53. Count where every picture is held (reads only)
+
+**Device:** computer. **Why:** Before this change the unframed photo was deleted at approval, an ImgBB copy was kept without its address, and about 1,350 photos existed only on ImgBB, which had already lost seven (issue 509). The card shows, without changing anything, how many pictures exist in only one place.
+
+**Where:** The admin on a computer: the left menu, Slideshows, the card **Image safety** (about 4 minutes). It writes nothing
+
+**Steps**
+
+1. Open the left menu, then Slideshows, and find the card **Image safety**.
+2. Press **Count the copies (dry run)**. Wait until the rows appear.
+3. Read the rows **Only on ImgBB**, **Only in our store**, **On ImgBB and in our store**, **On another host**, **Unframed photos in our store only**, **Unframed photos on ImgBB only (final)**, **Unframed photos in our store and on ImgBB**, **Copies that were not made** and **Copies that could not be verified**.
+4. Do not press any other button on this step.
+
+**You should see**
+
+- The rows appear with numbers and no error box. Roughly 1,350 pictures are **Only on ImgBB** (the number from 9 October). Photos approved after the change show up under **On ImgBB and in our store** once they have been approved.
+
+**Write back:** `T53 PASS: only on ImgBB N, only in our store M, could not be verified K` or `T53 FAIL: what the card showed`
+
+**If it fails:** Write the red text (**Not done …**) exactly, and the time. A timeout once is normal on a big count: press it again once.
+
+### T54. Check which addresses no longer answer (reads only)
+
+**Device:** computer. **Why:** Seven photos of the AS Roma events are known to be gone from ImgBB. This asks a bounded batch of addresses whether they still answer and lists the gone ones; it marks nothing and deletes nothing.
+
+**Where:** The same card (about 5 minutes)
+
+**Steps**
+
+1. Press **Check the addresses (reads only)**. It works in batches; **Stop after this batch** ends it early.
+2. Wait for the list of pictures that are gone and read how many addresses were asked and how many answered.
+
+**You should see**
+
+- A list (probably the seven known photos, or a few more) and no error box. Nothing on any page changes.
+
+**Write back:** `T54 PASS: asked N, gone G` or `T54 FAIL: what the card showed`
+
+**If it fails:** Write the red text exactly. Do not press it more than twice.
+
+### T55. Make the missing copies: run now or later?
+
+**Device:** computer. **Why:** A picture that exists only on ImgBB can disappear without notice. The run copies it into our own store, so it exists twice (the picture's address on every page stays the same; nothing is deleted). It writes about 0.43 MB for each picture: roughly 580 MB for the 1,350 that exist only on ImgBB, so it needs room in the Blob store (T03). It runs in batches while the page stays open, about 20 minutes in all.
+
+**Where:** The same card. Your decision after T53, T54 and T03
+
+**Steps**
+
+1. NOW: only if T03 shows the Blob store has at least 1 GB free. Press the button that reads **Copy N pictures to our store** (N is how many the count found), read the question in the page (**… into our store?**), press its yes. Keep the page open. After the first batch press the stop button, press **Count the copies (dry run)** again and write the new numbers. If they went the right way, press the run button again until the row **Only on ImgBB** reads 0.
+2. LATER (the default): after the match, when the Blob store has been checked. Nothing is copied before Friday.
+3. The other two buttons, **Copy N pictures to ImgBB** and **Copy N unframed photos to ImgBB**, are not needed now: new approvals do it by themselves, and nothing needs the first one before the match.
+
+**You should see**
+
+- After a NOW run the count **Only on ImgBB** goes down and **On ImgBB and in our store** goes up; the pictures on every page look exactly as before.
+
+**Write back:** `T55 NOW` or `T55 LATER`
+
+**If it fails:** If a run shows a red box or the numbers do not move, press stop and write the box and the numbers. A repeat only does what is missing, so nothing is harmed.
 
 ## H. The day of the match: run sheet
 
