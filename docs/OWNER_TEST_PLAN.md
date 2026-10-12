@@ -1,6 +1,6 @@
 # Owner test and task plan: MTK x Vasas, Friday 16 October 2026
 
-> Written on 11 and 12 October 2026 against version 12.3.42 of the app, for the owner. It is a list to follow and answer, not a description of the code. The same content feeds the interactive checklist page.
+> Written on 11 and 12 October 2026 against version 12.3.42 of the app, for the owner. It is a list to follow and answer, not a description of the code. The same content feeds the interactive checklist page. The approver steps and the last two steps are written for camera pull request 629 and need it live (see Read this first).
 
 ## How to report back
 
@@ -23,6 +23,8 @@ Do not leave a FAIL without its line: it cannot be fixed from a guess.
 This is everything that is on you before the match on Friday 16 October, in the order to do it, with the exact buttons and words you will see. It was written on 11 and 12 October against version 12.3.42 of the app.
 
 The capture path (the pages users go through), the live giant screen and the approver's screens are frozen from Wednesday 14 October: from then on only fixes for something the rehearsal found are allowed. So do sections A to F on Monday 12 and Tuesday 13 October, the rehearsal first, so that a defect it finds can still be fixed in time. Every step is small, says on which device to do it, and ends with the line you write back.
+
+The approver steps (T14, T15, T16, T17, T22 and T33), the approving lines of the match-day sheet (M1 to M3) and the two last steps (T56 and T57) are written for the review screen of camera pull request 629: one photo at a time, a rectangle drawn on the photo, plain text buttons and words you can change. They only work once that pull request is merged and deployed. You know it is live when the Waiting list of the Vetting tab shows one photo with the buttons **Nobody in this photo**, **Approve**, **Reject** and **Skip for now**. If it opens as cards with a **Review** button instead, or you see the buttons **Clicker** and **Next**, it is not live yet: write T14 SKIP: pull request 629 is not live yet, and do these steps later.
 
 Where a button or screen of an outside service (Vercel, MongoDB Atlas, ImgBB, the sign-in) could not be checked from here because it needs your login, the step says so in one line. Every label of the app itself was checked in the code. If the screen and this plan disagree, the screen is right: write what you saw.
 
@@ -70,7 +72,7 @@ The throw-away event of section C is the only event you may change. Never save a
   - [T30. The Brand Colors panel](#t30-the-brand-colors-panel), phone
   - [T31. The four camera ways, tried with the address](#t31-the-four-camera-ways-tried-with-the-address), phone
   - [T32. The camera way as a setting](#t32-the-camera-way-as-a-setting), either
-  - [T33. Marking the people in the big view: on a computer and on a phone held sideways](#t33-marking-the-people-in-the-big-view-on-a-computer-and-on-a-phone-held-sideways), either
+  - [T33. The review screen on a computer and on a phone held sideways](#t33-the-review-screen-on-a-computer-and-on-a-phone-held-sideways), either
 - [E. Look and confirm, then clean up](#e-look-and-confirm-then-clean-up) : T34, T35, T36, T37, T38, T39, T40, T41
   - [T34. The e-mail says “Visit your selfie”, in your phone's mail app](#t34-the-e-mail-says-visit-your-selfie-in-your-phones-mail-app), phone
   - [T35. Look at the slideshow crossfade](#t35-look-at-the-slideshow-crossfade), computer
@@ -104,6 +106,9 @@ The throw-away event of section C is the only event you may change. Never save a
   - [M2. During the match: what to watch](#m2-during-the-match-what-to-watch), either
   - [M3. If something goes wrong: one move for each risk](#m3-if-something-goes-wrong-one-move-for-each-risk), either
   - [M4. After the match](#m4-after-the-match), either
+- [Vetting words and people counters (pull request 629)](#vetting-words-and-people-counters-pull-request-629) : T56, T57
+  - [T56. The vetting words: hide, rename and add an option at the event](#t56-the-vetting-words-hide-rename-and-add-an-option-at-the-event), computer
+  - [T57. The people counters for messmass: look at the preview, nothing is sent](#t57-the-people-counters-for-messmass-look-at-the-preview-nothing-is-sent), computer
 
 ## A. Platform steps (computer)
 
@@ -313,7 +318,7 @@ The throw-away event of section C is the only event you may change. Never save a
 
 ## C. The approver and the rehearsal
 
-**When:** T10 to T12 on Monday 12 October (about 25 minutes). The rehearsal T13 to T20 on Monday evening or on Tuesday 13 at the latest, with the approver on the line (about 90 minutes). The rehearsal comes first on purpose: what it finds can still be fixed before the freeze. The throw-away event is deleted last, in T41.
+**When:** T10 to T12 on Monday 12 October (about 25 minutes). The rehearsal T13 to T20 on Monday evening or on Tuesday 13 at the latest, with the approver on the line (about 90 minutes). The rehearsal comes first on purpose: what it finds can still be fixed before the freeze. The throw-away event is deleted last, in T41. T14 to T17 are written for the review screen of camera pull request 629 and need it live (see Read this first).
 
 ### T10. Add the MTK approver as a partner user
 
@@ -408,7 +413,7 @@ The throw-away event of section C is the only event you may change. Never save a
 
 ### T14. The approver finds the photos, and a third photo arrives by itself
 
-**Device:** phone. **Why:** This proves a partner Manager, not only a global admin, can open the Vetting tab, and that the Waiting list refreshes by itself every 10 seconds, so nobody has to reload at the match (issue 373).
+**Device:** phone. **Why:** This proves a partner Manager, not only a global admin, can open the Vetting tab and see the first waiting photo, and that the Waiting screen looks for new photos by itself every 10 seconds, so nobody has to reload at the match (issue 373).
 
 **Where:** The approver's own phone (or your phone with your own login: then write **alone** in your report), plus a second phone to take photo 3 (about 10 minutes)
 
@@ -416,87 +421,93 @@ The throw-away event of section C is the only event you may change. Never save a
 
 1. Approver: open camera.messmass.com/admin on the phone and sign in with the e-mail you gave in T10.
 2. Open Events, then TEST approval rehearsal (delete me). In the box **Vetting** press **Open Vetting**.
-3. Read the top of the page: **Photo vetting is on for this event** and **Marking the people is on for this event**, then the three links **Waiting (2)**, **Rejected (0)**, **Approved (0)**.
-4. Look at the Waiting cards: each shows the picture, the e-mail, Taken, Frame, Wall and one button **Review**. There is no Approve or Reject button on a card, and a partner Manager has no **Turn vetting off** or **Turn marking off** button (a global admin sees them).
-5. Leave this page open and do not reload it. On the other phone take photo 3 as in T13, with two people in it.
-6. Watch the first phone for up to 30 seconds.
+3. Read the top of the page: under the heading **Photos** are the three links **Waiting (2)**, **Rejected (0)** and **Approved (0)**, and the link **Show the list**.
+4. Under the links is the first waiting photo (the oldest) with the line **Photo 1 of 2 waiting** above it and the user's e-mail at its right. Under the photo (beside it on a wide screen) is a box **People in this photo (0)** with the button **Nobody in this photo**, and at the bottom are three buttons: **Approve** (greyed out), **Reject** and **Skip for now**. There are no cards.
+5. Press **Show the list**. The photos now show as cards, each with the picture, the e-mail, Taken, Frame, Wall and one button **Review**. There is no Approve or Reject button on a card while marking is on. Press **Back to one at a time**.
+6. Scroll to the very bottom of the page and read **Photo vetting is on for this event** and **Marking the people is on for this event**. A partner Manager has no **Turn vetting off** or **Turn marking off** button (a global admin sees them).
+7. Leave the page on the one-photo screen and do not reload it. On the other phone take photo 3 as in T13, with two people in it.
+8. Watch the first phone for up to 30 seconds.
 
 **You should see**
 
 - The approver reaches the Vetting tab without a **no access** page.
-- Within about 15 seconds the third card appears and the link reads **Waiting (3)**, without any reload.
+- The Waiting list shows one photo, not cards, until you press **Show the list**.
+- Within about 15 seconds the link reads **Waiting (3)** and the line above the photo reads **Photo 1 of 3 waiting**, without any reload. The photo you see does not change: the new one waits at the end of the line.
 
 **Write back:** `T14 PASS` or `T14 FAIL: one line, what you saw`
 
-**If it fails:** If the approver gets **No access** or the event is missing in the Events list, the e-mail they signed in with is not the one added in T10: compare the two and write both first letters and the page text. If the third card does not appear within a minute, write the time you took the photo. Not verified: how a person who has never used the single sign-on gets an account.
+**If it fails:** If the approver gets **No access** or the event is missing in the Events list, the e-mail they signed in with is not the one added in T10: compare the two and write both first letters and the page text. If the link still reads **Waiting (2)** after a minute, write the time you took the photo. If the Waiting list opens as cards, or you see the buttons **Clicker** and **Next**, the new screen is not live yet: stop and say so. Not verified: how a person who has never used the single sign-on gets an account.
 
 ### T15. Photo 1: mark one person and approve
 
-**Device:** phone. **Why:** The marking of the people is required before any first decision of a waiting photo: it is what the approver does for every photo at the match, so it must work with a finger on a phone (issue 542).
+**Device:** phone. **Why:** The people in a photo must be marked before the first decision of a waiting photo: it is what the approver does for every photo at the match, so it must work with a finger on a phone (issue 542, reworked in issue 628).
 
 **Where:** The approver's phone, Vetting tab, Waiting (about 8 minutes)
 
 **Steps**
 
-1. Press **Review** on the oldest card (photo 1). The photo opens big, under the heading **Mark the people**. The only buttons are **Clicker** and **Nobody in this photo**: there is no Approve yet.
-2. Press **Clicker** and draw a rectangle around your face with a finger: press, drag, let go. A tap is not a rectangle. Press **Retry** once and draw it again.
-3. Press **Next**. Sixteen buttons appear under the photo: two rows for who it is (women and girls, then men and boys; kid, young, adult, old), a row for emotion (sad, unamused, happy, angry) and a row for merchandise (cap, scarf, jersey, flag).
-4. Choose one **who** button (required) and, if you like, one emotion and one merchandise button, then press **Done**. The person gets a coloured rectangle.
-5. Press **Next**. The heading changes to **Approve or reject** and a line says 1 person is marked. Press **Back to the people**, then **Next** again.
+1. The screen shows photo 1, the oldest. Read the line above the buttons: it asks you to draw a rectangle around each person or choose **Nobody in this photo**. **Approve** is greyed out, because nobody is marked yet.
+2. Tap the photo once without moving the finger. Nothing is added: a tap is not a rectangle.
+3. Put a finger on the photo above and left of your face, drag to below and right of it and let go. A rectangle with the number 1 appears, drawn dashed, and a row **Person 1: needs gender and age** appears in the box.
+4. Under **Gender, as the person looks in the photo** press one button (Female, Male or Not sure). Under **Age, as the person looks in the photo** press one button. The row now names your choices, the rectangle turns solid and **Approve** turns green.
+5. If you like, press one button under **How the person looks (optional)** and one or more under **What the person wears or holds (optional)**. Press a chosen emotion again and it clears.
 6. Press **Approve**.
 
 **You should see**
 
-- A green box **Done: Photo approved. The user gets the link by email.** appears and the next photo opens at once.
-- At every step all the buttons are inside the screen and the page does not scroll away from them while you draw.
+- A green line **Photo approved. The user gets the link by email.** appears at the top and the next photo opens at once.
+- Drawing with the finger does not scroll the page, and the buttons **Approve**, **Reject** and **Skip for now** stay in view at the bottom of the screen.
 
 **Write back:** `T15 PASS` or `T15 FAIL: one line, what you saw`
 
-**If it fails:** Write at which step it went wrong, what you pressed and what the page said, with a screenshot. A rectangle that does not follow the finger, a button cut off by the screen edge, or an Approve button that appears before any marking are all findings.
+**If it fails:** Write at which step it went wrong, what you pressed and what the page said, with a screenshot. A rectangle that does not follow the finger, a page that scrolls instead of drawing, a button cut off by the screen edge, or an **Approve** that is active before gender and age are chosen are all findings.
 
 ### T16. Photo 2: say nobody is in it and reject with a reason
 
-**Device:** phone. **Why:** The approver must be able to say a photo has nobody in it, and to reject it. The rejected user gets a short note and can take another photo.
+**Device:** phone. **Why:** The approver must be able to say a photo has nobody in it, and to reject it with a reason from the list. The rejected user gets a short note and can take another photo.
 
-**Where:** The approver's phone, the big view; photo 2 opens by itself after photo 1 (about 4 minutes)
+**Where:** The approver's phone, the same screen; photo 2 opens by itself after photo 1 (about 4 minutes)
 
 **Steps**
 
-1. Photo 2 is open under **Mark the people** (if you left the big view, press **Review one by one** on the Vetting tab). Press **Nobody in this photo**. The heading changes to **Approve or reject** and a line says nobody was marked.
-2. Press **Reject**. A box **Reason (optional, for the record)** appears. Type a few words.
-3. Press **Confirm reject**.
+1. Photo 2 is open. Press **Nobody in this photo**: the button turns solid and the line above the buttons goes away.
+2. Press **Reject**. Under **Why is it rejected? Choose one or more.** twelve buttons appear, with a box **Note (optional)** under them. **Confirm reject** is greyed out and the line above the buttons says **Choose at least one reason.**
+3. Press **Test, spam or not a selfie**: **Confirm reject** turns red. Press **Other (write it in the note)** as well (you can choose more than one) and type a few words in the note.
+4. Press **Confirm reject**.
 
 **You should see**
 
-- A green box **Done: Photo rejected. The user gets a short note.** appears and photo 3 opens at once.
+- **Confirm reject** stays greyed out until a reason is chosen.
+- A green line **Photo rejected. The user gets a short note.** appears at the top and photo 3 opens at once.
 
 **Write back:** `T16 PASS` or `T16 FAIL: one line, what you saw`
 
-**If it fails:** Write the step, the words of any red message and a screenshot.
+**If it fails:** Write the step, the words of any red message and a screenshot. A **Confirm reject** that is active before a reason is chosen is a finding too.
 
 ### T17. Photo 3: two people, remove one, skip, then approve
 
-**Device:** phone. **Why:** Real photos have several people and the approver will make mistakes while marking; Remove and Skip are how they recover (issue 542).
+**Device:** phone. **Why:** Real photos have several people and the approver will make mistakes while marking; Remove person and Skip for now are how they recover (issue 542, reworked in issue 628).
 
-**Where:** The approver's phone, the big view of photo 3, then the Vetting tab (about 7 minutes)
+**Where:** The approver's phone, the same screen, then the Vetting tab (about 10 minutes). Two photos must be waiting: **Skip for now** is greyed out when only one is left
 
 **Steps**
 
-1. Photo 3 is open (after T16). Mark the first person: **Clicker**, draw, **Next**, choose who, **Done**. Press **Clicker** again and mark the second person the same way.
-2. Press **Remove**: the last rectangle goes. Mark that person again.
-3. Press **Next**, then **Skip this photo**.
-4. The page says **All the photos are decided** and offers **Back to the Vetting tab**. That is its wording when the last waiting photo is skipped, although this one is not decided; note it if it confuses you. Press the link.
-5. On the Vetting tab the photo is still in **Waiting (1)**. Press **Review** on its card: the two people you marked are still there. Press **Next**, then **Approve**.
-6. Back on the Vetting tab read the three links and the card **People marked in the photos**, then open **Rejected**: photo 2 is there with a button **Approve** (do not press it).
+1. On the second phone take one more photo as in T13 (photo 4, you alone). On the approver's phone photo 3 is open; wait until **Skip for now** turns active (about 15 seconds): that is photo 4 arriving.
+2. Draw a rectangle around the first person of photo 3 and choose gender and age. Draw a rectangle around the second person and choose gender and age. The box lists **Person 1** and **Person 2**.
+3. Tap the row **Person 2**, then press **Remove person**. The second rectangle and its row go away. Draw that person again and choose gender and age.
+4. Press **Skip for now**. Photo 4 opens. Photo 3 has gone to the back of the line: skipping decides nothing, and the rectangles you drew on it are not saved.
+5. On photo 4 draw a rectangle around yourself, choose gender and age and press **Approve**.
+6. Photo 3 comes round again, without rectangles. Draw both people again, choose gender and age for each and press **Approve**.
+7. Read the three links under **Photos** and, at the bottom of the page, the card **People marked in the photos**. Then open **Rejected**: photo 2 is there, with its reasons after **Why** and a button **Approve** (do not press it).
 
 **You should see**
 
-- After **Skip this photo** nothing is decided: the photo is still waiting and keeps its marked people.
-- After **Approve** the links read **Waiting (0)**, **Rejected (1)**, **Approved (2)**, and the card says 3 people in 3 photos that were looked at (if you marked as in T15 to T17).
+- After **Skip for now** nothing is decided: the link **Waiting** does not go down, and photo 3 comes back after photo 4.
+- After the last **Approve** the links read **Waiting (0)**, **Rejected (1)**, **Approved (3)**, and the card says 4 people in 4 photos that were looked at (if you marked as in T15 to T17).
 
 **Write back:** `T17 PASS` or `T17 FAIL: one line, what you saw`
 
-**If it fails:** Write which button did not do what its name says and what happened instead.
+**If it fails:** Write which button did not do what its name says and what happened instead. **Skip for now** that stays greyed out while two photos are waiting, or a **Waiting** count that goes down after a skip, are findings.
 
 ### T18. The two e-mails arrive
 
@@ -596,20 +607,21 @@ The throw-away event of section C is the only event you may change. Never save a
 
 ### T22. Vetting on a phone: the counts follow without a reload
 
-**Device:** phone. **Why:** On 8 October approving was slow, every button locked and the page needed a reload; it was fixed and you confirmed it. The Waiting list has since got its own refresh and the marking, so this re-checks the counts on the current version (issue 342).
+**Device:** phone. **Why:** On 8 October approving was slow, every button locked and the page needed a reload; it was fixed and you confirmed it. The Waiting screen has since got its own refresh and the marking, so this re-checks the counts on the current version (issue 342).
 
 **Where:** The approver's phone, during T14 to T17 (no extra time)
 
 **Steps**
 
 1. Do not reload the page at any time during T14 to T17.
-2. After the decisions of T15 to T17 open the Vetting tab and read the three links: they agree with what you decided.
-3. Open **Approved (2)**: each card has a button **View photo** that opens the public photo page.
-4. Think back: was any button greyed out for more than a few seconds, or did any decision need a reload to show?
+2. After each decision in T15 to T17 look at the links **Waiting**, **Rejected** and **Approved** at the top of the page: within a few seconds the number of the list the photo left has gone down and the number of the list it joined has gone up, without a reload.
+3. After the last decision read the three links: they agree with what you decided.
+4. Open **Approved (3)**: each card has a button **View photo** that opens the public photo page.
+5. Think back: while a decision was being saved the buttons were greyed out and the line above them said **Saving…**. Did any button stay greyed out for more than a few seconds, or did any decision need a reload to show?
 
 **You should see**
 
-- **Waiting (0)**, **Rejected (1)**, **Approved (2)** without a reload, and the lists show the right photos.
+- **Waiting (0)**, **Rejected (1)**, **Approved (3)** without a reload, and the lists show the right photos.
 - No button stayed locked and no reload was needed.
 
 **Write back:** `T22 PASS` or `T22 FAIL: one line, what you saw`
@@ -845,22 +857,22 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **If it fails:** Write the choice you saved and what the phone showed. Do not change the Camera setting of the match event for any reason.
 
-### T33. Marking the people in the big view: on a computer and on a phone held sideways
+### T33. The review screen on a computer and on a phone held sideways
 
-**Device:** either. **Why:** T15 to T17 tried the marking with a finger on an upright phone. Approvers will also use a computer with a mouse and a phone held sideways, and the sixteen buttons sit in different places (issue 542).
+**Device:** either. **Why:** T15 to T17 tried the screen with a finger on an upright phone. Approvers will also use a computer with a mouse and a phone held sideways, and the photo and the buttons sit in different places (issue 542, reworked in issue 628).
 
 **Where:** A computer and the approver's phone, the throw-away event (about 10 minutes)
 
 **Steps**
 
-1. Take two more photos on the throw-away address as in T13 (photo 4 alone, photo 5 with two people).
-2. Computer: open the throw-away event, Vetting, press **Review one by one**. Photo 4 opens big. Press **Clicker**, draw a rectangle with the mouse, press **Next**: the sixteen buttons appear over the photo. Choose who, press **Done**, then **Next** and **Approve**.
-3. Phone: open the Vetting tab and press **Review** on photo 5. Hold the phone sideways. The photo is big and all the buttons are reachable without the page moving away. Mark both people, press **Next** and **Approve**.
-4. While a photo is waiting, check once more that there is no way to approve without marking: before **Next** (or **Nobody in this photo**) there is no **Approve** button.
+1. Take two more photos on the throw-away address as in T13 (photo 5 alone, photo 6 with two people).
+2. Computer: open the throw-away event and Vetting. Photo 5 opens big, with the box of the people beside it. Before you draw anything, look at **Approve**: it is greyed out and the line above the buttons says what is missing. This is the one way a photo cannot be approved without marking.
+3. Click once on the photo without dragging: nothing is added. Then press the mouse button on the photo, drag a rectangle around the person and let go. Choose gender and age and press **Approve**.
+4. Phone: open the Vetting tab and hold the phone sideways. Photo 6 is open. The photo is big and the buttons **Approve**, **Reject** and **Skip for now** stay reachable without the page moving away. Draw a rectangle around each of the two people, choose gender and age for each (tap a rectangle or its row to switch person) and press **Approve**.
 
 **You should see**
 
-- On the computer the sixteen buttons are over the photo; on the phone upright they are under it; held sideways the photo stays big and nothing is cut off.
+- On the computer the photo and the box of the people sit side by side on a wide window, and the photo stays in view while you scroll the box; on the phone upright the box is under the photo; held sideways the photo stays big and nothing is cut off.
 - Both photos end up in **Approved**.
 
 **Write back:** `T33 PASS` or `T33 FAIL: the device and what you saw`
@@ -906,7 +918,7 @@ The throw-away event of section C is the only event you may change. Never save a
 **Steps**
 
 1. Open the throw-away event, press Slideshows in the event menu (it jumps to the box **Event Slideshows**). If the event has no slideshow, press **Create the default slideshow**.
-2. On the card of the default slideshow (marked Default) press **Open slideshow**. The giant screen opens in a new tab and starts with the approved photos of the event (you need at least two: T15 to T17 gave you two).
+2. On the card of the default slideshow (marked Default) press **Open slideshow**. The giant screen opens in a new tab and starts with the approved photos of the event (you need at least two: T15 to T17 gave you three).
 3. In that tab add `?crossfade=1` at the very end of the address and press Enter. Watch for a minute: when one picture changes into the next, the new one fades in over the old one and both are visible half-way; there is no black or white flash between them.
 4. Change the ending to `?crossfade=0` and watch again: the picture is replaced the old way, with a short fade. Compare the two.
 5. Leave the tab open for T36. Nothing is saved by this step.
@@ -1000,7 +1012,7 @@ The throw-away event of section C is the only event you may change. Never save a
 **You should see**
 
 - The page opens in a few seconds with no error. Users reads 1 (you used one e-mail address).
-- **Waiting now** 0, and **Approved** plus **Declined** add up to the number of photos you saved (5 if you did T13, T14 and T33).
+- **Waiting now** 0, and **Approved** plus **Declined** add up to the number of photos you saved (6 if you did T13, T14, T17 and T33).
 - **Approved** matches the e-mails sent (**Photo link e-mails sent**), and **People marked** matches the rectangles you kept in T15 to T17 and T33.
 
 **Write back:** `T39 PASS` or `T39 FAIL: the figure and what it says against what you did`
@@ -1032,7 +1044,7 @@ The throw-away event of section C is the only event you may change. Never save a
 
 ### T41. Delete the throw-away event
 
-**Device:** computer. **Why:** The test event, its slideshow and its photos must not linger under MTK Budapest (issue 405). Do this last, when T41 is the only step left.
+**Device:** computer. **Why:** The test event, its slideshow and its photos must not linger under MTK Budapest (issue 405). Do this last, when T41 is the only step left (T56 and T57 use this event too).
 
 **Where:** The admin on a computer (about 3 minutes)
 
@@ -1366,9 +1378,9 @@ The throw-away event of section C is the only event you may change. Never save a
 1. Giant screen computer: wired network if there is any; display sleep and screen saver off; nothing else on top of the browser and no pop-up notifications; no browser update scheduled.
 2. On that computer open the screen with `?debug=1` added at the end of its address (event page, box **Event Slideshows**, the card **Main screen (MTK x Vasas design)**, **Open slideshow**). A small panel in the corner lists lines. Watch it for one minute: lines **slide_shown** keep coming, a heartbeat every 10 seconds, no stall and no error.
 3. Remove `?debug=1` and reload. Make the page full screen: double-click the picture, or press F, or use the Full screen button at the right end of the bar along the bottom. Nothing may lie over it.
-4. Approver: signs in on their phone (camera.messmass.com/admin, Events, the match event, **Open Vetting**). The three links Waiting, Rejected, Approved show. A second approver, or you on your computer as global admin, is signed in too.
+4. Approver: signs in on their phone (camera.messmass.com/admin, Events, the match event, **Open Vetting**). The three links Waiting, Rejected, Approved show, and under them the first waiting photo (or **Nothing is waiting**). A second approver, or you on your computer as global admin, is signed in too.
 5. Both phones: charged, power saver off, auto-lock on Never while approving.
-6. On the Vetting tab read **Photo vetting is on for this event** and **Marking the people is on for this event**.
+6. On the Vetting tab scroll to the bottom, under the photo, and read **Photo vetting is on for this event** and **Marking the people is on for this event**.
 7. Analytics, tab **Journey** of the match event: **The journey recording is on for every event**.
 8. Do not scan the QR code yourself before the doors open: a scan is counted and sent to messmass as a real figure. After the doors open, the first fan's scan is the proof that the link counting works; look at the link's count in the event's Short links once, a few minutes in.
 
@@ -1388,10 +1400,10 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **Steps**
 
-1. Vetting tab of the match event, **Waiting**: the oldest waiting photo should be a few minutes old at most. The list refreshes by itself every 10 seconds.
+1. Vetting tab of the match event: the link **Waiting** stays small (a handful at most). To see how old the oldest waiting photo is, press **Show the list**: the cards show Taken, oldest first, and the first should be a few minutes old at most. Then press **Back to one at a time**. The screen looks for new photos by itself every 10 seconds.
 2. The giant screen: new approved photos appear, pictures change every few seconds, and there is never an **image not found** tile or a frozen picture.
 3. Analytics, tab **Journey**: **Visits** and **Saved a photo** grow; **Camera denied** and **Save failed** stay small.
-4. Ask the approver about red messages (**not approved**, **an email could not be sent**, **No answer arrived from the server**). Each one is written down with the time and the name on the card.
+4. Ask the approver about red messages (a box **That did not work**, with words like **The people could not be saved** or **not approved**, or **No answer arrived from the server**). Each one is written down with the time and the e-mail shown at the top right of the photo.
 5. Optional, the Vercel project 04_camera, Logs: filter slideshow_diagnostic and look for the words stall and reload held. If you see many in a row, write to the chat.
 6. Anything wrong: write to the chat at once: M2 FAIL, what you see, since when, on which page or device, and a screenshot. For the approver, add the words of the red message.
 
@@ -1413,8 +1425,8 @@ The throw-away event of section C is the only event you may change. Never save a
 
 1. The journey figures look wrong, or you suspect the recording of slowing anything: Analytics, tab **Journey**, **Switch the recording off**, then **Confirm: switch it off**. It takes effect within 30 seconds, photos and everything else carry on, and what was recorded stays. To undo: **Switch the recording on**.
 2. The giant screen is frozen, blank or shows an error: on the event page, in the box **Event Slideshows**, press **Reload the screen** on its card (the open screen reloads at its next picture); if it is stuck, reload the browser tab (Command+R or F5) and make it full screen again. The screen also reloads itself every 3 hours and recovers by itself after a stall.
-3. The approver cannot approve (signed out, phone dead, page not loading): sign in again with the same e-mail, or hand over to the second approver, or approve yourself on your computer (Vetting tab, **Review**). Waiting photos lose nothing; they wait.
-4. Approving is too slow because of the marking: Vetting tab, **Turn marking off** (global admin). The quick **Approve** and **Reject** buttons and **Approve selected** come back. To undo: **Turn marking on**.
+3. The approver cannot approve (signed out, phone dead, page not loading): sign in again with the same e-mail, or hand over to the second approver, or approve yourself on your computer (Vetting tab: the first waiting photo is open; mark the people, then **Approve**). Waiting photos lose nothing; they wait.
+4. Approving is too slow because of the marking: Vetting tab, **Turn marking off** (global admin, at the bottom of the page). The screen is then only the photo with **Approve**, **Reject** and **Skip for now**, and no rectangles to draw. To go through many photos quickly press **Show the list**: its cards have **Approve** and **Reject**, and there is **Approve selected**. To undo: **Turn marking on**.
 5. Last resort only, when nobody can approve at all and the screen would stay empty: Vetting tab, **Turn vetting off**, then **Confirm turn off**. New photos then appear on the screen and are e-mailed with no check; photos already waiting can still be approved. Turn vetting on again afterwards.
 6. Users say the camera does not open: do not change the Camera setting during the match. Write to the chat at once with the phone model and a screenshot.
 
@@ -1447,3 +1459,62 @@ The throw-away event of section C is the only event you may change. Never save a
 **Write back:** `M4 PASS: the list holds` or `M4 FAIL: which point failed`
 
 **If it fails:** Write the point and what you saw. Nothing is undone in a hurry: the match photos and their records are safe.
+
+## Vetting words and people counters (pull request 629)
+
+**When:** Monday evening or Tuesday 13 October, after the rehearsal photos exist and before T41 deletes the throw-away event (about 20 minutes in all). Both steps need camera pull request 629 live (see Read this first). T56 changes words at the throw-away event only; T57 only reads.
+
+### T56. The vetting words: hide, rename and add an option at the event
+
+**Device:** computer. **Why:** The words an approver describes a photo with (gender, age, emotion, items and the reasons for a rejection) are a list you can change at three levels: every event, one partner, one event (pull request 629). Here you change them at the throw-away event only, so nothing reaches the match event. Hiding or deleting an option never removes it from photos that were already marked with it.
+
+**Where:** The admin on a computer, the throw-away event (about 12 minutes). Do not save anything in Settings, **Vetting words** or on the partner MTK Budapest for this: it would change the words on the match event
+
+**Steps**
+
+1. Take one more photo on the throw-away address as in T13 (you alone). You look at it in step 7.
+2. Open the throw-away event and **Vetting words** in the event menu. The page is called **Vetting words: TEST approval rehearsal (delete me)** and has five boxes: Gender, Age, Emotion, Items and Reason. Each option is a row: its words in a box, a small tag (Standard), its counter name for messmass (for example `camera_gender_female`), and on the right the switch **Offered** and **Hidden** and the buttons **Up** and **Down**.
+3. Hide one: in the box **Items** press **Hidden** on the row **Flag**. The row gets the tag **Hidden** and the line at the top reads **You have changes that are not saved.**
+4. Rename one: in the box **Items** click in the words of the row **Scarf** and change them to Club scarf. Its counter name `camera_merch_scarf` stays the same: only the words change, never the name.
+5. Add your own: in the box **Add an option to Items** type Vasas hat and press **Add option**. A new row appears at the end of Items with the tag **Added here** and the counter name `camera_merch_vasas_hat`.
+6. Press **Save** (at the top or at the bottom). A notice **Saved** says the words are saved and the line reads **Everything is saved.**
+7. Open Vetting in the event menu. The new photo is open. Draw a rectangle around yourself. Under **What the person wears or holds (optional)** you see **Jersey or shirt**, **Club scarf**, **Cap or hat** and **Vasas hat**, and no **Flag**.
+8. Choose gender and age, press **Vasas hat** and press **Approve**.
+9. Go back to **Vetting words** in the event menu. On the row **Vasas hat** press **Delete**. The row goes, and under the box a line says **1 deleted** with a button **Show deleted**. Press it: the row is there with the tag **Deleted** and a button **Restore**. Press **Save**.
+10. Open Vetting and scroll to the card **People marked in the photos**. Under Items it still lists **Vasas hat: 1**: delete only hid the option.
+11. Check the other levels: press **Back to the main menu**, then Settings, **Vetting words**. **Scarf** and **Flag** are as they were and there is no **Vasas hat**. Press nothing there.
+
+**You should see**
+
+- After **Save** the page says **Everything is saved.** and the words are still there after you reload it.
+- The review screen offers **Club scarf** and **Vasas hat** and no **Flag**; every other word is as before.
+- After **Delete** the option is only hidden: the card **People marked in the photos** still lists **Vasas hat: 1**.
+- Settings, **Vetting words** shows no change: what you change at an event stays at the event.
+
+**Write back:** `T56 PASS` or `T56 FAIL: one line, what you saw`
+
+**If it fails:** Write the step, the words of any red message (for example **Another option of Items is already called …**) and a screenshot. A change that shows in Settings or on another event is a serious finding: press **Discard the changes** if the page is still open and write it at once. If the throw-away event is already deleted (T41), skip this step.
+
+### T57. The people counters for messmass: look at the preview, nothing is sent
+
+**Device:** computer. **Why:** What the approvers mark is counted per event as numbers whose names all start with `camera_`, so they never meet the variables messmass already has from other sources. This step only reads the preview in camera. Sending to messmass is off, and the first real push is your decision after the match (pull request 629).
+
+**Where:** The admin on a computer, the throw-away event, Analytics, tab **Messmass** (about 8 minutes). Read only: press nothing but the tab
+
+**Steps**
+
+1. Open the throw-away event, Analytics in the event menu, and the last tab **Messmass**. Only a global admin sees this tab. Do not press anything else on the page.
+2. Read the three figures at the top. **Sending to messmass** reads Off, with the line **Nothing is sent from this page or by any process.** **Linked to messmass** reads No: this event has no messmass event, so there is nowhere to send to. **Last push** reads Never.
+3. Under **Counters that would be sent** read the first column **Name in messmass**. Every name starts with `camera_` and no name starts with anything else. Find `camera_images_taken`, `camera_images_annotated`, `camera_people_total`, `camera_gender_female`, `camera_age_adult` and `camera_rejected_spam_test`. The column **Label in messmass** reads like **Camera: gender, Female**.
+4. Read the column **Now** and compare it with what you did: `camera_images_rejected` is 1 and `camera_images_no_people` is 1 (photo 2 of T16); `camera_rejected_spam_test` and `camera_rejected_other` are 1 each (the reasons you chose in T16); `camera_images_annotated` is the number of photos you decided (every one of them was marked); `camera_people_total` is the number of rectangles you kept. If you did T56, `camera_merch_vasas_hat` is there with 1 although you deleted the option.
+5. Read the column **Last sent**: it reads n/a on every row, because nothing was ever sent. Under the table read the sentence **N counters would be sent now**. Under **Counters that wait** the table reads **None. Every counter can be counted from data that exists.**
+6. Look for a button or link that sends, pushes or switches sending on. There is none: sending is switched off, and no screen can switch it on yet.
+
+**You should see**
+
+- **Sending to messmass** reads Off and **Last push** reads Never; the page has no button that sends.
+- Every name starts with `camera_`; the numbers agree with what you marked; the column **Last sent** reads n/a.
+
+**Write back:** `T57 PASS` or `T57 FAIL: one line, what you saw`
+
+**If it fails:** Write the name or the number that is wrong, what you expected from T15 to T17 and T33, and a screenshot. If **Sending to messmass** reads On, write it at once: it must stay Off until after the match. Not verified: the receiving side in messmass, which this step does not touch, and a real push.
