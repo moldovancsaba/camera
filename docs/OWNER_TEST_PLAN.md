@@ -84,7 +84,7 @@ The throw-away event of section C is the only event you may change. Never save a
   - [T42. The label of the MTK welcome button: START or INDÍTÁS](#t42-the-label-of-the-mtk-welcome-button-start-or-indítás), either
   - [T43. MTK's Hungarian suggestions: when do they have to arrive?](#t43-mtks-hungarian-suggestions-when-do-they-have-to-arrive), either
   - [T44. The welcome-screen backfill for existing events](#t44-the-welcome-screen-backfill-for-existing-events), either
-  - [T45. Keep the unframed photo at approval: merge pull request 609, in one of two ways](#t45-keep-the-unframed-photo-at-approval-merge-pull-request-609-in-one-of-two-ways), either
+  - [T45. Keep the unframed photo at approval: pull request 609 goes live the B way unless you stop it](#t45-keep-the-unframed-photo-at-approval-pull-request-609-goes-live-the-b-way-unless-you-stop-it), either
   - [T46. The admin notices: build the fix?](#t46-the-admin-notices-build-the-fix), either
   - [T47. Report the two design-system findings to the GDS repository?](#t47-report-the-two-design-system-findings-to-the-gds-repository), either
 - [Image safety card (issue 509)](#image-safety-card-issue-509) (pending)
@@ -94,6 +94,8 @@ The throw-away event of section C is the only event you may change. Never save a
   - [T50. The report of an event whose partner has a report template](#t50-the-report-of-an-event-whose-partner-has-a-report-template), computer
 - [Dependency changes (what to watch after they are merged)](#dependency-changes-what-to-watch-after-they-are-merged) : T51
   - [T51. Download the images ZIP of the throw-away event](#t51-download-the-images-zip-of-the-throw-away-event), computer
+- [Fixes of 12 October: the capture flow on a big screen](#fixes-of-12-october-the-capture-flow-on-a-big-screen) : T52
+  - [T52. Look at the capture flow on your big screen: the hint line and the waiting page](#t52-look-at-the-capture-flow-on-your-big-screen-the-hint-line-and-the-waiting-page), computer
 - [H. The day of the match: run sheet](#h-the-day-of-the-match-run-sheet) : M1, M2, M3, M4
   - [M1. Before the doors](#m1-before-the-doors), either
   - [M2. During the match: what to watch](#m2-during-the-match-what-to-watch), either
@@ -1109,24 +1111,24 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **If it fails:** If you are unsure, answer LATER: nothing is lost by waiting.
 
-### T45. Keep the unframed photo at approval: merge pull request 609, in one of two ways
+### T45. Keep the unframed photo at approval: pull request 609 goes live the B way unless you stop it
 
-**Device:** either. **Why:** Today the approval deletes the unframed crop of a photo, so the framed picture is then the only copy. Pull request 609 keeps the crop, copies it to ImgBB and records every copy of a photo (issue 509, decision 295). It changes the approval path and writes new fields on live photos, so it is merged only when you name it, and it has to be live by Tuesday 13 October because the approval path is frozen from Wednesday. A second pull request (612) adds the Image safety card to the Slideshows page; it follows 609, is admin only, and is merged by me after 609.
+**Device:** either. **Why:** Today the approval deletes the unframed crop of a photo, so the framed picture is then the only copy. Pull request 609 keeps the crop until its ImgBB copy is verified, then deletes the working copy from our Blob store, and records every copy of a photo (issue 509, decision 295). It changes the approval path and writes new fields on live photos, so it has to be live by Tuesday 13 October, before the freeze. You gave me consent to merge; I chose the B way (the Blob store never grows, nothing is ever without a verified copy). A second pull request (612) adds the Image safety card to the Slideshows page; it is admin only and follows 609.
 
-**Where:** A decision, in the chat (about 2 minutes). Read T03 first
+**Where:** A confirmation, in the chat (1 minute). T03 tells you how much room the Blob store has
 
 **Steps**
 
-1. merge 609: the unframed crop is kept in our Vercel Blob store AND copied to ImgBB. Choose it only if T03 shows the Blob store has room (a Pro plan, or a Hobby store far below 1 GB): each approved photo adds about 0.43 MB to the store, and a full store stops every picture read and write.
-2. 609 B: the same, but once the ImgBB copy of the crop is verified, the crop is deleted from our Blob store. Nothing is ever without a verified copy and the Blob store does not grow. Choose it if T03 shows a Hobby plan close to its limit, or if you are unsure.
+1. Read T03's result. If the Blob store has plenty of room you may prefer the A way (the crop is kept on Blob as well): write T45 STOP and tell me.
+2. Otherwise do nothing: it is merged the B way on Tuesday 13 October at the latest, and the rehearsal photos (T16 to T18) are the first real approvals under it.
 
 **You should see**
 
-- If you do not answer by Tuesday 13 October at noon, I merge the 609 B way, because it keeps every photo safe and cannot fill the store. Write the answer in the chat in these words: merge 609, or 609 B.
+- The approver's screens, buttons and answers do not change. The extra work starts after the answer is sent.
 
-**Write back:** `T45 merge 609` or `T45 609 B`
+**Write back:** `T45 OK` or `T45 STOP: why`
 
-**If it fails:** If T03 shows a Hobby plan with the store above about 600 MB, answer 609 B, or upgrade the plan first and then answer merge 609.
+**If it fails:** Write STOP and the reason in the chat before Tuesday noon.
 
 ### T46. The admin notices: build the fix?
 
@@ -1262,6 +1264,32 @@ PENDING: filled in when the pull request is merged.
 **Write back:** `T51 PASS` or `T51 FAIL: what the browser said or what the ZIP held`
 
 **If it fails:** Write what the download did (nothing, an error page, a damaged file) and how many files the ZIP held. Do not retry more than twice. This does not block the match.
+
+## Fixes of 12 October: the capture flow on a big screen
+
+**When:** Tuesday 13 October, after pull request 620 is live (about 5 minutes). It is the only place this plan asks you to look at something that was fixed after you sent a screenshot.
+
+### T52. Look at the capture flow on your big screen: the hint line and the waiting page
+
+**Device:** computer. **Why:** Two client complaints of 12 October: on a big window the hint line of the camera was half hidden behind the round shutter button, and the photo on the waiting page was small in a large empty page (issues 618 and 619). Both are fixed (pull request 620) and measured in Chromium; only your own Safari window can confirm them.
+
+**Where:** Your computer, in Safari, a window about as large as the one in your screenshots, the throw-away event (about 5 minutes). Not the match event
+
+**Steps**
+
+1. Open the throw-away address of section C in a new Safari window as large as you had it (about 2000 px wide). Press **Start**, accept the consent boxes, type your name and e-mail and press **Continue**.
+2. On the camera page look at the line near the top of the picture (**A keret a világos részt tartja meg.** in Hungarian, or its English text). Look at the round shutter button at the bottom.
+3. Take the photo, press through the reframe step and save it. Look at the waiting page (**Köszönjük!** and the text **A fotód jóváhagyásra vár…** or the English text).
+4. Make the window narrower in steps (to about 1200 px, then to about 800 px) and look at both pages again.
+
+**You should see**
+
+- The hint line is at the top of the camera picture and nothing covers it; the shutter button covers no text.
+- On the waiting page the photo is large (it uses the height of the window) with the card beside it, centred. Below about 1280 px wide it looks as it always did.
+
+**Write back:** `T52 PASS` or `T52 FAIL: the page, the window width and what you saw`
+
+**If it fails:** Write the window width and send a screenshot like the ones you sent on 12 October.
 
 ## H. The day of the match: run sheet
 
