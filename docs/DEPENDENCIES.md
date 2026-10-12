@@ -16,8 +16,8 @@ Checked on Node 24.19 / npm 10.9 after a clean `npm ci`. The full gate (`npm run
 | Open Dependabot alerts | none (`gh api "repos/moldovancsaba/camera/dependabot/alerts?state=open"` returned nothing) |
 | Packages nothing uses | 1 removed (`@mantine/dropzone`); the try-on removal itself left no orphan package |
 | Updated | 7 packages (patch and minor, same lines) |
-| Deprecated | `eslint` 9.x (whole line); `glob` 10.5.0 (production tree, through `archiver`) is gone since `archiver` 8 (section 6a) |
-| Majors and framework lines not done | 10 (`archiver` 8 was done on 2026-10-11), with effort and risk in section 5 |
+| Deprecated | `eslint` 9.x (whole line); `glob` 10.5.0 (production tree, through `archiver`) is gone with `archiver` (sections 6a and 6b) |
+| Majors and framework lines not done | 10 (`archiver` was dealt with on 2026-10-11: 8, then removed, section 6b), with effort and risk in section 5 |
 | Version stamps | one wrong stamp (`NAMING_GUIDE.md`), one stale stack section and two stale test counts, all fixed |
 
 ## 2. Security advisories
@@ -38,7 +38,7 @@ Nothing else is reported. Dependabot had earlier flagged Next 16.3.2 (two critic
 |---------|--------------------------|
 | `@mantine/dropzone` (and its own dependencies `react-dropzone`, `attr-accept`, `file-selector`) | No file imports it, no CSS imports its stylesheet, no config names it, and none of the five installed GDS packages lists it as a dependency or peer (`grep` over `node_modules/@sovereignsquad/`). Every upload zone uses `UploadDropzone` from `@sovereignsquad/gds-core/client`. It came in with the first Mantine foundation commit (`2e84ba0b`) and was never used. |
 
-The try-on removal (issue 557) left no unused package: the integration talked to its separate worker over plain HTTP and added no library of its own. `axios`, `archiver`, `qrcode`, `resend`, `sharp`, `@napi-rs/canvas` and the two Upstash packages are each imported by live code.
+The try-on removal (issue 557) left no unused package: the integration talked to its separate worker over plain HTTP and added no library of its own. `axios`, `qrcode`, `resend`, `sharp`, `@napi-rs/canvas` and the two Upstash packages are each imported by live code.
 
 **Checked and kept** (the script shows no import for them, each has a reason):
 
@@ -49,7 +49,7 @@ The try-on removal (issue 557) left no unused package: the integration talked to
 | `baseline-browser-mapping` | `scripts/patch-baseline-browser-mapping.mjs` (the `postinstall` step) patches the installed copy by a text marker; the env flags in the npm scripts belong to it. After a bump, `npm run postinstall` must still say "Patched" for the two `dist` files. |
 | `@sovereignsquad/gds-compliance` | Binary `gds-compliance` in the `gds:*` scripts. |
 | `@types/node` | Used implicitly by `tsc` for `process`, `Buffer` and the `node:` modules. It was the 20 line while the runtime is Node 24; it is `^24.19.2` since the obsolete-information sweep (2026-10-11), which needed it for the non-deprecated `mock.module` options. |
-| `@types/archiver`, `@types/qrcode`, `@types/react`, `@types/react-dom` | Types of used packages. |
+| `@types/qrcode`, `@types/react`, `@types/react-dom` | Types of used packages. |
 | `typescript`, `eslint`, `eslint-config-next`, `tsx`, `@playwright/test` | Binaries in npm scripts or imported by a config. |
 
 No module is imported without being declared (the only names the script could not match are the `@/lib` and `@/components` path aliases and text inside strings).
@@ -67,8 +67,8 @@ Patch and minor updates inside the current lines. All pass the full gate; the lo
 | `baseline-browser-mapping` | 2.11.26 | 2.11.28 | patch (the postinstall patch still applies) |
 | `eslint` | 9.39.4 | 9.39.5 | patch |
 | `tsx` | 4.22.5 | 4.23.15 | minor (runs scripts and `verify:production-guards`, both in the gate) |
-| `archiver` | 7.0.1 | 8.0.0 | **major**, to drop the deprecated `glob` 10 from the production tree (section 6a) |
-| `@types/archiver` | 6.0.4 | 8.0.0 | major, follows `archiver` |
+| `archiver` | 7.0.1 | 8.0.0 | **major**, to drop the deprecated `glob` 10 from the production tree (section 6a); removed altogether afterwards (section 6b) |
+| `@types/archiver` | 6.0.4 | 8.0.0 | major, follows `archiver`; removed with it |
 
 Transitive packages moved with them (for example `@eslint/eslintrc` 3.3.7, `@eslint/js` 9.39.5).
 
@@ -84,7 +84,7 @@ Anything that is a framework line, a major, or a library the gate cannot exercis
 | GDS (`@sovereignsquad/gds-*`) | 6.8.0 vendored | Design-system line; managed by the vendor bump procedure in `docs/GDS_CAMERA_ADOPTION.md` | - | - |
 | `mongodb` | 6.21.0 > 7.7.0 | Major driver, imported by 290 files; needs a run against a disposable database | M-L | high |
 | `eslint` | 9.39.5 > 10.12.0 | Major; ESLint 9.x is deprecated (section 6). `eslint-config-next` 16.4 (`eslint >=9`) and `gds-eslint-config` 6.8.0 (`^9 \|\| ^10`) both allow 10; the plugins inside the Next config still have to be checked | S-M | low (dev only) |
-| `archiver`, `@types/archiver` | 7.0.1 > 8.0.0; 6.0.4 > 8.0.0 | **Done 2026-10-11** (sections 4 and 6a): one route, covered by `lib/events/image-zip.test.ts`; `glob` is gone from the production tree | S-M | medium until one real export has been downloaded from the deployed admin |
+| `archiver`, `@types/archiver` | 7.0.1 > 8.0.0; 6.0.4 > 8.0.0 | **Done 2026-10-11, then removed altogether** (sections 6a and 6b): one route, now written with `node:zlib` and covered by `lib/events/image-zip.test.ts`; `glob` is gone from the production tree | S-M | medium until one real export has been downloaded from the deployed admin |
 | `typescript` | 5.9.3 > 7.0.2 | Two majors ahead (a new compiler line); support of Next, typescript-eslint and the GDS types is not verified | M-L | high |
 | `@types/node` | 20.19.43 > 26.6.5 | **Done as `^24.19.2`** (obsolete-information sweep, 2026-10-11; type-check, lint, unit tests and build unchanged); 26 is not the target, the runtime is Node 24 | S | low |
 | `@upstash/ratelimit`, `@upstash/redis` | 2.0.8 > 2.2.0; 1.38.0 > 1.39.0 | Minor, but they talk to a live Redis the gate cannot reach | S | low: afterwards hit one rate-limited route on a preview with Upstash configured |
@@ -118,6 +118,21 @@ Checked with `npm view <name>@<installed> deprecated` for the direct registry de
 Removed from the tree: `glob`, `archiver-utils`, `jackspeak`, `path-scurry` (with its nested `lru-cache`), `foreground-child`, `minipass`, `signal-exit`, `package-json-from-dist`, `lodash`, `@isaacs/cliui`, `@pkgjs/parseargs`, `eastasianwidth`, the `string-width`, `strip-ansi`, `wrap-ansi`, `ansi-regex` copies (and their `-cjs` aliases) and the nested `minimatch` and `brace-expansion` of `glob`. Added: the nested `balanced-match` of `readdir-glob` 3 and two nested `is-stream` 4 copies.
 
 **What proves it.** `lib/events/image-zip.test.ts` reads the finished zip with a reader of its own (no archive library) and checks names, exact bytes, checksums, and the text of `_errors.txt` for a missing picture, a throwing host and every picture failing; the same file passes against `archiver` 7 (with its old call) and 8, so it describes the behaviour the route always had. By hand, a harness served pictures (2.5 MB, 0.9 MB, 40 kB, one 404) from a local HTTP server, built the zip with the real `fetch` and `createImagesZip`, and `unzip -t` ("No errors detected") and Python's `zipfile.testzip()` accepted it, all three pictures byte-identical to the source. The same function was then served by the production build (`next start`, archiver bundled by Turbopack) through a scratch route that was removed again: HTTP 200, `application/zip`, the same checks passed. **Not covered by any test:** the Vercel runtime with a 500-file event and the Playwright spec (it needs the disposable database and only asserts the 400 on an empty event). After the merge, download one real export from the admin (Events, Export, images ZIP) and open it.
+
+### 6b. archiver removed altogether (2026-10-11, stacked on 6a)
+
+After 6a the one route that used `archiver` still owned 50 packages (`archiver` 8, `zip-stream`, `compress-commons`, `tar-stream`, `readdir-glob`, `lazystream`, `readable-stream` 2 and 4 and what they need) for a job `node:zlib` can do: write one local header and the data per file, then the central directory and the end record. `lib/events/image-zip.ts` now does that in about 200 lines (with comments): UTF-8 names, each file deflated at level 6 or stored when deflate does not make it smaller, checksums from `zlib.crc32`, sizes known before each header (no data descriptor), Unix mode 0644. The stream is pulled, so one picture is fetched after the client has read the one before, and the memory holds about one picture at a time (the old loop fetched every picture in the background, whether or not the client was reading).
+
+What the plain format cannot do: ZIP64 (a single archive past 4 GiB, or more than 65535 files). The export is capped at 500 pictures, so only 500 very large originals could reach the size limit; a picture that would pass it is left out and named in `_errors.txt`, so the download is always a valid zip. `archiver` made a ZIP64 archive instead.
+
+| Measure | main (6483bc06) | 6a (archiver 8) | 6b (this) |
+|---------|-----------------|-----------------|-----------|
+| Direct dependencies / devDependencies / overrides | 23 / 15 / 7 | 23 / 15 / 7 | **22 / 14** / 7 |
+| Packages installed by `npm ci` | 622 | 594 | **544** |
+| `npm ci` deprecation warnings | 2 | 1 | 1 (`eslint@9.39.5`) |
+| `npm audit --omit=dev` | 0 | 0 | 0 |
+
+**What proves it.** The eight tests of `lib/events/image-zip.test.ts` (the four of 6a, plus the checksum test vector, UTF-8 and empty files, the size limit, and that a picture is fetched on demand) read the archive with a reader of their own. By hand, the same local-host harness as in 6a (real `fetch`, 2.5 MB, 0.9 MB, 40 kB and a 404) gave an archive that `unzip -t`, `bsdtar -tvf`, `zipinfo` and Python `zipfile.testzip()` accept, extracts to byte-identical files with mode `rw-r--r--`, and keeps the stored/deflated choice (the JPEG-like data stored, the compressible PNG deflated to 890 bytes). **Not covered:** a real 500-file event on the Vercel runtime, Windows Explorer and the macOS Archive Utility (the format is the plain one all four tools above read), and ZIP64. `zlib.crc32` needs Node 22.2 or newer (`engines.node` is 24; the Vercel dashboard value is still unverified, camera#182).
 
 ## 7. Overrides
 

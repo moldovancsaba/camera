@@ -131,12 +131,12 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 
 - the QR code drawn on the welcome page screen picture and on the giant-screen stage (`lib/screen/welcome-screen.ts`, `lib/slideshow/screen-design.ts`)
 
-### `archiver`
+### Image ZIP export (no library)
 
 - streams the per-event image ZIP export (`/api/admin/events/[id]/export/images?format=zip`)
-  as a Node stream converted to a web `ReadableStream`, capped at 500 files; the archive is built in
-  `lib/events/image-zip.ts` (`ZipArchive` of archiver 8, an ES module with no default export), which
-  `lib/events/image-zip.test.ts` checks byte for byte
+  as a web `ReadableStream`, capped at 500 files; the archive is written with `node:zlib` in
+  `lib/events/image-zip.ts` (no archive library since 2026-10-11; `archiver` is gone), and
+  `lib/events/image-zip.test.ts` reads the finished zip with a reader of its own
 
 ### `resend`
 

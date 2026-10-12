@@ -6,9 +6,9 @@ import type { EventImage } from '@/lib/events/event-export';
 import { createImagesZip } from './image-zip';
 
 /**
- * These tests read the finished archive with a small reader of their own (end-of-central-directory record, central directory, local
- * headers; no archive library), so they stay true whichever library or code writes the zip. A reader of the format in 40 lines is also
- * what the system tools (`unzip -t`, Python's zipfile) were checked against by hand for the pull request that introduced this file.
+ * These tests read the finished archive with a small reader of their own (end of central directory record, central directory, local
+ * headers; no archive library), so they check the real bytes of the writer in image-zip.ts. The system tools (`unzip -t`, `bsdtar`,
+ * Python's zipfile) were checked against the same archives by hand for the pull request that introduced the writer.
  */
 
 interface ZipEntry {
@@ -94,7 +94,9 @@ test('image zip: every picture is stored under kind/NNNN-id.ext with its exact b
   assert.equal(entries[2].data.toString(), 'tiny');
   assert.ok(entries.every((entry) => entry.crcOk), 'every stored checksum matches the bytes');
   assert.ok(entries.every((entry) => entry.method === 0 || entry.method === 8), 'stored or deflated only');
-  assert.ok(entries[1].method === 8 && entries[1].data.length > 0, 'a compressible picture is deflated');
+  assert.equal(entries[0].method, 0, 'a picture that does not shrink is stored, not deflated');
+  assert.equal(entries[1].method, 8, 'a compressible picture is deflated');
+  assert.ok(entries.every((entry) => entry.utf8Flag), 'names are flagged as UTF-8');
 });
 
 test('image zip: a picture that cannot be fetched is listed in _errors.txt and does not stop the others', async () => {
@@ -139,4 +141,54 @@ test('image zip: a submission without an id still gets a name, and the same id t
   const names = readZip(await collect(createImagesZip(images, fetchImage))).map((entry) => entry.name);
   assert.deepEqual(names, ['original/0001-image.jpg', 'original/0002-dup.jpg', 'original/0003-dup.jpg']);
   assert.equal(new Set(names).size, names.length);
+});
+
+test('image zip: the checksum function agrees with the published test vector', () => {
+  assert.equal(crc32('123456789'), 0xcbf43926);
+});
+
+test('image zip: names are written as UTF-8 and an empty picture is a valid entry', async () => {
+  const images = [image('árvíztűrő', 'original', 'https://i.example/u.jpg'), image('empty', 'final', 'https://i.example/e.png')];
+  const fetchImage = fakeHost({
+    'https://i.example/u.jpg': { body: Buffer.from('x'), type: 'image/jpeg' },
+    'https://i.example/e.png': { body: Buffer.alloc(0), type: 'image/png' },
+  });
+  const entries = readZip(await collect(createImagesZip(images, fetchImage)));
+  assert.deepEqual(entries.map((entry) => entry.name), ['original/0001-árvíztűrő.jpg', 'final/0002-empty.png']);
+  assert.ok(entries.every((entry) => entry.utf8Flag && entry.crcOk));
+  assert.equal(entries[1].data.length, 0);
+});
+
+test('image zip: a picture that would take the archive past the size limit is left out and named in _errors.txt, and the zip stays valid', async () => {
+  const images = [image('fits', 'original', 'https://i.example/fits.jpg'), image('big', 'original', 'https://i.example/big.jpg'), image('small', 'final', 'https://i.example/small.jpg')];
+  const fetchImage = fakeHost({
+    'https://i.example/fits.jpg': { body: Buffer.from('fits'), type: 'image/jpeg' },
+    'https://i.example/big.jpg': { body: randomBytes(3_000_000), type: 'image/jpeg' },
+    'https://i.example/small.jpg': { body: Buffer.from('small'), type: 'image/jpeg' },
+  });
+  // The writer keeps 1 MiB free for _errors.txt, so a limit of 2 MiB lets the two small pictures in and not the 3 MB one.
+  const entries = readZip(await collect(createImagesZip(images, fetchImage, { maxBytes: 2 * 1024 * 1024 })));
+  assert.deepEqual(entries.map((entry) => entry.name), ['original/0001-fits.jpg', 'final/0003-small.jpg', '_errors.txt']);
+  assert.match(entries[2].data.toString(), /big\.jpg -> left out: the archive would pass the 4 GiB/);
+  assert.ok(entries.every((entry) => entry.crcOk));
+});
+
+test('image zip: a picture is fetched when the client asks for it, not all at once', async () => {
+  const urls = ['https://i.example/1.jpg', 'https://i.example/2.jpg', 'https://i.example/3.jpg'];
+  const images = urls.map((url, i) => image(`s${i}`, 'original', url));
+  const fetched: string[] = [];
+  const fetchImage = async (url: string) => {
+    fetched.push(url);
+    return new Response(Uint8Array.from(Buffer.from(url)), { status: 200, headers: { 'content-type': 'image/jpeg' } });
+  };
+  const reader = createImagesZip(images, fetchImage).getReader();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.ok(fetched.length <= 1, `before any read at most the first picture is fetched, got ${fetched.length}`);
+  await reader.read();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.ok(fetched.length <= 2, `after one read at most two pictures are fetched, got ${fetched.length}`);
+  while (!(await reader.read()).done) {
+    /* drain */
+  }
+  assert.deepEqual(fetched, urls);
 });

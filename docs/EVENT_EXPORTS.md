@@ -51,11 +51,13 @@ last_submitted_at`. Filename: `event-<slug>-emails-<date>.csv`.
   `submission_id, kind, submission_kind, url, user_email, user_name, created_at`.
 - `format=zip`: guards `images.length` against `MAX_ZIP_IMAGES` (returns `400` pointing to
   the CSV when exceeded; `400` when there are no images). Otherwise streams a ZIP built by
-  `createImagesZip` (`lib/events/image-zip.ts`, on `archiver`'s `ZipArchive`): each image is fetched
+  `createImagesZip` (`lib/events/image-zip.ts`, written with `node:zlib`, no archive library): each image is fetched
   from its host and appended under `original/`, `final/`, or `primary/` as
   `<kind>/<NNNN>-<submissionId>.<ext>`; per-image fetch failures are recorded in `_errors.txt`
-  instead of aborting the archive. The Node archive stream is converted to a web `ReadableStream`
-  via `Readable.toWeb` for the App Router response. `runtime = 'nodejs'`.
+  instead of aborting the archive. The stream is pulled: a picture is fetched when the client has read
+  the one before. Each file is deflated (level 6) or stored when that does not make it smaller. The plain zip
+  format has no ZIP64, so a picture that would take the archive past 4 GiB is left out and named in
+  `_errors.txt`. `runtime = 'nodejs'`.
 
 ## Data model references
 
