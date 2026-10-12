@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — after the vetting merge: the one-photo screen tells the truth about the e-mail, the Messmass tab note is current, the privacy data lists the marks (issue 628)
+
+- **Changed:** after Approve or Reject the screen reads the answer of the review route about the e-mail (`sent`, `skipped`, `failed`) and says so: a failed e-mail is an orange warning ("Photo approved, but the e-mail with the link to the user could not be sent."), a missing address says no e-mail was sent; before, it always said the user gets the link (`decisionNotice`, `lib/photo-vetting/review-state.ts`). The Messmass tab no longer says the receiving route is not built: it is deployed (messmass PR 481) and the sending stays off until the owner switches it on.
+- **Documented:** `docs/PRIVACY_DATA.md` now lists what the vetting person marks in a photo (the people, the words, the reasons of a rejection, who and when), that rejected photos are marked too and stay private, and that nothing is exported or used for training; it is what the privacy notice is compared with (test plan T08).
+- **Verified:** unit tests of the notice and of the Messmass tab; the full chain on the branch. **Not verified:** the warning on a real failed e-mail (none was provoked), a real phone.
+
 ## Unreleased — one photo at a time, one screen, configurable annotation words, reject reasons, and the camera_ counters for messmass (issue 628; owner answers 452 to 463, 2026-10-12)
 
 - **Why:** the owner asked for one selfie at a time as the default way of vetting, a simpler annotation for the vetting person, the buttons configurable at general, partner and event level, and confirmed the two aims of the annotation: feed messmass analytics, and collect the picture with its annotation so that software can later do it automatically. Rejected photos are annotated too (answer 453), and every variable camera introduces in messmass has the `camera_` prefix.
