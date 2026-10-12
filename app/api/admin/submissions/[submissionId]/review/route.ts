@@ -6,7 +6,10 @@
  * copied to ImgBB, every copy is recorded, and the private file is deleted only when the ImgBB copy is verified, lib/storage/image-copies.ts); rejection keeps the photo private and
  * emails the user a short note.
  *
- * Body: { action: 'approve' | 'reject', reason?: string }
+ * Body: { action: 'approve' | 'reject', reasons?: string[], reason?: string }
+ *
+ * A rejection needs at least one reason (issue 628, owner answers 452 to 455): `reasons` are keys of the `reject_reason` group of the event's vocabulary (lib/photo-vetting/vocabulary.ts) that the
+ * event offers now, anything else is a 400; `reason` stays the free-text note. They are stored with the photo and in the review history. An approval ignores them.
  */
 
 import { NextRequest } from 'next/server';
@@ -18,6 +21,8 @@ import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/l
 import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
 import { approvePhoto, rejectPhoto, type ReviewFailure } from '@/lib/photo-vetting/review';
 import { markPeopleOn } from '@/lib/photo-vetting/people';
+import { offeredReasons } from '@/lib/photo-vetting/review-state';
+import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 
 const REVIEW_RATE_LIMIT = {
   max: 120,
@@ -40,12 +45,16 @@ export const POST = withErrorHandler(async (
     throw apiBadRequest('Invalid submission ID format');
   }
 
-  const body = (await request.json().catch(() => null)) as { action?: unknown; reason?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { action?: unknown; reason?: unknown; reasons?: unknown } | null;
   const action = body?.action;
   if (action !== 'approve' && action !== 'reject') {
     throw apiBadRequest('action must be "approve" or "reject"');
   }
   const reason = typeof body?.reason === 'string' && body.reason.trim() ? body.reason.trim().slice(0, MAX_REASON_LENGTH) : null;
+  const chosen = Array.isArray(body?.reasons) ? [...new Set((body.reasons as unknown[]).filter((item): item is string => typeof item === 'string' && item.length > 0))] : [];
+  if (action === 'reject' && chosen.length === 0) {
+    throw apiBadRequest('Choose at least one reason for the rejection.');
+  }
 
   const db = await connectToDatabase();
   const submission = await db
@@ -62,7 +71,16 @@ export const POST = withErrorHandler(async (
     throw apiForbidden('This photo belongs to no event; only a global admin can review it');
   }
 
-  // Marking the people is required before the first decision of a waiting photo (issue 542, owner answers 263 and 267): when it is on for the event and nobody looked yet (`peopleReview` is
+  // The reasons of a rejection must be offered to this event now (a hidden or unknown key is refused); they are kept in the order of the event's list.
+  let reasons: string[] = [];
+  if (action === 'reject') {
+    const offered = offeredReasons(await loadEventVocabulary(db, event));
+    const unknown = chosen.filter((key) => !offered.includes(key));
+    if (unknown.length > 0) throw apiBadRequest(`These reasons are not offered for this event: ${unknown.join(', ')}.`);
+    reasons = offered.filter((key) => chosen.includes(key));
+  }
+
+  // Marking the people is required before the first decision of a waiting photo, a rejection too (issue 542, owner answers 263, 267 and 453): when it is on for the event and nobody looked yet (`peopleReview` is
   // saved by the big view, also for "nobody in this photo"), the decision is refused, so the quick buttons of an old page cannot skip it. A photo decided before (Rejected list) can be approved again.
   if (event && markPeopleOn(event) && submission.reviewStatus === 'pending_review' && !submission.peopleReview) {
     throw apiError('Mark the people in this photo first (or say nobody is in it): open it with Review.', 409);
@@ -71,7 +89,7 @@ export const POST = withErrorHandler(async (
   const actor = { email: session.user.email ?? null, id: session.user.id ?? null };
   const result = action === 'approve'
     ? await approvePhoto(db, submission, actor)
-    : await rejectPhoto(db, submission, actor, reason);
+    : await rejectPhoto(db, submission, actor, reason, reasons);
 
   if (!result.ok) {
     throw apiError(result.message, STATUS_OF[result.reason]);

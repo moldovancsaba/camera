@@ -883,7 +883,7 @@ export interface Submission {
   rejectReasons?: string[];
   /** The user's own, separate permission to show the photo in the public gallery, kept as evidence (issue 554, lib/events/gallery-consent.ts): present only when the box was ticked. */
   publicGalleryConsent?: { version: 1; grantedAt: string; required?: true } | null;
-  reviewHistory?: Array<{ action: 'approve' | 'reject'; by: string; at: string; reason?: string | null }>;
+  reviewHistory?: Array<{ action: 'approve' | 'reject'; by: string; at: string; reason?: string | null; reasons?: string[] }>; // `reasons`: the reject reason keys of a rejection (issue 628); older entries have none
   isShareVisible?: boolean;          // Public share-page publication flag
   isSlideshowEligible?: boolean;     // Slideshow playlist eligibility flag
   

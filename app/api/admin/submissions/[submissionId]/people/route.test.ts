@@ -3,6 +3,8 @@ import { test, type TestContext } from 'node:test';
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import type { Session } from '@/lib/auth/session';
+import { COLLECTIONS } from '@/lib/db/schemas';
+import { resolveVocabulary } from '@/lib/photo-vetting/vocabulary';
 
 const apiReal = await import('@/lib/api');
 const authorizationReal = await import('@/lib/partners/authorization');
@@ -20,6 +22,9 @@ interface Options {
   submission?: Record<string, unknown> | null;
   event?: Record<string, unknown> | null;
   deny?: boolean;
+  /** What the general level and the partner's level of the vocabulary hold in the database. */
+  general?: { options: unknown[] };
+  partner?: { annotationVocabulary: unknown };
 }
 
 function setup(t: TestContext, options: Options = {}) {
@@ -27,7 +32,14 @@ function setup(t: TestContext, options: Options = {}) {
   const submission = options.submission === undefined ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review' } : options.submission;
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
-    exports: { connectToDatabase: async () => ({ collection: () => ({ findOne: async () => submission, updateOne: async (filter: unknown, update: Record<string, unknown>) => (calls.updates.push({ filter, update }), { matchedCount: 1 }) }) }) },
+    exports: {
+      connectToDatabase: async () => ({
+        collection: (name: string) => ({
+          findOne: async () => (name === COLLECTIONS.ADMIN_SETTINGS ? (options.general ?? null) : name === COLLECTIONS.PARTNERS ? (options.partner ?? null) : submission),
+          updateOne: async (filter: unknown, update: Record<string, unknown>) => (calls.updates.push({ filter, update }), { matchedCount: 1 }),
+        }),
+      }),
+    },
   });
   t.mock.module('@/lib/partners/authorization', {
     exports: {
@@ -54,6 +66,7 @@ test('an admin saves the people marked in a photo, with who marked them and when
   const body = (await response.json()) as { data: { people: Array<{ id: string }>; peopleReview: { by: string; at: string } } };
   assert.deepEqual(body.data.people.map((p) => p.id), ['a', 'b']);
   assert.equal(body.data.peopleReview.by, 'admin@example.com');
+  assert.equal((body.data.peopleReview as { vocabulary?: string }).vocabulary, resolveVocabulary().version, 'the version of the list of words the marks were made with is recorded');
   assert.deepEqual(calls.access, [{ id: eventId.toString(), role: 'manager' }]);
   const set = (calls.updates[0].update as { $set: { people: unknown[]; peopleReview: { by: string } } }).$set;
   assert.equal(set.people.length, 2);
@@ -92,5 +105,37 @@ test('no access to the event: refused, nothing saved', async (t) => {
 test('a photo with no event can be marked by a global admin only', async (t) => {
   const calls = setup(t, { event: null, session: manager });
   assert.equal((await (await importRoute('orphan-manager')).PUT(put({ people: [] }), params)).status, 403);
+  assert.equal(calls.updates.length, 0);
+});
+
+test('the keys are checked against the list of the event: a custom option of the event is saved, an option the event hides is refused, and the version recorded is the event\'s own', async (t) => {
+  const annotationVocabulary = { options: [{ group: 'merch', key: 'poncho', label: 'Poncho', custom: true }, { group: 'merch', key: 'scarf', hidden: true }] };
+  const calls = setup(t, { event: { _id: eventId, annotationVocabulary } });
+  const { PUT } = await importRoute('event-list');
+  assert.equal((await PUT(put({ people: [person({ merch: ['poncho'] })] }), params)).status, 200);
+  const set = (calls.updates[0].update as { $set: { people: Array<{ merch: string[] }>; peopleReview: { vocabulary: string } } }).$set;
+  assert.deepEqual(set.people[0].merch, ['poncho']);
+  assert.equal(set.peopleReview.vocabulary, resolveVocabulary({ event: annotationVocabulary }).version);
+  assert.notEqual(set.peopleReview.vocabulary, resolveVocabulary().version);
+  const hidden = await PUT(put({ people: [person({ merch: ['scarf'] })] }), params);
+  assert.equal(hidden.status, 400, 'scarf is hidden for this event');
+  assert.equal(calls.updates.length, 1, 'nothing was saved for the refused list');
+});
+
+test('the levels above the event count: the general level\'s custom option and the partner\'s relabelled option are read from the database', async (t) => {
+  const calls = setup(t, {
+    event: { _id: eventId, partnerId: 'p1' },
+    general: { options: [{ group: 'emotion', key: 'smirk', label: 'Smirk', custom: true }] },
+    partner: { annotationVocabulary: { options: [{ group: 'age', key: 'old', hidden: true }] } },
+  });
+  const { PUT } = await importRoute('levels');
+  assert.equal((await PUT(put({ people: [person({ emotion: 'smirk' })] }), params)).status, 200);
+  assert.equal((await PUT(put({ people: [person({ age: 'old' })] }), params)).status, 400, 'the partner hides the senior age');
+  assert.equal(calls.updates.length, 1);
+});
+
+test('a check against the list needs the event first: someone with no access is refused before the list is read', async (t) => {
+  const calls = setup(t, { session: manager, deny: true });
+  assert.equal((await (await importRoute('deny-first')).PUT(put({ people: 'x' }), params)).status, 403);
   assert.equal(calls.updates.length, 0);
 });

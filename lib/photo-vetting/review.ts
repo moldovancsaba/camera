@@ -140,6 +140,8 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
         isShareVisible: review.shareOptIn === true,
         updatedAt: at,
       },
+      // A photo that was rejected and is approved again is not a rejected photo any more: its reject reasons go (they stay in the review history).
+      $unset: { rejectReasons: '' },
       $push: { reviewHistory: { action: 'approve', by: actorName(actor), at, reason: null } } as Document,
     }
   );
@@ -187,7 +189,11 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   return { ok: true, email };
 }
 
-export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor: ReviewActor, reason: string | null, deps: ReviewDeps = defaultReviewDeps): Promise<RejectResult> {
+/**
+ * `reasons` are the keys of the reject reasons the reviewer chose (lib/photo-vetting/vocabulary.ts, group `reject_reason`; the route has checked them against the event's list), kept on the photo
+ * as `rejectReasons` and in the review history entry; `reason` is the free-text note. A photo rejected before reasons existed has neither, and the history entry carries `reasons` only when there are some.
+ */
+export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor: ReviewActor, reason: string | null, reasons: readonly string[] = [], deps: ReviewDeps = defaultReviewDeps): Promise<RejectResult> {
   if (submission.reviewStatus !== 'pending_review') {
     return { ok: false, reason: 'not_reviewable', message: 'This photo is not waiting for a decision' };
   }
@@ -198,10 +204,11 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
       $set: {
         reviewStatus: 'rejected',
         reviewNotes: reason,
+        rejectReasons: [...reasons],
         isShareVisible: false,
         updatedAt: at,
       },
-      $push: { reviewHistory: { action: 'reject', by: actorName(actor), at, reason } } as Document,
+      $push: { reviewHistory: { action: 'reject', by: actorName(actor), at, reason, ...(reasons.length > 0 ? { reasons: [...reasons] } : {}) } } as Document,
     }
   );
   if (won.matchedCount === 0) return { ok: false, reason: 'not_reviewable', message: 'Someone else already decided on this photo' };

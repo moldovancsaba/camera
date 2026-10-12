@@ -92,19 +92,11 @@ export const cameraAdminVocabularyPacks = [
     'turn-off': { defaultMessage: 'Turn vetting off', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'confirm-turn-off': { defaultMessage: 'Confirm turn off', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'cancel-turn-off': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
-    // The big vetting view that marks the people in a photo (issue 542): the words are the reviewers' own.
-    'mark-start': { defaultMessage: 'Clicker', icon: GdsIcons.Add, feedback: openedFeedback },
-    'mark-retry': { defaultMessage: 'Retry', icon: GdsIcons.Refresh, feedback: openedFeedback },
-    'mark-next': { defaultMessage: 'Next', icon: GdsIcons.Check, feedback: openedFeedback },
-    'mark-cancel': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
-    'mark-done': { defaultMessage: 'Done', icon: GdsIcons.Check, feedback: savedFeedback },
-    'mark-back': { defaultMessage: 'Back to the people', icon: GdsIcons.Back, feedback: openedFeedback },
-    'mark-skip': { defaultMessage: 'Skip this photo', icon: GdsIcons.Eye, feedback: openedFeedback },
-    'mark-remove': { defaultMessage: 'Remove', icon: GdsIcons.Delete, feedback: deletedFeedback },
-    'mark-nobody': { defaultMessage: 'Nobody in this photo', icon: GdsIcons.Check, feedback: openedFeedback },
+    // The one-screen vetting review (issue 628): plain words, no emoji. The choices of the vocabulary (gender, age, reasons...) are not actions: they are text buttons that read the event's list.
+    'mark-skip': { defaultMessage: 'Skip for now', icon: GdsIcons.Eye, feedback: openedFeedback },
+    'mark-remove': { defaultMessage: 'Remove person', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'mark-turn-on': { defaultMessage: 'Turn marking on', icon: GdsIcons.Check, feedback: savedFeedback },
     'mark-turn-off': { defaultMessage: 'Turn marking off', icon: GdsIcons.Delete, feedback: deletedFeedback },
-    'review-one-by-one': { defaultMessage: 'Review one by one', icon: GdsIcons.Eye, feedback: openedFeedback },
     'review-this': { defaultMessage: 'Review', icon: GdsIcons.Eye, feedback: openedFeedback },
   }),
   createGdsVocabularyPack('style-sections', {
