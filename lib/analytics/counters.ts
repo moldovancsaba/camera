@@ -37,7 +37,6 @@ export interface CounterDefinition {
 }
 
 const total = (key: string, source: CounterSource, label: string, definition: string): CounterDefinition => ({ key, label, kind: 'total', source, definition });
-const average = (key: string, source: CounterSource, label: string, definition: string): CounterDefinition => ({ key, label, kind: 'average', source, definition });
 
 /** The counters the existing data can give, in the order the preview shows them. The ones made from the vocabulary are the families below. */
 export const COMPUTABLE_COUNTERS: readonly CounterDefinition[] = [
