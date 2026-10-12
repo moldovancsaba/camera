@@ -81,7 +81,7 @@ Defined in `lib/analytics/journey.ts`; the same numbers feed the CSV export and 
 
 ## For messmass
 
-Counters only, never a person (decision 241): `journeyOpens`, `journeyCompleted`, `cameraDenied`, `retakes`, `consentAbandoned`, `shares`, `downloads` (`lib/analytics/counters.ts`). They are whole running totals since the recording started, and an event with no journey record sends none of them (never a zero). The pipeline is still **off, with no trigger**, and nothing is sent to messmass by this change.
+Counters only, never a person (decision 241): `camera_journey_opens`, `camera_journeys_completed`, `camera_permission_denied`, `camera_retakes`, `camera_consents_abandoned`, `camera_shares`, `camera_downloads` (`lib/analytics/counters.ts`; every name carries the `camera_` prefix, docs/ANALYTICS.md). They are whole running totals since the recording started, and an event with no journey record sends none of them (never a zero). The pipeline is still **off, with no trigger**, and nothing is sent to messmass by this change.
 
 ## Files
 

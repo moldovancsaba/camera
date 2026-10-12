@@ -48,7 +48,7 @@ export default async function EventAnalyticsTab({ params, searchParams }: { para
     // The kill switch of the journey recording, shown on the Journey tab (issue 521, phase 2).
     journeySetting = await getJourneySetting(db);
     // The Messmass tab (global admins) previews what would be sent; it reads the whole event, whatever days are chosen, and sends nothing.
-    if (query.view === 'messmass' && globalAdmin) counterState = await loadCounterState(db, { eventId: event.eventId, messmassEventId: event.messmassEventId, counterSync: (eventDoc as { counterSync?: { pushedAt?: unknown; counters?: unknown } }).counterSync });
+    if (query.view === 'messmass' && globalAdmin) counterState = await loadCounterState(db, { eventId: event.eventId, messmassEventId: event.messmassEventId, partnerId: event.partnerId, annotationVocabulary: event.annotationVocabulary, counterSync: (eventDoc as { counterSync?: { pushedAt?: unknown; counters?: unknown } }).counterSync });
   } catch (error) {
     console.error('Error loading the event analytics:', error);
     dbError = serializeMongoError(error);

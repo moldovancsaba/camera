@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { PhotoFacts } from './facts';
+import { resolveVocabulary, STANDARD_VOCABULARY } from '@/lib/photo-vetting/vocabulary';
 import { buildEventReport, buildEventsTable, NOT_MEASURED } from './report';
 
 const BUDAPEST = { timeZone: 'Europe/Budapest', now: new Date('2026-10-16T21:00:00.000Z') };
@@ -21,6 +22,7 @@ function fact(extra: Partial<PhotoFacts> = {}): PhotoFacts {
     review: 'waiting',
     submittedAt: extra.createdAt ?? '2026-10-16T18:00:00.000Z',
     decisions: [],
+    rejectReasons: [],
     identity: 'email',
     userKey: `user${counter}@example.test`,
     email: `user${counter}@example.test`,
@@ -316,9 +318,36 @@ test('the table of events: one row per event, the busiest first, with the same c
 });
 
 test('what the data cannot give yet is listed, each with the reason and what it waits for; the journey is measured now and no longer listed', () => {
-  assert.ok(NOT_MEASURED.length >= 6);
+  assert.ok(NOT_MEASURED.length >= 5);
   for (const row of NOT_MEASURED) assert.ok(row.what && row.why && row.waitsFor);
   const text = NOT_MEASURED.map((row) => row.what).join(' | ');
-  for (const needle of ['QR', 'declined', 'Country', 'Plays', 'Sign-ins', 'opens, clicks']) assert.match(text, new RegExp(needle, 'i'));
-  for (const measured of ['Camera permission', 'Shares by channel', 'opened the link', 'Consent left']) assert.doesNotMatch(text, new RegExp(measured, 'i'));
+  for (const needle of ['QR', 'Country', 'Plays', 'Sign-ins', 'opens, clicks']) assert.match(text, new RegExp(needle, 'i'));
+  for (const measured of ['Camera permission', 'Shares by channel', 'opened the link', 'Consent left', 'by reason']) assert.doesNotMatch(text, new RegExp(measured, 'i'));
+});
+
+test('the reasons chosen from the list: counted by key over the photos rejected now, a photo with several reasons in each, in the words of the vocabulary; the ones with none are counted apart', () => {
+  const rejected = (rejectReasons: string[], extra: Partial<PhotoFacts> = {}) => fact({ review: 'rejected', rejectReasons, ...extra });
+  const photos = [rejected(['nudity', 'alcohol']), rejected(['nudity']), rejected([]), fact({ review: 'approved', rejectReasons: ['nudity'] }), rejected(['nudity'], { excluded: 'archived' }), fact({ source: 'editor', review: 'rejected', rejectReasons: ['alcohol'] })];
+  const report = buildEventReport({ photos }, BUDAPEST);
+  assert.deepEqual(report.vetting.rejectReasons.map((r) => [r.id, r.label, r.count]), [['nudity', 'Nudity or sexual content', 2], ['alcohol', 'Alcohol', 1]]);
+  assert.equal(report.vetting.rejectedWithoutReasons, 1);
+  assert.equal(report.photos.rejected, 3, 'the removed photo and the editor photo are not counted');
+  const custom = resolveVocabulary({ event: { options: [{ group: 'reject_reason', key: 'confetti', label: 'Too much confetti', custom: true }] } });
+  const withCustom = buildEventReport({ photos: [rejected(['confetti']), rejected(['gone_since'])], vocabulary: custom }, BUDAPEST);
+  assert.deepEqual(withCustom.vetting.rejectReasons.map((r) => [r.id, r.label]), [['gone_since', 'Gone since'], ['confetti', 'Too much confetti']], 'equal counts by label; a key that is not in the list reads as its key made readable');
+  assert.equal(buildEventReport({ photos: [fact()] }, BUDAPEST).vetting.rejectReasons.length, 0);
+});
+
+test('the photos by how many people are in them: one person, a group, and nobody; a photo nobody looked at is in none', () => {
+  const person = (id: string) => ({ id, box: { x: 10, y: 10, w: 30, h: 30 }, gender: 'female', age: 'adult' });
+  const report = buildEventReport({ photos: [fact({ people: [person('a')] }), fact({ people: [person('a'), person('b')] }), fact({ people: [person('a'), person('b'), person('c')] }), fact({ people: [] }), fact({ people: undefined })] }, BUDAPEST);
+  assert.deepEqual([report.people.summary.photos, report.people.photosWithOnePerson, report.people.photosWithGroup, report.people.summary.photosWithPeople], [4, 1, 2, 3]);
+});
+
+test('the report carries the vocabulary it counted with: the standard list when none is given, and the people counts are filled from it', () => {
+  assert.equal(buildEventReport({ photos: [] }, BUDAPEST).vocabulary, STANDARD_VOCABULARY);
+  const custom = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'vuvuzela', label: 'Vuvuzela', custom: true }] } });
+  const report = buildEventReport({ photos: [fact({ people: [] })], vocabulary: custom }, BUDAPEST);
+  assert.equal(report.vocabulary, custom);
+  assert.equal(report.people.summary.byMerch.vuvuzela, 0, 'an option offered now has a count even when nobody has it');
 });
