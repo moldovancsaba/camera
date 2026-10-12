@@ -16,8 +16,8 @@ Checked on Node 24.19 / npm 10.9 after a clean `npm ci`. The full gate (`npm run
 | Open Dependabot alerts | none (`gh api "repos/moldovancsaba/camera/dependabot/alerts?state=open"` returned nothing) |
 | Packages nothing uses | 1 removed (`@mantine/dropzone`); the try-on removal itself left no orphan package. Second pass the same day (section 3a): no further unused package; 9 unused source files, 13 unused one-off scripts and 2 unused overrides removed |
 | Updated | 7 packages (patch and minor, same lines) |
-| Deprecated | `eslint` 9.x (whole line) and `glob` 10.5.0 (transitive, production tree, through `archiver`) |
-| Majors and framework lines not done | 11, with effort and risk in section 5 |
+| Deprecated | `eslint` 9.x (whole line); `glob` 10.5.0 (production tree, through `archiver`) is gone since `archiver` 8 (section 6a) |
+| Majors and framework lines not done | 10 (`archiver` 8 was done on 2026-10-11), with effort and risk in section 5 |
 | Version stamps | one wrong stamp (`NAMING_GUIDE.md`), one stale stack section and two stale test counts, all fixed |
 
 ## 2. Security advisories
@@ -131,6 +131,8 @@ Patch and minor updates inside the current lines. All pass the full gate; the lo
 | `baseline-browser-mapping` | 2.11.26 | 2.11.28 | patch (the postinstall patch still applies) |
 | `eslint` | 9.39.4 | 9.39.5 | patch |
 | `tsx` | 4.22.5 | 4.23.15 | minor (runs scripts and `verify:production-guards`, both in the gate) |
+| `archiver` | 7.0.1 | 8.0.0 | **major**, to drop the deprecated `glob` 10 from the production tree (section 6a) |
+| `@types/archiver` | 6.0.4 | 8.0.0 | major, follows `archiver` |
 
 Transitive packages moved with them (for example `@eslint/eslintrc` 3.3.7, `@eslint/js` 9.39.5).
 
@@ -146,7 +148,7 @@ Anything that is a framework line, a major, or a library the gate cannot exercis
 | GDS (`@sovereignsquad/gds-*`) | 6.8.0 vendored | Design-system line; managed by the vendor bump procedure in `docs/GDS_CAMERA_ADOPTION.md` | - | - |
 | `mongodb` | 6.21.0 > 7.7.0 | Major driver, imported by 290 files; needs a run against a disposable database | M-L | high |
 | `eslint` | 9.39.5 > 10.12.0 | Major; ESLint 9.x is deprecated (section 6). `eslint-config-next` 16.4 (`eslint >=9`) and `gds-eslint-config` 6.8.0 (`^9 \|\| ^10`) both allow 10; the plugins inside the Next config still have to be checked | S-M | low (dev only) |
-| `archiver`, `@types/archiver` | 7.0.1 > 8.0.0; 6.0.4 > 8.0.0 | Major; one route (`app/api/admin/events/[id]/export/images/route.ts`). **8.0.0 no longer depends on `archiver-utils` and `glob` 10** (its registry manifest and those of `zip-stream` 7, `compress-commons` 7 and `readdir-glob` 3 show no `glob`), so it should also remove the deprecated `glob` from the production tree | S-M | medium: stream behaviour on a real export (capped at 500 files); test one on a preview |
+| `archiver`, `@types/archiver` | 7.0.1 > 8.0.0; 6.0.4 > 8.0.0 | **Done 2026-10-11** (sections 4 and 6a): one route, covered by `lib/events/image-zip.test.ts`; `glob` is gone from the production tree | S-M | medium until one real export has been downloaded from the deployed admin |
 | `typescript` | 5.9.3 > 7.0.2 | Two majors ahead (a new compiler line); support of Next, typescript-eslint and the GDS types is not verified | M-L | high |
 | `@types/node` | 20.19.43 > 26.6.5 | **Done as `^24.19.2`** (obsolete-information sweep, 2026-10-11; type-check, lint, unit tests and build unchanged); 26 is not the target, the runtime is Node 24 | S | low |
 | `@upstash/ratelimit`, `@upstash/redis` | 2.0.8 > 2.2.0; 1.38.0 > 1.39.0 | Minor, but they talk to a live Redis the gate cannot reach | S | low: afterwards hit one rate-limited route on a preview with Upstash configured |
@@ -178,9 +180,25 @@ Checked with `npm view <name>@<installed> deprecated` for the direct registry de
 | Package | Message | Where | Replacement |
 |---------|---------|-------|-------------|
 | `eslint` 9.39.4 and 9.39.5 | "This version is no longer supported" (the 9.x line) | devDependency | ESLint 10 (section 5) |
-| `glob` 10.5.0 | "Old versions of glob are not supported ... security vulnerabilities, which have been fixed in the current version" | production tree: `archiver` 7 > `archiver-utils` 5 > `glob`. 10.5.0 already contains the fix of the published vulnerability; the line is marked deprecated. | `archiver` 8 (its dependency tree has no `archiver-utils` and no `glob`, per the registry manifests) |
+| `glob` 10.5.0 | "Old versions of glob are not supported ... security vulnerabilities, which have been fixed in the current version" | was in the production tree: `archiver` 7 > `archiver-utils` 5 > `glob`. **Gone since `archiver` 8** (section 6a); `npm ci` no longer prints it. | done |
 
 `string-width-cjs`, `strip-ansi-cjs` and `wrap-ansi-cjs` answer 404 in the registry because they are npm aliases (`npm:string-width@^4`), not packages; they are not deprecations.
+
+### 6a. archiver 7 to 8 (2026-10-11)
+
+`archiver` 7 pulled `glob` 10 through `archiver-utils`, and with it a family of packages that only `glob` needed. `archiver` 8 (an ES module, no default export) has no `archiver-utils` and no `glob`. The route code changed in two lines (`new ZipArchive({ zlib: { level: 6 } })` instead of `archiver('zip', ...)`), and the loop that fetches the pictures and fills the archive moved from the route into `lib/events/image-zip.ts` so that a unit test can read the archive.
+
+| Measure | Before (main, 6483bc06) | After |
+|---------|-------------------------|-------|
+| Direct dependencies / devDependencies / overrides | 23 / 15 / 7 | 23 / 15 / 7 |
+| Packages installed by `npm ci` | 622 | **594** (minus 28: 31 removed, 3 added) |
+| `npm ci` deprecation warnings | 2 (`glob@10.5.0`, `eslint@9.39.5`) | **1** (`eslint@9.39.5`) |
+| `npm audit --omit=dev` | 0 | 0 |
+| `npm audit` | 5 high (one advisory, `braces`, dev only) | 5 high (unchanged; section 2) |
+
+Removed from the tree: `glob`, `archiver-utils`, `jackspeak`, `path-scurry` (with its nested `lru-cache`), `foreground-child`, `minipass`, `signal-exit`, `package-json-from-dist`, `lodash`, `@isaacs/cliui`, `@pkgjs/parseargs`, `eastasianwidth`, the `string-width`, `strip-ansi`, `wrap-ansi`, `ansi-regex` copies (and their `-cjs` aliases) and the nested `minimatch` and `brace-expansion` of `glob`. Added: the nested `balanced-match` of `readdir-glob` 3 and two nested `is-stream` 4 copies.
+
+**What proves it.** `lib/events/image-zip.test.ts` reads the finished zip with a reader of its own (no archive library) and checks names, exact bytes, checksums, and the text of `_errors.txt` for a missing picture, a throwing host and every picture failing; the same file passes against `archiver` 7 (with its old call) and 8, so it describes the behaviour the route always had. By hand, a harness served pictures (2.5 MB, 0.9 MB, 40 kB, one 404) from a local HTTP server, built the zip with the real `fetch` and `createImagesZip`, and `unzip -t` ("No errors detected") and Python's `zipfile.testzip()` accepted it, all three pictures byte-identical to the source. The same function was then served by the production build (`next start`, archiver bundled by Turbopack) through a scratch route that was removed again: HTTP 200, `application/zip`, the same checks passed. **Not covered by any test:** the Vercel runtime with a 500-file event and the Playwright spec (it needs the disposable database and only asserts the 400 on an empty event). After the merge, download one real export from the admin (Events, Export, images ZIP) and open it.
 
 ## 7. Overrides
 
