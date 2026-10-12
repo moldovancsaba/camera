@@ -518,7 +518,7 @@ Rows are in graphics.json (108, ids gfx-001 to gfx-108). levels_today: "event" =
 - Users get a default consent page and login page that the Event pages editor never shows (it reads stored pages); pages cannot be switched off, only deleted.
 - Global-only with no partner level: garments and AI setups (events pick straight from global, breaking the one-way Global -> Partner -> Event rule of docs/LIBRARIES.md).
 - Partner-only: user access, delete partner, messmass logo import. Partner managers cannot edit the partner's default colours but can edit its frame and logo defaults.
-- Orphans (no screen): HashtagInput, RemoveSubmissionButton, email-preview, partner toggle, submission archive/restore, frames.hashtags.
+- Orphans (no screen): HashtagInput and RemoveSubmissionButton (both deleted on 2026-10-11, `docs/DEPENDENCIES.md` section 3a), email-preview, partner toggle, submission archive/restore, frames.hashtags.
 
 #### 4. Repeating patterns that could be one component
 - Library page: 7 files each with their own call(), errorText(), GRID and the same three sections (In library / Available / Upload). One LibraryPage(level, kind) with per-kind options (frame defaults, logo scenarios, message area).
@@ -605,7 +605,7 @@ Rows are in graphics.json (108, ids gfx-001 to gfx-108). levels_today: "event" =
 | ed-064 | Shared: ImagePicker (picture field) | (embedded in editors) | event | no | a plain picture address string in: events.emailFooterImageUrl, customPages[].config.backgroundImageUrl / bott… | Edit event, Event pages editor, Slideshow editor | Event images page; slideshows.backgroundImageUrl (own upload), landing_pages.qrCodeImageUrl (own upload) |
 | ed-065 | Shared: library kit (item card, upload form, thumbnail, message-area… | (used by 7 library pages) | global | no | upload (POST multipart), message area geometry of a frame | partner frames/logos/images, event frames/logos/images, global images |  |
 | ed-066 | Legacy redirects | /admin/tryon-results, /admin/tryon-suits | global | no |  | old bookmarks |  |
-| ed-067 | Orphans: components and APIs with no screen | none | global | no | HashtagInput: frames.hashtags (no frame form includes it, so frames.hashtags has no write path in the admin);… | nothing |  |
+| ed-067 | Orphans: components and APIs with no screen | none | global | no | HashtagInput (deleted 2026-10-11): frames.hashtags (no frame form includes it, so frames.hashtags has no write path in the admin);… | nothing |  |
 | ed-068 | Shared page scaffolds | (all list and editor pages) | global | no |  | n/a |  |
 
 ---

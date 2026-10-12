@@ -52,6 +52,7 @@
   {"file": "docs/MONGODB_ATLAS.md", "title": "MongoDB Atlas"},
   {"file": "docs/MONGODB_CONVENTIONS.md", "title": "MongoDB Conventions"},
   {"file": "docs/MULTI_LEVEL_SUBMISSION_MANAGEMENT_LOG.md", "title": "Multi-Level Submission Management Implementation"},
+  {"file": "docs/OWNER_TEST_PLAN.md", "title": "Owner test and task plan: MTK x Vasas, Friday 16 October 2026"},
   {"file": "docs/PHOTO_VETTING_PLAN.md", "title": "Photo vetting by default: plan"},
   {"file": "docs/PRIVACY_DATA.md", "title": "What camera stores about a user, and for how long"},
   {"file": "docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md", "title": "Profiles across events: purpose and consent (owner decisions 2026-10-10)"},
