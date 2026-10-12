@@ -347,10 +347,10 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
             <div ref={rejectBlock} className={styles.rejectBlock} style={{ display: 'grid', gap: '0.75rem' }} data-reject-block>
               <RejectReasonPicker vocabulary={vocabulary} reasons={reasons} onToggleReason={(key) => setReasons((current) => toggleReason(current, key))} note={note} onNote={setNote} disabled={busy !== null} />
               <div style={BUTTON_ROW}>
-                <SemanticButton action="photo-review:confirm-reject" type="button" variant="danger" disabled={!rejectOk || busy !== null} loading={busy === 'reject'} onClick={() => void decide('reject')}>
+                <SemanticButton action="photo-review:confirm-reject" type="button" color="red.8" disabled={!rejectOk || busy !== null} loading={busy === 'reject'} onClick={() => void decide('reject')}>
                   Confirm reject
                 </SemanticButton>
-                <SemanticButton action="photo-review:cancel-reject" type="button" variant="secondary" disabled={busy !== null} onClick={() => setRejecting(false)}>
+                <SemanticButton action="photo-review:cancel-reject" type="button" variant="outline" disabled={busy !== null} onClick={() => setRejecting(false)}>
                   Cancel
                 </SemanticButton>
               </div>
@@ -363,13 +363,13 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
               {hint}
             </p>
             <div style={BUTTON_ROW}>
-              <SemanticButton action="photo-review:approve" type="button" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'approve'} onClick={() => void decide('approve')}>
+              <SemanticButton action="photo-review:approve" type="button" color="green.8" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'approve'} onClick={() => void decide('approve')}>
                 Approve
               </SemanticButton>
-              <SemanticButton action="photo-review:reject" type="button" variant="secondary" styles={DECISION_BUTTON} aria-expanded={rejecting} disabled={busy !== null} onClick={() => setRejecting((open) => !open)}>
+              <SemanticButton action="photo-review:reject" type="button" color="red.8" styles={DECISION_BUTTON} aria-expanded={rejecting} disabled={busy !== null} onClick={() => setRejecting((open) => !open)}>
                 Reject
               </SemanticButton>
-              <SemanticButton action="photo-review:mark-skip" type="button" variant="secondary" styles={DECISION_BUTTON} disabled={busy !== null || !canSkip} onClick={() => onSkip(item.id)}>
+              <SemanticButton action="photo-review:mark-skip" type="button" variant="outline" styles={DECISION_BUTTON} disabled={busy !== null || !canSkip} onClick={() => onSkip(item.id)}>
                 Skip for now
               </SemanticButton>
             </div>
