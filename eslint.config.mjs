@@ -98,4 +98,14 @@ const eslintConfig = defineConfig([
   ]),
 ]);
 
+// Guard for the `fast-glob` override in package.json (docs/DEPENDENCIES.md, section 2a). @next/eslint-plugin-next asks `fast-glob` for
+// one thing only: the folders named by `settings.next.rootDir`, which this repo never sets. The override hands that call to
+// `tinyglobby`, which answers differently for a plain folder name (it lists the folders inside it, with a trailing slash), so the
+// moment a config sets `settings.next.rootDir` the answer is not the one the plugin was written for. Fail loudly here instead.
+if (eslintConfig.some((entry) => entry?.settings?.next?.rootDir !== undefined)) {
+  throw new Error(
+    "eslint.config.mjs: settings.next.rootDir is set, but package.json overrides @next/eslint-plugin-next's fast-glob with tinyglobby, which resolves it differently. Remove the override (docs/DEPENDENCIES.md, section 2a) before using rootDir.",
+  );
+}
+
 export default eslintConfig;
