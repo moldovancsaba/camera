@@ -57,7 +57,7 @@ One page to start from: **what is done, what happens next, what is still not del
 ### 4. Rules in force
 1. **Merging:** after `Verify` and the full local chain with the real exit code; one `gh pr merge` per command, by the lead; a live guest-path, giant-screen, consent or production-data pull request only after the owner names it in chat; when a command is refused, stop and tell the owner (`docs/PR_AND_MERGE_PLAYBOOK.md`, CLAUDE.md section 10).
 2. **Production data:** no test data into production messmass, no database read with the `.env` credentials from here, live looks are read-only (`curl`, the guest event answer needs `?audience=guest`).
-3. **The 19 October runner change:** `ubuntu-latest` becomes Ubuntu 26 on 2026-10-19 and the workflows are not pinned; if the first `Verify` after that date fails for the image, pin `runs-on: ubuntu-24.04` until it is understood.
+3. **The 19 October runner change:** `ubuntu-latest` starts moving to Ubuntu 26.04 on 2026-10-19. Camera's `Verify` was run on `ubuntu-26.04` on 2026-10-12 and passed, so the workflow stays unpinned; the other four repos were not tried (a one-line throwaway pull request each); if a `Verify` fails for the image, pin `runs-on: ubuntu-24.04` until it is understood.
 4. **Numbering:** every list and question sent to the owner is numbered from the continuous register; the owner answers by number.
 
 ## Status 2026-10-10 (v12.3.41)

@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — fewer dependencies, no dev-only advisory, the images ZIP on archiver 8 (camera PRs 610, 611, 613; owner answer 378 "reduce dependencies and eliminate obsolete and unnecessary modules")
+
+- **Removed (PR 613):** 9 source files nothing imports any more (`HashtagInput`, `RemoveSubmissionButton`, `LoadingSpinner` and its index, `upload-image-client`, `oauth-return-message`, `gds/notifications`, `logos/utils`, `slideshow/open-slideshow`), 13 one-off scripts that nothing names (8 of them wrote to the database or Vercel with hard-coded ids; they stay in git history), the two `overrides` whose reason is gone (`postcss`, `esbuild`) and the variable `EVENT_MONGO_ID`. Both `depcheck` and `knip` report no unused dependency; every direct dependency has an importer, a binary, a config entry or a peer requirement.
+- **archiver 7 to 8 (PR 610):** drops the deprecated `glob` 10 and 28 packages from the production tree (622 to 594 installed packages). The zip loop moved into `lib/events/image-zip.ts` with the behaviour unchanged and four tests that read the finished zip with an independent reader.
+- **Lint chain (PR 611):** the five dev-only `braces` advisories (no patched release exists; `eslint-config-next` pins `fast-glob` 3.3.1) are gone through a scoped override of `fast-glob` to `tinyglobby` for the Next lint plugin (`npm audit` 5 high to 0). `eslint.config.mjs` throws at load if anyone sets `settings.next.rootDir`, the one place the two differ.
+- **Counts (all three together):** direct dependencies 23 / 15 dev (one override fewer), installed packages 622 to 581, `npm audit` 5 high to 0, `npm audit --omit=dev` 0 before and after, `npm ci` deprecation warnings 2 to 1 (only `eslint@9` is left).
+- **Not done, with the reason:** ESLint 10 is blocked by three plugins that `eslint-config-next` needs and that have no ESLint 10 release (`eslint-plugin-react`, `-import`, `-jsx-a11y`; tried in a scratch copy, re-check command in `docs/DEPENDENCIES.md` 5a). Tailwind (35 packages; 227 utility classes still used on the capture path), `axios` and `qrcode` (live capture and QR paths) and the majors (Next 16.4, React 19.3, Mantine 9, mongodb 7, TypeScript 7) wait for after the match. PR 616 (the images ZIP written with `node:zlib`, 50 packages fewer, no ZIP64) is an optional alternative to 610, not merged.
+- **Owner step:** download one real images ZIP from the admin (the test plan, T51).
+
 ## Unreleased — the link to the photo in the e-mails reads "Visit your selfie" (issue 382; owner answer 2026-10-11)
 
 - **Owner:** "can we use it as link with text 'visit your selfie'".
@@ -27,7 +36,7 @@
 ## Unreleased — CI: the workflow actions move to the Node 24 versions (camera#597; owner answer 361, "deliver what we can do")
 
 - **Changed:** `actions/checkout`, `actions/setup-node` and `actions/upload-artifact` in `.github/workflows/ci.yml` go from v4 to v7, so the Verify job no longer prints the Node 20 deprecation notice. The same change is made in messmass, fanmass, try-on and savetheworld (fanmass and try-on also `actions/setup-python` v5 to v7). No product change; the pull request's own Verify run is the test.
-- **Not done:** `ubuntu-latest` becomes Ubuntu 26 on 2026-10-19; the workflow is not pinned and not tried on it yet, so the first Verify run after that date is the first run on the new image (if it fails for the image, pin `runs-on: ubuntu-24.04` until it is understood).
+- **Ubuntu 26 (tried 2026-10-12):** `ubuntu-latest` starts moving to Ubuntu 26.04 on 2026-10-19 (over several weeks). The Verify workflow was run on `ubuntu-26.04` in a throwaway pull request (closed unmerged): every step passed (secret scan, `npm ci`, `inventory:check`, `release:check` with sharp and the canvas package), so `ubuntu-latest` stays unpinned. The other four repos were read, not tried (their workflows are nearly the same); a one-line throwaway pull request proves each in about 5 minutes.
 
 ## v12.3.42 — fleet release 2026-10-11 (owner instruction "Fix all and also document", 2026-10-11)
 
