@@ -36,3 +36,19 @@ test('the profile wordings (issue 521, owner answers 248 to 251) are Dictionary 
   }
   assert.equal(translate('en', 'profile.notice', undefined, { 'profile.notice': 'Own words.' }), 'Own words.', 'a partner or event text wins over the dictionary');
 });
+
+test('the AI training wordings (issue 628, owner answer 457) are Dictionary drafts in both languages with the same placeholders, editable at every level', () => {
+  const keys = (['training.consent', 'training.consent.link', 'training.notice'] as const);
+  const markers = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+  for (const key of keys) {
+    const entry = textCatalog().find((e) => e.key === key);
+    assert.ok(entry, `${key} is in the catalog`);
+    assert.equal(entry!.group, 'training');
+    assert.deepEqual(markers(entry!.hu), markers(entry!.en), `${key}: the same placeholders in English and Hungarian`);
+  }
+  for (const language of ['en', 'hu'] as const) {
+    const text = translate(language, 'training.consent', { organiser: 'MTK', link: translate(language, 'training.consent.link') });
+    assert.doesNotMatch(text, /\{\w+\}/, `${language}: every placeholder is filled`);
+    assert.match(text, /MTK/);
+  }
+});

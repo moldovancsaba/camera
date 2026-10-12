@@ -7,6 +7,7 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { parsePeople, type PersonTag } from './people';
+import type { ResolvedVocabulary } from './vocabulary';
 
 export type QueueStatus = 'pending_review' | 'rejected' | 'approved';
 
@@ -29,11 +30,17 @@ export interface PhotoQueueItem {
   people: PersonTag[];
   /** Someone marked the people (also when nobody was in the photo). */
   peopleMarked: boolean;
+  /** Why the photo was rejected, as keys of the `reject_reason` group of the event's vocabulary (issue 628); none for a photo that was not rejected or was rejected before reasons existed. */
+  rejectReasons: string[];
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
 
-export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
+/**
+ * One photo of the queue. The people are read with the vocabulary of the **event** (issue 628): a custom option of the event would otherwise make a marked photo read as unmarked, and the
+ * vocabulary is required so no caller can forget it.
+ */
+export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary): PhotoQueueItem {
   const status: QueueStatus = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : 'pending_review';
   const review = (doc.photoReview ?? {}) as Document;
   const history = Array.isArray(doc.reviewHistory) ? (doc.reviewHistory as Document[]) : [];
@@ -49,10 +56,11 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',
     shareOptIn: review.shareOptIn === true,
     people: (() => {
-      const checked = parsePeople(doc.people ?? []);
+      const checked = parsePeople(doc.people ?? [], vocabulary);
       return checked.ok ? checked.value : [];
     })(),
     peopleMarked: Array.isArray(doc.people),
+    rejectReasons: Array.isArray(doc.rejectReasons) ? doc.rejectReasons.filter((key): key is string => typeof key === 'string' && key.length > 0) : [],
     last:
       last && (last.action === 'approve' || last.action === 'reject')
         ? { action: last.action, by: text(last.by) ?? 'unknown', at: text(last.at) ?? '', reason: text(last.reason) }
@@ -69,7 +77,7 @@ export function queueFilter(eventUuid: string, status: QueueStatus): Document {
   };
 }
 
-export async function loadPhotoQueue(db: Db, eventUuid: string, status: QueueStatus, limit = 60): Promise<PhotoQueueItem[]> {
+export async function loadPhotoQueue(db: Db, eventUuid: string, status: QueueStatus, vocabulary: ResolvedVocabulary, limit = 60): Promise<PhotoQueueItem[]> {
   // The waiting list is worked oldest first; the decided lists show the latest decisions first.
   const docs = await db
     .collection(COLLECTIONS.SUBMISSIONS)
@@ -77,7 +85,7 @@ export async function loadPhotoQueue(db: Db, eventUuid: string, status: QueueSta
     .sort({ createdAt: status === 'pending_review' ? 1 : -1 })
     .limit(limit)
     .toArray();
-  return docs.map(toPhotoQueueItem);
+  return docs.map((doc) => toPhotoQueueItem(doc, vocabulary));
 }
 
 export async function countPhotoQueue(db: Db, eventUuid: string): Promise<Record<QueueStatus, number>> {

@@ -62,6 +62,7 @@ function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; 
         const allowed = typeof status === 'string' ? [status] : ((status as { $in: string[] } | undefined)?.$in ?? null);
         if (allowed && !allowed.includes(submission.reviewStatus as string)) return { matchedCount: 0 };
         for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(submission, path, value);
+        for (const path of Object.keys((update.$unset as Doc) ?? {})) delete submission[path];
         for (const [path, value] of Object.entries((update.$push as Doc) ?? {})) {
           const list = ((submission[path] as unknown[]) ??= []);
           list.push(value);
@@ -238,12 +239,13 @@ test('rejection keeps the photo private, makes no picture and emails the guest',
   const submission = pendingSubmission({ tryOnRequest: { requested: true, status: 'awaiting_approval' } });
   const { db } = fakeDb(submission);
   const { deps: d, calls } = deps(photo, frame);
-  const result = await rejectPhoto(db, submission as never, ACTOR, 'Not suitable', d);
+  const result = await rejectPhoto(db, submission as never, ACTOR, 'Not suitable', ['nudity', 'alcohol'], d);
   assert.deepEqual(result, { ok: true, email: 'sent' });
   assert.equal(submission.reviewStatus, 'rejected');
   assert.equal(submission.reviewNotes, 'Not suitable');
+  assert.deepEqual(submission.rejectReasons, ['nudity', 'alcohol'], 'the reasons are kept on the photo (issue 628)');
   assert.equal(submission.isShareVisible, false);
-  assert.deepEqual(submission.reviewHistory, [{ action: 'reject', by: 'mod@example.com', at: AT, reason: 'Not suitable' }]);
+  assert.deepEqual(submission.reviewHistory, [{ action: 'reject', by: 'mod@example.com', at: AT, reason: 'Not suitable', reasons: ['nudity', 'alcohol'] }]);
   for (const key of ['imageUrl', 'finalImageUrl', 'originalImageUrl']) assert.equal(key in submission, false);
   assert.deepEqual([calls.uploads.length, calls.copies.length, calls.fetched.length], [0, 0, 0]);
   assert.match(String(calls.rejectedMails[0]), /\/capture\/event-uuid$/);
@@ -254,8 +256,31 @@ test('the not-approved e-mail links an event with a URL slug by its short link, 
   const submission = pendingSubmission();
   const { db } = fakeDb(submission, { event: { _id: new ObjectId(), eventId: 'event-uuid', name: 'Derby', shortUrlSlug: 'derby' } });
   const { deps: d, calls } = deps(photo, frame);
-  await rejectPhoto(db, submission as never, ACTOR, 'Not suitable', d);
+  await rejectPhoto(db, submission as never, ACTOR, 'Not suitable', [], d);
   assert.match(String(calls.rejectedMails[0]), /^https:\/\/[^/]+\/derby$/);
+});
+
+test('a rejection without reasons (the call as it was before reasons existed) writes a history entry with no reasons field', async () => {
+  const { photo, frame } = await fixtures();
+  const submission = pendingSubmission();
+  const { db } = fakeDb(submission);
+  const { deps: d } = deps(photo, frame);
+  assert.deepEqual(await rejectPhoto(db, submission as never, ACTOR, null, undefined, d), { ok: true, email: 'sent' });
+  assert.deepEqual(submission.reviewHistory, [{ action: 'reject', by: 'mod@example.com', at: AT, reason: null }]);
+  assert.deepEqual(submission.rejectReasons, []);
+});
+
+test('a rejected photo that is approved again is not a rejected photo any more: its reject reasons are removed from it and stay in the history', async () => {
+  const { photo, frame } = await fixtures();
+  const submission = pendingSubmission();
+  const { db } = fakeDb(submission);
+  const { deps: d } = deps(photo, frame);
+  await rejectPhoto(db, submission as never, ACTOR, 'Not suitable', ['alcohol'], d);
+  assert.deepEqual(submission.rejectReasons, ['alcohol']);
+  const approved = await approvePhoto(db, submission as never, ACTOR, d);
+  assert.equal(approved.ok, true);
+  assert.equal('rejectReasons' in submission, false);
+  assert.deepEqual((submission.reviewHistory as Array<{ action: string; reasons?: string[] }>).map((entry) => [entry.action, entry.reasons]), [['reject', ['alcohol']], ['approve', undefined]]);
 });
 
 test('only a pending photo can be rejected', async () => {
@@ -263,7 +288,7 @@ test('only a pending photo can be rejected', async () => {
   const { deps: d, calls } = deps(photo, frame);
   for (const status of ['approved', 'rejected', undefined]) {
     const submission = pendingSubmission({ reviewStatus: status });
-    const result = await rejectPhoto(fakeDb(submission).db, submission as never, ACTOR, null, d);
+    const result = await rejectPhoto(fakeDb(submission).db, submission as never, ACTOR, null, [], d);
     assert.equal(!result.ok && result.reason, 'not_reviewable');
   }
   assert.equal(calls.rejectedMails.length, 0);

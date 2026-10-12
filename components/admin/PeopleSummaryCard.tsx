@@ -1,15 +1,24 @@
 /**
- * What the reviewers marked in the photos of one event (issue 542, lib/photo-vetting/people.ts): the people, the mix of age and gender, the emotions and the merchandise, counted over the
- * photos where somebody looked. Server component; shown in the event's Vetting tab once any photo has been marked. The same counts are what the analytics and, later, messmass read.
+ * What the reviewers marked in the photos of one event (issue 542, lib/photo-vetting/people.ts): the people, the mix of gender and age, the emotions and the items, counted over the photos
+ * where somebody looked, in the words of the event's vocabulary (issue 628). Server component; shown in the event's Vetting tab once any photo has been marked. The same counts are what the
+ * analytics and the counters for messmass read.
  */
 
-import { EMOTION_OPTIONS, MERCH_OPTIONS, PERSON_OPTIONS, type PeopleSummary } from '@/lib/photo-vetting/people';
+import { optionLabel, STANDARD_VOCABULARY, type ResolvedVocabulary, type VocabGroup } from '@/lib/photo-vetting/vocabulary';
+import type { PeopleSummary } from '@/lib/photo-vetting/people';
 
 const pct = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)} %` : '0 %');
 const CELL = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.75rem', display: 'grid', gap: '0.25rem', padding: '0.75rem' } as const;
 
-export default function PeopleSummaryCard({ summary }: { summary: PeopleSummary }) {
+export default function PeopleSummaryCard({ summary, vocabulary = STANDARD_VOCABULARY }: { summary: PeopleSummary; vocabulary?: ResolvedVocabulary }) {
   if (summary.photos === 0) return null;
+  const lines = (group: VocabGroup, counts: Record<string, number>, share = true) =>
+    Object.entries(counts).map(([key, count]) => (
+      <span key={key} style={{ fontSize: '0.8125rem' }}>
+        {optionLabel(vocabulary, group, key)}: {count}
+        {share ? ` (${pct(count, summary.people)})` : ''}
+      </span>
+    ));
   return (
     <section aria-label="People marked in the photos" style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', display: 'grid', gap: '0.75rem', padding: '1rem' }} data-people-summary>
       <div>
@@ -20,31 +29,23 @@ export default function PeopleSummaryCard({ summary }: { summary: PeopleSummary 
       </div>
       <div style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 13rem), 1fr))' }}>
         <div style={CELL}>
-          <strong style={{ fontSize: '0.8125rem' }}>Who</strong>
-          {PERSON_OPTIONS.map((option) => (
-            <span key={option.id} style={{ fontSize: '0.8125rem' }}>
-              {option.emoji} {option.label}: {summary.byPerson[option.id]} ({pct(summary.byPerson[option.id], summary.people)})
-            </span>
-          ))}
+          <strong style={{ fontSize: '0.8125rem' }}>Gender</strong>
+          {lines('gender', summary.byGender)}
+        </div>
+        <div style={CELL}>
+          <strong style={{ fontSize: '0.8125rem' }}>Age</strong>
+          {lines('age', summary.byAge)}
         </div>
         <div style={CELL}>
           <strong style={{ fontSize: '0.8125rem' }}>Emotion</strong>
-          {EMOTION_OPTIONS.map((option) => (
-            <span key={option.id} style={{ fontSize: '0.8125rem' }}>
-              {option.emoji} {option.label}: {summary.byEmotion[option.id]} ({pct(summary.byEmotion[option.id], summary.people)})
-            </span>
-          ))}
+          {lines('emotion', summary.byEmotion)}
         </div>
         <div style={CELL}>
-          <strong style={{ fontSize: '0.8125rem' }}>Merchandise</strong>
+          <strong style={{ fontSize: '0.8125rem' }}>Items</strong>
           <span style={{ fontSize: '0.8125rem' }}>
             With any: {summary.withMerch} ({pct(summary.withMerch, summary.people)})
           </span>
-          {MERCH_OPTIONS.map((option) => (
-            <span key={option.id} style={{ fontSize: '0.8125rem' }}>
-              {option.emoji} {option.label}: {summary.byMerch[option.id]}
-            </span>
-          ))}
+          {lines('merch', summary.byMerch, false)}
         </div>
       </div>
     </section>

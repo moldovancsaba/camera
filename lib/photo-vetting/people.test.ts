@@ -1,22 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { EMOTION_OPTIONS, MAX_PEOPLE, MERCH_OPTIONS, PERSON_OPTIONS, RECTANGLE_COLOURS, markPeopleOn, parsePeople, personOption, summarizePeople } from './people';
+import { MAX_PEOPLE, RECTANGLE_COLOURS, markPeopleOn, parsePeople, summarizePeople } from './people';
+import { resolveVocabulary } from './vocabulary';
 
 const person = (extra: Record<string, unknown> = {}) => ({ id: 'a', box: { x: 10, y: 20, w: 30, h: 40 }, gender: 'female', age: 'adult', ...extra });
 
-test('the 16 buttons are 8 person options, 4 emotions and 4 merchandise, each with an emoji and a label, in the order of the reviewers’ sketch', () => {
-  assert.equal(PERSON_OPTIONS.length + EMOTION_OPTIONS.length + MERCH_OPTIONS.length, 16);
-  assert.deepEqual(PERSON_OPTIONS.map((o) => `${o.gender}-${o.age}`), ['female-kid', 'female-young', 'female-adult', 'female-old', 'male-kid', 'male-young', 'male-adult', 'male-old']);
-  assert.deepEqual(EMOTION_OPTIONS.map((o) => o.id), ['sad', 'unamused', 'happy', 'angry']);
-  assert.deepEqual(MERCH_OPTIONS.map((o) => o.id).sort(), ['cap', 'flag', 'jersey', 'scarf']);
-  for (const o of [...PERSON_OPTIONS, ...EMOTION_OPTIONS, ...MERCH_OPTIONS]) assert.ok(o.emoji && o.label);
-  assert.equal(personOption('male', 'old').emoji, '👴');
+test('the rectangles are drawn in the colours of the design system, the first yellow and the second blue', () => {
   assert.match(RECTANGLE_COLOURS[0], /yellow/, 'the first rectangle is yellow');
   assert.match(RECTANGLE_COLOURS[1], /blue/, 'the second is blue');
   assert.ok(RECTANGLE_COLOURS.every((colour) => colour.startsWith('var(--mantine-color-')), 'colours are design system variables, never literals');
 });
 
-test('what is saved: nobody is fine; a person has a rectangle inside the photo and one of the 8 person buttons; an emotion and merchandise are optional and known; ids and rounding are kept', () => {
+test('what is saved: nobody is fine; a person has a rectangle inside the photo, one gender and one age; an emotion and items are optional and known; ids and rounding are kept', () => {
   assert.deepEqual(parsePeople([]), { ok: true, value: [] });
   const ok = parsePeople([person({ emotion: 'happy', merch: ['cap', 'flag', 'cap'] }), person({ id: '', box: { x: 50.123, y: 0, w: 49.876, h: 100 }, gender: 'male', age: 'old' })]);
   assert.ok(ok.ok);
@@ -26,6 +21,7 @@ test('what is saved: nobody is fine; a person has a rectangle inside the photo a
   }
   const clipped = parsePeople([person({ box: { x: 80, y: 80, w: 20.005, h: 20 } })]);
   assert.ok(clipped.ok);
+  assert.ok(parsePeople([person({ gender: 'unsure', emotion: 'neutral' })]).ok, 'the standard list has Not sure and Neutral');
 });
 
 test('anything else is refused with a reason', () => {
@@ -45,7 +41,7 @@ test('anything else is refused with a reason', () => {
   refused([person({ box: { x: -1, y: 0, w: 5, h: 5 } })]);
   refused([person({ box: { x: 0, y: 0, w: 0.2, h: 5 } })]);
   refused([person({ box: { x: 90, y: 0, w: 20, h: 5 } })]);
-  refused([person({ gender: 'other' })]);
+  refused([person({ gender: 'robot' })]);
   refused([person({ age: 'ancient' })]);
   refused([person({ gender: undefined })]);
   refused([person({ emotion: 'bored' })]);
@@ -53,7 +49,15 @@ test('anything else is refused with a reason', () => {
   refused([person({ merch: 'cap' })]);
 });
 
-test('the counts: people, photos looked at (also with nobody in them), gender, age, both together, emotions, and merchandise (a person can wear several); photos not looked at are left out', () => {
+test('the list decides what is valid: an option an event added is accepted for that event only, and a hidden option is refused for a new mark but still reads in an old one', () => {
+  const event = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'vasas_scarf', label: 'Vasas scarf', custom: true }, { group: 'emotion', key: 'angry', hidden: true }] } });
+  assert.ok(parsePeople([person({ merch: ['vasas_scarf'] })], event, { forSave: true }).ok);
+  assert.equal(parsePeople([person({ merch: ['vasas_scarf'] })]).ok, false, 'the standard list does not know it');
+  assert.equal(parsePeople([person({ emotion: 'angry' })], event, { forSave: true }).ok, false, 'hidden: not offered for a new mark');
+  assert.ok(parsePeople([person({ emotion: 'angry' })], event).ok, 'hidden: an old photo that has it still reads');
+});
+
+test('the counts: people, photos looked at (also with nobody in them), gender, age, both together, emotions, and items (a person can have several); photos not looked at are left out', () => {
   const photos = [
     { people: [person({ emotion: 'happy', merch: ['cap', 'flag'] }), person({ gender: 'male', age: 'old', emotion: 'sad' })] },
     { people: [] },
@@ -68,14 +72,24 @@ test('the counts: people, photos looked at (also with nobody in them), gender, a
   assert.equal(s.photosWithPeople, 2);
   assert.equal(s.people, 3);
   assert.equal(s.peoplePerPhoto, 1);
-  assert.deepEqual(s.byGender, { female: 1, male: 2 });
+  assert.deepEqual(s.byGender, { female: 1, male: 2, unsure: 0 });
   assert.deepEqual(s.byAge, { kid: 1, young: 0, adult: 1, old: 1 });
   assert.equal(s.byPerson['male-old'], 1);
-  assert.deepEqual(s.byEmotion, { sad: 1, unamused: 0, happy: 1, angry: 0 });
+  assert.equal(s.byPerson['unsure-kid'], 0);
+  assert.deepEqual(s.byEmotion, { happy: 1, neutral: 0, sad: 1, angry: 0, unamused: 0 });
   assert.equal(s.withMerch, 2);
-  assert.deepEqual(s.byMerch, { cap: 1, scarf: 0, jersey: 1, flag: 1 });
+  assert.deepEqual(s.byMerch, { jersey: 1, scarf: 0, cap: 1, flag: 1 });
   assert.equal(summarizePeople([]).photos, 0);
   assert.equal(summarizePeople([]).peoplePerPhoto, 0);
+});
+
+test('the counts follow the event’s list, and an option hidden later still counts what it was given to', () => {
+  const event = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'vasas_scarf', label: 'Vasas scarf', custom: true }, { group: 'merch', key: 'scarf', hidden: true }] } });
+  const s = summarizePeople([{ people: [person({ merch: ['vasas_scarf', 'scarf'] })] }], event);
+  assert.equal(s.byMerch.vasas_scarf, 1);
+  assert.equal(s.byMerch.scarf, 1, 'hidden after the fact, still counted');
+  assert.equal(s.byMerch.jersey, 0);
+  assert.equal(s.withMerch, 1, 'one person with any item');
 });
 
 test('marking is on for every event unless the event was switched off on purpose (owner answer 264); nothing needs to be stored for it to be on', () => {

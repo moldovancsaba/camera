@@ -1,33 +1,67 @@
 'use client';
 
 /**
- * The vetting view of one photo, big (issue 542, docs/PHOTO_VETTING_PLAN.md; owner request 2026-10-10, six sketches VETTING 1 to 6): the photo fills the screen; **Clicker** starts a mark: the
- * reviewer draws a rectangle around a person (a mouse or a finger), **Next** takes the rectangle, 16 buttons say who it is (one of 8: female or male, kid, young, adult, old), the emotion
- * (one of 4) and any merchandise (any of 4), **Done** keeps the person and **Clicker** marks the next one, until the reviewer has identified what they can; then **Next** goes on to the
- * decision, approve or reject. **Marking is required (owner answer 263): at least one person must be marked, or the reviewer says "Nobody in this photo"; only then Next goes on.** The people are saved with the photo (`PUT /api/admin/submissions/<id>/people`) before the decision and are what the analytics read. The decision is the same
- * call as the queue's (`POST .../review`). With marking switched off for the event the view is only the big photo and the decision. Rectangles are in percent of the photo.
+ * The one-screen vetting review (issue 628, owner request 2026-10-12; first built as the big view of issue 542): ONE photo at a time, as big as the screen allows, with everything needed to decide it
+ * on the same screen and no phases. **Press and drag on the photo, at any time, to draw a rectangle: that makes a new person** and selects it; its gender and age (required), emotion and items
+ * are plain text buttons beside the photo (under it on a narrow screen), in the words of the event's vocabulary (lib/photo-vetting/vocabulary.ts). A tap, or a sliver under 2 % a side, makes
+ * nothing; a tap on a rectangle selects that person. "Nobody in this photo" counts as looking when the list is empty. **Approve** is open when every person is complete and there is somebody
+ * or "nobody"; **Reject** opens "Why is it rejected?" (one or more reasons, an optional note) and its confirmation needs the same marking (rejected photos are annotated too, owner answer 453) and
+ * a reason. Pressing either does one thing: save the people (`PUT .../people`), then decide (`POST .../review`), then move to the next waiting photo; if the save fails the photo is not decided.
+ * With marking switched off for the event the screen is the photo, the reasons and the decision. The rules live in lib/photo-vetting/review-state.ts (unit-tested); this file only draws and calls
+ * them. Drawing needs a mouse or a finger: there is no keyboard way to draw a rectangle yet.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import styles from '@/components/admin/PhotoReviewStage.module.css';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
-import { TextInput } from '@/components/gds/PublicPrimitives';
-import { EMOTION_OPTIONS, MERCH_OPTIONS, PERSON_OPTIONS, RECTANGLE_COLOURS, personOption, type Emotion, type Merch, type PersonBox, type PersonOption, type PersonTag } from '@/lib/photo-vetting/people';
+import { Button } from '@/components/gds/PublicPrimitives';
+import { ChoiceChips, RejectReasonPicker } from '@/components/admin/ReviewChoices';
+import { WAITING_REFRESH_MS, shouldRefreshWaiting } from '@/lib/photo-vetting/auto-refresh';
+import { MAX_PEOPLE, RECTANGLE_COLOURS, type PersonBox } from '@/lib/photo-vetting/people';
 import type { PhotoQueueItem } from '@/lib/photo-vetting/queue';
+import {
+  MIN_SIDE_PERCENT,
+  PERSON_GROUPS,
+  addPerson,
+  boxBetween,
+  canApprove,
+  canReject,
+  chooseOption,
+  chosenReasons,
+  describePerson,
+  groupHeading,
+  isComplete,
+  isRectangle,
+  newPersonId,
+  peopleToSave,
+  personAt,
+  removePerson,
+  selectPerson,
+  setNobody,
+  startDraft,
+  toggleReason,
+  whatIsMissing,
+  type PersonGroup,
+  type Point,
+  type ReviewDraft,
+} from '@/lib/photo-vetting/review-state';
+import { GROUPS, optionsOf, type ResolvedVocabulary } from '@/lib/photo-vetting/vocabulary';
 
 interface Props {
   eventId: string;
   items: PhotoQueueItem[];
-  /** The event asks for the people to be marked before the decision. */
+  /** The words of the event (the standard list under the general, partner and event levels). */
+  vocabulary: ResolvedVocabulary;
+  /** The event asks for the people to be marked before a decision. */
   markPeople: boolean;
+  /** Drawn inside the event's Vetting tab, not as a page of its own: the empty state has no way back to link to. */
+  embedded?: boolean;
 }
 
-type Phase = 'mark' | 'decide';
-type Step = 'idle' | 'drawing' | 'tagging';
-
-const MIN_SIDE_PERCENT = 2;
 const ANSWER_TIMEOUT_MS = 120_000;
 
 async function send(url: string, method: 'POST' | 'PUT', body: unknown): Promise<Record<string, unknown>> {
@@ -42,326 +76,369 @@ async function send(url: string, method: 'POST' | 'PUT', body: unknown): Promise
   return answer.data ?? {};
 }
 
-const clamp = (value: number) => Math.min(100, Math.max(0, value));
-const newId = () => `p${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
+const colourOf = (position: number) => RECTANGLE_COLOURS[position % RECTANGLE_COLOURS.length];
 
-/** The rectangle between two points, in percent, inside the photo. */
-export function boxBetween(a: { x: number; y: number }, b: { x: number; y: number }): PersonBox {
-  const round = (value: number) => Math.round(value * 100) / 100;
-  const x = clamp(Math.min(a.x, b.x));
-  const y = clamp(Math.min(a.y, b.y));
-  return { x: round(x), y: round(y), w: round(clamp(Math.max(a.x, b.x)) - x), h: round(clamp(Math.max(a.y, b.y)) - y) };
+/** A rectangle over the photo: solid when the person is complete, dashed when gender or age is missing, thick and ringed when selected. A thin dark line outside keeps it visible on a bright photo. */
+const rectangleStyle = (box: PersonBox, colour: string, { selected = false, complete = true }: { selected?: boolean; complete?: boolean } = {}) =>
+  ({
+    position: 'absolute',
+    left: `${box.x}%`,
+    top: `${box.y}%`,
+    width: `${box.w}%`,
+    height: `${box.h}%`,
+    border: `${selected ? 4 : 2}px ${complete ? 'solid' : 'dashed'} ${colour}`,
+    boxSizing: 'border-box',
+    boxShadow: selected ? '0 0 0 2px var(--mantine-color-white), 0 0 0 3px color-mix(in srgb, var(--mantine-color-black) 55%, transparent)' : '0 0 0 1px color-mix(in srgb, var(--mantine-color-black) 55%, transparent)',
+    pointerEvents: 'none',
+  }) as const;
+
+const SECTION = { display: 'grid', gap: '0.5rem' } as const;
+const HEADING = { fontSize: '0.9375rem', margin: 0 } as const;
+const DIMMED = { color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', margin: 0 } as const;
+const BUTTON_ROW = { display: 'flex', flexWrap: 'wrap', gap: '0.5rem' } as const;
+/** The three buttons of the decision bar share one row on a phone. */
+const DECISION_BUTTON = { root: { paddingInline: '0.75rem' } } as const;
+
+interface WorkspaceProps {
+  item: PhotoQueueItem;
+  position: number;
+  total: number;
+  vocabulary: ResolvedVocabulary;
+  markPeople: boolean;
+  canSkip: boolean;
+  notice: string | null;
+  onDecided: (id: string, message: string) => void;
+  onSkip: (id: string) => void;
+  onWorking: (working: boolean) => void;
 }
 
-const rectangleStyle = (box: PersonBox, colour: string, solid = false) =>
-  ({ position: 'absolute', left: `${box.x}%`, top: `${box.y}%`, width: `${box.w}%`, height: `${box.h}%`, border: `3px ${solid ? 'solid' : 'dotted'} ${colour}`, boxSizing: 'border-box', pointerEvents: 'none' }) as const;
-
-/** The 16 buttons are laid over the photo when it is tall enough to hold them (4 rows of 3.25 rem and the gaps, with some room); on a phone held upright they come under the photo instead. */
-const GRID_HEIGHT_PX = 270;
-
-/** The look of the 16 buttons, from the design system's variables (as in the reviewers' sketch: blue buttons, the chosen one pale). */
-const IDLE = 'var(--mantine-color-blue-6)';
-const SELECTED = 'var(--mantine-color-blue-1)';
-const BACKDROP = 'color-mix(in srgb, var(--mantine-color-black) 35%, transparent)';
-
-const EMOJI_BUTTON = { alignItems: 'center', borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', fontSize: '1.75rem', height: '3.25rem', justifyContent: 'center', padding: 0, width: '3.25rem' } as const;
-
-export default function PhotoReviewStage({ eventId, items, markPeople }: Props) {
-  const [index, setIndex] = useState(0);
-  const item = items[index];
-  const [phase, setPhase] = useState<Phase>(markPeople ? 'mark' : 'decide');
-  const [step, setStep] = useState<Step>('idle');
-  const [people, setPeople] = useState<PersonTag[]>(item?.people ?? []);
-  const [box, setBox] = useState<PersonBox | null>(null);
-  const [person, setPerson] = useState<PersonOption | null>(null);
-  const [emotion, setEmotion] = useState<Emotion | null>(null);
-  const [merch, setMerch] = useState<Merch[]>([]);
-  const [busy, setBusy] = useState(false);
+/** One photo and everything done to it. The parent keys it by the photo, so every new photo starts clean. */
+function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip, notice, onDecided, onSkip, onWorking }: WorkspaceProps) {
+  const [draft, setDraft] = useState<ReviewDraft>(() => startDraft({ people: item.people, peopleMarked: item.peopleMarked }, vocabulary));
+  const [drawing, setDrawing] = useState<PersonBox | null>(null);
+  const [busy, setBusy] = useState<'approve' | 'reject' | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
-  const [reason, setReason] = useState('');
+  const [reasons, setReasons] = useState<string[]>([]);
+  const [note, setNote] = useState('');
   const overlay = useRef<HTMLDivElement | null>(null);
-  const [overlayHeight, setOverlayHeight] = useState(0);
+  const start = useRef<Point | null>(null);
+  const rejectBlock = useRef<HTMLDivElement | null>(null);
+  // The reasons open above the decision bar: bring them into view when they open (the bar covers the bottom edge, which the CSS accounts for).
   useEffect(() => {
-    const node = overlay.current;
-    if (!node || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => setOverlayHeight(node.getBoundingClientRect().height));
-    observer.observe(node);
-    setOverlayHeight(node.getBoundingClientRect().height);
-    return () => observer.disconnect();
-  }, [item]);
-  const start = useRef<{ x: number; y: number } | null>(null);
+    if (rejecting) rejectBlock.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [rejecting]);
 
-  const toPercent = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+  const toPercent = useCallback((event: ReactPointerEvent<HTMLDivElement>): Point => {
     const rect = overlay.current?.getBoundingClientRect();
     if (!rect || rect.width === 0 || rect.height === 0) return { x: 0, y: 0 };
+    const clamp = (value: number) => Math.min(100, Math.max(0, value));
     return { x: clamp(((event.clientX - rect.left) / rect.width) * 100), y: clamp(((event.clientY - rect.top) / rect.height) * 100) };
   }, []);
 
-  const colourOf = (position: number) => RECTANGLE_COLOURS[position % RECTANGLE_COLOURS.length];
-  const drawingColour = colourOf(people.length);
-
-  const nextPhoto = useCallback(() => {
-    setIndex((current) => current + 1);
-    const following = items[index + 1];
-    setPeople(following?.people ?? []);
-    setPhase(markPeople ? 'mark' : 'decide');
-    setStep('idle');
-    setBox(null);
-    setPerson(null);
-    setEmotion(null);
-    setMerch([]);
-    setRejecting(false);
-    setReason('');
-  }, [index, items, markPeople]);
-
-  const resetMark = () => {
-    setBox(null);
-    setPerson(null);
-    setEmotion(null);
-    setMerch([]);
-    setStep('idle');
-  };
-
   const onDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (step !== 'drawing') return;
+    if (!markPeople || busy || (event.pointerType === 'mouse' && event.button !== 0)) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     start.current = toPercent(event);
-    setBox({ ...start.current, w: 0, h: 0 });
+    setDrawing({ ...start.current, w: 0, h: 0 });
   };
   const onMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (step !== 'drawing' || !start.current) return;
-    setBox(boxBetween(start.current, toPercent(event)));
+    if (start.current) setDrawing(boxBetween(start.current, toPercent(event)));
   };
   const onUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (step !== 'drawing' || !start.current) return;
-    const finished = boxBetween(start.current, toPercent(event));
+    if (!start.current) return;
+    const end = toPercent(event);
+    const box = boxBetween(start.current, end);
     start.current = null;
-    // A tap or a sliver is not a rectangle: the reviewer draws again.
-    setBox(finished.w >= MIN_SIDE_PERCENT && finished.h >= MIN_SIDE_PERCENT ? finished : null);
+    setDrawing(null);
+    if (isRectangle(box)) setDraft((current) => addPerson(current, box, newPersonId()));
+    // A tap (it hardly moved) selects the person under it; a sliver drawn in one direction makes nothing.
+    else if (box.w < MIN_SIDE_PERCENT && box.h < MIN_SIDE_PERCENT) setDraft((current) => selectPerson(current, personAt(current.people, end) ?? current.selectedId));
+  };
+  const onCancel = () => {
+    start.current = null;
+    setDrawing(null);
   };
 
-  const finishPerson = () => {
-    if (!box || !person) return;
-    setPeople((current) => [...current, { id: newId(), box, gender: person.gender, age: person.age, ...(emotion ? { emotion } : {}), ...(merch.length > 0 ? { merch } : {}) }]);
-    resetMark();
-  };
+  const selected = draft.people.find((person) => person.id === draft.selectedId) ?? null;
+  const selectedPosition = selected ? draft.people.indexOf(selected) : -1;
+  const full = draft.people.length >= MAX_PEOPLE;
+  const missing = whatIsMissing(draft, vocabulary, markPeople);
+  const approveOk = canApprove(draft, vocabulary, markPeople);
+  const rejectOk = canReject(draft, vocabulary, markPeople, reasons);
+  const hint = busy ? 'Saving…' : rejecting ? (missing ?? (chosenReasons(reasons, vocabulary).length === 0 ? 'Choose at least one reason.' : null)) : missing;
 
-  const toDecision = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await send(`/api/admin/submissions/${item.id}/people`, 'PUT', { people });
-      setPhase('decide');
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'The people could not be saved');
-    } finally {
-      setBusy(false);
-    }
-  };
-
+  /** One press, one thing for the user: save the people, then decide, then the next photo. If the save fails nothing is decided. */
   const decide = async (action: 'approve' | 'reject') => {
-    setBusy(true);
+    if (busy) return;
+    setBusy(action);
+    onWorking(true);
     setError(null);
     try {
-      await send(`/api/admin/submissions/${item.id}/review`, 'POST', { action, ...(action === 'reject' && reason.trim() ? { reason: reason.trim() } : {}) });
-      setNotice(action === 'approve' ? 'Photo approved. The user gets the link by email.' : 'Photo rejected. The user gets a short note.');
-      nextPhoto();
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'The decision could not be saved');
+      if (markPeople) {
+        try {
+          await send(`/api/admin/submissions/${item.id}/people`, 'PUT', { people: peopleToSave(draft) });
+        } catch (failure) {
+          setError(`The people could not be saved, so the photo was not ${action === 'approve' ? 'approved' : 'rejected'}. ${failure instanceof Error ? failure.message : ''}`.trim());
+          return;
+        }
+      }
+      try {
+        const body = action === 'approve' ? { action } : { action, reasons: chosenReasons(reasons, vocabulary), ...(note.trim() ? { reason: note.trim() } : {}) };
+        await send(`/api/admin/submissions/${item.id}/review`, 'POST', body);
+      } catch (failure) {
+        setError(failure instanceof Error ? failure.message : 'The decision could not be saved');
+        return;
+      }
+      onDecided(item.id, action === 'approve' ? 'Photo approved. The user gets the link by email.' : 'Photo rejected. The user gets a short note.');
     } finally {
-      setBusy(false);
+      setBusy(null);
+      onWorking(false);
     }
   };
 
-  const summary = useMemo(() => people.map((p) => `${personOption(p.gender, p.age).emoji}${p.emotion ? EMOTION_OPTIONS.find((o) => o.id === p.emotion)?.emoji : ''}${(p.merch ?? []).map((m) => MERCH_OPTIONS.find((o) => o.id === m)?.emoji ?? '').join('')}`), [people]);
+  const nextColour = colourOf(draft.people.length);
+  const groupSelection = (group: PersonGroup): string[] => {
+    if (!selected) return [];
+    if (group === 'merch') return selected.merch ?? [];
+    const value = selected[group];
+    return value ? [value] : [];
+  };
 
-  const gridInside = overlayHeight >= GRID_HEIGHT_PX;
-  const tagButtons = (
-    <div style={{ display: 'grid', gap: '0.4rem', gridTemplateColumns: 'repeat(4, 3.25rem)' }}>
-      {PERSON_OPTIONS.map((option) => (
-        <button key={option.id} type="button" aria-label={option.label} aria-pressed={person?.id === option.id} onClick={() => setPerson(option)} style={{ ...EMOJI_BUTTON, background: person?.id === option.id ? SELECTED : IDLE, border: 0 }}>
-          {option.emoji}
-        </button>
-      ))}
-      {EMOTION_OPTIONS.map((option) => (
-        <button key={option.id} type="button" aria-label={option.label} aria-pressed={emotion === option.id} onClick={() => setEmotion(emotion === option.id ? null : option.id)} style={{ ...EMOJI_BUTTON, background: emotion === option.id ? SELECTED : IDLE, border: 0 }}>
-          {option.emoji}
-        </button>
-      ))}
-      {MERCH_OPTIONS.map((option) => (
-        <button key={option.id} type="button" aria-label={option.label} aria-pressed={merch.includes(option.id)} onClick={() => setMerch(merch.includes(option.id) ? merch.filter((m) => m !== option.id) : [...merch, option.id])} style={{ ...EMOJI_BUTTON, background: merch.includes(option.id) ? SELECTED : IDLE, border: 0 }}>
-          {option.emoji}
-        </button>
-      ))}
+  return (
+    <div style={{ display: 'grid', gap: '0.75rem', maxWidth: 1400 }} data-photo-review-stage>
+      <div style={{ alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem', justifyContent: 'space-between' }}>
+        <strong data-review-position>
+          Photo {position} of {total} waiting
+        </strong>
+        {item.email ? <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{item.email}</span> : null}
+      </div>
+      <p style={DIMMED} data-review-help>
+        {markPeople
+          ? '1. Draw a rectangle around each person. 2. Choose gender and age. Add emotion and items if you can. 3. Approve or reject.'
+          : 'Look at the photo, then approve or reject it. A rejection needs a reason.'}
+      </p>
+      {notice ? (
+        <p role="status" style={{ color: 'var(--mantine-color-teal-text)', fontSize: '0.8125rem', fontWeight: 600, margin: 0 }} data-review-notice>
+          {notice}
+        </p>
+      ) : null}
+      {error ? <InlineAlert title="That did not work" message={error} severity="error" /> : null}
+
+      <div className={styles.layout}>
+        {/* The photo is as big as the screen allows: never taller than the screen leaves room for, so the buttons stay in view while the reviewer draws (also on a phone held sideways). The wrapper shrinks to the
+            picture, so the overlay that takes the drawing, and the rectangles in percent, are exactly the photo. */}
+        <div className={styles.photoColumn}>
+          <div style={{ background: 'var(--mantine-color-gray-1)', display: 'inline-block', lineHeight: 0, maxWidth: '100%', position: 'relative', userSelect: 'none' }}>
+            {item.photoUrl ? (
+              <Image src={item.photoUrl} alt={`Photo ${position} of ${total} waiting`} width={1600} height={900} unoptimized priority draggable={false} style={{ display: 'block', height: 'auto', maxHeight: 'calc(100vh - 12rem)', maxWidth: '100%', width: 'auto' }} />
+            ) : (
+              <div style={{ aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'var(--mantine-color-dimmed)', width: '30rem', maxWidth: '100%' }}>No photo</div>
+            )}
+            <div
+              ref={overlay}
+              role="group"
+              aria-label={markPeople ? 'The photo. Press and drag to draw a rectangle around a person.' : 'The photo'}
+              data-photo-overlay
+              onPointerDown={onDown}
+              onPointerMove={onMove}
+              onPointerUp={onUp}
+              onPointerCancel={onCancel}
+              style={{ cursor: markPeople && !busy ? 'crosshair' : 'default', inset: 0, position: 'absolute', touchAction: markPeople ? 'none' : 'auto' }}
+            >
+              {draft.people.map((person, index) => {
+                const colour = colourOf(index);
+                return (
+                  <div key={person.id} data-person-box={person.id} data-selected={person.id === draft.selectedId} data-complete={isComplete(person, vocabulary)} style={rectangleStyle(person.box, colour, { selected: person.id === draft.selectedId, complete: isComplete(person, vocabulary) })}>
+                    <span aria-hidden style={{ background: colour, borderRadius: '0.25rem', color: 'var(--mantine-color-dark-9)', fontSize: '0.8125rem', fontWeight: 700, left: 2, lineHeight: 1.3, padding: '0 0.3rem', position: 'absolute', top: 2 }}>
+                      {index + 1}
+                    </span>
+                  </div>
+                );
+              })}
+              {drawing ? <div data-drawing-box style={{ ...rectangleStyle(drawing, nextColour, { complete: false }), border: `3px dotted ${nextColour}` }} /> : null}
+            </div>
+          </div>
+        </div>
+
+        <aside aria-label="Describe the photo and decide" className={styles.panel} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem' }} data-review-panel>
+          {markPeople ? (
+            <>
+              <section style={SECTION} aria-labelledby="people-heading">
+                <h3 id="people-heading" style={HEADING}>
+                  People in this photo ({draft.people.length})
+                </h3>
+                {draft.people.length === 0 ? (
+                  <p style={DIMMED}>Press and drag on the photo to draw a rectangle around a person.</p>
+                ) : (
+                  <div style={{ display: 'grid', gap: '0.375rem' }} data-people-list>
+                    {draft.people.map((person, index) => {
+                      const described = describePerson(person, vocabulary);
+                      const on = person.id === draft.selectedId;
+                      return (
+                        <Button
+                          key={person.id}
+                          type="button"
+                          fullWidth
+                          justify="flex-start"
+                          variant={on ? 'light' : 'default'}
+                          aria-pressed={on}
+                          disabled={busy !== null}
+                          onClick={() => setDraft((current) => selectPerson(current, person.id))}
+                          leftSection={<span aria-hidden style={{ background: colourOf(index), borderRadius: '0.25rem', display: 'inline-block', height: '1rem', width: '1rem' }} />}
+                          styles={{ root: { height: 'auto', minHeight: '2.5rem', paddingBlock: '0.375rem' }, label: { lineHeight: 1.3, textAlign: 'left', whiteSpace: 'normal' } }}
+                          data-person-row={person.id}
+                          data-complete={described.complete}
+                        >
+                          <span>
+                            <strong>{`Person ${index + 1}`}</strong>
+                            {': '}
+                            {described.complete ? described.text : <span style={{ color: 'var(--mantine-color-red-text)', fontWeight: 600 }}>{described.text}</span>}
+                          </span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+                {full ? <p style={DIMMED}>{`At most ${MAX_PEOPLE} people can be marked in a photo.`}</p> : null}
+              </section>
+
+              {selected ? (
+                <section style={{ ...SECTION, gap: '0.875rem' }} aria-label={`Person ${selectedPosition + 1}`} data-person-panel={selected.id}>
+                  <h3 style={HEADING}>Person {selectedPosition + 1}</h3>
+                  {PERSON_GROUPS.map((group) => {
+                    const options = optionsOf(vocabulary, group);
+                    if (options.length === 0) {
+                      return GROUPS[group].required ? (
+                        <p key={group} style={DIMMED}>{`No ${GROUPS[group].label.toLowerCase()} is offered for this event, so a person cannot be completed. Ask an admin to switch one on.`}</p>
+                      ) : null;
+                    }
+                    return (
+                      <ChoiceChips
+                        key={group}
+                        heading={groupHeading(group)}
+                        options={options}
+                        selected={groupSelection(group)}
+                        onToggle={(key) => setDraft((current) => chooseOption(current, selected.id, group, key, vocabulary))}
+                        disabled={busy !== null}
+                      />
+                    );
+                  })}
+                  <div style={BUTTON_ROW}>
+                    <SemanticButton action="photo-review:mark-remove" type="button" variant="secondary" disabled={busy !== null} onClick={() => setDraft((current) => removePerson(current, selected.id))}>
+                      Remove person
+                    </SemanticButton>
+                  </div>
+                </section>
+              ) : draft.people.length > 0 ? (
+                <p style={DIMMED}>Choose a person in the list, or tap a rectangle on the photo, to describe them.</p>
+              ) : null}
+
+              <div style={{ display: 'grid', gap: '0.375rem' }}>
+                <Button type="button" variant={draft.nobody ? 'filled' : 'light'} aria-pressed={draft.nobody} disabled={draft.people.length > 0 || busy !== null} onClick={() => setDraft((current) => setNobody(current, !current.nobody))} data-nobody>
+                  Nobody in this photo
+                </Button>
+              </div>
+            </>
+          ) : null}
+
+          {/* The reasons of a rejection come above the decision bar, so the bar (Approve, Reject, Skip) stays where it is. */}
+          {rejecting ? (
+            <div ref={rejectBlock} className={styles.rejectBlock} style={{ display: 'grid', gap: '0.75rem' }} data-reject-block>
+              <RejectReasonPicker vocabulary={vocabulary} reasons={reasons} onToggleReason={(key) => setReasons((current) => toggleReason(current, key))} note={note} onNote={setNote} disabled={busy !== null} />
+              <div style={BUTTON_ROW}>
+                <SemanticButton action="photo-review:confirm-reject" type="button" color="red.8" disabled={!rejectOk || busy !== null} loading={busy === 'reject'} onClick={() => void decide('reject')}>
+                  Confirm reject
+                </SemanticButton>
+                <SemanticButton action="photo-review:cancel-reject" type="button" variant="outline" disabled={busy !== null} onClick={() => setRejecting(false)}>
+                  Cancel
+                </SemanticButton>
+              </div>
+            </div>
+          ) : null}
+
+          {/* The decision is always on the screen: this bar sticks to the bottom of the window while the panel is longer than the window. */}
+          <section className={styles.decision} aria-label="Decision" data-decision>
+            <p role="status" aria-live="polite" style={{ ...DIMMED, minHeight: '1.25rem' }} data-decision-hint>
+              {hint}
+            </p>
+            <div style={BUTTON_ROW}>
+              <SemanticButton action="photo-review:approve" type="button" color="green.8" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'approve'} onClick={() => void decide('approve')}>
+                Approve
+              </SemanticButton>
+              <SemanticButton action="photo-review:reject" type="button" color="red.8" styles={DECISION_BUTTON} aria-expanded={rejecting} disabled={busy !== null} onClick={() => setRejecting((open) => !open)}>
+                Reject
+              </SemanticButton>
+              <SemanticButton action="photo-review:mark-skip" type="button" variant="outline" styles={DECISION_BUTTON} disabled={busy !== null || !canSkip} onClick={() => onSkip(item.id)}>
+                Skip for now
+              </SemanticButton>
+            </div>
+          </section>
+        </aside>
+      </div>
     </div>
   );
+}
+
+export default function PhotoReviewStage({ eventId, items, vocabulary, markPeople, embedded = false }: Props) {
+  const router = useRouter();
+  // Photos decided here leave the queue at once (the server list catches up after router.refresh()); a photo skipped goes to the back and comes round again.
+  const [decided, setDecided] = useState<string[]>([]);
+  const [skipped, setSkipped] = useState<string[]>([]);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [working, setWorking] = useState(false);
+
+  const waiting = useMemo(() => {
+    const open = items.filter((item) => !decided.includes(item.id));
+    const later = skipped.flatMap((id) => open.filter((item) => item.id === id));
+    return [...open.filter((item) => !skipped.includes(item.id)), ...later];
+  }, [items, decided, skipped]);
+  const item = waiting[0];
+
+  // The screen asks the server for new photos by itself (as the Waiting list always did, camera#373), so an approver at the match does not reload the page; not while a decision is in flight.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (shouldRefreshWaiting({ status: 'pending_review', hidden: document.visibilityState === 'hidden', deciding: working, rejecting: false })) router.refresh();
+    }, WAITING_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [working, router]);
+
+  const onDecided = useCallback(
+    (id: string, message: string) => {
+      setDecided((current) => [...current, id]);
+      setNotice(message);
+      router.refresh();
+    },
+    [router],
+  );
+  const onSkip = useCallback((id: string) => {
+    setNotice(null);
+    setSkipped((current) => [...current.filter((other) => other !== id), id]);
+  }, []);
 
   if (!item) {
     return (
-      <div style={{ display: 'grid', gap: '1rem' }}>
+      <div style={{ display: 'grid', gap: '1rem' }} data-photo-review-empty>
         {notice ? <InlineAlert title="Done" message={notice} severity="success" /> : null}
-        <StateBlock variant="empty" title={items.length === 0 ? 'Nothing is waiting' : 'All the photos are decided'} description="New photos appear on the Waiting list of the Vetting tab." />
-        <Link href={`/admin/events/${eventId}/vetting`}>Back to the Vetting tab</Link>
+        <StateBlock variant="empty" title={items.length === 0 ? 'Nothing is waiting' : 'All the photos are decided'} description="New photos of this event appear here until they are approved or rejected. This page looks for new photos by itself every 10 seconds." />
+        {embedded ? null : <Link href={`/admin/events/${eventId}/vetting`}>Back to the Vetting tab</Link>}
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'grid', gap: '0.75rem', maxWidth: 1000 }} data-photo-review-stage>
-      <div style={{ alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
-        <strong>{phase === 'mark' ? 'Mark the people' : 'Approve or reject'}</strong>
-        <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>
-          Photo {index + 1} of {items.length} waiting
-          {item.email ? `, ${item.email}` : ''}
-        </span>
-      </div>
-      {notice ? <InlineAlert title="Done" message={notice} severity="success" /> : null}
-      {error ? <InlineAlert title="That did not work" message={error} severity="error" /> : null}
-
-      {/* The photo is as big as the screen allows: it never gets taller than the screen leaves room for, so the buttons stay in view while the reviewer draws (also on a phone held sideways). The wrapper
-          shrinks to the picture, so the overlay that takes the drawing and the rectangles in percent is exactly the photo. */}
-      <div style={{ display: 'grid', justifyContent: 'center' }}>
-      <div style={{ background: 'var(--mantine-color-gray-1)', display: 'inline-block', lineHeight: 0, maxWidth: '100%', position: 'relative', userSelect: 'none' }}>
-        {item.photoUrl ? (
-          <Image src={item.photoUrl} alt={`Photo ${index + 1} waiting`} width={1600} height={900} unoptimized priority draggable={false} style={{ display: 'block', height: 'auto', maxHeight: 'calc(100vh - 12rem)', maxWidth: '100%', width: 'auto' }} />
-        ) : (
-          <div style={{ aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'var(--mantine-color-dimmed)', width: '30rem', maxWidth: '100%' }}>No photo</div>
-        )}
-        <div
-          ref={overlay}
-          data-photo-overlay
-          data-step={step}
-          onPointerDown={onDown}
-          onPointerMove={onMove}
-          onPointerUp={onUp}
-          style={{ cursor: step === 'drawing' ? 'crosshair' : 'default', inset: 0, position: 'absolute', touchAction: step === 'drawing' ? 'none' : 'auto' }}
-        >
-          {people.map((p, position) => (
-            <div key={p.id} style={rectangleStyle(p.box, colourOf(position), true)} data-person-box={p.id}>
-              <span style={{ background: colourOf(position), borderRadius: '0.25rem', color: 'var(--mantine-color-dark-9)', fontSize: '0.875rem', left: 2, padding: '0 0.25rem', position: 'absolute', top: 2 }}>{personOption(p.gender, p.age).emoji}</span>
-            </div>
-          ))}
-          {box ? <div style={rectangleStyle(box, drawingColour)} data-drawing-box /> : null}
-
-          {step === 'tagging' && gridInside ? (
-            <div style={{ alignContent: 'center', background: BACKDROP, display: 'grid', inset: 0, justifyContent: 'center', position: 'absolute' }} data-tag-grid>
-              {tagButtons}
-            </div>
-          ) : null}
-        </div>
-      </div>
-      </div>
-
-      {phase === 'mark' && step === 'tagging' && !gridInside ? (
-        <div style={{ display: 'grid', justifyContent: 'center' }} data-tag-grid data-tag-grid-below>
-          {tagButtons}
-        </div>
-      ) : null}
-
-      {phase === 'mark' ? (
-        <>
-          <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }} data-mark-help>
-            {step === 'idle'
-              ? people.length === 0
-                ? 'Press Clicker, draw a rectangle around a person, then say who it is. Mark everybody you can, then press Next. If nobody is in the photo, press Nobody in this photo.'
-                : `${people.length} ${people.length === 1 ? 'person' : 'people'} marked ${summary.join(' ')}. Press Clicker for the next person, or Next to decide.`
-              : step === 'drawing'
-                ? box
-                  ? 'Press Next to say who it is, or Retry to draw again.'
-                  : 'Draw a rectangle around one person: press, drag and let go.'
-                : person
-                  ? 'Add the emotion and any merchandise if you can, then press Done.'
-                  : 'First choose who it is: one of the top two rows.'}
-          </span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {step === 'idle' ? (
-              <>
-                <SemanticButton action="photo-review:mark-start" type="button" disabled={busy} onClick={() => { setBox(null); setStep('drawing'); }}>
-                  Clicker
-                </SemanticButton>
-                {people.length > 0 ? (
-                  <>
-                    <SemanticButton action="photo-review:mark-remove" type="button" variant="secondary" disabled={busy} onClick={() => setPeople((current) => current.slice(0, -1))}>
-                      Remove
-                    </SemanticButton>
-                    <SemanticButton action="photo-review:mark-next" type="button" variant="secondary" disabled={busy} onClick={() => void toDecision()}>
-                      {busy ? 'Saving…' : 'Next'}
-                    </SemanticButton>
-                  </>
-                ) : (
-                  // Marking is required: with nobody marked the way on is to say so, which saves an empty list ("looked, nobody in it").
-                  <SemanticButton action="photo-review:mark-nobody" type="button" variant="secondary" disabled={busy} onClick={() => void toDecision()}>
-                    {busy ? 'Saving…' : 'Nobody in this photo'}
-                  </SemanticButton>
-                )}
-              </>
-            ) : null}
-            {step === 'drawing' ? (
-              <>
-                <SemanticButton action="photo-review:mark-retry" type="button" variant="secondary" disabled={!box} onClick={() => setBox(null)}>
-                  Retry
-                </SemanticButton>
-                <SemanticButton action="photo-review:mark-next" type="button" disabled={!box} onClick={() => setStep('tagging')}>
-                  Next
-                </SemanticButton>
-                <SemanticButton action="photo-review:mark-cancel" type="button" variant="secondary" onClick={resetMark}>
-                  Cancel
-                </SemanticButton>
-              </>
-            ) : null}
-            {step === 'tagging' ? (
-              <>
-                <SemanticButton action="photo-review:mark-cancel" type="button" variant="secondary" onClick={resetMark}>
-                  Cancel
-                </SemanticButton>
-                <SemanticButton action="photo-review:mark-done" type="button" disabled={!person} onClick={finishPerson}>
-                  Done
-                </SemanticButton>
-              </>
-            ) : null}
-          </div>
-        </>
-      ) : (
-        <>
-          {markPeople ? (
-            <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }} data-decide-summary>
-              {people.length === 0 ? 'Nobody was marked in this photo.' : `${people.length} ${people.length === 1 ? 'person' : 'people'} marked: ${summary.join(' ')}`}
-            </span>
-          ) : null}
-          {rejecting ? <TextInput label="Reason (optional, for the record)" value={reason} onChange={(event) => setReason(event.currentTarget.value)} maxLength={500} disabled={busy} /> : null}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {rejecting ? (
-              <>
-                <SemanticButton action="photo-review:confirm-reject" type="button" variant="danger" disabled={busy} onClick={() => void decide('reject')}>
-                  {busy ? 'Rejecting…' : 'Confirm reject'}
-                </SemanticButton>
-                <SemanticButton action="photo-review:cancel-reject" type="button" variant="secondary" disabled={busy} onClick={() => setRejecting(false)}>
-                  Cancel
-                </SemanticButton>
-              </>
-            ) : (
-              <>
-                <SemanticButton action="photo-review:approve" type="button" disabled={busy} onClick={() => void decide('approve')}>
-                  {busy ? 'Approving…' : 'Approve'}
-                </SemanticButton>
-                <SemanticButton action="photo-review:reject" type="button" variant="secondary" disabled={busy} onClick={() => setRejecting(true)}>
-                  Reject
-                </SemanticButton>
-                {markPeople ? (
-                  <SemanticButton action="photo-review:mark-back" type="button" variant="secondary" disabled={busy} onClick={() => setPhase('mark')}>
-                    Back to the people
-                  </SemanticButton>
-                ) : null}
-                <SemanticButton action="photo-review:mark-skip" type="button" variant="secondary" disabled={busy} onClick={nextPhoto}>
-                  Skip this photo
-                </SemanticButton>
-              </>
-            )}
-          </div>
-        </>
-      )}
-    </div>
+    <PhotoWorkspace
+      key={item.id}
+      item={item}
+      position={decided.length + 1}
+      total={decided.length + waiting.length}
+      vocabulary={vocabulary}
+      markPeople={markPeople}
+      canSkip={waiting.length > 1}
+      notice={notice}
+      onDecided={onDecided}
+      onSkip={onSkip}
+      onWorking={setWorking}
+    />
   );
 }

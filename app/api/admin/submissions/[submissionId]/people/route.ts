@@ -1,9 +1,10 @@
 /**
  * PUT /api/admin/submissions/[submissionId]/people (issue 542, docs/PHOTO_VETTING_PLAN.md, lib/photo-vetting/people.ts)
  *
- * Saves the people the reviewer marked in a photo of an event: per person a rectangle in percent of the photo, one of the 8 person buttons (female or male, kid, young, adult or old), an
- * optional emotion and optional merchandise. The list replaces what was saved (an empty list says "looked, nobody marked"); who saved it and when is kept. Allowed for global admins and the
- * event's partner Events managers, like the review itself. Marking changes nothing about whether the photo is approved or rejected: that stays the review route.
+ * Saves the people the reviewer marked in a photo of an event: per person a rectangle in percent of the photo, one gender and one age, an optional emotion and optional items, all as keys of
+ * the options the event offers now (the event's vocabulary, lib/photo-vetting/vocabulary-load.ts, issue 628). The list replaces what was saved (an empty list says "looked, nobody marked");
+ * who saved it, when, and the version of the list of words it was made with are kept. Allowed for global admins and the event's partner Events managers, like the review itself. Marking
+ * changes nothing about whether the photo is approved or rejected: that stays the review route.
  *
  * Body: { people: PersonTag[] }
  */
@@ -15,7 +16,9 @@ import { COLLECTIONS, generateTimestamp, type Submission } from '@/lib/db/schema
 import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound, apiForbidden, checkRateLimit } from '@/lib/api';
 import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
+import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
 import { parsePeople } from '@/lib/photo-vetting/people';
+import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 
 const MARK_RATE_LIMIT = { max: 120, windowMs: 60 * 1000, message: 'Too many saves. Please wait a minute and try again.' };
 
@@ -27,8 +30,6 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
   if (!ObjectId.isValid(submissionId)) throw apiBadRequest('Invalid submission ID format');
 
   const body = (await request.json().catch(() => null)) as { people?: unknown } | null;
-  const checked = parsePeople(body?.people);
-  if (!checked.ok) throw apiBadRequest(checked.reason);
 
   const db = await connectToDatabase();
   const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: new ObjectId(submissionId) });
@@ -41,7 +42,14 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
     throw apiForbidden('This photo belongs to no event; only a global admin can mark the people in it');
   }
 
-  const peopleReview = { by: session.user.email ?? session.user.id ?? null, at: generateTimestamp() };
+  // The keys are checked against the list this event offers now (a custom option is valid, a hidden one is not), and the version of that list is recorded with the marks.
+  const vocabulary = await loadEventVocabulary(db, event);
+  const checked = parsePeople(body?.people, vocabulary, { forSave: true });
+  if (!checked.ok) throw apiBadRequest(checked.reason);
+
+  const peopleReview = { by: session.user.email ?? session.user.id ?? null, at: generateTimestamp(), vocabulary: vocabulary.version };
   await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: new ObjectId(submissionId) }, { $set: { people: checked.value, peopleReview } });
+  // The counters for messmass read the people: ask for a push after the response (nothing happens while the counters are off).
+  scheduleCounterSync(db, event);
   return apiSuccess({ submissionId, people: checked.value, peopleReview });
 });

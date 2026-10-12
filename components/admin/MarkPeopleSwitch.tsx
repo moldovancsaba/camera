@@ -1,17 +1,16 @@
 'use client';
 
 /**
- * The event's setting "mark the people at vetting" (issue 542, lib/photo-vetting/people.ts): when on, the big vetting view asks the reviewer to mark the people in each photo before approving
- * or rejecting it. Off by default: the vetting is as it was. Shown to everyone who can review photos; only a global admin gets the buttons (the API refuses anyone else).
+ * The event's setting "mark the people at vetting" (issue 542, lib/photo-vetting/people.ts): when on (the default), the one-screen review asks the reviewer to mark the people in each photo before
+ * approving or rejecting it. Shown to everyone who can review photos; only a global admin gets the button (the API refuses anyone else).
  */
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { InlineAlert } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 
-export default function MarkPeopleSwitch({ eventId, on, canChange, waiting }: { eventId: string; on: boolean; canChange: boolean; waiting: number }) {
+export default function MarkPeopleSwitch({ eventId, on, canChange }: { eventId: string; on: boolean; canChange: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,16 +39,11 @@ export default function MarkPeopleSwitch({ eventId, on, canChange, waiting }: { 
           </strong>
           <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
             {on
-              ? 'In Review one by one the reviewer marks each person with a rectangle and 16 buttons (who, emotion, merchandise), or says Nobody in this photo, before approving or rejecting. It is saved with the photo for the analytics. The Approve buttons on the cards below decide without marking: use Review one by one.'
-              : 'The big view is only the photo and the decision. Switch marking on to mark the people in each photo for the analytics.'}
+              ? 'The reviewer draws a rectangle around each person and chooses gender and age (and emotion and items if they can), or says Nobody in this photo, before approving or rejecting. It is saved with the photo for the analytics. A rejected photo is marked too.'
+              : 'The review screen is only the photo, the reasons and the decision. Switch marking on to mark the people in each photo for the analytics.'}
           </p>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <Link href={`/admin/events/${eventId}/vetting/review`} style={{ textDecoration: 'none' }}>
-            <SemanticButton action="photo-review:review-one-by-one" type="button" variant="secondary" disabled={waiting === 0}>
-              Review one by one
-            </SemanticButton>
-          </Link>
           {canChange ? (
             <SemanticButton action={on ? 'photo-review:mark-turn-off' : 'photo-review:mark-turn-on'} type="button" variant="secondary" disabled={busy} onClick={() => void change(!on)}>
               {busy ? 'Saving…' : on ? 'Turn marking off' : 'Turn marking on'}

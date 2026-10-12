@@ -72,3 +72,18 @@ test('an event document is read defensively', () => {
   const sparse = analyticsEventOf({ _id: 'x' });
   assert.deepEqual(sparse, { id: 'x', eventId: 'x', name: 'Event', shortUrlSlug: null, uiLanguage: null, messmassEventId: null });
 });
+
+test('the report of an event is made with the event\'s annotation vocabulary: its own list and its partner\'s, in the words of both', async () => {
+  const custom = (key: string, label: string, group: string) => ({ options: [{ group, key, label, custom: true }] });
+  const vocabularyEvent = analyticsEventOf({ _id: 'mongo-1', eventId: 'ev-1', name: 'Vasas', partnerId: 'partner-1', annotationVocabulary: custom('confetti', 'Too much confetti', 'reject_reason') });
+  assert.equal(vocabularyEvent.partnerId, 'partner-1');
+  const { db, calls } = fakeDb({
+    [COLLECTIONS.SUBMISSIONS]: [photo('a', { reviewStatus: 'rejected', rejectReasons: ['confetti', 'nudity'] }), photo('b', { reviewStatus: 'rejected', rejectReasons: ['vuvuzela_ban'] })],
+    [COLLECTIONS.PARTNERS]: [{ partnerId: 'partner-1', annotationVocabulary: custom('vuvuzela_ban', 'No vuvuzelas', 'reject_reason') }],
+  });
+  const analytics = await loadEventAnalytics(db, vocabularyEvent, { timeZone: 'UTC' });
+  assert.deepEqual(analytics.report.vetting.rejectReasons.map((row) => [row.id, row.label, row.count]), [['vuvuzela_ban', 'No vuvuzelas', 1], ['nudity', 'Nudity or sexual content', 1], ['confetti', 'Too much confetti', 1]]);
+  assert.equal(calls.length, 0, 'read-only');
+  const plain = await loadEventAnalytics(db, event, { timeZone: 'UTC' });
+  assert.equal(plain.report.vocabulary.options.some((option) => option.custom), false, 'an event with no list of its own reads the standard list');
+});
