@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { GdsStack } from '@sovereignsquad/gds-core/client';
 import AnnotationVocabularyEditor from '@/components/admin/AnnotationVocabularyEditor';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import { getSession } from '@/lib/auth/session';
@@ -21,7 +20,7 @@ export default async function EventAnnotationWordsPage({ params }: { params: Pro
   }
   const name = result.view.name ?? 'Event';
   return (
-    <GdsStack gap="lg">
+    <div style={{ display: 'grid', gap: '1.5rem' }}>
       <nav aria-label="Breadcrumb">
         <Link href="/admin/events">Events</Link>
         <span aria-hidden> / </span>
@@ -37,6 +36,6 @@ export default async function EventAnnotationWordsPage({ params }: { params: Pro
         description="The words the reviewer describes a photo with at this event. An option you do not change follows the partner, which follows the general level."
       />
       <AnnotationVocabularyEditor level="event" id={id} initial={result.view} />
-    </GdsStack>
+    </div>
   );
 }
