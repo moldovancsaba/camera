@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * The photo moderation queue of one event (camera#268, docs/PHOTO_VETTING_PLAN.md): the photos of a vetted event with approve and
- * reject, one at a time or selected in bulk. Each decision calls POST /api/admin/submissions/<id>/review; a photo leaves the list when
+ * The photo moderation queue of one event as a list of cards (camera#268, docs/PHOTO_VETTING_PLAN.md): the Rejected and Approved lists, and the Waiting list when "Show the list" is chosen (the Waiting
+ * list opens the one-at-a-time screen by default, issue 628, components/admin/PhotoReviewStage.tsx). Approve and reject, one by one or selected in bulk. A rejection needs one or more reasons from the
+ * event's vocabulary (the same picker as the one-at-a-time screen), and a rejected card says why in words. Each decision calls POST /api/admin/submissions/<id>/review; a photo leaves the list when
  * it is decided. Every control is a native button or checkbox, so the queue works from the keyboard. A decision locks only its own photo, so the
  * next photo can be decided while one is still being made, and the page is reloaded from the server after every decision, so the counts of the
  * tabs and the list always show what the server holds, also when an answer never arrives.
@@ -14,17 +15,21 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { InlineAlert, ListingCard, StateBlock, type ListingMetadataRow } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
-import { TextInput } from '@/components/gds/PublicPrimitives';
+import { RejectReasonPicker } from '@/components/admin/ReviewChoices';
 import { WAITING_REFRESH_MS, shouldRefreshWaiting } from '@/lib/photo-vetting/auto-refresh';
 import type { PhotoQueueItem, QueueStatus } from '@/lib/photo-vetting/queue';
+import { chosenReasons, toggleReason } from '@/lib/photo-vetting/review-state';
+import { optionLabel, type ResolvedVocabulary } from '@/lib/photo-vetting/vocabulary';
 
 interface PhotoReviewQueueProps {
   status: QueueStatus;
   initialItems: PhotoQueueItem[];
   canReview: boolean;
+  /** The words of the event: the reasons of a rejection, and what a rejected card says. */
+  vocabulary: ResolvedVocabulary;
   /**
-   * The event's Mongo id when "mark the people" is on (issue 542, owner answer 267): the first decision of a waiting photo is then made in the big view, after the people are marked,
-   * so the cards of the Waiting list have one button, Review, that opens the big view at that photo, and no selection or bulk approval. The server refuses an unmarked first decision too.
+   * The event's Mongo id when "mark the people" is on (issue 542, owner answer 267): the first decision of a waiting photo is then made in the one-at-a-time screen, after the people are marked,
+   * so the cards of the Waiting list have one button, Review, that opens that screen at that photo, and no selection or bulk approval. The server refuses an unmarked first decision too.
    */
   markPeopleEventId?: string;
 }
@@ -57,13 +62,13 @@ class NoAnswerError extends Error {
   }
 }
 
-async function review(id: string, action: 'approve' | 'reject', reason?: string): Promise<ReviewAnswer> {
+async function review(id: string, action: 'approve' | 'reject', rejection?: { reasons: string[]; note?: string }): Promise<ReviewAnswer> {
   let response: Response;
   try {
     response = await fetch(`/api/admin/submissions/${id}/review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ...(reason ? { reason } : {}) }),
+      body: JSON.stringify({ action, ...(rejection ? { reasons: rejection.reasons, ...(rejection.note ? { reason: rejection.note } : {}) } : {}) }),
       signal: AbortSignal.timeout(REVIEW_ANSWER_TIMEOUT_MS),
     });
   } catch {
@@ -83,7 +88,7 @@ const emailNote = (answers: ReviewAnswer[]): string => {
   return parts.length ? ` (${parts.join(', ')})` : '';
 };
 
-export default function PhotoReviewQueue({ status, initialItems, canReview, markPeopleEventId }: PhotoReviewQueueProps) {
+export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, markPeopleEventId }: PhotoReviewQueueProps) {
   const router = useRouter();
   // Photos decided here leave the list at once; everything else comes from the server (initialItems is fresh after each router.refresh()).
   const [decided, setDecided] = useState<string[]>([]);
@@ -91,7 +96,8 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, mark
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState<string[]>([]);
   const [rejecting, setRejecting] = useState<string | null>(null);
-  const [reason, setReason] = useState('');
+  const [reasons, setReasons] = useState<string[]>([]);
+  const [rejectNote, setRejectNote] = useState('');
   const [progress, setProgress] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
 
@@ -157,10 +163,11 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, mark
     setNotice(null);
     markBusy([id]);
     try {
-      const answer = await review(id, 'reject', reason.trim() || undefined);
+      const answer = await review(id, 'reject', { reasons: chosenReasons(reasons, vocabulary), note: rejectNote.trim() || undefined });
       removeFromList([id]);
       setRejecting(null);
-      setReason('');
+      setReasons([]);
+      setRejectNote('');
       const note = emailNote([answer]);
       setNotice({ severity: note ? 'warning' : 'success', title: 'Photo rejected', message: `The user gets a short note${note}. The photo stays private.` });
     } catch (error) {
@@ -188,11 +195,8 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, mark
     <div style={{ display: 'grid', gap: '1rem' }} data-photo-review-queue>
       {canReview && mustMark ? (
         <section style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between' }} data-must-mark>
-          <Link href={`/admin/events/${markPeopleEventId}/vetting/review`} style={{ textDecoration: 'none' }}>
-            <SemanticButton action="photo-review:review-one-by-one" type="button">Review one by one</SemanticButton>
-          </Link>
           <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
-            Marking the people is on: mark who is in a photo, then approve or reject it. Press Review on a photo to open it. Oldest first. Looks for new photos every 10 seconds. {items.length} shown
+            Marking the people is on: press Review on a photo to mark who is in it, then approve or reject it. Oldest first. Looks for new photos every 10 seconds. {items.length} shown
           </span>
         </section>
       ) : null}
@@ -230,8 +234,13 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, mark
           // The buttons show their fixed labels, so the card itself says that a decision is being made (it can take a few seconds).
           if (isBusy) metadata.push({ id: 'working', label: 'Now', value: isRejecting ? 'Rejecting…' : 'Approving… please wait', tone: 'warning' });
           if (item.status !== 'approved') metadata.push({ id: 'wall', label: 'Wall', value: item.shareOptIn ? 'shown' : 'private', tone: 'muted' });
+          if (item.status === 'rejected' && item.rejectReasons.length > 0) {
+            metadata.push({ id: 'why', label: 'Why', value: item.rejectReasons.map((key) => optionLabel(vocabulary, 'reject_reason', key)).join(', '), tone: 'warning' });
+          }
           if (item.last) {
-            metadata.push({ id: 'last', label: item.last.action === 'approve' ? 'Approved' : 'Rejected', value: `${item.last.by}${item.last.reason ? `: ${item.last.reason}` : ''}`, tone: item.last.action === 'approve' ? 'positive' : 'warning' });
+            metadata.push({ id: 'last', label: item.last.action === 'approve' ? 'Approved' : 'Rejected', value: item.last.by, tone: item.last.action === 'approve' ? 'positive' : 'warning' });
+            // The note is a row of its own: a long note beside the name squeezed the label of the row to nothing.
+            if (item.last.reason) metadata.push({ id: 'note', label: 'Note', value: item.last.reason, tone: 'muted' });
           }
 
           const actions: ReactNode[] = [];
@@ -243,7 +252,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, mark
             );
             if (status === 'pending_review') {
               actions.push(
-                <SemanticButton key="reject" action="photo-review:reject" type="button" size="xs" variant="secondary" onClick={() => { setRejecting(item.id); setReason(''); }} disabled={isBusy}>
+                <SemanticButton key="reject" action="photo-review:reject" type="button" size="xs" variant="secondary" onClick={() => { setRejecting(item.id); setReasons([]); setRejectNote(''); }} disabled={isBusy}>
                   Reject
                 </SemanticButton>
               );
@@ -258,7 +267,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, mark
           }
           if (isRejecting) {
             actions.push(
-              <SemanticButton key="confirm" action="photo-review:confirm-reject" type="button" size="xs" variant="danger" onClick={() => void reject(item.id)} disabled={isBusy}>
+              <SemanticButton key="confirm" action="photo-review:confirm-reject" type="button" size="xs" variant="danger" onClick={() => void reject(item.id)} disabled={isBusy || chosenReasons(reasons, vocabulary).length === 0}>
                 {isBusy ? 'Rejecting…' : 'Confirm reject'}
               </SemanticButton>,
               <SemanticButton key="cancel" action="photo-review:cancel-reject" type="button" size="xs" variant="secondary" onClick={() => setRejecting(null)} disabled={isBusy}>
@@ -299,14 +308,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, mark
               }
               description={
                 isRejecting ? (
-                  <TextInput
-                    label="Reason (optional, for the record)"
-                    value={reason}
-                    onChange={(event) => setReason(event.currentTarget.value)}
-                    maxLength={500}
-                    disabled={isBusy}
-                    data-autofocus
-                  />
+                  <RejectReasonPicker vocabulary={vocabulary} reasons={reasons} onToggleReason={(key) => setReasons((current) => toggleReason(current, key))} note={rejectNote} onNote={setRejectNote} disabled={isBusy} />
                 ) : undefined
               }
               metadata={metadata}

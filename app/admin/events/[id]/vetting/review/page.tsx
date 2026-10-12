@@ -8,12 +8,12 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 import { markPeopleOn } from '@/lib/photo-vetting/people';
 import { loadPhotoQueue } from '@/lib/photo-vetting/queue';
+import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 
 export const dynamic = 'force-dynamic';
 
-// WHAT: The big vetting view of an event (issue 542, docs/PHOTO_VETTING_PLAN.md): the photos that wait for approval, oldest first, one at a time, large. With "mark the people" on for the
-// event, the reviewer first marks the people in each photo (a rectangle and the 16 buttons), then approves or rejects it. Without it, it is the big photo and the decision. The queue
-// grid of the Vetting tab stays as it was; this is the way into the same decisions, so an event that does not use it changes nothing.
+// WHAT: The one-at-a-time review screen of an event as a page of its own (issue 542, issue 628, docs/PHOTO_VETTING_PLAN.md): the photos that wait for approval, oldest first, one at a time, large.
+// The same screen is the Waiting list of the Vetting tab; this route stays for the Review button of a card of the list view (`?photo=<id>` opens that photo first) and for old links.
 export default async function EventVettingReviewPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ photo?: string }> }) {
   const { id } = await params;
   const { photo } = await searchParams;
@@ -25,7 +25,9 @@ export default async function EventVettingReviewPage({ params, searchParams }: {
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) });
   if (!event) notFound();
 
-  const queue = await loadPhotoQueue(db, String(event.eventId ?? ''), 'pending_review', 50);
+  // The words of the event: the photos are read with them and the screen offers them.
+  const vocabulary = await loadEventVocabulary(db, event);
+  const queue = await loadPhotoQueue(db, String(event.eventId ?? ''), 'pending_review', vocabulary, 50);
   // Review on a card of the Vetting tab opens the photo that was pressed first (issue 542, owner answer 267); the others follow, oldest first. A photo that is not waiting any more (decided meanwhile) is simply not found.
   const chosen = typeof photo === 'string' ? queue.find((item) => item.id === photo) : undefined;
   const items = chosen ? [chosen, ...queue.filter((item) => item !== chosen)] : queue;
@@ -34,9 +36,9 @@ export default async function EventVettingReviewPage({ params, searchParams }: {
       <nav aria-label="Breadcrumb">
         <Link href={`/admin/events/${id}/vetting`}>Vetting</Link>
         <span aria-hidden> / </span>
-        <span>Review one by one</span>
+        <span>Review</span>
       </nav>
-      <PhotoReviewStage eventId={id} items={items} markPeople={markPeopleOn(event as { markPeopleInVetting?: unknown })} />
+      <PhotoReviewStage eventId={id} items={items} vocabulary={vocabulary} markPeople={markPeopleOn(event as { markPeopleInVetting?: unknown })} />
     </div>
   );
 }

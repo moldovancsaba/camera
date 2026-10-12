@@ -1,0 +1,56 @@
+/*
+ * WHAT: the layout of the one-screen vetting review (issue 628): the photo and, beside it when there is room, the panel; under it when there is not.
+ * WHY: the choice is made by the width of the box the screen is in (a container query), not by the width of the browser, because the admin menu takes a third of a laptop screen. When the two
+ *     sit side by side the photo stays in view while the panel (and the reasons of a rejection) scroll, so the reviewer never loses the picture while describing it. No colours here.
+ */
+
+.layout {
+  align-items: flex-start;
+  container-type: inline-size;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.photoColumn {
+  display: grid;
+  flex: 1 1 24rem;
+  justify-content: center;
+  min-width: 0;
+}
+
+.panel {
+  display: grid;
+  flex: 0 1 22rem;
+  gap: 1.25rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.rejectBlock {
+  /* The decision bar below covers the bottom edge of the window: the reasons are scrolled to above it. */
+  scroll-margin-block-end: 9rem;
+}
+
+/* The decision bar (hint, Approve, Reject, Skip) sticks to the bottom of the window while the panel is longer than the window, so it is never scrolled away. It is the card's own colour, with
+   a line above it, and has the card's rounded bottom corners. */
+.decision {
+  background: var(--mantine-color-body);
+  border-block-start: 1px solid var(--mantine-color-default-border);
+  border-end-end-radius: 1rem;
+  border-end-start-radius: 1rem;
+  bottom: 0;
+  display: grid;
+  gap: 0.375rem;
+  margin: 0 -1rem -1rem;
+  padding: 0.5rem 1rem 1rem;
+  position: sticky;
+  z-index: 2;
+}
+
+@container (min-width: 47rem) {
+  .photoColumn {
+    position: sticky;
+    top: calc(var(--app-shell-header-offset, 0rem) + 0.75rem);
+  }
+}
