@@ -45,7 +45,8 @@ export const COMPUTABLE_COUNTERS: readonly CounterDefinition[] = [
   total('camera_images_approved', 'photos', 'Camera: images approved', 'Of those, the photos that are approved now.'),
   total('camera_images_rejected', 'photos', 'Camera: images rejected', 'Of those, the photos that are declined now.'),
   total('camera_images_shown_on_slideshow', 'photos', 'Camera: images shown on the slideshow', 'Plays: how many times a photo of the event appeared on a giant screen, all slideshows, counted from the running play count of each photo.'),
-  average('camera_avg_vetting_seconds', 'photos', 'Camera: average vetting time (seconds)', 'Average time from the photo being handed in to its first decision, over the photos that have one. Not sent until a photo was decided.'),
+  total('camera_images_decided', 'photos', 'Camera: images decided', 'Photos that have a first decision (approved or declined). With the next counter it gives the average vetting time in messmass: seconds divided by images. Not sent until a photo was decided.'),
+  total('camera_vetting_seconds_total', 'photos', 'Camera: vetting time, all photos (seconds)', 'The seconds from each photo being handed in to its first decision, added up over the photos that have one. A total, so partner and organisation reports can add events together.'),
   total('camera_consents_accepted', 'photos', 'Camera: consents accepted', 'Photos whose user accepted at least one consent (the consent is stored on the photo; only acceptances exist).'),
   // From the journey recording: counted from the day the recording started, and not sent at all for an event that has no journey record (never a zero).
   total('camera_journey_opens', 'journey', 'Camera: journey opens', 'Visits to the capture page (a page load with the event; a return from a sign-in is not another visit), since the recording started. Not a count of different people.'),
@@ -63,7 +64,6 @@ export const COMPUTABLE_COUNTERS: readonly CounterDefinition[] = [
   total('camera_images_group', 'annotations', 'Camera: images with a group', 'Of those, the photos with two or more people.'),
   total('camera_people_total', 'annotations', 'Camera: people marked', 'People marked in all the annotated photos together.'),
   total('camera_people_with_merch', 'annotations', 'Camera: people with merchandise', 'People with at least one item (a scarf, a jersey, ...).'),
-  average('camera_avg_people_per_image', 'annotations', 'Camera: average people per image', 'People per annotated photo, two decimals. An average: messmass stores it as it is.'),
   // Why photos were declined: sent once the event has a declined photo.
   total('camera_images_rejected_no_reason', 'reasons', 'Camera: images rejected with no reason', 'Declined photos that carry no reason from the list (declined before the reasons existed).'),
 ];
@@ -165,7 +165,10 @@ export function buildCounters(report: EventReport, journey?: JourneySummary | nu
     put('camera_shares', journey.shares.clicks);
     put('camera_downloads', journey.shares.downloads);
   }
-  if (report.vetting.timeToFirstDecision.avgSeconds !== null) put('camera_avg_vetting_seconds', whole(report.vetting.timeToFirstDecision.avgSeconds));
+  if (report.vetting.timeToFirstDecision.count > 0) {
+    put('camera_images_decided', report.vetting.timeToFirstDecision.count);
+    put('camera_vetting_seconds_total', whole(report.vetting.timeToFirstDecision.totalSeconds));
+  }
 
   // What the vetting person marked: nothing at all until a photo is marked (a zero would say nobody, when nobody was counted).
   const { summary } = report.people;
@@ -177,7 +180,6 @@ export function buildCounters(report: EventReport, journey?: JourneySummary | nu
     put('camera_images_group', report.people.photosWithGroup);
     put('camera_people_total', summary.people);
     put('camera_people_with_merch', summary.withMerch);
-    put('camera_avg_people_per_image', summary.peoplePerPhoto);
     const counts = { gender: summary.byGender, age: summary.byAge, emotion: summary.byEmotion, merch: summary.byMerch };
     for (const group of PERSON_GROUPS) for (const key of keysFor(vocabulary, group, counts[group])) putOption(group, key, counts[group][key] ?? 0);
   }

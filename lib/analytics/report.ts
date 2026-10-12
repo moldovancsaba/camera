@@ -48,6 +48,8 @@ export interface ReportOptions {
 
 export interface DurationStats {
   count: number;
+  /** All the durations added up, for the counters for messmass (a total can be added across events, an average cannot). */
+  totalSeconds: number;
   avgSeconds: number | null;
   medianSeconds: number | null;
   maxSeconds: number | null;
@@ -206,7 +208,7 @@ function fixedTally(ids: readonly string[], labels: Record<string, string>, valu
 }
 
 function durationStats(seconds: readonly number[]): DurationStats {
-  return { count: seconds.length, avgSeconds: average(seconds), medianSeconds: median(seconds), maxSeconds: seconds.length > 0 ? Math.max(...seconds) : null };
+  return { count: seconds.length, totalSeconds: seconds.reduce((sum, value) => sum + value, 0), avgSeconds: average(seconds), medianSeconds: median(seconds), maxSeconds: seconds.length > 0 ? Math.max(...seconds) : null };
 }
 
 /** The photos the report counts for a range, and how many were left out. */

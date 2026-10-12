@@ -59,13 +59,12 @@ Owner decision 245 and the request of 2026-10-12 (issue 628): the numbers sent t
 | `camera_images_taken` | total | photos taken or uploaded by users (the counted photos above, editors' uploads not included) |
 | `camera_images_approved`, `camera_images_rejected` | total | of those, approved and declined now |
 | `camera_images_shown_on_slideshow` | total | plays: the sum of the running play count of the event's counted photos, all slideshows |
-| `camera_avg_vetting_seconds` | average | average time from the photo to its first decision, whole seconds; **left out until a photo was decided** |
+| `camera_images_decided`, `camera_vetting_seconds_total` | total | photos with a first decision, and the seconds from each photo being handed in to its first decision, added up; the average time is the second divided by the first, in messmass; **left out until a photo was decided** |
 | `camera_consents_accepted` | total | photos whose user accepted at least one consent |
 | `camera_journey_opens`, `camera_journeys_completed`, `camera_permission_denied`, `camera_retakes`, `camera_consents_abandoned`, `camera_shares`, `camera_downloads` | total | from the journey recording ([JOURNEY_RECORDING.md](JOURNEY_RECORDING.md)): visits, visits that saved a photo, times the live camera of a desktop was refused, retakes, consent shown and not accepted, share buttons pressed, downloads of the photo. **Since the recording started; not sent at all for an event that has no journey record** |
 | `camera_images_annotated` | total | photos a reviewer looked at and marked, even with nobody in them (the coverage of the counters below). Users' photos in the report's scope: approved, declined or still waiting; not removed, not gone |
 | `camera_images_with_people`, `camera_images_no_people`, `camera_images_one_person`, `camera_images_group` | total | of those: with at least one person, with nobody, with exactly one, with two or more |
 | `camera_people_total`, `camera_people_with_merch` | total | people marked in all of them, and those with at least one item |
-| `camera_avg_people_per_image` | average | people per annotated photo, two decimals; an average is sent whole and is not additive |
 | `camera_gender_<key>`, `camera_age_<key>`, `camera_emotion_<key>`, `camera_merch_<key>` | total | people marked with that option (`camera_gender_female`, `camera_age_kid`, `camera_emotion_happy`, `camera_merch_scarf`); a person with two items is in two `camera_merch_` counters |
 | `camera_rejected_<key>` | total | declined photos that carry that reason (`camera_rejected_nudity`); a photo with several reasons is in each |
 | `camera_images_rejected_no_reason` | total | declined photos that carry no reason from the list (declined before the list existed) |

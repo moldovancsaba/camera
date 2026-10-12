@@ -132,7 +132,9 @@ test('the counters are made from the photos of the event only, over the whole ev
   });
   const set = await loadEventCounters(db, { eventId: 'ev-1' });
   for (const [name, value] of Object.entries({ camera_images_taken: 3, camera_images_approved: 1, camera_images_rejected: 1, camera_images_shown_on_slideshow: 3, camera_consents_accepted: 1, camera_images_rejected_no_reason: 1 })) assert.equal(set.totals[name], value, name);
-  assert.deepEqual(set.averages, { camera_avg_vetting_seconds: 120 });
+  assert.deepEqual(set.averages, {});
+  assert.equal(set.totals.camera_images_decided, 2, 'the approved and the rejected photo');
+  assert.equal(set.totals.camera_vetting_seconds_total, 240, 'two decisions of 120 seconds each');
   assert.equal(set.labels.camera_images_taken, 'Camera: images taken');
   assert.equal(Object.keys(set.totals).some((name) => name.startsWith('camera_gender_')), false, 'nobody marked a photo: no counter about the people');
 });

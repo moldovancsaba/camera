@@ -34,9 +34,9 @@ const ANNOTATION_NAMES = ['camera_images_annotated', 'camera_images_with_people'
 
 test('the fixed counters by their messmass names: the photos, the journey recording, what the vetting person marked, and the reasons', () => {
   assert.deepEqual(COMPUTABLE_COUNTERS.map((c) => [c.key, c.kind]), [
-    ['camera_images_taken', 'total'], ['camera_images_approved', 'total'], ['camera_images_rejected', 'total'], ['camera_images_shown_on_slideshow', 'total'], ['camera_avg_vetting_seconds', 'average'], ['camera_consents_accepted', 'total'],
+    ['camera_images_taken', 'total'], ['camera_images_approved', 'total'], ['camera_images_rejected', 'total'], ['camera_images_shown_on_slideshow', 'total'], ['camera_images_decided', 'total'], ['camera_vetting_seconds_total', 'total'], ['camera_consents_accepted', 'total'],
     ['camera_journey_opens', 'total'], ['camera_journeys_completed', 'total'], ['camera_permission_denied', 'total'], ['camera_retakes', 'total'], ['camera_consents_abandoned', 'total'], ['camera_shares', 'total'], ['camera_downloads', 'total'],
-    ['camera_images_annotated', 'total'], ['camera_images_with_people', 'total'], ['camera_images_no_people', 'total'], ['camera_images_one_person', 'total'], ['camera_images_group', 'total'], ['camera_people_total', 'total'], ['camera_people_with_merch', 'total'], ['camera_avg_people_per_image', 'average'],
+    ['camera_images_annotated', 'total'], ['camera_images_with_people', 'total'], ['camera_images_no_people', 'total'], ['camera_images_one_person', 'total'], ['camera_images_group', 'total'], ['camera_people_total', 'total'], ['camera_people_with_merch', 'total'],
     ['camera_images_rejected_no_reason', 'total'],
   ]);
 });
@@ -55,7 +55,7 @@ test('every name carries the camera_ prefix and matches the contract with messma
   for (const name of made) assert.match(name, COUNTER_NAME_PATTERN, name);
   assert.equal(new Set([...names, ...made]).size, names.length + made.length);
   // The camelCase names of the first draft are gone for good.
-  for (const old of ['imagesTaken', 'avgVettingSeconds', 'journeyOpens', 'cameraDenied', 'consentAbandoned', 'declined<Reason>']) assert.equal(names.includes(old), false, old);
+  for (const old of ['imagesTaken', 'avgVettingSeconds', 'journeyOpens', 'cameraDenied', 'consentAbandoned', 'declined<Reason>', 'camera_avg_vetting_seconds', 'camera_avg_people_per_image']) assert.equal(names.includes(old), false, old);
 });
 
 test('every name of a full set is camera_ prefixed and matches the pattern, and every name has a label', () => {
@@ -77,7 +77,7 @@ test('nothing waits any more: the decline reasons are counted from the list, so 
   for (const group of VOCAB_GROUPS) assert.ok(COUNTER_FAMILIES.some((f) => f.group === group), group);
 });
 
-test('the counters from a report: photos taken, approved and declined now, plays, photos with a consent; the average time to the first decision in whole seconds', () => {
+test('the counters from a report: photos taken, approved and declined now, plays, photos with a consent; the photos decided and their vetting seconds added up (a total, so reports can add events together)', () => {
   const set = buildCounters(report([
     photo({ review: 'approved', plays: 5, consents: [consent], decisions: [{ action: 'approve', by: 'ann', at: '2026-10-16T18:01:30.000Z', reason: null }] }),
     photo({ review: 'rejected', consents: [consent], decisions: [{ action: 'reject', by: 'bob', at: '2026-10-16T18:03:00.000Z', reason: 'Blurry' }] }),
@@ -86,13 +86,16 @@ test('the counters from a report: photos taken, approved and declined now, plays
     photo({ excluded: 'archived', review: 'approved', plays: 100 }),
   ]));
   for (const [name, value] of Object.entries({ camera_images_taken: 3, camera_images_approved: 1, camera_images_rejected: 1, camera_images_shown_on_slideshow: 12, camera_consents_accepted: 2 })) assert.equal(set.totals[name], value, name);
-  assert.deepEqual(set.averages, { camera_avg_vetting_seconds: 135 });
-  assert.equal(set.labels.camera_avg_vetting_seconds, 'Camera: average vetting time (seconds)');
+  assert.deepEqual(set.averages, {}, 'nothing is sent as an average: partner and organisation reports in messmass add every number up');
+  assert.equal(set.totals.camera_images_decided, 2);
+  assert.equal(set.totals.camera_vetting_seconds_total, 270, '90 s and 180 s');
+  assert.equal(set.labels.camera_vetting_seconds_total, 'Camera: vetting time, all photos (seconds)');
 });
 
-test('an average that has no photo behind it is not in the set (not sent as zero), and an empty event sends honest zeros for the photo totals only', () => {
+test('vetting time with no decided photo behind it is not in the set (not sent as zero), and an empty event sends honest zeros for the photo totals only', () => {
   const set = buildCounters(report([photo()]));
   assert.deepEqual(set.averages, {});
+  assert.equal('camera_images_decided' in set.totals || 'camera_vetting_seconds_total' in set.totals, false);
   assert.equal(set.totals.camera_images_taken, 1);
   const empty = buildCounters(report([]));
   assert.deepEqual(empty.totals, { camera_images_taken: 0, camera_images_approved: 0, camera_images_rejected: 0, camera_images_shown_on_slideshow: 0, camera_consents_accepted: 0 });
@@ -130,7 +133,8 @@ test('a stored set is read back defensively', () => {
 test('the preview rows carry the value that would be sent, or null, and the label that would go with it', () => {
   const rows = counterRows(buildCounters(report([photo({ review: 'approved', decisions: [{ action: 'approve', by: 'ann', at: '2026-10-16T18:02:00.000Z', reason: null }] })])));
   assert.equal(rows.find((r) => r.key === 'camera_images_approved')?.value, 1);
-  assert.equal(rows.find((r) => r.key === 'camera_avg_vetting_seconds')?.value, 120);
+  assert.equal(rows.find((r) => r.key === 'camera_vetting_seconds_total')?.value, 120);
+  assert.equal(rows.find((r) => r.key === 'camera_images_decided')?.value, 1);
   assert.equal(rows.find((r) => r.key === 'camera_images_approved')?.label, 'Camera: images approved');
   assert.equal(counterRows(NO_COUNTERS).every((r) => r.value === null), true);
   assert.equal(new Set(counterRows(NO_COUNTERS).map((r) => r.key)).size, counterRows(NO_COUNTERS).length, 'the keys of the rows are unique');
@@ -201,8 +205,7 @@ test('emotions and items: one counter for each option, a person with two items i
 test('no annotation counter at all while no photo is marked: never a zero that says nobody when nobody was counted', () => {
   const set = buildCounters(report([photo({ review: 'approved' }), photo({ people: undefined })]));
   const names = [...Object.keys(set.totals), ...Object.keys(set.averages)];
-  assert.deepEqual(names.filter((name) => /^camera_(gender|age|emotion|merch|people|avg_people)_/.test(name) || ANNOTATION_NAMES.includes(name)), []);
-  assert.equal('camera_avg_people_per_image' in set.averages, false);
+  assert.deepEqual(names.filter((name) => /^camera_(gender|age|emotion|merch|people)_/.test(name) || ANNOTATION_NAMES.includes(name)), []);
   const rows = counterRows(set);
   assert.equal(rows.find((r) => r.key === 'camera_images_annotated')?.value, null);
   assert.equal(rows.find((r) => r.key === 'camera_gender_<option>')?.value, null, 'a placeholder row says there is one counter for each option');
@@ -241,12 +244,12 @@ test('a custom option is counted by its key, with its words as the label, and a 
   assert.equal('camera_merch_drum' in unused.totals, false);
 });
 
-test('the average of people per annotated image is an average, sent whole with two decimals and only once a photo is marked', () => {
+test('people per image is not sent as an average: the total of people and the annotated images are, so messmass can divide them (also over many events)', () => {
   const two = buildCounters(report([photo({ people: [person('female'), person('male')] }), photo({ people: [person('female')] })]));
-  assert.deepEqual(two.averages, { camera_avg_people_per_image: 1.5 });
-  assert.equal('camera_avg_people_per_image' in two.totals, false);
-  assert.deepEqual(buildCounters(report([photo({ people: [person('female')] }), photo({ people: [] }), photo({ people: [] })])).averages, { camera_avg_people_per_image: 0.33 });
-  assert.deepEqual(buildCounters(report([photo({ people: [] })])).averages, { camera_avg_people_per_image: 0 }, 'a looked-at photo with nobody in it is a real zero');
+  assert.deepEqual(two.averages, {});
+  assert.equal(two.totals.camera_people_total, 3);
+  assert.equal(two.totals.camera_images_annotated, 2);
+  assert.equal(buildCounters(report([photo({ people: [] })])).totals.camera_people_total, 0, 'a looked-at photo with nobody in it is a real zero');
   assert.deepEqual(buildCounters(report([photo()])).averages, {});
 });
 
