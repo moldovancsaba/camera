@@ -11,7 +11,15 @@
  * `$or` clauses into the same object literal.
  */
 
+import { GALLERY_CONSENT_VERSION } from '@/lib/events/gallery-consent';
 import { notWaitingOrRejectedClause } from '@/lib/submissions/visibility';
+
+/**
+ * The ticked public-gallery box, kept as evidence on the photo (issue 554). An event that asks for the permission
+ * lets only photos with this marker onto the wall or through the bulk publish; an event that does not ask is
+ * not filtered by it (the user's terms cover it, owner answers 283 and 288).
+ */
+export const galleryConsentMarkerClause = { 'publicGalleryConsent.version': GALLERY_CONSENT_VERSION };
 
 /** Submissions belonging to one event, under any identifier they may carry. */
 export function eventMatchFor(eventKeys: string[]): Record<string, unknown> {
@@ -24,9 +32,11 @@ export function eventMatchFor(eventKeys: string[]): Record<string, unknown> {
 /**
  * Plain photos of the event (never a stored try-on result), with an image, whose share flag was never set
  * (absent or null). A fan who explicitly unticked sharing (`false`) is never
- * overridden, and `true` needs no change.
+ * overridden, and `true` needs no change. When the event asks for the public-gallery permission (`asked`),
+ * only a photo that carries the ticked-box marker qualifies: an old photo without evidence is never
+ * published in bulk.
  */
-export function buildPublishSelfiesFilter(eventKeys: string[]): Record<string, unknown> {
+export function buildPublishSelfiesFilter(eventKeys: string[], asked = false): Record<string, unknown> {
   return {
     $and: [
       eventMatchFor(eventKeys),
@@ -41,6 +51,7 @@ export function buildPublishSelfiesFilter(eventKeys: string[]): Record<string, u
       { isShareVisible: null },
       // Never publish a vetted photo that is waiting or was rejected (camera#270).
       notWaitingOrRejectedClause,
+      ...(asked ? [galleryConsentMarkerClause] : []),
     ],
   };
 }
