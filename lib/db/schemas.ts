@@ -744,14 +744,16 @@ export type SubmissionTryOnRequestStatus =
  *
  * `verified` only after a ranged read of `url` answered with `bytes` bytes (`verifiedAt` is then set). `unverified`: the file was written (the address is known) but the read-back could not tell (a timeout, a 5xx).
  * `failed`: the copy was not made, or the read-back showed it is gone or the wrong size; `error` says why, and an address / delete link that is known is kept so deleting the submission can still reach it.
+ * `deleted`: the file was deleted on purpose (`deletedAt`) and the row is kept so the history is readable. Only the private unframed crop on `blob` ends this way, and only after its `imgbb` copy was `verified`
+ * (owner decision "variant B", issue 509): the crop is kept in our store until ImgBB holds a verified copy, then it is deleted and ImgBB is its final place.
  */
 export interface ImageCopy {
   /** `unframed`: the plain crop the user saved (before the frame). `composed`: the framed picture the public sees. */
   role: 'unframed' | 'composed';
   /** `blob`: this project's Vercel Blob store. `imgbb`: the third-party host (owner decision 295: the final destination of unframed pictures). */
   store: 'blob' | 'imgbb';
-  state: 'verified' | 'unverified' | 'failed';
-  /** Address of the file in that store, or null when none was made. */
+  state: 'verified' | 'unverified' | 'failed' | 'deleted';
+  /** Address of the file in that store (of a `deleted` one: where it was), or null when none was made. */
   url: string | null;
   /** Size in bytes that was written (and that the read-back must report). */
   bytes: number | null;
@@ -759,6 +761,8 @@ export interface ImageCopy {
   verifiedAt: string | null;
   /** ISO time this entry was written. */
   recordedAt: string;
+  /** ISO time the file was deleted on purpose; set only when `state` is `deleted`. */
+  deletedAt?: string | null;
   /** ImgBB only: the link that deletes the file (the host has no other way to delete). Never sent to a browser. */
   deleteUrl?: string | null;
   /** ImgBB only: the host's own id of the file. */
@@ -855,7 +859,7 @@ export interface Submission {
   // never returned by a public route), what approval needs to compose the real picture, and the history of the review. The
   // branded composite does not exist until approval; imageUrl and finalImageUrl are absent until then.
   photoReview?: {
-    photoUrl: string | null;         // Plain photo, Blob `pending/<event>/…`; KEPT after approval (issue 509: the only unframed copy), deleted with the submission; null only on photos approved before issue 509
+    photoUrl: string | null;         // Plain photo, Blob `pending/<event>/…`; after approval it is kept until its ImgBB copy is verified (issue 509, variant B), then deleted and this is null; deleted with the submission otherwise
     photoSize: number;
     photoMime: string;
     shareOptIn: boolean;             // The guest's pledge-wall choice, applied when the photo is approved

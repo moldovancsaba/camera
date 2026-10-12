@@ -2,8 +2,8 @@
  * POST /api/admin/submissions/[submissionId]/review (camera#267, docs/PHOTO_VETTING_PLAN.md)
  *
  * Approve or reject a photo of an event with vetting required. Allowed for global admins and for the event's partner Events
- * managers. Approval makes the picture, emails the user the share link and keeps the private unframed photo (issue 509: it is
- * copied to ImgBB and every copy is recorded after the answer, lib/storage/image-copies.ts); rejection keeps the photo private and
+ * managers. Approval makes the picture, emails the user the share link and does not delete the private unframed photo at once (issue 509: after the answer it is
+ * copied to ImgBB, every copy is recorded, and the private file is deleted only when the ImgBB copy is verified, lib/storage/image-copies.ts); rejection keeps the photo private and
  * emails the user a short note.
  *
  * Body: { action: 'approve' | 'reject', reason?: string }

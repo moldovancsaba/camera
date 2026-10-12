@@ -5,7 +5,10 @@ import type { ImageCopy } from '@/lib/db/schemas';
 import { fakeDb } from '@/lib/library/fake-db';
 import type { MirrorResult } from '@/lib/imgbb/upload';
 import {
+  deleteCropAfterVerified,
+  isPendingBlobUrl,
   makeImgbbCopy,
+  makeUnframedFinal,
   probeStoredSize,
   readBack,
   readBackFresh,
@@ -47,12 +50,13 @@ function submissionId() {
   return new ObjectId();
 }
 
-function setup(options: { files?: Record<string, { size?: number; status?: number; type?: string; ignoreRange?: boolean }>; imgbb?: 'works' | 'fails' | 'hangs' | 'wrong-size' | 'unreadable'; seed?: Record<string, unknown> } = {}) {
+function setup(options: { files?: Record<string, { size?: number; status?: number; type?: string; ignoreRange?: boolean }>; imgbb?: 'works' | 'fails' | 'hangs' | 'wrong-size' | 'unreadable'; blobDelete?: 'works' | 'fails'; seed?: Record<string, unknown> } = {}) {
   const id = submissionId();
-  const { db, data } = fakeDb({ submissions: [{ _id: id, imageCopies: [], ...(options.seed ?? {}) }] });
+  const { db, data } = fakeDb({ submissions: [{ _id: id, imageCopies: [], photoReview: { photoUrl: PENDING }, ...(options.seed ?? {}) }] });
   const host = fakeHost({ [PENDING]: { size: CROP.length }, [COMPOSED]: { size: COMPOSED_BYTES }, [MIRROR.imageUrl]: { size: COMPOSED_BYTES }, ...(options.files ?? {}) });
   const uploads: Array<{ base64: string; name: string }> = [];
   const deleted: string[] = [];
+  const blobDeleted: string[] = [];
   const mode = options.imgbb ?? 'works';
   const deps: ImageCopyDeps = {
     fetch: host.fetchImpl,
@@ -66,6 +70,11 @@ function setup(options: { files?: Record<string, { size?: number; status?: numbe
       return result;
     },
     deleteFromImgbb: async (link) => (deleted.push(link), true),
+    deleteBlob: async (url) => {
+      if (options.blobDelete === 'fails') throw new Error('blob unavailable');
+      blobDeleted.push(url);
+      delete host.files[url];
+    },
     now: () => AT,
     readBackAttempts: 1,
     readBackDelayMs: 0,
@@ -75,7 +84,8 @@ function setup(options: { files?: Record<string, { size?: number; status?: numbe
   };
   const copies = () => (data.submissions[0].imageCopies as ImageCopy[]) ?? [];
   const find = (role: string, store: string) => copies().find((copy) => copy.role === role && copy.store === store);
-  return { id, db, data, host, deps, uploads, deleted, copies, find };
+  const photoUrl = () => (data.submissions[0].photoReview as { photoUrl: string | null }).photoUrl;
+  return { id, db, data, host, deps, uploads, deleted, blobDeleted, copies, find, photoUrl };
 }
 
 const approval = (id: ObjectId, mirror: Promise<MirrorResult | null> | MirrorResult | null = MIRROR, unframed: { url: string; buffer: Buffer } | null = { url: PENDING, buffer: CROP }) => ({
@@ -142,14 +152,17 @@ test('two writers of the same copy at once leave one entry; a submission that is
 
 // ---- the work after an approval ---------------------------------------------------------------------------------------------------------------------------------
 
-test('after an approval every copy that exists is recorded, with its address, size, read-back time and the ImgBB delete links', async () => {
-  const { id, db, deps, uploads, copies, find } = setup();
+test('after an approval every copy is recorded, the ImgBB copy of the crop is verified, and only then is the Blob crop deleted and recorded as deleted (variant B)', async () => {
+  const { id, db, deps, uploads, copies, find, blobDeleted, photoUrl } = setup();
   const made = await recordApprovalCopies(db, approval(id), deps);
   assert.equal(made.length, 4);
-  assert.deepEqual(copies().map((copy) => `${copy.role}/${copy.store}/${copy.state}`).sort(), ['composed/blob/verified', 'composed/imgbb/verified', 'unframed/blob/verified', 'unframed/imgbb/verified']);
-  for (const copy of copies()) assert.deepEqual([copy.verifiedAt, copy.recordedAt, copy.error], [AT, AT, null]);
-  assert.deepEqual([find('unframed', 'blob')?.url, find('unframed', 'blob')?.bytes], [PENDING, CROP.length]);
-  assert.deepEqual([find('composed', 'blob')?.url, find('composed', 'blob')?.bytes], [COMPOSED, COMPOSED_BYTES]);
+  assert.deepEqual(copies().map((copy) => `${copy.role}/${copy.store}/${copy.state}`).sort(), ['composed/blob/verified', 'composed/imgbb/verified', 'unframed/blob/deleted', 'unframed/imgbb/verified']);
+  for (const copy of copies().filter((c) => c.state === 'verified')) assert.deepEqual([copy.verifiedAt, copy.recordedAt, copy.error], [AT, AT, null]);
+  const crop = find('unframed', 'blob');
+  assert.deepEqual([crop?.url, crop?.bytes, crop?.deletedAt, crop?.verifiedAt, crop?.error], [PENDING, CROP.length, AT, AT, null], 'the row is kept, with the address it had, so the history is readable');
+  assert.deepEqual(blobDeleted, [PENDING], 'the private crop was deleted');
+  assert.equal(photoUrl(), null, 'photoReview.photoUrl is null, as the old code left it');
+  assert.deepEqual([find('composed', 'blob')?.url, find('composed', 'blob')?.bytes], [COMPOSED, COMPOSED_BYTES], 'the framed picture on Blob stays as it is');
   assert.equal(find('composed', 'imgbb')?.url, MIRROR.imageUrl, 'the mirror the approval started is recorded with its real address');
   assert.equal(find('composed', 'imgbb')?.deleteUrl, MIRROR.deleteUrl);
   assert.equal(find('composed', 'imgbb')?.externalId, 'm1');
@@ -160,20 +173,23 @@ test('after an approval every copy that exists is recorded, with its address, si
   assert.equal(find('unframed', 'imgbb')?.bytes, CROP.length);
 });
 
-test('repeating the work does not duplicate: verified copies are left alone and imgbb is not asked again', async () => {
-  const { id, db, deps, uploads, copies, host } = setup();
+test('repeating the work does not duplicate: verified copies are left alone, a deleted crop is not deleted again, imgbb is not asked again', async () => {
+  const { id, db, deps, uploads, copies, host, blobDeleted } = setup();
   await recordApprovalCopies(db, approval(id), deps);
   const asked = host.asked.length;
   const again = await recordApprovalCopies(db, approval(id), deps);
   assert.deepEqual(again, []);
   assert.equal(copies().length, 4);
   assert.equal(uploads.length, 1);
+  assert.deepEqual(blobDeleted, [PENDING], 'deleted once');
   assert.equal(host.asked.length, asked, 'nothing is read back again either');
 });
 
-test('an imgbb that fails still leaves the other copies recorded, and the failure is on the submission with its reason', async () => {
-  const { id, db, deps, find, copies } = setup({ imgbb: 'fails' });
+test('an imgbb that fails still leaves the other copies recorded, and the failure is on the submission with its reason; the Blob crop is kept', async () => {
+  const { id, db, deps, find, copies, blobDeleted, photoUrl } = setup({ imgbb: 'fails' });
   await recordApprovalCopies(db, approval(id), deps);
+  assert.deepEqual(blobDeleted, [], 'never lose the only copy');
+  assert.equal(photoUrl(), PENDING);
   const failed = find('unframed', 'imgbb');
   assert.equal(failed?.state, 'failed');
   assert.equal(failed?.url, null);
@@ -185,18 +201,20 @@ test('an imgbb that fails still leaves the other copies recorded, and the failur
   assert.equal(copies().length, 4);
 });
 
-test('an imgbb that does not answer in time is recorded as failed and the work ends', async () => {
-  const { id, db, deps, find } = setup({ imgbb: 'hangs' });
+test('an imgbb that does not answer in time is recorded as failed, the work ends and the Blob crop is kept', async () => {
+  const { id, db, deps, find, blobDeleted, photoUrl } = setup({ imgbb: 'hangs' });
   const started = Date.now();
   await recordApprovalCopies(db, approval(id), deps);
   assert.ok(Date.now() - started < 2000, 'the work did not wait for ever');
+  assert.deepEqual([blobDeleted, photoUrl(), find('unframed', 'blob')?.state], [[], PENDING, 'verified']);
   assert.equal(find('unframed', 'imgbb')?.state, 'failed');
   assert.match(find('unframed', 'imgbb')?.error ?? '', /imgbb did not answer within 0\.04 s/);
 });
 
-test('an imgbb file with the wrong size is recorded as failed, with both sizes, and keeps its address and delete link so deleting the submission still reaches it', async () => {
-  const { id, db, deps, find } = setup({ imgbb: 'wrong-size' });
+test('an imgbb file with the wrong size (ImgBB re-encoded it) is recorded as failed, with both sizes, keeps its address and delete link so deleting the submission still reaches it, and the Blob crop is kept', async () => {
+  const { id, db, deps, find, blobDeleted, photoUrl } = setup({ imgbb: 'wrong-size' });
   await recordApprovalCopies(db, approval(id), deps);
+  assert.deepEqual([blobDeleted, photoUrl(), find('unframed', 'blob')?.state], [[], PENDING, 'verified']);
   const copy = find('unframed', 'imgbb');
   assert.equal(copy?.state, 'failed');
   assert.match(copy?.error ?? '', new RegExp(`${CROP.length} bytes were written, the host reports ${CROP.length + 7}`));
@@ -208,10 +226,11 @@ test('an imgbb file that cannot be read back yet is unverified, not failed, and 
   await recordApprovalCopies(db, approval(id), deps);
   // The fake host does not know the new address, so it answers 404: gone.
   assert.equal(find('unframed', 'imgbb')?.state, 'failed');
-  const { id: id2, db: db2, deps: deps2, host, find: find2 } = setup({ imgbb: 'unreadable' });
+  const { id: id2, db: db2, deps: deps2, host, find: find2, blobDeleted: deleted2 } = setup({ imgbb: 'unreadable' });
   const flaky: typeof fetch = async (input, init) => (String(input).includes('i.ibb.co') ? new Response(null, { status: 503 }) : host.fetchImpl(input, init));
   await recordApprovalCopies(db2, approval(id2), { ...deps2, fetch: flaky });
   assert.equal(find2('unframed', 'imgbb')?.state, 'unverified');
+  assert.deepEqual(deleted2, [], 'an ImgBB copy that cannot be read back is not enough: the Blob crop is kept');
   assert.ok(find2('unframed', 'imgbb')?.url);
   assert.equal(find2('unframed', 'imgbb')?.verifiedAt, null);
 });
@@ -237,10 +256,11 @@ test('a mirror that lands late but within the wait is recorded with its real add
   assert.equal(find('composed', 'imgbb')?.url, MIRROR.imageUrl);
 });
 
-test('a failed copy is made again by a later run and replaces its failed entry; the verified ones are not touched', async () => {
+test('a failed copy is made again by a later run and replaces its failed entry; once it is verified the Blob crop is deleted; the verified ones are not touched', async () => {
   const first = setup({ imgbb: 'fails' });
   await recordApprovalCopies(first.db, approval(first.id), first.deps);
   assert.equal(first.find('unframed', 'imgbb')?.state, 'failed');
+  assert.deepEqual(first.blobDeleted, []);
   let uploads = 0;
   const second = { ...first.deps, uploadToImgbb: async (base64: string, name: string): Promise<MirrorResult> => {
     uploads += 1;
@@ -252,6 +272,9 @@ test('a failed copy is made again by a later run and replaces its failed entry; 
   assert.equal(uploads, 1);
   assert.equal(first.copies().length, 4, 'the failed entry was replaced, not added to');
   assert.equal(first.find('unframed', 'imgbb')?.state, 'verified');
+  assert.equal(first.find('unframed', 'blob')?.state, 'deleted');
+  assert.deepEqual(first.blobDeleted, [PENDING]);
+  assert.equal(first.photoUrl(), null);
 });
 
 test('a photo with no private file records only the framed picture', async () => {
@@ -301,4 +324,73 @@ test('a file that was only just uploaded is read back again while the host says 
   asked = 0;
   const wrong = await readBackFresh(COMPOSED, 49, { ...base, fetch: (async () => (asked++, new Response(null, { status: 206, headers: { 'content-type': 'image/jpeg', 'content-range': 'bytes 0-0/50' } }))) as typeof fetch });
   assert.deepEqual([wrong.state, asked], ['failed', 1], 'a size that is known and wrong is not asked again');
+});
+
+// ---- the Blob crop is deleted only when its ImgBB copy is verified (variant B) ------------------------------------------------------------------------------
+
+test('only a private pending file of our store may ever be deleted', () => {
+  assert.equal(isPendingBlobUrl(PENDING), true);
+  for (const url of [COMPOSED, `https://${STORE}/screen-pictures/x.webp`, 'https://i.ibb.co/a/b.jpg', 'http://abc123.public.blob.vercel-storage.com/pending/x.jpg', 'https://example.com/pending/x.jpg', 'not a url', `https://${STORE}/other/pending/x.jpg`]) assert.equal(isPendingBlobUrl(url), false, url);
+});
+
+test('the Blob crop is kept when the ImgBB entry is not verified in the database, whatever the caller believes', async () => {
+  for (const state of ['failed', 'unverified'] as const) {
+    const { id, db, deps, blobDeleted, photoUrl } = setup({ seed: { imageCopies: [{ role: 'unframed', store: 'imgbb', state, url: 'https://i.ibb.co/x/y.jpg', bytes: CROP.length, verifiedAt: null, recordedAt: AT }] } });
+    assert.equal(await deleteCropAfterVerified(db, { submissionId: id, url: PENDING, bytes: CROP.length }, deps), false, state);
+    assert.deepEqual([blobDeleted, photoUrl()], [[], PENDING]);
+  }
+  const none = setup();
+  assert.equal(await deleteCropAfterVerified(none.db, { submissionId: none.id, url: PENDING, bytes: CROP.length }, none.deps), false, 'no ImgBB entry at all');
+  assert.deepEqual(none.blobDeleted, []);
+});
+
+test('the Blob crop is kept when the ImgBB copy has another size than the crop, or the address is not a pending file', async () => {
+  const seed = { imageCopies: [{ role: 'unframed', store: 'imgbb', state: 'verified', url: 'https://i.ibb.co/x/y.jpg', bytes: CROP.length + 5, verifiedAt: AT, recordedAt: AT }] };
+  const wrong = setup({ seed });
+  assert.equal(await deleteCropAfterVerified(wrong.db, { submissionId: wrong.id, url: PENDING, bytes: CROP.length }, wrong.deps), false);
+  assert.deepEqual(wrong.blobDeleted, []);
+  const foreign = setup({ seed: { imageCopies: [{ role: 'unframed', store: 'imgbb', state: 'verified', url: 'https://i.ibb.co/x/y.jpg', bytes: 10, verifiedAt: AT, recordedAt: AT }] } });
+  assert.equal(await deleteCropAfterVerified(foreign.db, { submissionId: foreign.id, url: COMPOSED, bytes: 10 }, foreign.deps), false);
+  assert.deepEqual(foreign.blobDeleted, [], 'a file that is not a pending crop is never deleted');
+});
+
+test('a Blob delete that fails keeps the crop, its entry and the address, never throws, and a later run only has the delete left to do', async () => {
+  const t = setup({ blobDelete: 'fails' });
+  const first = await recordApprovalCopies(t.db, approval(t.id), t.deps);
+  assert.ok(first.length > 0);
+  assert.equal(t.find('unframed', 'imgbb')?.state, 'verified');
+  assert.equal(t.find('unframed', 'blob')?.state, 'verified');
+  assert.equal(t.photoUrl(), PENDING);
+  const later = await makeUnframedFinal(t.db, { submissionId: t.id, url: PENDING, buffer: null }, { ...t.deps, deleteBlob: async (url) => void t.blobDeleted.push(url) });
+  assert.deepEqual([later.made, later.deleted, t.blobDeleted], [[], true, [PENDING]], 'no download and no upload: only the delete');
+  assert.equal(t.uploads.length, 1);
+  assert.equal(t.find('unframed', 'blob')?.state, 'deleted');
+  assert.equal(t.photoUrl(), null);
+});
+
+test('with no bytes in hand the size of the crop is read from its host; a crop that is already gone is recorded as deleted without a delete call', async () => {
+  const seedImgbb = { role: 'unframed', store: 'imgbb', state: 'verified', url: 'https://i.ibb.co/x/y.jpg', bytes: CROP.length, verifiedAt: AT, recordedAt: AT };
+  const t = setup({ seed: { imageCopies: [seedImgbb] } });
+  const done = await makeUnframedFinal(t.db, { submissionId: t.id, url: PENDING, buffer: null }, t.deps);
+  assert.equal(done.deleted, true);
+  assert.deepEqual(t.blobDeleted, [PENDING]);
+  assert.equal(t.find('unframed', 'blob')?.bytes, CROP.length);
+
+  const gone = setup({ seed: { imageCopies: [seedImgbb] }, files: {} });
+  delete gone.host.files[PENDING];
+  assert.equal((await makeUnframedFinal(gone.db, { submissionId: gone.id, url: PENDING, buffer: null }, gone.deps)).deleted, true);
+  assert.deepEqual(gone.blobDeleted, [], 'nothing to delete');
+  assert.equal(gone.find('unframed', 'blob')?.state, 'deleted');
+  assert.equal(gone.photoUrl(), null);
+
+  const unclear = setup({ seed: { imageCopies: [seedImgbb] }, files: { [PENDING]: { status: 503 } } });
+  assert.equal((await makeUnframedFinal(unclear.db, { submissionId: unclear.id, url: PENDING, buffer: null }, unclear.deps)).deleted, false, 'a size that cannot be read keeps the file');
+  assert.deepEqual(unclear.blobDeleted, []);
+});
+
+test('without the crop in hand and no verified ImgBB copy nothing is made and nothing is deleted', async () => {
+  const t = setup();
+  const result = await makeUnframedFinal(t.db, { submissionId: t.id, url: PENDING, buffer: null }, t.deps);
+  assert.deepEqual([result.deleted, t.uploads.length, t.blobDeleted], [false, 0, []]);
+  assert.match(result.reason ?? '', /crop was not read/);
 });

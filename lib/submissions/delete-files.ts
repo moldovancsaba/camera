@@ -14,7 +14,8 @@
  *  4. The imgbb mirror is third-party and best effort: its delete link is requested and the
  *     outcome reported, but it never blocks the delete (see RUNBOOK, "Deleting a submission").
  *  5. Every copy recorded on the submission (`imageCopies`, issue 509: the unframed crop and the framed picture, on Blob and on imgbb) is deleted with it, through the same two
- *     paths: a Blob copy with the Blob files, an imgbb copy through its stored delete link. An imgbb file whose delete link failed is never silent: it is counted
+ *     paths: a Blob copy with the Blob files, an imgbb copy through its stored delete link. A Blob copy already recorded as `deleted` (the private crop is deleted once its imgbb copy is verified,
+ *     variant B) is done and is not asked for again; its imgbb copy is still deleted through its link. An imgbb file whose delete link failed is never silent: it is counted
  *     (`imgbbFailed`), listed with its address (`imgbbNotDeleted`, no secret in it) and logged as a warning (`submission_files.imgbb_not_deleted`), so it can be removed by hand.
  */
 
@@ -54,9 +55,9 @@ function text(value: unknown): string | null {
 }
 
 /** The copies recorded on the submission (issue 509): the address of each file and, for imgbb, the link that deletes it. */
-function copiesOf(submission: Document): Array<{ url: string | null; deleteUrl: string | null; store: string | null; role: string | null }> {
+function copiesOf(submission: Document): Array<{ url: string | null; deleteUrl: string | null; store: string | null; role: string | null; deleted: boolean }> {
   if (!Array.isArray(submission.imageCopies)) return [];
-  return (submission.imageCopies as Document[]).map((copy) => ({ url: text(copy?.url), deleteUrl: text(copy?.deleteUrl), store: text(copy?.store), role: text(copy?.role) }));
+  return (submission.imageCopies as Document[]).map((copy) => ({ url: text(copy?.url), deleteUrl: text(copy?.deleteUrl), store: text(copy?.store), role: text(copy?.role), deleted: copy?.state === 'deleted' }));
 }
 
 /** Every file URL the submission owns, de-duplicated; originalImageUrl equals imageUrl for older submissions. */
@@ -74,10 +75,11 @@ export function ownedUrls(submission: Document): { fileUrls: string[]; imgbbDele
       // The screen-sized picture made for the giant screen (camera#476, S7); equal to imageUrl when that was small enough, which the set de-duplicates.
       submission.screenImageUrl,
       tryOn.sourceImageUrl,
-      // The private plain photo of a vetted photo (camera#266). Since issue 509 it is kept after approval too, so it is deleted here for good.
+      // The private plain photo of a vetted photo (camera#266). Since issue 509 it stays after approval until its imgbb copy is verified, so an approved photo can still have it: deleted here for good.
       review.photoUrl,
-      // Every file a recorded copy names (the ones on imgbb are not in our store and are skipped by `inStore`; they go through their delete link below).
-      ...copies.map((copy) => copy.url),
+      // Every file a recorded copy names (the ones on imgbb are not in our store and are skipped by `inStore`; they go through their delete link below). A copy recorded as `deleted` (the private unframed
+      // crop, deleted on purpose once its ImgBB copy was verified, issue 509 variant B) is done: its file is gone and is not asked for again; the ImgBB copy of the same crop is still deleted below.
+      ...copies.filter((copy) => !copy.deleted).map((copy) => copy.url),
     ]
       .map(text)
       .filter((url): url is string => url !== null)

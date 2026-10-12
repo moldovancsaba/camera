@@ -102,10 +102,10 @@ test('only imgbb hosts are ever requested as delete links', () => {
   assert.deepEqual(imgbbDeleteLinks, ['https://ibb.co/AbC/hash']);
 });
 
-test('the private photo of a vetted photo is deleted with the submission, pending or approved (since issue 509 approval keeps it)', () => {
+test('the private photo of a vetted photo is deleted with the submission, pending or approved (since issue 509 approval keeps it until its ImgBB copy is verified)', () => {
   const { fileUrls } = ownedUrls({ photoReview: { photoUrl: 'https://store.test/pending/e1/abc-xyz.jpg' }, reviewStatus: 'approved' });
   assert.deepEqual(fileUrls, ['https://store.test/pending/e1/abc-xyz.jpg']);
-  assert.deepEqual(ownedUrls({ photoReview: { photoUrl: null } }).fileUrls, [], 'a photo approved before issue 509 has no file and a null field');
+  assert.deepEqual(ownedUrls({ photoReview: { photoUrl: null } }).fileUrls, [], 'a photo whose crop was deleted (or approved before issue 509) has no file and a null field');
 });
 
 const PENDING = own('pending/e1/abc-xyz.jpg');
@@ -147,4 +147,19 @@ test('the screen-sized picture is deleted with the submission, once even when it
   const own = ownedUrls({ imageUrl: 'https://store.test/a.jpg', screenImageUrl: 'https://store.test/screen-pictures/1.webp' });
   assert.deepEqual(own.fileUrls, ['https://store.test/a.jpg', 'https://store.test/screen-pictures/1.webp']);
   assert.deepEqual(ownedUrls({ imageUrl: 'https://store.test/a.jpg', screenImageUrl: 'https://store.test/a.jpg' }).fileUrls, ['https://store.test/a.jpg']);
+});
+
+test('a Blob copy already recorded as deleted (the crop, after its ImgBB copy was verified) is done: it is not asked for again, and the ImgBB copy of the crop is still deleted through its link', async () => {
+  const deletedCopies = [
+    { role: 'unframed', store: 'blob', state: 'deleted', url: PENDING, deleteUrl: null, deletedAt: '2026-10-12T10:00:00.000Z' },
+    { role: 'unframed', store: 'imgbb', state: 'verified', url: IBB_UNFRAMED, deleteUrl: 'https://ibb.co/aaa/hash-unframed' },
+    { role: 'composed', store: 'blob', state: 'verified', url: composite },
+    { role: 'composed', store: 'imgbb', state: 'verified', url: IBB_COMPOSED, deleteUrl: 'https://ibb.co/bbb/hash-composed' },
+  ];
+  const { deps, calls } = makeDeps();
+  const result = await deleteSubmissionFiles(db, submission({ photoReview: { photoUrl: null }, imageCopies: deletedCopies }), deps);
+  assert.deepEqual(calls.del, [[composite, original]], 'the deleted crop is not requested again');
+  assert.deepEqual(calls.images, ['https://ibb.co/aaa/hash-unframed', 'https://ibb.co/bbb/hash-composed']);
+  assert.deepEqual([result.imgbbRequested, result.imgbbFailed, result.imgbbNotDeleted], [2, 0, []]);
+  assert.deepEqual(ownedUrls({ imageCopies: deletedCopies }).fileUrls, [IBB_UNFRAMED, composite, IBB_COMPOSED], 'the deleted crop is not among the files');
 });

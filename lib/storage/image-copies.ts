@@ -9,15 +9,22 @@
  *   timeout, a 5xx) leaves it `unverified`; a copy that was not made, is gone (404) or has another size is `failed`, with the reason in `error`.
  * - Nothing here may fail or slow an approval: `recordApprovalCopies` runs after the answer is sent, never throws, and says what happened in one log line per copy
  *   (`image_copy.outcome`). A copy that is not `verified` is what the admin "Image safety" card lists.
- * - This module only adds files and fields. It deletes nothing, except an ImgBB file it has just made when the submission was deleted while it worked (so no file is left that
+ * - **The private unframed crop is kept in our store until ImgBB holds a verified copy of it, and only then deleted** (owner decision "variant B", issue 509; ImgBB is the final place of
+ *   unframed pictures, decision 295). `makeUnframedFinal` copies it to ImgBB, reads the copy back, and `deleteCropAfterVerified` deletes the Blob file only when the ImgBB entry of the same crop
+ *   is `verified` in `imageCopies` right then (and has the same size); a copy that failed, timed out, cannot be read back or has another size keeps the Blob file (never lose the only copy). The
+ *   Blob entry is then recorded as `deleted` (the row is kept) and `photoReview.photoUrl` is set to null. Only a `pending/` file is ever deleted here.
+ * - Apart from that one deletion this module only adds files and fields. It also deletes an ImgBB file it has just made when the submission was deleted while it worked (so no file is left that
  *   nothing names).
  */
 
 import type { Db, Document, ObjectId } from 'mongodb';
 import { COLLECTIONS, type ImageCopy } from '@/lib/db/schemas';
 import { isAllowedLogoUrl } from '@/lib/frame/logo';
+import { del } from '@vercel/blob';
 import { deleteImage, uploadToImgbbOnly, type MirrorResult } from '@/lib/imgbb/upload';
+import { isBlobStorageHostname } from '@/lib/imgbb/url';
 import { logInfo, logWarn } from '@/lib/observability/logger';
+import { PENDING_PHOTO_PREFIX } from '@/lib/photo-vetting/pending';
 
 /** How long one read-back may take. */
 export const PROBE_TIMEOUT_MS = 10_000;
@@ -125,6 +132,8 @@ export interface ImageCopyDeps {
   readBackDelayMs: number;
   uploadToImgbb: (base64: string, name: string) => Promise<MirrorResult>;
   deleteFromImgbb: (deleteUrl: string) => Promise<boolean>;
+  /** Deletes one private file from our Blob store (the unframed crop, after its ImgBB copy is verified). */
+  deleteBlob: (url: string) => Promise<void>;
   now: () => string;
   probeTimeoutMs: number;
   imgbbTimeoutMs: number;
@@ -138,6 +147,7 @@ export const defaultImageCopyDeps: ImageCopyDeps = {
   // One retry at most, and no validation request of its own: the read-back below is the check.
   uploadToImgbb: (base64, name) => uploadToImgbbOnly(base64, { name, maxRetries: 2, validatePublicUrl: false }),
   deleteFromImgbb: deleteImage,
+  deleteBlob: (url) => del(url),
   now: () => new Date().toISOString(),
   probeTimeoutMs: PROBE_TIMEOUT_MS,
   imgbbTimeoutMs: IMGBB_COPY_TIMEOUT_MS,
@@ -250,6 +260,105 @@ export async function makeImgbbCopy(
   return copy;
 }
 
+/** Only a private `pending/` file of our Blob store is ever deleted by this module. */
+export function isPendingBlobUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && isBlobStorageHostname(parsed.hostname) && parsed.pathname.startsWith(`/${PENDING_PHOTO_PREFIX}`);
+  } catch {
+    return false;
+  }
+}
+
+const sameCrop = (copy: ImageCopy | undefined, store: ImageCopy['store']) => copy?.role === 'unframed' && copy.store === store;
+
+/**
+ * Deletes the private Blob crop, but only when it is safe: the ImgBB entry of the same crop is `verified` in `imageCopies` right now (read from the database, not trusted from memory) and was
+ * written with the same size as the crop. A copy that is `failed` or `unverified` keeps the Blob file. On success the Blob entry becomes `deleted` (with `deletedAt`; the row is kept so the
+ * history is readable) and `photoReview.photoUrl` is set to null. Never throws; returns true only when the crop is gone and recorded.
+ */
+export async function deleteCropAfterVerified(
+  db: Db,
+  input: { submissionId: ObjectId; url: string; bytes: number | null },
+  deps: ImageCopyDeps = defaultImageCopyDeps
+): Promise<boolean> {
+  const id = String(input.submissionId);
+  const keep = (reason: string) => {
+    logWarn('image_copy.crop_kept', 'The private unframed crop was kept: ' + reason, { submissionId: id });
+    return false;
+  };
+  try {
+    if (!isPendingBlobUrl(input.url)) return keep('its address is not a private pending file of our store');
+    const copies = await readCopies(db, input.submissionId);
+    const imgbb = copies.find((copy) => sameCrop(copy, 'imgbb'));
+    if (!imgbb || imgbb.state !== 'verified' || !imgbb.url) return keep('its ImgBB copy is not verified');
+    const blob = copies.find((copy) => sameCrop(copy, 'blob'));
+    if (blob?.state === 'deleted') return true;
+    let size = input.bytes ?? blob?.bytes ?? null;
+    let alreadyGone = false;
+    if (size === null) {
+      const probe = await probeStoredSize(input.url, deps.fetch, deps.probeTimeoutMs);
+      if (probe.kind === 'size') size = probe.bytes;
+      else if (probe.kind === 'gone') alreadyGone = true;
+      else return keep('the size of the file could not be read');
+    }
+    if (size !== null && imgbb.bytes !== size) return keep(`the ImgBB copy has another size (${imgbb.bytes} bytes, the crop is ${size})`);
+    if (!alreadyGone) await deps.deleteBlob(input.url);
+    const now = deps.now();
+    const entry: ImageCopy = { role: 'unframed', store: 'blob', state: 'deleted', url: input.url, bytes: size ?? imgbb.bytes, verifiedAt: blob?.verifiedAt ?? null, recordedAt: now, deletedAt: now, error: null };
+    logInfo('image_copy.crop_deleted', 'The private unframed crop was deleted after its ImgBB copy was verified', { submissionId: id, bytes: entry.bytes, alreadyGone });
+    await recordImageCopy(db, input.submissionId, entry);
+    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: input.submissionId, 'photoReview.photoUrl': input.url }, { $set: { 'photoReview.photoUrl': null } });
+    return true;
+  } catch (error) {
+    logWarn('image_copy.crop_not_deleted', 'The private unframed crop could not be deleted or recorded; it is kept', { submissionId: id, error: errorMessage(error) });
+    return false;
+  }
+}
+
+export interface UnframedResult {
+  /** The entries written by this call. */
+  made: ImageCopy[];
+  /** True when the Blob crop is gone and recorded as deleted (now or earlier). */
+  deleted: boolean;
+  /** Why the crop is still in our store, when it is. */
+  reason: string | null;
+}
+
+/**
+ * The whole life of an approved photo's unframed crop (owner decision 295 and "variant B"): the Blob file is read back, a copy goes to ImgBB and is read back, and only when that copy is
+ * `verified` is the Blob file deleted. Used by the approval's follow-up work (the bytes are already in memory) and by the Image safety card (`buffer` null when ImgBB already holds a verified copy
+ * and only the delete is left). Never throws. Repeating it is safe: a verified copy is not made again, a deleted crop is not deleted again.
+ */
+export async function makeUnframedFinal(
+  db: Db,
+  input: { submissionId: ObjectId; url: string; buffer: Buffer | null },
+  deps: ImageCopyDeps = defaultImageCopyDeps
+): Promise<UnframedResult> {
+  const id = String(input.submissionId);
+  const made: ImageCopy[] = [];
+  let existing: ImageCopy[] = [];
+  try {
+    existing = await readCopies(db, input.submissionId);
+  } catch (error) {
+    logWarn('image_copy.not_read', 'The copies of a submission could not be read; they are written again', { submissionId: id, error: errorMessage(error) });
+  }
+  const blob = existing.find((copy) => sameCrop(copy, 'blob'));
+  const imgbb = existing.find((copy) => sameCrop(copy, 'imgbb'));
+  if (blob?.state === 'deleted') return { made, deleted: true, reason: null };
+  let verifiedOnImgbb = imgbb?.state === 'verified' && Boolean(imgbb.url);
+  if (!verifiedOnImgbb) {
+    if (!input.buffer) return { made, deleted: false, reason: 'the crop was not read, so its ImgBB copy cannot be made' };
+    if (blob?.state !== 'verified') made.push(await verifyAndRecord(db, input.submissionId, { role: 'unframed', store: 'blob', url: input.url, bytes: input.buffer.length }, deps));
+    const copy = await makeImgbbCopy(db, { submissionId: input.submissionId, role: 'unframed', buffer: input.buffer, name: `unframed-${id}` }, deps);
+    made.push(copy);
+    verifiedOnImgbb = copy.state === 'verified';
+    if (!verifiedOnImgbb) return { made, deleted: false, reason: copy.error ?? 'the ImgBB copy could not be verified' };
+  }
+  const deleted = await deleteCropAfterVerified(db, { submissionId: input.submissionId, url: input.url, bytes: input.buffer?.length ?? null }, deps);
+  return { made, deleted, reason: deleted ? null : 'the crop could not be deleted and stays in our store' };
+}
+
 export interface ApprovalCopiesInput {
   submissionId: ObjectId;
   /** The framed picture the approval made: its Blob address and size, and the ImgBB mirror the approval started (a promise that may still be running, or its result, or null when imgbb gave nothing). */
@@ -299,10 +408,8 @@ export async function recordApprovalCopies(db: Db, input: ApprovalCopiesInput, d
   };
 
   const unframed = async () => {
-    const source = input.unframed;
-    if (!source) return;
-    if (!done('unframed', 'blob')) made.push(await verifyAndRecord(db, input.submissionId, { role: 'unframed', store: 'blob', url: source.url, bytes: source.buffer.length }, deps));
-    if (!done('unframed', 'imgbb')) made.push(await makeImgbbCopy(db, { submissionId: input.submissionId, role: 'unframed', buffer: source.buffer, name: `unframed-${id}` }, deps));
+    if (!input.unframed) return;
+    made.push(...(await makeUnframedFinal(db, { submissionId: input.submissionId, url: input.unframed.url, buffer: input.unframed.buffer }, deps)).made);
   };
 
   // The two pictures are independent; each branch writes only its own entries.
