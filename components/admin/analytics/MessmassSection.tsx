@@ -56,7 +56,7 @@ export default function MessmassSection({ state, timeZone }: { state: CounterSta
             { key: 'waits', header: 'Waits for', render: (row) => row.waitsFor },
           ]}
         />
-        <Note>Sending is off. The receiving route in messmass (photo-stats) and the variables in its catalog are not built yet, so a push would be refused. The first real push is the owner&apos;s decision.</Note>
+        <Note>Sending is off. The receiving route in messmass (photo-stats) is deployed and registers each name in its variable catalog the first time it is received. Switching the sending on is the owner&apos;s decision, made after looking at these numbers on a real event.</Note>
       </Panel>
     </>
   );

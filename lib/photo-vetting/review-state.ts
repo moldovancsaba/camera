@@ -179,3 +179,21 @@ export const peopleToSave = (draft: ReviewDraft): PersonTag[] => draft.people.ma
 
 /** The heading of a group: the question of the list (one place for the words, lib/photo-vetting/vocabulary.ts), with "optional" for the groups that are not required. */
 export const groupHeading = (group: PersonGroup): string => `${GROUPS[group].question}${GROUPS[group].required ? '' : ' (optional)'}`;
+
+/** What the screen says after a decision: the words, and whether the reviewer must notice something (the e-mail to the user did not go). */
+export interface DecisionNotice {
+  text: string;
+  warning: boolean;
+}
+
+/**
+ * The notice after a decision, from what the review route answers about the e-mail (`sent`, `skipped` when there was nobody to send to, `failed`): it never says the user gets a message that
+ * did not go. A missing answer reads as sent (an old server).
+ */
+export function decisionNotice(action: 'approve' | 'reject', email: unknown): DecisionNotice {
+  const done = action === 'approve' ? 'Photo approved' : 'Photo rejected';
+  const what = action === 'approve' ? 'the e-mail with the link' : 'the note';
+  if (email === 'failed') return { text: `${done}, but ${what} to the user could not be sent.`, warning: true };
+  if (email === 'skipped') return { text: `${done}. No e-mail was sent to the user.`, warning: false };
+  return { text: action === 'approve' ? 'Photo approved. The user gets the link by email.' : 'Photo rejected. The user gets a short note.', warning: false };
+}
