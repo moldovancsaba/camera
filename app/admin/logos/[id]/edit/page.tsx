@@ -22,7 +22,8 @@ import {
   AdminTextarea,
   FormSection,
 } from '@sovereignsquad/gds-admin/client';
-import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { notifyAdminError } from '@/components/admin/notify';
 
 interface LogoRecord {
   _id: string;
@@ -58,7 +59,6 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { confirmDestructive } = useGdsConfirm();
-  const { notifyError } = useGdsToasts();
 
   useEffect(() => {
     async function fetchLogo() {
@@ -130,7 +130,7 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
     } catch (err: unknown) {
       const message = getErrorMessage(err);
       setError(message);
-      notifyError({ title: 'Delete failed', message });
+      notifyAdminError({ title: 'Delete failed', message });
       setIsDeleting(false);
     }
   };

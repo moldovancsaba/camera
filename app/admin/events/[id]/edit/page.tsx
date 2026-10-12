@@ -25,7 +25,7 @@ import {
   Textarea,
   TextInput,
 } from '@/components/gds/PublicPrimitives';
-import { useGdsToasts } from '@sovereignsquad/gds-core/client';
+import { notifyAdminSuccess } from '@/components/admin/notify';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import ImagePicker from '@/components/admin/library/ImagePicker';
@@ -125,7 +125,6 @@ export default function EditEventPage({
   params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
-  const { notifySuccess } = useGdsToasts();
   const [mongoId, setMongoId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -632,7 +631,7 @@ export default function EditEventPage({
               setEvent(eventData);
             }
 
-            notifySuccess({ title: 'Pages saved', message: 'Custom page flow updated successfully.' });
+            notifyAdminSuccess({ title: 'Pages saved', message: 'Custom page flow updated successfully.' });
           } catch (err: unknown) {
             throw new Error(getErrorMessage(err));
           }

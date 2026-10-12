@@ -4,7 +4,8 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
-import { EmptyState, InlineAlert, LabelTag, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import { EmptyState, InlineAlert, LabelTag, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { notifyAdminError, notifyAdminSuccess } from '@/components/admin/notify';
 
 export interface LandingPageListItem {
   _id: string;
@@ -28,7 +29,6 @@ export default function LandingPageManager({
   const [landingPages, setLandingPages] = useState(initialLandingPages);
   const [error, setError] = useState<string | null>(null);
   const { confirmDestructive } = useGdsConfirm();
-  const { notifySuccess, notifyError } = useGdsToasts();
 
   const handleDelete = async (mongoId: string) => {
     setError(null);
@@ -39,11 +39,11 @@ export default function LandingPageManager({
         throw new Error(err.error || 'Failed to delete landing page');
       }
       setLandingPages((prev) => prev.filter((page) => page._id !== mongoId));
-      notifySuccess({ title: 'Landing page deleted', message: 'Experience page removed.' });
+      notifyAdminSuccess({ title: 'Landing page deleted', message: 'Experience page removed.' });
     } catch (deleteError) {
       const message = deleteError instanceof Error ? deleteError.message : 'Failed to delete landing page';
       setError(message);
-      notifyError({ title: 'Delete failed', message });
+      notifyAdminError({ title: 'Delete failed', message });
     }
   };
 
@@ -61,7 +61,7 @@ export default function LandingPageManager({
   const copyUrl = (slug: string) => {
     const url = `${window.location.origin}/landing/${slug}`;
     void navigator.clipboard.writeText(url);
-    notifySuccess({ title: 'URL copied', message: 'Landing page URL copied to clipboard.' });
+    notifyAdminSuccess({ title: 'URL copied', message: 'Landing page URL copied to clipboard.' });
   };
 
   return (
