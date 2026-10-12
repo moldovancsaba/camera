@@ -108,6 +108,10 @@ export const en = {
   'profile.consent.purpose': 'send me news about its next events by e-mail',
   'profile.consent.link': 'my profile page',
   'profile.notice': 'Photos you take at our events are kept under your e-mail address so you can find, download and delete them in one place.',
+  // Using annotated photos to train automatic annotation (issue 628, owner answer 457): drafts for the reviewers to validate and change in the Dictionary; no page shows them yet (docs/AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md).
+  'training.consent': 'I agree that {organiser} uses my photo, without my name or e-mail address, together with the labels a reviewer gave it (for example how many people are in it, their apparent age group, gender and expression, what they wear or hold, and why a photo was not approved) to train and test software that can later do this automatically. I can withdraw this at any time at {link}.',
+  'training.consent.link': 'the page of my photos',
+  'training.notice': 'Leaving this unticked changes nothing about your photo or your link.',
   'accept.mustAccept': 'You must accept to continue',
   'accept.newTab': '{text} (opens in a new tab)',
   'accept.optional': '(optional)',

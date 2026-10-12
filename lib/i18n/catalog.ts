@@ -23,6 +23,7 @@ export const TEXT_GROUPS: Record<string, string> = {
   sharePage: 'Public photo page',
   tryon: 'Try-on',
   profile: 'Profile across events (drafts, not shown yet)',
+  training: 'AI training consent (drafts, not shown yet)',
   email: 'E-mails',
   screen: 'Giant screen',
   tour: 'Guided tour',

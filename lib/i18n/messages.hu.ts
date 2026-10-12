@@ -108,6 +108,10 @@ export const hu: Record<MessageKey, string> = {
   'profile.consent.purpose': 'a következő eseményeiről szóló hírek e-mailben való elküldése',
   'profile.consent.link': 'profilom',
   'profile.notice': 'Az eseményeinken készített fotóidat az e-mail-címed alatt tároljuk, hogy egy helyen megtalálhasd, letölthesd és törölhesd őket.',
+  // Az annotált fotók felhasználása az automatikus annotálás tanítására (issue 628, a tulajdonos 457-es válasza): vázlatok, amelyeket az átnézők hagynak jóvá és módosítanak a Szótárban; egyelőre egy oldal sem mutatja őket.
+  'training.consent': 'Hozzájárulok, hogy a(z) {organiser} a fotómat – a nevem és az e-mail-címem nélkül –, valamint a hozzá az ellenőrzés során rögzített címkéket (például hány személy látható rajta, a becsült korcsoportjuk, nemük és arckifejezésük, mit viselnek vagy tartanak a kezükben, illetve miért nem hagyták jóvá a fotót) olyan szoftver tanítására és tesztelésére használja fel, amely ezt később automatikusan el tudja végezni. A hozzájárulásomat bármikor visszavonhatom itt: {link}.',
+  'training.consent.link': 'a fotóim oldala',
+  'training.notice': 'Ha nem jelölöd be, az a fotódon és a linkeden semmit nem változtat.',
   'accept.mustAccept': 'A folytatáshoz el kell fogadnod',
   'accept.newTab': '{text} (új lapon nyílik meg)',
   'accept.optional': '(nem kötelező)',
