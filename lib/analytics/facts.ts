@@ -7,6 +7,7 @@
  */
 
 import { deviceClassOf, storedDeviceClass, type DeviceClass } from '@/lib/device/coarse';
+import { KEY_PATTERN } from '@/lib/photo-vetting/vocabulary';
 
 export { deviceClassOf };
 
@@ -50,6 +51,8 @@ export interface PhotoFacts {
   submittedAt: string | null;
   /** The approvals and rejections in the order they were made. */
   decisions: Decision[];
+  /** The reasons chosen when the photo was rejected: keys of the vocabulary (`Submission.rejectReasons`). Empty for a photo rejected before reasons existed, and for a photo that is not rejected. */
+  rejectReasons: string[];
   identity: Identity;
   /** A lower-case e-mail, else `id:<account id>`, else null: what tells two users apart. */
   userKey: string | null;
@@ -86,6 +89,7 @@ export const PHOTO_PROJECTION = {
   'userInfo.email': 1,
   reviewStatus: 1,
   reviewHistory: 1,
+  rejectReasons: 1,
   'photoReview.submittedAt': 1,
   'photoReview.shareOptIn': 1,
   isShareVisible: 1,
@@ -132,6 +136,12 @@ function decisionsOf(value: unknown): Decision[] {
     out.push({ action: row.action, by: text(row.by) ?? 'unknown', at, reason: text(row.reason) });
   }
   return out.sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/** The reason keys of a rejection: strings shaped like a vocabulary key, each once; anything else is left out. */
+function reasonKeysOf(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((key): key is string => typeof key === 'string' && KEY_PATTERN.test(key)))];
 }
 
 function consentsOf(value: unknown): ConsentFact[] {
@@ -220,6 +230,7 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
     review,
     submittedAt: text(photoReview.submittedAt) ?? createdAt,
     decisions,
+    rejectReasons: reasonKeysOf(doc.rejectReasons),
     identity,
     userKey: source === 'editor' ? null : email ?? (signedIn ? `id:${userId}` : null),
     email: source === 'editor' ? null : email,

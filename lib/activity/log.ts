@@ -45,12 +45,12 @@ export interface ObservedPerson {
   role?: string | null;
 }
 
-const MANAGEMENT_PREFIXES = ['/api/admin/', '/api/events', '/api/partners', '/api/slideshows', '/api/slideshow-layouts', '/api/frames', '/api/images', '/api/sample-selfies', '/api/stadium-backgrounds', '/api/qr-texts', '/api/logos', '/api/landing-pages', '/api/hashtags', '/api/upload-logo', '/api/tryon'] as const;
+const MANAGEMENT_PREFIXES = ['/api/admin/', '/api/events', '/api/partners', '/api/slideshows', '/api/slideshow-layouts', '/api/frames', '/api/images', '/api/sample-selfies', '/api/stadium-backgrounds', '/api/qr-texts', '/api/annotation-vocabulary', '/api/logos', '/api/landing-pages', '/api/hashtags', '/api/upload-logo', '/api/tryon'] as const;
 
 /** Requests that are neither a management action nor worth recording when they fail: beacons and reports the screens and phones send all the time. */
 const NOISE = [/^\/api\/observability\//, /^\/api\/media\/broken$/, /^\/api\/slideshows\/[^/]+\/(played|next-candidate)$/, /^\/api\/auth\//, /^\/api\/go-short\//];
 
-const QUERY_KEYS = ['id', 'eventId', 'slug', 'slideshowId'] as const;
+const QUERY_KEYS = ['id', 'eventId', 'slug', 'slideshowId', 'level'] as const;
 const MAX_MESSAGE = 300;
 
 const isReadMethod = (method: string) => method === 'GET' || method === 'HEAD' || method === 'OPTIONS';

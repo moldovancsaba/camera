@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
 import { countPhotoQueue, countWaitingPhotos, isQueueStatus, loadPhotoQueue, queueFilter, toPhotoQueueItem } from './queue';
+import { STANDARD_VOCABULARY as V, resolveVocabulary } from './vocabulary';
 
 const base = () => ({
   _id: new ObjectId(),
@@ -14,7 +15,7 @@ const base = () => ({
 });
 
 test('a waiting photo shows its private photo and the guest; a try-on request held with an old photo is not shown', () => {
-  const item = toPhotoQueueItem({ ...base(), photoReview: { photoUrl: 'https://s/pending/e/abc.jpg', shareOptIn: true, tryOn: { leatherSuitId: 's' } }, tryOnRequest: { requested: true } });
+  const item = toPhotoQueueItem({ ...base(), photoReview: { photoUrl: 'https://s/pending/e/abc.jpg', shareOptIn: true, tryOn: { leatherSuitId: 's' } }, tryOnRequest: { requested: true } }, V);
   assert.deepEqual([item.status, item.name, item.email, item.photoUrl, item.frameKind, item.shareOptIn, item.last], ['pending_review', 'Ann', 'ann@example.com', 'https://s/pending/e/abc.jpg', 'generated', true, null]);
   assert.equal('tryOnRequested' in item, false);
 });
@@ -26,16 +27,42 @@ test('an approved photo shows the real picture and the last decision', () => {
     imageUrl: 'https://s/submission-1.jpg',
     photoReview: { photoUrl: null, shareOptIn: false },
     reviewHistory: [{ action: 'reject', by: 'a', at: 't1', reason: 'blurry' }, { action: 'approve', by: 'mod@example.com', at: 't2', reason: null }],
-  });
+  }, V);
   assert.equal(item.photoUrl, 'https://s/submission-1.jpg');
   assert.deepEqual(item.last, { action: 'approve', by: 'mod@example.com', at: 't2', reason: null });
 });
 
 test('frame kinds and missing names are read defensively', () => {
-  assert.equal(toPhotoQueueItem({ ...base(), frameVariant: undefined, frameId: 'f1' }).frameKind, 'own');
-  assert.equal(toPhotoQueueItem({ ...base(), frameVariant: undefined }).frameKind, 'none');
-  const anonymous = toPhotoQueueItem({ ...base(), userInfo: undefined, userName: undefined });
+  assert.equal(toPhotoQueueItem({ ...base(), frameVariant: undefined, frameId: 'f1' }, V).frameKind, 'own');
+  assert.equal(toPhotoQueueItem({ ...base(), frameVariant: undefined }, V).frameKind, 'none');
+  const anonymous = toPhotoQueueItem({ ...base(), userInfo: undefined, userName: undefined }, V);
   assert.deepEqual([anonymous.name, anonymous.email], ['Guest', null]);
+});
+
+test('the people of a photo are read with the vocabulary of the event: a custom option still reads as marked, and the standard list alone would lose it', () => {
+  const people = [{ id: 'a', box: { x: 10, y: 10, w: 20, h: 20 }, gender: 'female', age: 'adult', merch: ['poncho'] }];
+  const event = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'poncho', label: 'Poncho', custom: true }] } });
+  const withEventList = toPhotoQueueItem({ ...base(), people }, event);
+  assert.deepEqual([withEventList.peopleMarked, withEventList.people.length, withEventList.people[0].merch], [true, 1, ['poncho']]);
+  const withStandardList = toPhotoQueueItem({ ...base(), people }, V);
+  assert.deepEqual([withStandardList.peopleMarked, withStandardList.people.length], [true, 0], 'marked, but the list does not know the item: the people do not read');
+  const hiddenLater = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'scarf', hidden: true }] } });
+  assert.equal(toPhotoQueueItem({ ...base(), people: [{ ...people[0], merch: ['scarf'] }] }, hiddenLater).people.length, 1, 'an option hidden since still reads in the photo it was given to');
+});
+
+test('the queue reads the people of every photo with the vocabulary it is given', async () => {
+  const doc = { ...base(), people: [{ id: 'a', box: { x: 10, y: 10, w: 20, h: 20 }, gender: 'female', age: 'adult', merch: ['poncho'] }] };
+  const db = { collection: () => ({ find: () => ({ sort: () => ({ limit: () => ({ toArray: async () => [doc] }) }) }) }) } as never;
+  const event = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'poncho', label: 'Poncho', custom: true }] } });
+  assert.equal((await loadPhotoQueue(db, 'e1', 'pending_review', event))[0].people.length, 1);
+  assert.equal((await loadPhotoQueue(db, 'e1', 'pending_review', V))[0].people.length, 0);
+});
+
+test('the reject reasons of a rejected photo are on its item: the keys, none for a photo rejected before reasons existed, and only text keys are kept', () => {
+  assert.deepEqual(toPhotoQueueItem({ ...base(), reviewStatus: 'rejected', rejectReasons: ['nudity', 'alcohol'] }, V).rejectReasons, ['nudity', 'alcohol']);
+  assert.deepEqual(toPhotoQueueItem({ ...base(), reviewStatus: 'rejected' }, V).rejectReasons, []);
+  assert.deepEqual(toPhotoQueueItem({ ...base(), rejectReasons: ['nudity', 3, null, ''] }, V).rejectReasons, ['nudity']);
+  assert.deepEqual(toPhotoQueueItem({ ...base(), rejectReasons: 'nudity' }, V).rejectReasons, []);
 });
 
 test('the queue covers photos that went through vetting for one event, not archived', () => {
@@ -58,8 +85,8 @@ test('the waiting list is oldest first, decided lists newest first, and the coun
       countDocuments: async (filter: { reviewStatus: string }) => (counted.push(filter.reviewStatus), filter.reviewStatus === 'pending_review' ? 3 : 1),
     }),
   } as never;
-  assert.equal((await loadPhotoQueue(db, 'e1', 'pending_review')).length, 1);
-  await loadPhotoQueue(db, 'e1', 'approved');
+  assert.equal((await loadPhotoQueue(db, 'e1', 'pending_review', V)).length, 1);
+  await loadPhotoQueue(db, 'e1', 'approved', V);
   assert.deepEqual(sorts, [{ createdAt: 1 }, { createdAt: -1 }]);
   assert.deepEqual(await countPhotoQueue(db, 'e1'), { pending_review: 3, rejected: 1, approved: 1 });
   assert.deepEqual(counted, ['pending_review', 'rejected', 'approved']);

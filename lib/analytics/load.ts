@@ -8,6 +8,7 @@
 
 import type { Db } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { PHOTO_PROJECTION, photoFactsOf, type PhotoFacts } from './facts';
 import { loadJourneySummary, type JourneySummary } from './journey';
 import { buildEventReport, buildEventsTable, type EventReport, type EventsTableRow, type RegistrationFact, type ReportOptions } from './report';
@@ -22,6 +23,9 @@ export interface AnalyticsEvent {
   shortUrlSlug: string | null;
   uiLanguage: string | null;
   messmassEventId: string | null;
+  /** Where the event's annotation vocabulary comes from (the partner's list and the event's own); left out when the event has none. */
+  partnerId?: string;
+  annotationVocabulary?: unknown;
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
@@ -34,6 +38,8 @@ export function analyticsEventOf(doc: Record<string, unknown>): AnalyticsEvent {
     shortUrlSlug: text(doc.shortUrlSlug),
     uiLanguage: text(doc.uiLanguage),
     messmassEventId: text(doc.messmassEventId),
+    ...(text(doc.partnerId) ? { partnerId: text(doc.partnerId) as string } : {}),
+    ...(doc.annotationVocabulary ? { annotationVocabulary: doc.annotationVocabulary } : {}),
   };
 }
 
@@ -81,16 +87,17 @@ export interface EventAnalytics {
   journey: JourneySummary;
 }
 
-/** Everything the Analytics view of one event shows. */
+/** Everything the Analytics view of one event shows, in the words of the event's annotation vocabulary. */
 export async function loadEventAnalytics(db: Db, event: AnalyticsEvent, options: ReportOptions): Promise<EventAnalytics> {
-  const [photos, registrations, slideshows, sources, journey] = await Promise.all([
+  const [photos, registrations, slideshows, sources, journey, vocabulary] = await Promise.all([
     loadPhotoFacts(db, event),
     loadRegistrations(db, event),
     loadSlideshowNames(db, event),
     loadSources(db, event, options),
     loadJourneySummary(db, event.eventId, options),
+    loadEventVocabulary(db, { partnerId: event.partnerId, annotationVocabulary: event.annotationVocabulary }),
   ]);
-  return { event, report: buildEventReport({ photos, registrations, slideshows }, options), sources, journey };
+  return { event, report: buildEventReport({ photos, registrations, slideshows, vocabulary }, options), sources, journey };
 }
 
 export interface AllEventsAnalytics {

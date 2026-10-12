@@ -183,3 +183,10 @@ test('the Devices figure keeps working for old and new photos (decision 243): a 
   assert.ok(Object.keys(PHOTO_PROJECTION).includes('metadata.deviceInfo'), 'the old string is still read');
   assert.equal(Object.keys(PHOTO_PROJECTION).some((key) => /ipAddress|\.ip$/.test(key)), false, 'the address is read by nothing');
 });
+
+test('the reasons of a rejection are the keys stored with the photo: each once, only keys shaped like a vocabulary key, none when the field is missing', () => {
+  assert.deepEqual(photoFactsOf(vetted({ reviewStatus: 'rejected', rejectReasons: ['nudity', 'alcohol', 'nudity', 'Not A Key', 7, null, '', 'x'.repeat(41)] }))?.rejectReasons, ['nudity', 'alcohol']);
+  assert.deepEqual(photoFactsOf(vetted({ reviewStatus: 'rejected' }))?.rejectReasons, [], 'rejected before reasons existed');
+  assert.deepEqual(photoFactsOf(vetted({ rejectReasons: 'nudity' }))?.rejectReasons, [], 'not a list');
+  assert.ok(Object.keys(PHOTO_PROJECTION).includes('rejectReasons'));
+});
