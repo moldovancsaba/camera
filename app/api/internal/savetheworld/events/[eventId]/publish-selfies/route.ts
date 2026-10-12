@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiSuccess, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
+import { eventAsksForGalleryPermission } from '@/lib/savetheworld/gallery-asked';
 import { buildEventSubmissionsFilter, buildPublishSelfiesFilter } from '@/lib/savetheworld/publishSelfies';
 
 /**
@@ -11,7 +12,9 @@ import { buildEventSubmissionsFilter, buildPublishSelfiesFilter } from '@/lib/sa
  *
  * Bulk-sets isShareVisible=true on every plain fan photo (never a stored try-on result) for this
  * event that was not yet share-visible. Used to retroactively publish selfies
- * taken before shareOptIn defaulted to true.
+ * taken before shareOptIn defaulted to true. When the event (or its partner) asks for the
+ * public-gallery permission (issue 554), only photos that carry the ticked-box marker are
+ * published, so an old photo without evidence is never made public in bulk.
  *
  * Looks up the event by camera eventId, Mongo _id, OR savetheworldEventId so
  * both the admin URL identifier and the public page identifier work.
@@ -41,8 +44,9 @@ export const POST = withErrorHandler(async (
   }
   const eventDoc = await db.collection(COLLECTIONS.EVENTS).findOne(
     { $or: orClauses },
-    { projection: { eventId: 1 } },
+    { projection: { eventId: 1, galleryConsent: 1, partnerId: 1 } },
   );
+  const asked = await eventAsksForGalleryPermission(db, eventDoc);
 
   // Build the full set of identifiers submissions might carry.
   const eventKeys = Array.from(
@@ -58,7 +62,7 @@ export const POST = withErrorHandler(async (
   // scope entirely, so the update ran across every event.
   const [total, result] = await Promise.all([
     db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(buildEventSubmissionsFilter(eventKeys)),
-    db.collection(COLLECTIONS.SUBMISSIONS).updateMany(buildPublishSelfiesFilter(eventKeys), {
+    db.collection(COLLECTIONS.SUBMISSIONS).updateMany(buildPublishSelfiesFilter(eventKeys, asked), {
       $set: { isShareVisible: true },
     }),
   ]);

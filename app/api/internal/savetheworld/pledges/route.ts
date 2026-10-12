@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiSuccess, withErrorHandler, checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
+import { eventAsksForGalleryPermission } from '@/lib/savetheworld/gallery-asked';
 import { buildWallFilter } from '@/lib/savetheworld/wall';
 
 /**
@@ -16,7 +17,8 @@ import { buildWallFilter } from '@/lib/savetheworld/wall';
  * Privacy boundary — these land on a public marketing page, so this returns
  * only plain photos (never a stored try-on result) whose `isShareVisible` is `true` (strict opt-in:
  * a missing or `false` flag is never public; legacy photos become public only
- * through the admin's publish-selfies action), and never
+ * through the admin's publish-selfies action; an event that asks for the public-gallery permission,
+ * issue 554, also needs the ticked-box marker on the photo), and never
  * `userEmail`/`userInfo`. Display name only, and only when the user set one.
  * A submission qualifies only if it has a displayable image; the returned
  * `imageUrl` is `previewImageUrl`, else `finalImageUrl` (the framed
@@ -57,7 +59,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   // resolve the event and match submissions on every identifier it has.
   const eventDoc = await db.collection(COLLECTIONS.EVENTS).findOne(
     ObjectId.isValid(eventId) ? { $or: [{ eventId }, { _id: new ObjectId(eventId) }] } : { eventId },
-    { projection: { eventId: 1 } }
+    { projection: { eventId: 1, galleryConsent: 1, partnerId: 1 } }
   );
   const eventKeys = Array.from(new Set([eventId, eventDoc?.eventId, eventDoc ? String(eventDoc._id) : null].filter((k): k is string => Boolean(k))));
   const eventMatch = { $or: [{ eventId: { $in: eventKeys } }, { eventIds: { $in: eventKeys } }] };
@@ -89,8 +91,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   // Submissions link to an event via the legacy single-event mirror (eventId) or
   // the multi-event array (eventIds[]); buildWallFilter matches both and requires
-  // isShareVisible === true.
-  const wallFilter = buildWallFilter(eventKeys);
+  // isShareVisible === true (and the ticked-box marker when the event asks for the permission).
+  const wallFilter = buildWallFilter(eventKeys, await eventAsksForGalleryPermission(db, eventDoc));
   const [submissions, total] = await Promise.all([
     db.collection(COLLECTIONS.SUBMISSIONS).find(wallFilter).sort({ createdAt: -1 }).limit(limit).toArray(),
     db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(wallFilter),
