@@ -13,6 +13,13 @@ test('what a person who manages the service changes is an activity, with who, wh
   assert.equal(activityOf(req('DELETE', '/api/admin/events/e1/gallery-frame'), 200, ADMIN, NOW)?.outcome, 'ok');
 });
 
+test('a save of the vetting words says which level and which partner or event it changed (issue 628)', () => {
+  const r = activityOf(req('PUT', '/api/annotation-vocabulary', 'level=event&id=65f0c0ffee0000000000abcd'), 200, ADMIN, NOW);
+  assert.equal(r?.path, '/api/annotation-vocabulary?id=65f0c0ffee0000000000abcd&level=event');
+  assert.equal(r?.outcome, 'ok');
+  assert.equal(activityOf(req('PUT', '/api/annotation-vocabulary', 'level=general'), 200, ADMIN, NOW)?.path, '/api/annotation-vocabulary?level=general');
+});
+
 test('a read is not an activity unless the server failed it; a guest\'s photo or a beacon is not an activity when it works', () => {
   assert.equal(activityOf(req('GET', '/api/events/e1'), 200, ADMIN, NOW), null);
   assert.equal(activityOf(req('GET', '/api/events/e1'), 404, ADMIN, NOW), null, 'a missing page is not an event of its own');
@@ -60,6 +67,7 @@ test('paths, outcomes and the switch', () => {
   assert.equal(isManagementPath('/api/sample-selfies'), true);
   assert.equal(isManagementPath('/api/qr-texts'), true, 'the QR text library (issue 326)');
   assert.equal(isManagementPath('/api/qr-texts/abc'), true);
+  assert.equal(isManagementPath('/api/annotation-vocabulary'), true, 'the words of the vetting screen: a save by a partner manager or an admin is an activity (issue 628)');
   assert.equal(isManagementPath('/api/events/e1/register'), true, 'a sub-path of events is under the prefix; the register call of a guest is a POST that is ok without a signed-in person and so not recorded');
   assert.equal(isManagementPath('/api/eventsfoo'), false);
   assert.equal(isManagementPath('/api/submissions'), false);

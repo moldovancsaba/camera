@@ -178,8 +178,8 @@ export function parseStoredVocabulary(input: unknown): ParsedStored {
   return { ok: true, value: { options } };
 }
 
-/** A level as stored, read leniently: what is not valid is left out, so a damaged value never takes the vetting screen down. */
-function readStored(input: unknown): StoredOption[] {
+/** A level as stored, read leniently: what is not valid is left out, so a damaged value never takes the vetting screen down (the editors read a level the same way). */
+export function readStored(input: unknown): StoredOption[] {
   const raw = input && typeof input === 'object' && !Array.isArray(input) ? (input as { options?: unknown }).options : null;
   if (!Array.isArray(raw)) return [];
   const out: StoredOption[] = [];
@@ -205,11 +205,11 @@ function versionOf(options: readonly VocabOption[]): string {
   return `v${hash.toString(16).padStart(8, '0')}`;
 }
 
-/**
- * The list an event works with: the standard list, then the general level, the partner and the event, each over the one before. A stored option with a known key changes its label, order or
- * hidden state; a custom option is added to the list from its level down. Within a group the options are in order, then by label.
- */
-export function resolveVocabulary(levels: { general?: unknown; partner?: unknown; event?: unknown } = {}): ResolvedVocabulary {
+/** The levels an editor can change: everything above the standard list, which is code. */
+export type EditableLevel = Exclude<VocabLevel, 'standard'>;
+
+/** The standard list as a map of `group:key`, in the order the screens show it. */
+function standardMap(): Map<string, VocabOption> {
   const map = new Map<string, VocabOption>();
   const counters = new Map<VocabGroup, number>();
   for (const standard of STANDARD_OPTIONS) {
@@ -217,28 +217,55 @@ export function resolveVocabulary(levels: { general?: unknown; partner?: unknown
     counters.set(standard.group, position + 1);
     map.set(`${standard.group}:${standard.key}`, { group: standard.group, key: standard.key, label: standard.label, order: position * 10, active: standard.enabled, custom: false, level: 'standard', ...(standard.messmass ? { messmass: standard.messmass } : {}) });
   }
-  const order: Array<[VocabLevel, unknown]> = [['general', levels.general], ['partner', levels.partner], ['event', levels.event]];
-  for (const [level, stored] of order) {
-    for (const option of readStored(stored)) {
-      const id = `${option.group}:${option.key}`;
-      const existing = map.get(id);
-      if (existing) {
-        map.set(id, {
-          ...existing,
-          ...(option.label ? { label: option.label } : {}),
-          ...(typeof option.order === 'number' ? { order: option.order } : {}),
-          ...(typeof option.hidden === 'boolean' ? { active: !option.hidden } : {}),
-          level,
-        });
-      } else if (option.custom && option.label) {
-        const inGroup = [...map.values()].filter((o) => o.group === option.group).length;
-        if (inGroup >= MAX_OPTIONS_PER_GROUP) continue;
-        map.set(id, { group: option.group, key: option.key, label: option.label, order: typeof option.order === 'number' ? option.order : 1000 + inGroup, active: option.hidden !== true, custom: true, level });
-      }
+  return map;
+}
+
+/** One level over the list below it: a stored option with a known key changes its label, order or hidden state; a custom option is added to the list from this level down. */
+function applyLevel(map: Map<string, VocabOption>, level: EditableLevel, stored: unknown): void {
+  for (const option of readStored(stored)) {
+    const id = `${option.group}:${option.key}`;
+    const existing = map.get(id);
+    if (existing) {
+      map.set(id, {
+        ...existing,
+        ...(option.label ? { label: option.label } : {}),
+        ...(typeof option.order === 'number' ? { order: option.order } : {}),
+        ...(typeof option.hidden === 'boolean' ? { active: !option.hidden } : {}),
+        level,
+      });
+    } else if (option.custom && option.label) {
+      const inGroup = [...map.values()].filter((o) => o.group === option.group).length;
+      if (inGroup >= MAX_OPTIONS_PER_GROUP) continue;
+      map.set(id, { group: option.group, key: option.key, label: option.label, order: typeof option.order === 'number' ? option.order : 1000 + inGroup, active: option.hidden !== true, custom: true, level });
     }
   }
-  const options = [...map.values()].sort((a, b) => VOCAB_GROUPS.indexOf(a.group) - VOCAB_GROUPS.indexOf(b.group) || a.order - b.order || a.label.localeCompare(b.label));
+}
+
+/** The map as the list screens read it: in order within each group (then by label, then by key, so two options never swap places between two runs), with its version. */
+function finish(map: Map<string, VocabOption>): ResolvedVocabulary {
+  const options = [...map.values()].sort((a, b) => VOCAB_GROUPS.indexOf(a.group) - VOCAB_GROUPS.indexOf(b.group) || a.order - b.order || a.label.localeCompare(b.label) || a.key.localeCompare(b.key));
   return { options, version: versionOf(options) };
+}
+
+/**
+ * The list an event works with: the standard list, then the general level, the partner and the event, each over the one before. A stored option with a known key changes its label, order or
+ * hidden state; a custom option is added to the list from its level down. Within a group the options are in order, then by label.
+ */
+export function resolveVocabulary(levels: { general?: unknown; partner?: unknown; event?: unknown } = {}): ResolvedVocabulary {
+  const map = standardMap();
+  const order: Array<[EditableLevel, unknown]> = [['general', levels.general], ['partner', levels.partner], ['event', levels.event]];
+  for (const [level, stored] of order) applyLevel(map, level, stored);
+  return finish(map);
+}
+
+/**
+ * One level over a list that is already resolved: the same rules as `resolveVocabulary`, for an editor that has the list of the levels above (`parent`) and is changing the options of its own
+ * level. The editor needs it in the browser, where only the resolved parent is known, not the levels it was made from.
+ */
+export function resolveOver(parent: ResolvedVocabulary, level: EditableLevel, stored: unknown): ResolvedVocabulary {
+  const map = new Map<string, VocabOption>(parent.options.map((option) => [`${option.group}:${option.key}`, { ...option }]));
+  applyLevel(map, level, stored);
+  return finish(map);
 }
 
 /** The standard list as it is with nothing changed anywhere. */
