@@ -829,7 +829,7 @@ const capturePhoto = async () => {
 **Issue**: Replacing the capture page's `alert()` calls needed a notice that is visible, non-blocking and does not cover the actions.
 
 **Context**:
-- `useGdsToasts()` (`@sovereignsquad/gds-core/client`) only writes to the provider's state and a visually hidden `aria-live` region; the visible list is the separate `GdsNotificationCenter` component, which nothing in this app mounts. The admin pages call it in about 50 places, so their toasts probably reach screen readers only (camera tracks it separately).
+- `useGdsToasts()` (`@sovereignsquad/gds-core/client`) only writes to the provider's state and a visually hidden `aria-live` region; the visible list is the separate `GdsNotificationCenter` component, which nothing in this app mounts. The admin pages called it (8 files), so their notices were invisible and, measured later, not announced either: see FRONT-020 (camera#229, fixed with `components/admin/notify.ts`).
 - `showGdsNotification` (`@sovereignsquad/gds-theme/client`) renders through the Mantine `<Notifications />` host that `GdsProvider` already mounts, so it is visible, but the host sits at the bottom right and stretches across a phone, which covered the Try again and Next buttons.
 
 **Solution**:
@@ -1345,6 +1345,26 @@ _Use this template for new learnings:_
 **Key Decisions**: a lock for a kind of screen belongs where the screens are drawn, so a page type added later is locked by default and the consent page is the one named exception; lock the zoom without locking the scroll. Not confirmed on a phone: a desktop browser cannot pinch, so the issue stays open until the owner's phone check (CLAUDE.md section 7).
 
 **Last Updated**: 2026-10-09T00:00:00.000Z
+
+### [FRONT-020] Admin notices were invisible: `useGdsToasts` draws nothing without a `GdsNotificationCenter`, and its hidden live region stays empty too — 2026-10-12T00:00:00.000Z
+
+**Issue**: The admin's "Saved", "Pages saved", "URL copied" and "Delete failed" notices (8 files, about 15 calls) never appeared. An editor who saved or failed to delete got no feedback except where the page also wrote its own `InlineAlert`.
+
+**Context**:
+- In GDS 6.8.0 `GdsToastProvider` mounts its own nested `GdsNotificationProvider`; `useGdsToasts().notifySuccess / notifyError` only call `notify`, which puts the message into that provider's state. The state is drawn by `GdsNotificationCenter`, a separate component that nothing in this app mounts (a permanent "Notifications / No active notifications" panel is not a toast and needs a design decision, so it was not mounted).
+- The first guess, "at least screen readers hear it", was wrong. The provider's visually hidden live region is filled only for a notice with `persistence: 'announcement-only'`, `announcementOnly` or a disabled provider; a toast is none of these. Measured in a browser harness (the real Journey defaults page, API mocked, 1280 px and 390 px): after a save or a failed save the toast text appeared nowhere in the DOM, visible or hidden, and the live region was empty.
+- `showGdsNotification` (`@sovereignsquad/gds-theme/client`) draws through the Mantine `<Notifications />` host that `GdsProvider` already mounts (the capture page uses it, FRONT-012), and Mantine's notification carries `role="alert"`, so it is both visible and announced.
+
+**Solution**:
+- `components/admin/notify.ts`: `notifyAdminSuccess` and `notifyAdminError` (a string, or `{ title, message }` as the toast calls had it) on top of `showGdsNotification`. A success closes after 4 s and an error stays until it is dismissed, as the GDS toast defaults were; both are passed explicitly.
+- All 8 admin files use it; `GdsToastProvider` is gone from `components/gds/CameraGdsProvider.tsx` (no GDS component reads the toast context), so a new `useGdsToasts()` throws instead of silently drawing nothing. `components/admin/notify.test.ts` also fails if `useGdsToasts` or `GdsToastProvider` appears under `app/` or `components/`.
+- Before and after, with the same script: before, 0 visible notices for success, failure and the raw buttons at both widths; after, each shows its title and text, the success is gone after about 4 s, the error is still there after 9.6 s and closes with its button, the notice stays inside the viewport at 390 px and the page gains no horizontal scroll from it.
+
+**Key Decisions**: a feedback component is checked by looking for the text on the screen, not by reading that the provider exists; when a library hook needs a second component to draw anything, wrap the library function that draws by itself and ban the hook with a test. Upstream: sovereignsquad/general-design-system#942.
+
+**Last Updated**: 2026-10-12T00:00:00.000Z
+
+---
 
 ---
 

@@ -19,7 +19,8 @@ import {
   AdminTextarea,
   FormSection,
 } from '@sovereignsquad/gds-admin/client';
-import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { notifyAdminError } from '@/components/admin/notify';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
 import { parseMessageArea, type MessageArea } from '@/lib/frame/message-area';
 
@@ -68,7 +69,6 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { confirmDestructive } = useGdsConfirm();
-  const { notifyError } = useGdsToasts();
 
   useEffect(() => {
     async function fetchFrame() {
@@ -138,7 +138,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
     } catch (err: unknown) {
       const message = getErrorMessage(err);
       setError(message);
-      notifyError({ title: 'Delete failed', message });
+      notifyAdminError({ title: 'Delete failed', message });
       setIsDeleting(false);
     }
   };
