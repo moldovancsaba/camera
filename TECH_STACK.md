@@ -225,8 +225,7 @@ Read with `npm ls --depth=0` on 2026-10-11 (Node 24.19, npm 10.9); `package.json
 | MongoDB driver | 6.21.0 | `^6.8.0` |
 | Playwright | 1.61.1 | `^1.60.0` |
 
-`@types/node` is on the 20 line (20.19.43) while the runtime is Node 24; it is a known gap listed in the
-dependency audit.
+`@types/node` follows the runtime (`^24.19.2`, Node 24); it was on the 20 line until the sweep of 2026-10-11.
 
 ## Dependency health
 
