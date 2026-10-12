@@ -5,7 +5,7 @@
  * sentence) or a reviewer's name for a formula; a cell with a comma, a quote or a line break is quoted. Times are as stored (ISO, UTC); days are the days of the chosen clock.
  */
 
-import { PERSON_OPTIONS, EMOTION_OPTIONS, MERCH_OPTIONS } from '@/lib/photo-vetting/people';
+import { optionLabel, STANDARD_VOCABULARY } from '@/lib/photo-vetting/vocabulary';
 import { isRecorded, type JourneySummary } from './journey';
 import type { EventReport } from './report';
 import type { SourcesReport } from './sources';
@@ -68,10 +68,12 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport, jour
   add('people', 'photos looked at', people.photos);
   add('people', 'photos with somebody in them', people.photosWithPeople);
   add('people', 'people', people.people);
-  for (const option of PERSON_OPTIONS) add('people', option.label, people.byPerson[option.id] ?? 0);
-  for (const option of EMOTION_OPTIONS) add('people emotion', option.label, people.byEmotion[option.id]);
-  add('people merchandise', 'people with any', people.withMerch);
-  for (const option of MERCH_OPTIONS) add('people merchandise', option.label, people.byMerch[option.id]);
+  // The words of the standard list; the key of an option an event added reads as its key made readable.
+  for (const [key, count] of Object.entries(people.byGender)) add('people gender', optionLabel(STANDARD_VOCABULARY, 'gender', key), count);
+  for (const [key, count] of Object.entries(people.byAge)) add('people age', optionLabel(STANDARD_VOCABULARY, 'age', key), count);
+  for (const [key, count] of Object.entries(people.byEmotion)) add('people emotion', optionLabel(STANDARD_VOCABULARY, 'emotion', key), count);
+  add('people items', 'people with any', people.withMerch);
+  for (const [key, count] of Object.entries(people.byMerch)) add('people items', optionLabel(STANDARD_VOCABULARY, 'merch', key), count);
   tallies('people marked by', report.people.markers);
 
   const { users } = report;

@@ -25,6 +25,7 @@
 
 import type { ReframeRecord } from '@/lib/camera/reframe';
 import type { PersonTag } from '@/lib/photo-vetting/people';
+import type { StoredVocabulary } from '@/lib/photo-vetting/vocabulary';
 import { ObjectId } from 'mongodb';
 import type { FrameDesign } from '@/lib/frame/context';
 import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
@@ -172,6 +173,8 @@ export interface Partner {
   acceptanceOnWhoAreYou?: boolean | null;
   /** The partner's default for the other checkbox settings (issue 558, lib/events/checkbox-settings.ts): shown and required per checkbox kind; "required" of the gallery permission and of the acceptance sentence live here too. Missing = the standard of each. */
   consentSettings?: StoredCheckboxSettings | null;
+  /** What this partner changed in the words the vetting person describes a photo with (issue 628, lib/photo-vetting/vocabulary.ts): options hidden, relabelled, reordered or added. Missing = nothing changed; its events follow the general level. */
+  annotationVocabulary?: StoredVocabulary | null;
   /** The legal part of the e-mails of all events of this partner that did not set their own, per language (epic 463, lib/email/legal.ts): it follows the general one. */
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** The pictures every event of this partner shows in the picture fields it left empty (lib/events/partner-pictures.ts, issue 368): the plain https address each field stores. */
@@ -387,6 +390,8 @@ export interface Event {
   defaultPageOrders?: Record<string, number>;
   /** The big vetting view asks the reviewer to mark the people in each photo before approving or declining it (issue 542, lib/photo-vetting/people.ts). **On for every event unless it is `false`** (owner answer 264, 2026-10-10); only a global admin switches it off. */
   markPeopleInVetting?: boolean;
+  /** What this event changed in the words the vetting person describes a photo with (issue 628, lib/photo-vetting/vocabulary.ts). Missing = nothing changed; the event follows its partner, which follows the general level. */
+  annotationVocabulary?: StoredVocabulary | null;
   /**
    * What the photo window of the welcome page screen shows (issue 540, docs/WELCOME_SCREEN_PHOTO_PLAN.md; lib/screen/welcome-window.ts): `source` is `selfie` (the event's sample selfie, the default
    * when missing), `photo` (a photo of this event, `photoId` is its submission id) or `standin` (the drawn head and shoulders); `pick` is the sample selfie picked for this event, stored once so the picture does not change on every redraw.
@@ -872,7 +877,10 @@ export interface Submission {
    * merchandise. Missing: nobody looked yet; an empty list: looked, nobody marked. `peopleReview` says who marked them and when. Used by the analytics.
    */
   people?: PersonTag[];
-  peopleReview?: { by: string | null; at: string };
+  /** Who marked the people and when; `vocabulary` is the version of the list of words the marks were made with (lib/photo-vetting/vocabulary.ts), so marks made with different lists can be told apart. */
+  peopleReview?: { by: string | null; at: string; vocabulary?: string };
+  /** Why the photo was rejected, as keys of the `reject_reason` group of the vocabulary (issue 628); the free text of the decision stays in the review history. Missing on a photo that was not rejected (or rejected before reasons existed). */
+  rejectReasons?: string[];
   /** The user's own, separate permission to show the photo in the public gallery, kept as evidence (issue 554, lib/events/gallery-consent.ts): present only when the box was ticked. */
   publicGalleryConsent?: { version: 1; grantedAt: string; required?: true } | null;
   reviewHistory?: Array<{ action: 'approve' | 'reject'; by: string; at: string; reason?: string | null }>;

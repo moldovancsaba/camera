@@ -13,6 +13,7 @@ import MarkPeopleSwitch from '@/components/admin/MarkPeopleSwitch';
 import PeopleSummaryCard from '@/components/admin/PeopleSummaryCard';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { markPeopleOn, summarizePeople } from '@/lib/photo-vetting/people';
+import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
 
@@ -22,18 +23,19 @@ interface EventPhotoVettingProps {
   db: Db;
   /** The event's Mongo id, as used in /admin/events/<id>. */
   eventMongoId: string;
-  event: { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; markPeopleInVetting?: unknown };
+  event: { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; markPeopleInVetting?: unknown; partnerId?: unknown; annotationVocabulary?: unknown };
   status: QueueStatus;
   canChangeSetting: boolean;
 }
 
 export default async function EventPhotoVetting({ db, eventMongoId, event, status, canChangeSetting }: EventPhotoVettingProps) {
   const eventUuid = String(event.eventId ?? '');
-  const [items, counts, marked] = await Promise.all([
+  const [items, counts, marked, vocabulary] = await Promise.all([
     loadPhotoQueue(db, eventUuid, status),
     countPhotoQueue(db, eventUuid),
     // What the reviewers marked in this event's photos (issue 542): only the people, nothing else is read.
     db.collection(COLLECTIONS.SUBMISSIONS).find({ $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }], people: { $exists: true }, isArchived: { $ne: true } }, { projection: { people: 1 } }).limit(5000).toArray(),
+    loadEventVocabulary(db, event),
   ]);
   const required = photoVettingRequired(event);
   const any = counts.pending_review + counts.rejected + counts.approved > 0;
@@ -49,7 +51,7 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
 
       <PhotoVettingSwitch eventId={eventMongoId} required={required} canChange={canChangeSetting} />
       {required ? <MarkPeopleSwitch eventId={eventMongoId} on={markPeopleOn(event)} canChange={canChangeSetting} waiting={counts.pending_review} /> : null}
-      <PeopleSummaryCard summary={summarizePeople(marked as Array<{ people?: unknown }>)} />
+      <PeopleSummaryCard summary={summarizePeople(marked as Array<{ people?: unknown }>, vocabulary)} vocabulary={vocabulary} />
 
       {required || any ? (
         <>

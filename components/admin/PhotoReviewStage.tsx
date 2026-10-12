@@ -14,8 +14,36 @@ import Link from 'next/link';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { TextInput } from '@/components/gds/PublicPrimitives';
-import { EMOTION_OPTIONS, MERCH_OPTIONS, PERSON_OPTIONS, RECTANGLE_COLOURS, personOption, type Emotion, type Merch, type PersonBox, type PersonOption, type PersonTag } from '@/lib/photo-vetting/people';
+import { RECTANGLE_COLOURS, type PersonBox, type PersonTag } from '@/lib/photo-vetting/people';
 import type { PhotoQueueItem } from '@/lib/photo-vetting/queue';
+
+// The emoji buttons of this screen as they were (keys are the standard keys of lib/photo-vetting/vocabulary.ts); the one-screen review replaces this screen and its tables.
+type Emotion = string;
+type Merch = string;
+interface PersonOption { id: string; gender: string; age: string; emoji: string; label: string }
+const PERSON_OPTIONS: readonly PersonOption[] = [
+  { id: 'female-kid', gender: 'female', age: 'kid', emoji: '👶', label: 'Female kid' },
+  { id: 'female-young', gender: 'female', age: 'young', emoji: '👧', label: 'Female young' },
+  { id: 'female-adult', gender: 'female', age: 'adult', emoji: '👩', label: 'Female adult' },
+  { id: 'female-old', gender: 'female', age: 'old', emoji: '👵', label: 'Female old' },
+  { id: 'male-kid', gender: 'male', age: 'kid', emoji: '👶', label: 'Male kid' },
+  { id: 'male-young', gender: 'male', age: 'young', emoji: '👦', label: 'Male young' },
+  { id: 'male-adult', gender: 'male', age: 'adult', emoji: '🧔', label: 'Male adult' },
+  { id: 'male-old', gender: 'male', age: 'old', emoji: '👴', label: 'Male old' },
+];
+const EMOTION_OPTIONS: ReadonlyArray<{ id: Emotion; emoji: string; label: string }> = [
+  { id: 'sad', emoji: '☹️', label: 'Sad' },
+  { id: 'unamused', emoji: '😒', label: 'Unamused' },
+  { id: 'happy', emoji: '😃', label: 'Happy' },
+  { id: 'angry', emoji: '🤬', label: 'Angry' },
+];
+const MERCH_OPTIONS: ReadonlyArray<{ id: Merch; emoji: string; label: string }> = [
+  { id: 'cap', emoji: '🧢', label: 'Cap' },
+  { id: 'scarf', emoji: '🧣', label: 'Scarf' },
+  { id: 'jersey', emoji: '🎽', label: 'Jersey or shirt' },
+  { id: 'flag', emoji: '🇭🇺', label: 'Flag' },
+];
+const personOption = (gender: string, age: string): PersonOption => PERSON_OPTIONS.find((option) => option.gender === gender && option.age === age) ?? PERSON_OPTIONS[0];
 
 interface Props {
   eventId: string;
