@@ -205,7 +205,7 @@ test('pushPhotoStatsToMessmass posts the counters to the photo-stats route with 
     init = options;
     return new Response('{}', { status: 200 });
   }) as typeof fetch;
-  const payload = { totals: { imagesTaken: 5, imagesApproved: 3 }, averages: { avgVettingSeconds: 90 } };
+  const payload = { totals: { camera_images_taken: 5, camera_gender_female: 3 }, averages: { camera_avg_vetting_seconds: 90 }, labels: { camera_images_taken: 'Camera: images taken', camera_gender_female: 'Camera: gender, Female', camera_avg_vetting_seconds: 'Camera: average vetting time (seconds)' } };
   assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, payload), true);
   assert.equal(url, `https://messmass.example.test/api/integrations/camera/events/${EVENT_ID}/photo-stats`);
   assert.equal(init?.method, 'POST');
@@ -215,12 +215,12 @@ test('pushPhotoStatsToMessmass posts the counters to the photo-stats route with 
   assert.ok(init?.signal instanceof AbortSignal);
   assert.deepEqual(outcomes(lines), [['messmass.photo_stats_push', 'ok']]);
   assert.equal((lines[0].context as Record<string, unknown>).counters, 3);
-  assert.ok(!JSON.stringify(lines).match(/test-shared-secret|imagesTaken/), 'no secret and no numbers in the log');
+  assert.ok(!JSON.stringify(lines).match(/test-shared-secret|camera_images_taken/), 'no secret and no counter names in the log');
 });
 
 test('pushPhotoStatsToMessmass is false for a refusal (also the route not existing yet), a timeout and a network error, each logged, and never throws', async () => {
   const lines = captureLogs();
-  const payload = { totals: { imagesTaken: 1 }, averages: {} };
+  const payload = { totals: { camera_images_taken: 1 }, averages: {}, labels: {} };
   globalThis.fetch = (async () => new Response(null, { status: 404 })) as typeof fetch;
   assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, payload), false);
   globalThis.fetch = (async () => {
@@ -237,8 +237,31 @@ test('pushPhotoStatsToMessmass makes no request without a valid messmass id and 
   captureLogs();
   let called = false;
   globalThis.fetch = (async () => ((called = true), new Response('{}'))) as typeof fetch;
-  assert.equal(await pushPhotoStatsToMessmass('../admin', { totals: {}, averages: {} }), false);
+  assert.equal(await pushPhotoStatsToMessmass('../admin', { totals: { camera_images_taken: 1 }, averages: {}, labels: {} }), false);
   delete process.env.MESSMASS_BASE_URL;
-  assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, { totals: {}, averages: {} }), false);
+  assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, { totals: { camera_images_taken: 1 }, averages: {}, labels: {} }), false);
   assert.equal(called, false);
+});
+
+test('pushPhotoStatsToMessmass sends the body { totals, averages, labels } and never a name that breaks the contract: it is dropped and logged, and with nothing valid left no request is made', async () => {
+  const lines = captureLogs();
+  let body: Record<string, Record<string, unknown>> = {};
+  let calls = 0;
+  globalThis.fetch = (async (_input: unknown, options?: RequestInit) => {
+    calls += 1;
+    body = JSON.parse(String(options?.body));
+    return new Response('{}', { status: 200 });
+  }) as typeof fetch;
+  const payload = { totals: { camera_images_taken: 5.4, imagesTaken: 5, 'camera_Bad Name': 1, camera_big: 5_000_000_000 }, averages: { camera_avg_people_per_image: 1.5, avg_x: 2, camera_nan: Number.NaN }, labels: { camera_images_taken: 'Camera: images taken', imagesTaken: 'old', camera_avg_people_per_image: 'x'.repeat(200) } };
+  assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, payload), true);
+  assert.deepEqual(Object.keys(body).sort(), ['averages', 'labels', 'totals']);
+  assert.deepEqual(body.totals, { camera_images_taken: 5, camera_big: 1_000_000_000 });
+  assert.deepEqual(body.averages, { camera_avg_people_per_image: 1.5 });
+  assert.equal(Object.keys(body.labels).sort().join(), 'camera_avg_people_per_image,camera_images_taken');
+  assert.equal(String(body.labels.camera_avg_people_per_image).length, 80);
+  assert.ok(lines.some((line) => line.event === 'messmass.counter_dropped'), 'the drop is logged');
+  assert.equal((lines.find((line) => line.event === 'messmass.photo_stats_push')?.context as Record<string, unknown>).counters, 3);
+
+  assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, { totals: { imagesTaken: 1 }, averages: {}, labels: {} }), false, 'nothing valid to send: false, no request');
+  assert.equal(calls, 1);
 });

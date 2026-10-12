@@ -10,7 +10,11 @@ import { COUNTER_SYNC_THROTTLE_MS, loadEventCounters, syncEventCounters, type Co
 
 const T0 = new Date('2026-10-20T18:00:00.000Z');
 const MESSMASS_ID = 'a'.repeat(24);
-const COUNTERS: CounterSet = { totals: { imagesTaken: 5, imagesApproved: 3, imagesRejected: 1, imagesShownOnSlideshow: 40, consentAccepted: 4 }, averages: { avgVettingSeconds: 90 } };
+const COUNTERS: CounterSet = {
+  totals: { camera_images_taken: 5, camera_images_approved: 3, camera_images_rejected: 1, camera_images_shown_on_slideshow: 40, camera_consents_accepted: 4 },
+  averages: { camera_avg_vetting_seconds: 90 },
+  labels: { camera_images_taken: 'Camera: images taken', camera_images_approved: 'Camera: images approved', camera_images_rejected: 'Camera: images rejected', camera_images_shown_on_slideshow: 'Camera: images shown on the slideshow', camera_consents_accepted: 'Camera: consents accepted', camera_avg_vetting_seconds: 'Camera: average vetting time (seconds)' },
+};
 
 /** One linked event, the setting on or off, and fakes for the push and the counters: nothing real can be reached. */
 function setup(options: { on?: boolean; linked?: string | null; counterSync?: Record<string, unknown>; counters?: CounterSet } = {}) {
@@ -67,12 +71,12 @@ test('on, but the event is not linked to messmass (or the id is malformed): noth
 test('the first push sends the whole totals and the averages under their names, and remembers them with the time', async () => {
   const s = setup({ on: true });
   assert.equal(await syncEventCounters(s.db, s.event, {}, s.deps()), 'pushed');
-  assert.deepEqual(s.pushed, [{ id: MESSMASS_ID, payload: { totals: COUNTERS.totals, averages: COUNTERS.averages } }]);
+  assert.deepEqual(s.pushed, [{ id: MESSMASS_ID, payload: { totals: COUNTERS.totals, averages: COUNTERS.averages, labels: COUNTERS.labels } }]);
   assert.deepEqual(s.stored().counterSync, { pushedAt: T0.toISOString(), counters: COUNTERS });
 });
 
 test('inside the throttle window nothing is sent, and after it the new numbers are', async () => {
-  const s = setup({ on: true, counterSync: { pushedAt: new Date(T0.getTime() - COUNTER_SYNC_THROTTLE_MS + 1000).toISOString(), counters: { totals: { imagesTaken: 1 }, averages: {} } } });
+  const s = setup({ on: true, counterSync: { pushedAt: new Date(T0.getTime() - COUNTER_SYNC_THROTTLE_MS + 1000).toISOString(), counters: { totals: { camera_images_taken: 1 }, averages: {}, labels: {} } } });
   assert.equal(await syncEventCounters(s.db, s.event, {}, s.deps()), 'throttled');
   assert.equal(s.pushed.length, 0);
   assert.equal(s.loaded(), 0, 'a throttled call does not even read the photos');
@@ -96,7 +100,7 @@ test('a refused push is a failure and does not remember the numbers, so the next
 });
 
 test('no numbers at all: nothing is sent (never an empty push)', async () => {
-  const s = setup({ on: true, counters: { totals: {}, averages: {} } });
+  const s = setup({ on: true, counters: { totals: {}, averages: {}, labels: {} } });
   assert.equal(await syncEventCounters(s.db, s.event, {}, s.deps()), 'nothing_to_send');
   assert.equal(s.pushed.length, 0);
 });
@@ -126,7 +130,38 @@ test('the counters are made from the photos of the event only, over the whole ev
       photo('t', { submissionKind: 'tryon_result', reviewStatus: 'approved', playCount: 50 }),
     ],
   });
-  assert.deepEqual(await loadEventCounters(db, { eventId: 'ev-1' }), { totals: { imagesTaken: 3, imagesApproved: 1, imagesRejected: 1, imagesShownOnSlideshow: 3, consentAccepted: 1 }, averages: { avgVettingSeconds: 120 } });
+  const set = await loadEventCounters(db, { eventId: 'ev-1' });
+  for (const [name, value] of Object.entries({ camera_images_taken: 3, camera_images_approved: 1, camera_images_rejected: 1, camera_images_shown_on_slideshow: 3, camera_consents_accepted: 1, camera_images_rejected_no_reason: 1 })) assert.equal(set.totals[name], value, name);
+  assert.deepEqual(set.averages, { camera_avg_vetting_seconds: 120 });
+  assert.equal(set.labels.camera_images_taken, 'Camera: images taken');
+  assert.equal(Object.keys(set.totals).some((name) => name.startsWith('camera_gender_')), false, 'nobody marked a photo: no counter about the people');
+});
+
+test('the counters are named from the vocabulary of the event: the stored event, its partner and the general level are read, even when the caller passes a thin event', async () => {
+  const custom = (key: string, label: string, group: string) => ({ options: [{ group, key, label, custom: true }] });
+  const person = (gender: string, merch: string[]) => ({ id: gender, box: { x: 10, y: 10, w: 30, h: 30 }, gender, age: 'adult', merch });
+  const photo = (id: string, extra: Record<string, unknown>) => ({ _id: id, eventId: 'ev-1', eventIds: ['ev-1'], submissionKind: 'original', createdAt: '2026-10-16T18:00:00.000Z', isArchived: false, userId: 'anonymous', userEmail: 'anonymous@event', reviewStatus: 'pending_review', ...extra });
+  const s = fakeDb({
+    [COLLECTIONS.EVENTS]: [{ _id: 'mongo-1', eventId: 'ev-1', messmassEventId: MESSMASS_ID, partnerId: 'partner-1', annotationVocabulary: custom('vuvuzela', 'Vuvuzela', 'merch') }],
+    [COLLECTIONS.PARTNERS]: [{ partnerId: 'partner-1', annotationVocabulary: custom('nonbinary', 'Non-binary', 'gender') }],
+    [COLLECTIONS.ADMIN_SETTINGS]: [{ settingId: COUNTERS_SETTING_ID, enabled: true }, { settingId: 'annotation-vocabulary', ...custom('mascot', 'Mascot costume', 'age') }],
+    [COLLECTIONS.SUBMISSIONS]: [
+      photo('a', { people: [person('nonbinary', ['vuvuzela']), person('female', [])] }),
+      photo('b', { people: [person('mascot_does_not_exist', [])] }),
+    ],
+  });
+  const pushed: PhotoStatsPayload[] = [];
+  const deps: CounterSyncDeps = { push: async (_id, payload) => (pushed.push(payload), true), counters: loadEventCounters, now: () => T0 };
+  const thin = { _id: 'mongo-1' as unknown as ObjectId, eventId: 'ev-1', messmassEventId: MESSMASS_ID };
+  assert.equal(await syncEventCounters(s.db, thin, {}, deps), 'pushed');
+  const [payload] = pushed;
+  assert.equal(payload.totals.camera_gender_nonbinary, 1, 'the partner level');
+  assert.equal(payload.labels.camera_gender_nonbinary, 'Camera: gender, Non-binary');
+  assert.equal(payload.totals.camera_merch_vuvuzela, 1, 'the event level');
+  assert.equal(payload.totals.camera_age_mascot, 0, 'the general level, offered and nobody has it');
+  assert.equal(payload.totals.camera_gender_female, 1);
+  assert.equal(payload.totals.camera_images_annotated, 1, 'a photo whose marking does not read against the list is left out, as everywhere');
+  assert.equal(payload.totals.camera_people_total, 2);
 });
 
 test('the state for the Messmass tab: the setting, the link, the numbers now and the last push, and nothing is written or sent', async () => {
@@ -137,7 +172,7 @@ test('the state for the Messmass tab: the setting, the link, the numbers now and
   const state = await loadCounterState(db, { eventId: 'ev-1', messmassEventId: MESSMASS_ID, counterSync: { pushedAt: '2026-10-20T18:00:00.000Z', counters: COUNTERS } });
   assert.equal(state.enabled, false);
   assert.equal(state.linked, true);
-  assert.equal(state.counters.totals.imagesTaken, 1);
+  assert.equal(state.counters.totals.camera_images_taken, 1);
   assert.equal(state.lastPushAt, '2026-10-20T18:00:00.000Z');
   assert.deepEqual(state.lastPushed, COUNTERS);
   assert.equal(calls.length, 0);

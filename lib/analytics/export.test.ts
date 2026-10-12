@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { resolveVocabulary } from '@/lib/photo-vetting/vocabulary';
 import type { PhotoFacts } from './facts';
 import { analyticsCsv, analyticsRows } from './export';
 import { buildEventReport } from './report';
@@ -8,7 +9,7 @@ import { summarizeJourney } from './journey';
 
 const photo = (extra: Partial<PhotoFacts> = {}): PhotoFacts => ({
   id: 'p', eventKey: 'e', eventKeys: ['e'], createdAt: '2026-10-16T18:00:00.000Z', source: 'user', excluded: null, method: 'camera', device: 'ios', review: 'approved', submittedAt: '2026-10-16T18:00:00.000Z',
-  decisions: [{ action: 'approve', by: '=cmd|x@club.test', at: '2026-10-16T18:01:00.000Z', reason: null }], identity: 'email', userKey: 'a@x.test', email: 'a@x.test',
+  decisions: [{ action: 'approve', by: '=cmd|x@club.test', at: '2026-10-16T18:01:00.000Z', reason: null }], rejectReasons: [], identity: 'email', userKey: 'a@x.test', email: 'a@x.test',
   consents: [{ label: '+I accept, the "terms"', pageType: 'accept', at: null }], wallOptIn: false, galleryConsentAt: null, frame: { kind: 'none', label: 'No frame' }, message: null, layout: null, mirrored: null, framing: null,
   plays: 3, lastPlayedAt: null, playsBySlideshow: {}, people: undefined, peopleBy: null, peopleAt: null, emails: { arrived: false, photoLink: 'sent', photoLinkSkipReason: null, photoLinkKind: 'afterSave', declined: null },
   ...extra,
@@ -59,4 +60,29 @@ test('the journey rows are in the file only for an event that has a record, and 
   assert.ok(rows.every((row) => row.length === 3));
   assert.equal(analyticsRows(report, undefined, summarizeJourney([])).some((row) => row[0].startsWith('journey')), false);
   assert.equal(analyticsRows(report).some((row) => row[0].startsWith('journey')), false);
+});
+
+test('the reasons chosen from the list and the people counts are rows in the words of the event vocabulary, so a custom option reads as its label', () => {
+  const vocabulary = resolveVocabulary({ event: { options: [{ group: 'reject_reason', key: 'confetti', label: 'Too much confetti', custom: true }, { group: 'merch', key: 'vuvuzela', label: 'Vuvuzela', custom: true }] } });
+  const person = (merch: string[]) => ({ id: 'a', box: { x: 10, y: 10, w: 30, h: 30 }, gender: 'female', age: 'adult', merch });
+  const custom = buildEventReport({
+    photos: [
+      photo({ review: 'rejected', rejectReasons: ['confetti', 'nudity'], decisions: [{ action: 'reject', by: 'bob', at: '2026-10-16T18:05:00.000Z', reason: null }] }),
+      photo({ review: 'rejected', rejectReasons: ['nudity'], decisions: [{ action: 'reject', by: 'bob', at: '2026-10-16T18:05:00.000Z', reason: null }] }),
+      photo({ review: 'rejected', rejectReasons: [], decisions: [{ action: 'reject', by: 'bob', at: '2026-10-16T18:05:00.000Z', reason: null }] }),
+      photo({ people: [person(['vuvuzela'])] }),
+      photo({ people: [person([]), person([])] }),
+    ],
+    vocabulary,
+  }, { timeZone: 'UTC' });
+  const rows = analyticsRows(custom);
+  const value = (section: string, item: string) => rows.find((row) => row[0] === section && row[1] === item)?.[2];
+  assert.equal(value('decline reasons from the list', 'Too much confetti'), 1);
+  assert.equal(value('decline reasons from the list', 'Nudity or sexual content'), 2);
+  assert.equal(value('decline reasons from the list', 'declined photos with no reason from the list'), 1);
+  assert.equal(value('people items', 'Vuvuzela'), 1);
+  assert.equal(value('people gender', 'Female'), 3);
+  assert.equal(value('people', 'photos with one person'), 1);
+  assert.equal(value('people', 'photos with a group (two or more)'), 1);
+  assert.ok(rows.every((row) => row.length === 3));
 });

@@ -201,15 +201,20 @@ export function VettingSection({ report }: { report: EventReport }) {
         />
       </Panel>
 
-      <Panel title="Why photos were declined" description="The reason is free text today, so these are the words reviewers wrote, counted. Counts by reason come with the fixed list of reasons (decision 244).">
+      <Panel title="Why photos were declined" description="The reasons the reviewer chose from the list when declining, counted over the photos that are declined now (a photo with two reasons is in both). The words a reviewer wrote beside them are counted below.">
+        <Bars label="Reasons chosen for declines" rows={vetting.rejectReasons} total={photos.rejected} empty="No declined photo carries a reason from the list yet." />
+        <Note>
+          {plural(photos.rejected - vetting.rejectedWithoutReasons, 'declined photo')} with a reason from the list, {formatCount(vetting.rejectedWithoutReasons)} without (declined before the list existed).
+        </Note>
+        <strong style={{ fontSize: 'var(--mantine-font-size-sm)' }}>Words written beside the decision</strong>
         <Bars label="Reasons written for declines" rows={vetting.reasons.top} total={vetting.reasons.rejectionsWithReason} empty="No decline has a reason written." />
         <Note>
-          {plural(vetting.reasons.rejectionsWithReason, 'decline')} with a reason, {formatCount(vetting.reasons.rejectionsWithoutReason)} without.
+          {plural(vetting.reasons.rejectionsWithReason, 'decline')} with a reason written, {formatCount(vetting.reasons.rejectionsWithoutReason)} without.
         </Note>
       </Panel>
 
       <Panel title="People marked in the photos" description="Who is in the picture, as the reviewers marked them at vetting: the mix of age and gender, the emotions and the merchandise.">
-        {people.summary.photos > 0 ? <PeopleSummaryCard summary={people.summary} /> : <Note>No reviewer has marked the people in a photo yet.</Note>}
+        {people.summary.photos > 0 ? <PeopleSummaryCard summary={people.summary} vocabulary={report.vocabulary} /> : <Note>No reviewer has marked the people in a photo yet.</Note>}
         <Table
           caption="Photos marked by person"
           rows={people.markers}

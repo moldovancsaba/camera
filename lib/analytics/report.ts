@@ -11,7 +11,8 @@
  * event. `taken` is what the users took or uploaded; a photo an editor added in the gallery is counted apart (`scope.addedByEditors`) because nobody took it, though it is shown on the screens.
  */
 
-import { summarizePeople, type PeopleSummary } from '@/lib/photo-vetting/people';
+import { parsePeople, summarizePeople, type PeopleSummary } from '@/lib/photo-vetting/people';
+import { optionLabel, STANDARD_VOCABULARY, type ResolvedVocabulary } from '@/lib/photo-vetting/vocabulary';
 import type { PhotoFacts } from './facts';
 import { average, dayInRange, daysBetween, localParts, median, secondsBetween } from './time';
 
@@ -32,6 +33,8 @@ export interface ReportInput {
   registrations?: readonly RegistrationFact[];
   /** The names of the slideshows by their id, for the plays. */
   slideshows?: ReadonlyArray<{ id: string; name: string }>;
+  /** The annotation vocabulary of the event (lib/photo-vetting/vocabulary-load.ts): the words of the people counts and of the reject reasons. The standard list when none is given. */
+  vocabulary?: ResolvedVocabulary;
 }
 
 export interface ReportOptions {
@@ -72,6 +75,8 @@ export interface DayRow {
 
 export interface EventReport {
   options: { timeZone: string; from: string | null; to: string | null };
+  /** The vocabulary the people and the reject reasons were counted with, so a screen and the counters for messmass read the same words. */
+  vocabulary: ResolvedVocabulary;
   scope: {
     /** Photos counted (taken by users plus added by editors). */
     counted: number;
@@ -108,11 +113,18 @@ export interface EventReport {
     reviewers: ReviewerRow[];
     decisionsByDay: Array<{ day: string; approvals: number; rejections: number }>;
     reasons: { rejectionsWithReason: number; rejectionsWithoutReason: number; top: Tally[] };
+    /** The reasons chosen from the list, by key (`id`), over the photos that are rejected now: a photo with several reasons is in each. The label is the word of the vocabulary. Most often first. */
+    rejectReasons: Tally[];
+    /** Rejected photos that carry no reason from the list (rejected before the list existed). */
+    rejectedWithoutReasons: number;
   };
   people: {
     summary: PeopleSummary;
     /** Who marked the people, by photos. */
     markers: Tally[];
+    /** Photos looked at with exactly one person marked, and with two or more. */
+    photosWithOnePerson: number;
+    photosWithGroup: number;
   };
   users: {
     /** Different users who took a photo and can be told apart (an e-mail or an account). */
@@ -215,6 +227,7 @@ function inScope(photos: readonly PhotoFacts[], options: ReportOptions): { count
 
 export function buildEventReport(input: ReportInput, options: ReportOptions): EventReport {
   const now = options.now ?? new Date();
+  const vocabulary = input.vocabulary ?? STANDARD_VOCABULARY;
   const { counted, removed, broken } = inScope(input.photos, options);
   const userPhotos = counted.filter((photo) => photo.source === 'user');
   const editorPhotos = counted.filter((photo) => photo.source === 'editor');
@@ -265,9 +278,18 @@ export function buildEventReport(input: ReportInput, options: ReportOptions): Ev
     else reasonRows.set(key, { id: key, label: decision.reason.replace(/\s+/g, ' '), count: 1 });
   }
 
+  // The reasons chosen from the list, over the photos that are rejected now (a photo rejected and approved again keeps its stored reasons but is not counted).
+  const rejectedPhotos = userPhotos.filter((photo) => photo.review === 'rejected');
+  const rejectReasons = tally(rejectedPhotos.flatMap((photo) => photo.rejectReasons.map((key) => ({ id: key, label: optionLabel(vocabulary, 'reject_reason', key) }))));
+
   // --- people marked at vetting ---
   const markedPhotos = userPhotos.filter((photo) => Array.isArray(photo.people));
-  const people = summarizePeople(userPhotos.map((photo) => ({ people: photo.people })));
+  const people = summarizePeople(userPhotos.map((photo) => ({ people: photo.people })), vocabulary);
+  // Photos by how many people are in them; a photo whose people do not read against the list is left out, as summarizePeople leaves it out.
+  const peoplePerPhoto = markedPhotos.flatMap((photo) => {
+    const checked = parsePeople(photo.people, vocabulary);
+    return checked.ok ? [checked.value.length] : [];
+  });
 
   // --- users ---
   const byUser = new Map<string, PhotoFacts[]>();
@@ -362,6 +384,7 @@ export function buildEventReport(input: ReportInput, options: ReportOptions): Ev
 
   return {
     options: { timeZone: options.timeZone, from: options.from || null, to: options.to || null },
+    vocabulary,
     scope: { counted: counted.length, addedByEditors: editorPhotos.length, removed, brokenPictures: broken, firstPhotoAt: times[0] ?? null, lastPhotoAt: times[times.length - 1] ?? null },
     photos: {
       taken: userPhotos.length,
@@ -392,10 +415,14 @@ export function buildEventReport(input: ReportInput, options: ReportOptions): Ev
         rejectionsWithoutReason: rejectionDecisions.filter(({ decision }) => !decision.reason).length,
         top: [...reasonRows.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)).slice(0, 10),
       },
+      rejectReasons,
+      rejectedWithoutReasons: rejectedPhotos.filter((photo) => photo.rejectReasons.length === 0).length,
     },
     people: {
       summary: people,
       markers: tally(markedPhotos.filter((photo) => photo.peopleBy).map((photo) => ({ id: photo.peopleBy as string, label: photo.peopleBy as string }))),
+      photosWithOnePerson: peoplePerPhoto.filter((count) => count === 1).length,
+      photosWithGroup: peoplePerPhoto.filter((count) => count >= 2).length,
     },
     users: {
       distinct: byUser.size,
@@ -499,7 +526,7 @@ export function buildEventsTable(photos: readonly PhotoFacts[], events: Readonly
 export interface NotMeasured {
   what: string;
   why: string;
-  waitsFor: 'link redirect' | 'decline reasons' | 'screen recording' | 'sign-in log' | 'a decision';
+  waitsFor: 'link redirect' | 'screen recording' | 'sign-in log' | 'a decision';
 }
 
 /**
@@ -508,7 +535,6 @@ export interface NotMeasured {
  */
 export const NOT_MEASURED: readonly NotMeasured[] = [
   { what: 'Which QR or poster a visit or a photo came from', why: 'The link redirect (go.messmass.com) drops the placement, so a visit to the capture page cannot be tied to the link that brought the user, and passing it on changes the live redirect (the visits per link are shown under Sources).', waitsFor: 'link redirect' },
-  { what: 'Why a photo was declined, as counts by reason', why: 'The reason is free text today; counts by reason need the fixed list of reasons (decision 244).', waitsFor: 'decline reasons' },
   { what: 'Country and city of the users', why: 'The fields are never filled, and a place would need the IP address of the photo, which decision 243 stops keeping.', waitsFor: 'a decision' },
   { what: 'Plays on the screens by hour or by screen', why: 'Only a running count and the time of the last play are kept per photo and slideshow; recording each play touches the giant screen, which is frozen until after the match.', waitsFor: 'screen recording' },
   { what: 'Sign-ins by provider', why: 'The last sign-in is declared and never written; sign-ins are console lines.', waitsFor: 'sign-in log' },
