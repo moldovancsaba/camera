@@ -1,13 +1,13 @@
 # Using annotated photos to train automatic annotation: purpose and consent (draft)
 
-**Status: draft for the owner and for legal review (owner answer 457, "yes", 2026-10-12). Nothing here is shown to any user, and no photo may enter a training set until the consent below exists, is validated and was given for that photo.** The wordings are Dictionary texts (group "AI training consent (draft, not shown yet)"), editable at the global, partner and event levels like every other text (`docs/TEXT_LEVELS.md`).
+**Status: draft for the owner and for legal review (owner answer 457, "yes", 2026-10-12). Nothing here is shown to any user.** **Owner information (answer 462, 2026-10-12): this use is managed in the terms every user accepts, as they were originally written.** I have not seen those terms (a linked document outside this repository), so I cannot check what they say; the draft therefore keeps a separate consent only as the option legal may still want, and the safeguards below apply either way. Nothing is exported until legal has confirmed that the terms' wording covers training on labelled pictures. The wordings are Dictionary texts (group "AI training consent (draft, not shown yet)"), editable at the global, partner and event levels like every other text (`docs/TEXT_LEVELS.md`).
 
 ## What the owner wants (2026-10-12)
 The annotation the vetting person makes (people in the photo, their gender, age and expression, what they wear or hold, and why a photo is rejected) has two aims: **feed messmass analytics**, and **collect the picture together with its annotation so that, in the future, software can do the annotation automatically**.
 
 ## The two aims are not the same thing in law
 - **Aim 1, analytics, is counts only** (owner decision 241: counters only, never a person). The annotation is read as totals per event (`camera_gender_female`, `camera_age_kid`, ...), nothing that identifies a person leaves camera. The terms the user already accepts are the basis, as for every other figure in the Analytics tab.
-- **Aim 2, training, keeps the picture itself and its labels** and hands them to a model. That is a **different purpose** from showing the photo or counting it. It needs its own stated purpose and, in my recommendation, its own **separate, unticked consent**, exactly as the marketing profile (`docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md`, purpose C) does. **A photo whose user did not give it is never put in a training set, however it was annotated.**
+- **Aim 2, training, keeps the picture itself and its labels** and hands them to a model. That is a **different purpose** from showing the photo or counting it. It needs its own stated purpose in the notice and a lawful basis. My recommendation was a **separate, unticked consent**, as the marketing profile (`docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md`, purpose C) has; the owner says the terms already manage it (answer 462). Then the basis is **the acceptance of those terms that is already stored with every photo** (`consents`, with the time it was given), and the question for legal is only whether the wording of the terms that user accepted really covers training on labelled pictures. **A photo whose user did not accept such terms is never put in a training set, however it was annotated.**
 
 ## What a training set would contain
 | Included | Never included |
@@ -39,12 +39,12 @@ Today the unframed photo ends on ImgBB after approval: a **public third-party ho
 - **Not yet there, needed for a good set:** a second reviewer on a sample to measure agreement, a way to correct the people of an approved photo, an "unsure about this one" mark, and the consent flag on the photo (`Submission.trainingConsent`) that the eligibility filter would read.
 
 ## What the build would be, once legal has validated the wording
-1. `Submission.trainingConsent = { version, grantedAt }`, written only when the box was ticked; the checkbox as one more kind in the checkbox settings (`lib/events/checkbox-settings.ts`: shown or not, required or optional per partner, event and checkbox; standard: **not shown**, so no event changes until somebody chooses).
-2. The eligibility filter: consent given, not withdrawn, not removed, picture present, no excluded label (see 2 and 3 above), and a random training id instead of the submission id.
+1. **If legal says the terms are enough (the owner's information):** nothing new is asked of the user. The eligibility reads the acceptance stored with the photo. **If legal says they are not:** `Submission.trainingConsent = { version, grantedAt }`, written only when a separate box was ticked, as one more kind in the checkbox settings (`lib/events/checkbox-settings.ts`: shown or not, required or optional per partner, event and checkbox; standard: **not shown**, so no event changes until somebody chooses).
+2. The eligibility filter: the basis above holds for the photo, not withdrawn, not removed, picture present, no excluded label (see 2 and 3 above), and a random training id instead of the submission id.
 3. A restricted, logged export (images plus labels in a standard format such as COCO), global admins only; withdrawal and deletion flow; the privacy notice and `docs/PRIVACY_DATA.md` updated.
-4. A photo taken before the consent existed is **not eligible**. Photos of the match on 2026-10-16 are analytics only unless the consent is live and validated by then, or the users are asked afterwards (for example by an opt-in link in the e-mail that carries their photo, which legal would also have to approve).
+4. **The photos of the match on 2026-10-16** are annotated like any other. Whether they can enter a set depends on the same rule: the terms those users accepted, once legal has confirmed them. Nothing is exported before that, so the question does not need an answer before the match.
 
-## Draft wordings
+## Draft wordings (used only if legal asks for a separate consent)
 Placeholders are in curly brackets. Dictionary keys: `training.consent` (`{organiser}`, `{link}`), `training.consent.link`, `training.notice`.
 
 - **English:** "I agree that {organiser} uses my photo, without my name or e-mail address, together with the labels a reviewer gave it (for example how many people are in it, their apparent age group, gender and expression, what they wear or hold, and why a photo was not approved) to train and test software that can later do this automatically. I can withdraw this at any time at {link}."
