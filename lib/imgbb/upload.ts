@@ -90,6 +90,13 @@ export interface UploadOptions {
   mirrorWaitMs?: number;   // How long the call waits for the imgbb mirror before it goes on without it (default: 5000)
 }
 
+/** What imgbb answered for one upload: the direct address, the link that deletes it (the host has no other way to delete) and its own id. */
+export interface MirrorResult {
+  imageUrl: string;
+  deleteUrl: string;
+  imageId: string;
+}
+
 /**
  * Upload result returned to caller
  */
@@ -217,7 +224,7 @@ async function uploadToBlobPrimary(
 async function uploadToImgbbMirror(
   base64Image: string,
   options: UploadOptions
-): Promise<{ imageUrl: string; deleteUrl: string; imageId: string } | null> {
+): Promise<MirrorResult | null> {
   const apiKey = getImgbbApiKey();
   if (!apiKey) {
     return null;
@@ -315,18 +322,29 @@ async function uploadToImgbbMirror(
 }
 
 /**
- * Upload image: Vercel Blob primary (required) + imgbb mirror (best-effort).
- *
- * @param image - File, Blob, or base64 string
- * @param options - Upload options (name, expiration, retries -- mirror only)
- * @returns Upload result; imageUrl/thumbnailUrl are always Blob URLs
- *
- * @throws Error if the Blob upload fails. A mirror failure never throws.
+ * Uploads to imgbb only (no Blob copy), for a caller that wants a file there and records the answer itself (issue 509: the unframed crop's final destination is imgbb, owner
+ * decision 295). Unlike the mirror inside `uploadImage` it reports a failure: it throws when imgbb is not configured, refuses the upload or does not answer after the retries.
  */
-export async function uploadImage(
+export async function uploadToImgbbOnly(base64Image: string, options: UploadOptions = {}): Promise<MirrorResult> {
+  const result = await uploadToImgbbMirror(normalizeBase64Input(base64Image), options);
+  if (!result) throw new Error('imgbb is not configured (no API key)');
+  return result;
+}
+
+/** `UploadResult` plus the whole mirror attempt, still running or finished, so a caller that must know where the imgbb copy ended up can wait for it. */
+export type TrackedUploadResult = UploadResult & {
+  /** Resolves with the imgbb copy when the mirror finishes, however late; null when it failed or imgbb is not configured. Never rejects. */
+  mirrorSettled: Promise<MirrorResult | null>;
+};
+
+/**
+ * Upload image: Vercel Blob primary (required) + imgbb mirror (best-effort), and the mirror attempt itself (`mirrorSettled`).
+ * The call waits for the mirror only `mirrorWaitMs`; `mirrorSettled` lets a caller that has more time (work after the response) record a copy that lands later.
+ */
+export async function uploadImageTracked(
   image: File | Blob | string,
   options: UploadOptions = {}
-): Promise<UploadResult> {
+): Promise<TrackedUploadResult> {
   const base64Image = typeof image === 'string'
     ? normalizeBase64Input(image)
     : await fileToBase64(image);
@@ -339,7 +357,7 @@ export async function uploadImage(
     );
     return null;
   });
-  // The mirror gets a few seconds, then the call goes on without it. A late mirror result is dropped (its copy on imgbb is just an unused extra).
+  // The mirror gets a few seconds, then the call goes on without it. A late result is not part of this call's answer (see `mirrorSettled`).
   const mirrorWait = new Promise<null>((resolve) => {
     timer = setTimeout(() => resolve(null), options.mirrorWaitMs ?? DEFAULT_MIRROR_WAIT_MS);
   });
@@ -359,7 +377,26 @@ export async function uploadImage(
     fileName: blob.fileName,
     provider: 'blob',
     mirrorImageUrl: mirror?.imageUrl ?? null,
+    mirrorSettled: mirrorAttempt,
   };
+}
+
+/**
+ * Upload image: Vercel Blob primary (required) + imgbb mirror (best-effort).
+ *
+ * @param image - File, Blob, or base64 string
+ * @param options - Upload options (name, expiration, retries -- mirror only)
+ * @returns Upload result; imageUrl/thumbnailUrl are always Blob URLs
+ *
+ * @throws Error if the Blob upload fails. A mirror failure never throws.
+ */
+export async function uploadImage(
+  image: File | Blob | string,
+  options: UploadOptions = {}
+): Promise<UploadResult> {
+  const { mirrorSettled, ...result } = await uploadImageTracked(image, options);
+  void mirrorSettled;
+  return result;
 }
 
 /**
