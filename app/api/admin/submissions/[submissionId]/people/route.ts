@@ -16,6 +16,7 @@ import { COLLECTIONS, generateTimestamp, type Submission } from '@/lib/db/schema
 import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound, apiForbidden, checkRateLimit } from '@/lib/api';
 import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
+import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
 import { parsePeople } from '@/lib/photo-vetting/people';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 
@@ -48,5 +49,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
 
   const peopleReview = { by: session.user.email ?? session.user.id ?? null, at: generateTimestamp(), vocabulary: vocabulary.version };
   await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: new ObjectId(submissionId) }, { $set: { people: checked.value, peopleReview } });
+  // The counters for messmass read the people: ask for a push after the response (nothing happens while the counters are off).
+  scheduleCounterSync(db, event);
   return apiSuccess({ submissionId, people: checked.value, peopleReview });
 });

@@ -139,3 +139,18 @@ test('with the real sync behind it: off does nothing, and on for an event that i
   assert.equal(await requestCounterSync(on.db, { _id: 'real-on' as unknown as ObjectId, eventId: 'uuid-real-on' }), 'not_linked');
   assert.equal(on.calls.length, 0, 'not linked: nothing was claimed, computed or sent');
 });
+
+test('what the sync needs from an event document: ids and the link to messmass; a document without them is not synced', async () => {
+  const { syncedEventOf, scheduleCounterSync } = await import('./counters-trigger');
+  const doc = { _id: 'mongo-1', eventId: 'uuid-1', messmassEventId: MESSMASS_ID, partnerId: 'p1', name: 'x', secret: 'y' };
+  assert.deepEqual(syncedEventOf(doc), { _id: 'mongo-1', eventId: 'uuid-1', messmassEventId: MESSMASS_ID, partnerId: 'p1' });
+  assert.equal(syncedEventOf({ ...doc, messmassEventId: 5 })?.messmassEventId, null);
+  assert.equal(syncedEventOf({ eventId: 'uuid-1' }), null);
+  assert.equal(syncedEventOf({ _id: 'x' }), null);
+  assert.equal(syncedEventOf(null), null);
+  // Outside a request nothing is scheduled and nothing throws; with no event there is nothing to schedule.
+  const off = fakeDb();
+  assert.doesNotThrow(() => scheduleCounterSync(off.db, doc));
+  assert.doesNotThrow(() => scheduleCounterSync(off.db, null));
+  assert.equal(off.calls.length, 0);
+});

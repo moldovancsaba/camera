@@ -19,6 +19,7 @@ import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound, apiForbidden, apiError, checkRateLimit } from '@/lib/api';
 import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
+import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
 import { approvePhoto, rejectPhoto, type ReviewFailure } from '@/lib/photo-vetting/review';
 import { markPeopleOn } from '@/lib/photo-vetting/people';
 import { offeredReasons } from '@/lib/photo-vetting/review-state';
@@ -95,6 +96,8 @@ export const POST = withErrorHandler(async (
     throw apiError(result.message, STATUS_OF[result.reason]);
   }
 
+  // The counters for messmass read the decisions and the reasons: ask for a push after the response (nothing happens while the counters are off).
+  scheduleCounterSync(db, event);
   return apiSuccess({
     submissionId,
     reviewStatus: action === 'approve' ? 'approved' : 'rejected',

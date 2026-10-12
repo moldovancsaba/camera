@@ -9,7 +9,8 @@
  * fakes only (no database, no network, CLAUDE.md section 8).
  */
 
-import type { Db } from 'mongodb';
+import type { Db, ObjectId } from 'mongodb';
+import { after } from 'next/server';
 import { logWarn } from '@/lib/observability/logger';
 import { getCountersSetting } from './counters-setting';
 import { syncEventCounters, type CounterSyncResult, type SyncedEvent } from './counters-sync';
@@ -79,4 +80,29 @@ async function run(db: Db, event: SyncedEvent, deps: CounterTriggerDeps): Promis
     return deps.sync(db, event);
   })();
   return slot.trailing;
+}
+
+/** The few fields the sync needs from a stored event document; null when the document cannot be synced (no id, no event id). */
+export function syncedEventOf(event: Record<string, unknown> | null | undefined): SyncedEvent | null {
+  if (!event || !event._id || typeof event.eventId !== 'string' || !event.eventId) return null;
+  return {
+    _id: event._id as ObjectId,
+    eventId: event.eventId,
+    messmassEventId: typeof event.messmassEventId === 'string' ? event.messmassEventId : null,
+    partnerId: event.partnerId,
+  };
+}
+
+/**
+ * What a live path calls after it saved something the counters read (a decision, the people of a photo): it asks for the push **after the response** (`after()`), so the reviewer never waits.
+ * Outside a request nothing is scheduled; while the counters are off the scheduled call reads one setting and stops.
+ */
+export function scheduleCounterSync(db: Db, event: Record<string, unknown> | null | undefined): void {
+  const synced = syncedEventOf(event);
+  if (!synced) return;
+  try {
+    after(() => requestCounterSync(db, synced));
+  } catch {
+    // not in a request: the next decision, or a catch-up, pushes the totals
+  }
 }
