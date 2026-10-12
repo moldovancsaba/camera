@@ -40,7 +40,7 @@ The throw-away event of section C is the only event you may change. Never save a
   - [T03. Look up the Vercel plan and how much the Blob store holds](#t03-look-up-the-vercel-plan-and-how-much-the-blob-store-holds), computer
   - [T04. Check that the MongoDB Atlas backups are on](#t04-check-that-the-mongodb-atlas-backups-are-on), computer
   - [T05. Look up the ImgBB plan and limits](#t05-look-up-the-imgbb-plan-and-limits), computer
-  - [T06. Switch on Dependabot alerts for the savetheworld repository](#t06-switch-on-dependabot-alerts-for-the-savetheworld-repository), computer
+  - [T06. Check that Dependabot alerts are on for the savetheworld repository](#t06-check-that-dependabot-alerts-are-on-for-the-savetheworld-repository), computer
   - [T07. Set CRON_SECRET on the Vercel project (after the match)](#t07-set-cronsecret-on-the-vercel-project-after-the-match), computer
 - [B. Privacy (computer)](#b-privacy-computer) : T08, T09
   - [T08. Compare the public privacy notice with what the app stores](#t08-compare-the-public-privacy-notice-with-what-the-app-stores), computer
@@ -85,8 +85,8 @@ The throw-away event of section C is the only event you may change. Never save a
   - [T43. MTK's Hungarian suggestions: when do they have to arrive?](#t43-mtks-hungarian-suggestions-when-do-they-have-to-arrive), either
   - [T44. The welcome-screen backfill for existing events](#t44-the-welcome-screen-backfill-for-existing-events), either
   - [T45. Keep the unframed photo at approval: pull request 609 goes live the B way unless you stop it](#t45-keep-the-unframed-photo-at-approval-pull-request-609-goes-live-the-b-way-unless-you-stop-it), either
-  - [T46. The admin notices: build the fix?](#t46-the-admin-notices-build-the-fix), either
-  - [T47. Report the two design-system findings to the GDS repository?](#t47-report-the-two-design-system-findings-to-the-gds-repository), either
+  - [T46. The admin notices fix: done, nothing to answer](#t46-the-admin-notices-fix-done-nothing-to-answer), either
+  - [T47. The design-system findings: one is reported, one is not](#t47-the-design-system-findings-one-is-reported-one-is-not), either
 - [Image safety card (issue 509)](#image-safety-card-issue-509) (pending)
 - [Rate limits (issue 470) and the report partner template (issue 430)](#rate-limits-issue-470-and-the-report-partner-template-issue-430) : T48, T49, T50
   - [T48. Open a messmass report: it still loads under the new limits](#t48-open-a-messmass-report-it-still-loads-under-the-new-limits), computer
@@ -209,22 +209,20 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **If it fails:** If the plan has ended or shows a limit, write it at once: a copy goes to ImgBB at every approval. Not verified: ImgBB needs your login, so the page names are from its public menu.
 
-### T06. Switch on Dependabot alerts for the savetheworld repository
+### T06. Check that Dependabot alerts are on for the savetheworld repository
 
-**Device:** computer. **Why:** GitHub's alerts about libraries with known security holes are switched off for the savetheworld repository, a live app. In the other four repositories they are on (camera, fanmass and try-on show none open; messmass shows one, read on 12 October). Without them nobody is told when a library of savetheworld becomes unsafe (issue 182).
+**Device:** computer. **Why:** GitHub's alerts about libraries with known security holes were switched off for the savetheworld repository, a live app. On 12 October, with your consent, I switched them on through the GitHub command line (the same setting as Settings, Code security, Dependabot alerts). This step only asks you to see it with your own eyes (issue 182).
 
 **Where:** github.com, the repository savetheworld, Settings, Code security (about 3 minutes)
 
 **Steps**
 
-1. Open github.com/moldovancsaba/savetheworld and sign in (the repository is private). Open Settings.
-2. In the list on the left open Code security (it may also be called Advanced Security or Code security and analysis).
-3. Find Dependabot alerts and press Enable. Leave Dependabot security updates and version updates as they are.
-4. Open the Security tab of the repository and its Dependabot page.
+1. Open github.com/moldovancsaba/savetheworld, Settings, Code security (it may also be called Advanced Security or Code security and analysis).
+2. Find Dependabot alerts: it should read Enabled. Open the Security tab and its Dependabot page.
 
 **You should see**
 
-- Dependabot alerts reads Enabled. The Dependabot page opens and lists the open alerts (it may list some at first: GitHub scans the repository after the switch).
+- Dependabot alerts reads Enabled. The Dependabot page opens (it may list some alerts at first: GitHub scans after the switch). Leave Dependabot security updates and version updates as they are.
 
 **Write back:** `T06 PASS: enabled, N alerts open` or `T06 FAIL: one line, what the page shows`
 
@@ -941,7 +939,7 @@ The throw-away event of section C is the only event you may change. Never save a
 
 ### T37. Does a “saved” notice show in the admin?
 
-**Device:** computer. **Why:** About 50 notices of the admin (**saved**, **deleted**, **failed**) are probably only read out to screen readers and invisible to everybody else. Nobody has looked, so the fix waits for your answer (issue 229).
+**Device:** computer. **Why:** The admin's **saved**, **deleted** and **failed** notices were only written into a hidden region and drawn nowhere (proved in a harness on 12 October: no visible text, nothing for a screen reader either). Pull request 622 draws them (issue 229). Please see one with your own eyes.
 
 **Where:** The admin on a computer, the throw-away event (about 3 minutes)
 
@@ -957,7 +955,7 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **Write back:** `T37 PASS: a visible notice appeared` or `T37 FAIL: nothing visible appeared`
 
-**If it fails:** Nothing visible is the bug the issue describes, and the answer is useful: write the browser you used. The fix is one small helper that shows the notices, done after the match.
+**If it fails:** Nothing visible means the fix did not reach the live admin: write the browser you used and whether you reloaded the page with a hard refresh first.
 
 ### T38. Pictures that cannot be shown are hidden, not shown as errors
 
@@ -1130,39 +1128,38 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **If it fails:** Write STOP and the reason in the chat before Tuesday noon.
 
-### T46. The admin notices: build the fix?
+### T46. The admin notices fix: done, nothing to answer
 
-**Device:** either. **Why:** T37 shows whether the **saved**, **deleted** and **failed** notices of the admin are visible. If they are not, the fix is one small helper that draws them, used in 12 admin files, with a test that stops the old way from coming back (issue 229). It touches the admin only, not the capture path, the giant screen or the decisions on the Vetting tab.
+**Device:** either. **Why:** The fix of T37 (one small helper that draws the notices, used in the 8 admin files that had the old call, and a test that stops the old way from coming back) was built and merged on 12 October (pull request 622). It touches the admin only. Nothing to decide here any more.
 
-**Where:** A decision, after T37 (about 1 minute)
+**Where:** Nothing to do (1 second)
 
 **Steps**
 
-1. GO (the default when T37 says nothing is visible): the fix is built and merged before Wednesday after the full checks, and you look again at the same step. If T37 says the notice is visible, there is nothing to build.
-2. AFTER: the fix is built after the match; until then the admin gives no visible feedback after a save or a delete.
+1. Nothing to do. If T37 passed, this is closed. If T37 failed, write T46 FAIL and the line of T37.
 
 **You should see**
 
-- If T37 passed, nothing is built whatever you answer.
+- Closed by T37 passing.
 
-**Write back:** `T46 GO` or `T46 AFTER`
+**Write back:** `T46 OK` or `T46 FAIL: see T37`
 
-**If it fails:** If you want to see what the notice would look like first, say so.
+**If it fails:** If you want to see another place where a notice shows, say so.
 
-### T47. Report the two design-system findings to the GDS repository?
+### T47. The design-system findings: one is reported, one is not
 
-**Device:** either. **Why:** Two findings made in the camera app belong to the design system, which is another repository. The colour roles declared with light-dark() do not resolve in a production build, so cards lose their border and texts their colour; and the list of notices has no place on the screen, which is why the admin notices may be invisible (T37). Nothing has been reported there yet (handover of 9 October).
+**Device:** either. **Why:** Two findings made in the camera app belong to the design system, which is another repository. Reported on 12 October with your consent: issue 942 of the repository sovereignsquad/general-design-system (the server entry of the theme cannot be imported from a route; it also says that the notice list needs a visible place on the screen). Not reported yet: the colour roles declared with light-dark() do not resolve in a production build, so cards lose their border and texts their colour. Reporting it means writing the measurements down.
 
 **Where:** A decision, in the chat (about 1 minute)
 
 **Steps**
 
-1. YES (the default): one issue for each finding is written in the GDS repository (sovereignsquad/general-design-system) with the measurements; you read the text before it is posted.
-2. NO: nothing is reported; the camera app keeps its own workaround (its check refuses the unsafe colour roles) and the notice helper of T46.
+1. YES (the default): I write one issue for the colour roles in the GDS repository with the measurements and give you the link.
+2. NO: nothing more is reported; the camera app keeps its own workaround (its check refuses the unsafe colour roles).
 
 **You should see**
 
-- If you do not answer, nothing is posted anywhere.
+- If you do not answer, nothing more is posted.
 
 **Write back:** `T47 YES` or `T47 NO`
 
