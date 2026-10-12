@@ -12,6 +12,8 @@ import {
   optionLabel,
   optionsOf,
   parseStoredVocabulary,
+  readStored,
+  resolveOver,
   resolveVocabulary,
 } from './vocabulary';
 
@@ -129,4 +131,36 @@ test('the names for messmass: always the camera_ prefix, lower case, and the exa
   for (const option of STANDARD_OPTIONS) assert.match(counterKey(option.group, option.key), COUNTER_NAME_PATTERN, `${option.group}:${option.key}`);
   assert.doesNotMatch('female', COUNTER_NAME_PATTERN);
   assert.doesNotMatch('camera_Gender', COUNTER_NAME_PATTERN);
+});
+
+test('one level over a list that is already resolved gives what the three levels give together: the editors work from the list above, the vetting screen from the stored levels', () => {
+  const general = { options: [{ group: 'gender', key: 'unsure', hidden: true }, { group: 'merch', key: 'cap', label: 'Hat' }, { group: 'merch', key: 'club_flag', label: 'Club flag', custom: true }] };
+  const partner = { options: [{ group: 'merch', key: 'scarf', label: 'Club scarf', order: -1 }, { group: 'merch', key: 'club_flag', label: 'Club flag', custom: true, hidden: true }] };
+  const event = { options: [{ group: 'gender', key: 'unsure', hidden: false }, { group: 'merch', key: 'vasas_scarf', label: 'Vasas scarf', custom: true }] };
+  const generalOver = resolveOver(STANDARD_VOCABULARY, 'general', general);
+  const partnerOver = resolveOver(generalOver, 'partner', partner);
+  assert.deepEqual(generalOver, resolveVocabulary({ general }));
+  assert.deepEqual(partnerOver, resolveVocabulary({ general, partner }));
+  assert.deepEqual(resolveOver(partnerOver, 'event', event), resolveVocabulary({ general, partner, event }));
+  assert.equal(resolveOver(partnerOver, 'event', event).options.find((o) => o.key === 'club_flag')?.level, 'partner', 'an option a level above added keeps what that level set');
+  assert.deepEqual(STANDARD_VOCABULARY, resolveVocabulary(), 'the parent that came in is not changed');
+});
+
+test('a damaged stored level never takes the list down: what is valid is read, the rest is left out, at every level', () => {
+  const damaged = [undefined, null, 'garbage', 42, [], {}, { options: 'x' }, { options: [null, 3, { nonsense: true }, { group: 'merch', key: 'scarf', hidden: 'yes' }, { group: 'merch', key: 'Bad Key', custom: true, label: 'x' }] }];
+  for (const value of damaged) {
+    assert.deepEqual(readStored(value), []);
+    assert.deepEqual(resolveVocabulary({ general: value, partner: value, event: value }), STANDARD_VOCABULARY);
+    assert.deepEqual(resolveOver(STANDARD_VOCABULARY, 'event', value), STANDARD_VOCABULARY);
+  }
+  const mixed = { options: [{ nonsense: true }, { group: 'merch', key: 'jersey', label: 'Club shirt' }, { group: 'merch', key: 'scarf', hidden: 'yes' }] };
+  assert.deepEqual(readStored(mixed), [{ group: 'merch', key: 'jersey', label: 'Club shirt' }]);
+  assert.equal(optionLabel(resolveVocabulary({ event: mixed }), 'merch', 'jersey'), 'Club shirt');
+});
+
+test('two options with the same order and the same words keep one order, whatever order the levels were read in', () => {
+  const tied = { options: [{ group: 'merch', key: 'b_one', label: 'Same', order: 5, custom: true }, { group: 'merch', key: 'a_one', label: 'Same', order: 5, custom: true }] };
+  const keys = (v: typeof STANDARD_VOCABULARY) => optionsOf(v, 'merch').map((o) => o.key);
+  assert.deepEqual(keys(resolveVocabulary({ event: tied })).slice(1, 3), ['a_one', 'b_one'], 'after the jersey (order 0), before the scarf (order 10)');
+  assert.deepEqual(keys(resolveOver(STANDARD_VOCABULARY, 'event', { options: [...tied.options].reverse() })).slice(1, 3), ['a_one', 'b_one']);
 });

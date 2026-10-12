@@ -165,6 +165,19 @@ export const cameraAdminVocabularyPacks = [
     clear: { defaultMessage: 'Use the one from above', icon: GdsIcons.Refresh, feedback: savedFeedback },
     discard: { defaultMessage: 'Discard the changes', icon: GdsIcons.Cancel, feedback: openedFeedback },
   }),
+  createGdsVocabularyPack('annotation-words', {
+    // The words the reviewer describes a photo with, at the three levels (issue 628): save, discard, add, move, hide for good (delete), bring back, follow the level above.
+    save: { defaultMessage: 'Save', icon: GdsIcons.Save, feedback: savedFeedback },
+    discard: { defaultMessage: 'Discard the changes', icon: GdsIcons.Cancel, feedback: openedFeedback },
+    add: { defaultMessage: 'Add option', icon: GdsIcons.Add, feedback: savedFeedback },
+    delete: { defaultMessage: 'Delete', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    restore: { defaultMessage: 'Restore', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    'follow-above': { defaultMessage: 'Follow the level above', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    up: { defaultMessage: 'Up', icon: GdsIcons.TrendingUp, feedback: savedFeedback },
+    down: { defaultMessage: 'Down', icon: GdsIcons.TrendingDown, feedback: savedFeedback },
+    'show-deleted': { defaultMessage: 'Show deleted', icon: GdsIcons.Eye, feedback: openedFeedback },
+    'hide-deleted': { defaultMessage: 'Hide deleted', icon: GdsIcons.Eye, feedback: openedFeedback },
+  }),
   createGdsVocabularyPack('partner-pictures', {
     // The default pictures of a partner (issue 368).
     save: { defaultMessage: 'Save the pictures', icon: GdsIcons.Save, feedback: savedFeedback },

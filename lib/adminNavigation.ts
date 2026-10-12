@@ -195,6 +195,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         iconKey: 'mail',
         isVisible: (access) => access.isGlobalAdmin,
       },
+      {
+        href: '/admin/settings/annotation-words',
+        label: 'Vetting words',
+        description: 'The words the reviewer describes a photo with (gender, age, emotion, items, the reasons for a rejection), which every partner and event follows until it changes them.',
+        iconKey: 'adjustments',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
     ],
   },
   {
@@ -269,6 +276,7 @@ export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Overview', description: 'The event at a glance.', iconKey: 'layoutDashboard', path: '', isVisible: everyone },
   { label: 'Edit and pages', description: 'The event settings and the pages of the user journey.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
   { label: 'Vetting', description: 'Photos waiting for approval.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
+  { label: 'Vetting words', description: 'The words the reviewer describes a photo with at this event: gender, age, emotion, items and the reasons for a rejection.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
   { label: 'Gallery', description: 'The photos of the event: upload, select several at once, remove.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
   { label: 'Analytics', description: 'Photos, vetting, users, screens, e-mails and consents of the event.', iconKey: 'brandDatabricks', path: '/analytics', isVisible: everyone },
   { label: 'Logos', description: 'The logo of the event and of each place it shows.', iconKey: 'photo', path: '/logos', isVisible: everyone },
@@ -290,6 +298,7 @@ export const PARTNER_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Pictures', description: 'The default pictures of the welcome page, the CTA page and the e-mails of all events of the partner.', iconKey: 'photo', path: '/pictures', isVisible: everyone },
   { label: 'Texts', description: 'The wording of the default texts for all events of the partner.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
   { label: 'Emails', description: 'The legal part of the e-mails of all events of the partner.', iconKey: 'mail', path: '/emails', isVisible: everyone },
+  { label: 'Vetting words', description: 'The words the reviewer describes a photo with, for all events of the partner.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
 ];
 
 export interface AdminContextMenu {
