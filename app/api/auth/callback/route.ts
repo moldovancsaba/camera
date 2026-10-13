@@ -62,10 +62,14 @@ function redirectOAuthFailure(
 
   let res: NextResponse;
   if (capture) {
-    const url = new URL(`/capture/${capture.eventId}`, request.url);
-    url.searchParams.set('error', errorCode);
-    url.searchParams.set('message', encodeURIComponent(message));
-    res = NextResponse.redirect(url);
+    if (capture.popup) {
+      res = capturePopupResponse('failed');
+    } else {
+      const url = new URL(`/capture/${capture.eventId}`, request.url);
+      url.searchParams.set('error', errorCode);
+      url.searchParams.set('message', encodeURIComponent(message));
+      res = NextResponse.redirect(url);
+    }
   } else {
     // /admin/login is the single place that surfaces a sign-in error --
     // the homepage is a plain public landing page and doesn't render one.
@@ -78,6 +82,18 @@ function redirectOAuthFailure(
   }
   if (capture) clearCaptureReturn(res);
   return res;
+}
+
+/** Keep the popup on a small result page so the capture tab can retain its in-memory photo. */
+function capturePopupResponse(status: 'completed' | 'failed'): NextResponse {
+  const title = status === 'completed' ? 'Sign-in complete' : 'Sign-in could not be completed';
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><body><p id="status">${title}. ${status === 'completed' ? 'Return to the selfie tab; it will continue automatically.' : 'Return to the selfie tab and try again.'}</p></body></html>`;
+  return new NextResponse(html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+    },
+  });
 }
 
 export async function GET(request: NextRequest) {
@@ -215,7 +231,9 @@ export async function GET(request: NextRequest) {
     if (capture) {
       console.log('✓ Resuming capture flow:', capture.eventId, 'page:', capture.page);
 
-      const response = NextResponse.redirect(new URL(captureReturnPath(capture), request.url));
+      const response = capture.popup
+        ? capturePopupResponse('completed')
+        : NextResponse.redirect(new URL(captureReturnPath(capture), request.url));
       clearCaptureReturn(response);
       clearPendingSessionCookieOnResponse(response);
 

@@ -1365,9 +1365,8 @@ export default function EventCapturePage({
               buttonText: currentPage.config.buttonText,
               namePlaceholder: currentPage.config.namePlaceholder,
               emailPlaceholder: currentPage.config.emailPlaceholder,
-              // Between taking the photo and saving it only the name and e-mail form is offered: a social sign-in leaves the page and the photo, which is in this page's memory only, would be lost (issue 535).
-              enableSSOLogin: flowPhase === 'presubmit' ? false : currentPage.config.enableSSOLogin,
-              enablePseudoReg: flowPhase === 'presubmit' ? true : currentPage.config.enablePseudoReg,
+              enableSSOLogin: currentPage.config.enableSSOLogin,
+              enablePseudoReg: currentPage.config.enablePseudoReg,
               ssoButtonText: currentPage.config.ssoButtonText,
               pseudoFormTitle: currentPage.config.pseudoFormTitle,
             }}
@@ -1377,6 +1376,7 @@ export default function EventCapturePage({
             buttonSize={eventButtonSize}
             eventId={eventId}
             pageIndex={currentPageIndex}
+            socialLoginPopup={flowPhase === 'presubmit'}
             onNext={handleWhoAreYouComplete}
             acceptance={
               acceptanceBox

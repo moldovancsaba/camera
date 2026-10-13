@@ -25,20 +25,22 @@ export interface CaptureReturn {
   eventId: string;
   /** The step the guest was on (the login step), so the flow continues after it; null when unknown. */
   page: number | null;
+  /** Login happened in a separate tab so an in-memory photo can stay in the original capture page. */
+  popup?: boolean;
 }
 
-export function parseCaptureReturn(eventId: unknown, page?: unknown): CaptureReturn | null {
+export function parseCaptureReturn(eventId: unknown, page?: unknown, popup?: unknown): CaptureReturn | null {
   if (typeof eventId !== 'string' || !EVENT_ID.test(eventId)) return null;
   const n = typeof page === 'string' && /^\d{1,2}$/.test(page) ? Number(page) : null;
-  return { eventId, page: n };
+  return { eventId, page: n, ...(popup === '1' ? { popup: true } : {}) };
 }
 
-export const encodeCaptureReturn = (r: CaptureReturn): string => `${r.eventId}:${r.page ?? ''}`;
+export const encodeCaptureReturn = (r: CaptureReturn): string => `${r.eventId}:${r.page ?? ''}${r.popup ? ':1' : ''}`;
 
 export function decodeCaptureReturn(value: string | undefined | null): CaptureReturn | null {
   if (!value) return null;
   const [eventId, page] = value.split(':');
-  return parseCaptureReturn(eventId, page);
+  return parseCaptureReturn(eventId, page, value.split(':')[2]);
 }
 
 /** The page to open after the login: the capture page, with the resume signal when the step is known. */
@@ -49,7 +51,7 @@ export function captureReturnPath(r: CaptureReturn): string {
 /** The login route: the target named by the link the guest followed, or null for a dashboard login. */
 export function captureReturnForLogin(request: NextRequest): CaptureReturn | null {
   const params = request.nextUrl.searchParams;
-  return parseCaptureReturn(params.get('captureEvent'), params.get('capturePage'));
+  return parseCaptureReturn(params.get('captureEvent'), params.get('capturePage'), params.get('capturePopup'));
 }
 
 /** Records the target on the login's redirect to SSO; with no target it removes an older one, so a dashboard login is never sent to a selfie page. */
