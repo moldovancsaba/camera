@@ -5,8 +5,9 @@
  * on the same screen and no phases. **Press and drag on the photo, at any time, to draw a rectangle: that makes a new person** and selects it; its gender and age (required), emotion and items
  * are plain text buttons beside the photo (under it on a narrow screen), in the words of the event's vocabulary (lib/photo-vetting/vocabulary.ts). A tap, or a sliver under 2 % a side, makes
  * nothing; a tap on a rectangle selects that person. "Nobody in this photo" counts as looking when the list is empty. **Approve** is open when every person is complete and there is somebody
- * or "nobody"; **Reject** opens "Why is it rejected?" (one or more reasons, an optional note) and its confirmation needs the same marking (rejected photos are annotated too, owner answer 453) and
- * a reason. Pressing either does one thing: save the people (`PUT .../people`), then decide (`POST .../review`), then move to the next waiting photo; if the save fails the photo is not decided.
+ * or "nobody"; **Reject…** opens a separate reason step and does not decide yet. The photo stays in Waiting until at least one reason is selected and **Reject photo** is pressed; the final action also
+ * needs the same marking (rejected photos are annotated too, owner answer 453). Pressing either final decision does one thing: save the people (`PUT .../people`), then decide (`POST .../review`), then
+ * move to the next waiting photo; if the save fails the photo is not decided.
  * With marking switched off for the event the screen is the photo, the reasons and the decision. The rules live in lib/photo-vetting/review-state.ts (unit-tested); this file only draws and calls
  * them. Drawing needs a mouse or a finger: there is no keyboard way to draw a rectangle yet.
  */
@@ -19,7 +20,7 @@ import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import styles from '@/components/admin/PhotoReviewStage.module.css';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { Button } from '@/components/gds/PublicPrimitives';
-import { ChoiceChips, RejectReasonPicker } from '@/components/admin/ReviewChoices';
+import { ChoiceChips, RejectActionNotice, RejectReasonPicker } from '@/components/admin/ReviewChoices';
 import { WAITING_REFRESH_MS, shouldRefreshWaiting } from '@/lib/photo-vetting/auto-refresh';
 import { MAX_PEOPLE, RECTANGLE_COLOURS, type PersonBox } from '@/lib/photo-vetting/people';
 import type { PhotoQueueItem } from '@/lib/photo-vetting/queue';
@@ -345,16 +346,17 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
             </>
           ) : null}
 
-          {/* The reasons of a rejection come above the decision bar, so the bar (Approve, Reject, Skip) stays where it is. */}
+          {/* The rejection step comes above the decision bar, so the bar (Approve, Reject…, Skip) stays where it is. */}
           {rejecting ? (
-            <div ref={rejectBlock} className={styles.rejectBlock} style={{ display: 'grid', gap: '0.75rem' }} data-reject-block>
+            <div id="photo-rejection-step" ref={rejectBlock} className={styles.rejectBlock} style={{ display: 'grid', gap: '0.75rem' }} data-reject-block>
+              <RejectActionNotice markingMessage={markPeople ? missing : null} />
               <RejectReasonPicker vocabulary={vocabulary} reasons={reasons} onToggleReason={(key) => setReasons((current) => toggleReason(current, key))} note={note} onNote={setNote} disabled={busy !== null} />
               <div style={BUTTON_ROW}>
                 <SemanticButton action="photo-review:confirm-reject" type="button" color="red.8" disabled={!rejectOk || busy !== null} loading={busy === 'reject'} onClick={() => void decide('reject')}>
-                  Confirm reject
+                  Reject photo
                 </SemanticButton>
                 <SemanticButton action="photo-review:cancel-reject" type="button" variant="outline" disabled={busy !== null} onClick={() => setRejecting(false)}>
-                  Cancel
+                  Cancel rejection
                 </SemanticButton>
               </div>
             </div>
@@ -369,8 +371,8 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
               <SemanticButton action="photo-review:approve" type="button" color="green.8" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'approve'} onClick={() => void decide('approve')}>
                 Approve
               </SemanticButton>
-              <SemanticButton action="photo-review:reject" type="button" color="red.8" styles={DECISION_BUTTON} aria-expanded={rejecting} disabled={busy !== null} onClick={() => setRejecting((open) => !open)}>
-                Reject
+              <SemanticButton action="photo-review:reject" type="button" color="red.8" styles={DECISION_BUTTON} aria-expanded={rejecting} aria-controls={rejecting ? 'photo-rejection-step' : undefined} disabled={busy !== null} onClick={() => setRejecting((open) => !open)}>
+                Reject…
               </SemanticButton>
               <SemanticButton action="photo-review:mark-skip" type="button" variant="outline" styles={DECISION_BUTTON} disabled={busy !== null || !canSkip} onClick={() => onSkip(item.id)}>
                 Skip for now

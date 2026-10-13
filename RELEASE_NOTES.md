@@ -1,13 +1,20 @@
 # RELEASE_NOTES.md
 
+## Unreleased — rejection clearly stays pending until confirmed (owner feedback, 2026-10-13)
+
+- **Why:** a reviewer said the rejection flow looked as if it did not reject the photo. The first red button only opens the reason step; the photo stays in Waiting until a reason is selected and the final action is confirmed. People marking is also required when enabled.
+- **Changed:** the first action now reads **Reject…**; the expanded step says **Reject this photo**, states that it is still waiting, explains the final **Reject photo** action and shows any missing marking requirement. The reason picker now asks why the photo should be rejected, instead of sounding as if it is already rejected. The vetting plan matches the flow.
+- **Verified:** focused rendering tests for the reason picker and missing-reason state; full `release:check` and `inventory:check` pending.
+- **Not verified:** the authenticated event UI or a real rejection in production; no event photo was changed.
+
 ## Unreleased — one frame-and-message page, guest framing permissions, and email CTA buttons (2026-10-13)
 
 - **Capture choices:** the user-selected frame/layout and message options now share one page. A section is omitted when only one option is available; messages are filtered to the chosen layout. Frame/layout choices use square buttons, with per-event tile images from the event image library or a chosen colour in the Frames settings.
-- **Reframing:** the event's Take Photo page can allow or disable zooming out, zooming in, and moving the selfie. Missing settings keep all existing controls enabled. Fitting the whole selfie may show space outside its bounds; AI-generated background fill is not included.
+- **Reframing:** the event's Take Photo page can allow or disable zooming out, zooming in, and moving the selfie. Missing settings keep all existing controls enabled. Fitting the whole selfie may show space outside its bounds.
 - **Emails:** the email toolbar can add an optional CTA button with its own destination, separate from the existing photo button. The destination is hidden behind the button label in HTML email. Labeled text links were already supported and remain available for links such as “Visit our Facebook page”.
 - **Shipped:** PR [#636](https://github.com/moldovancsaba/camera/pull/636) merged to `main` on 2026-10-13 (merge commit `31ed8b7f0e7b709604625659fd56065bf53d75c6`); the production deployment completed successfully.
 - **Verified:** the full `release:check` and documentation inventory/link checks passed on the feature branch, including focused CTA and frame-tile regression tests; the production home page and session endpoint returned HTTP 200 after deploy.
-- **Not verified:** a real phone capture, event settings behind a login, or a real delivered email. AI-generated background fill is not implemented; the project's image-generation integration remains unqualified and disabled.
+- **Not verified:** a real phone capture, event settings behind a login, or a real delivered email.
 
 ## Unreleased — the switch of the counters for messmass: a button on the Messmass tab (issue 628; owner answer 481 "yes")
 

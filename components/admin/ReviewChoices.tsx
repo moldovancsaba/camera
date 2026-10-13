@@ -45,6 +45,18 @@ export function ChoiceChips({ heading, options, selected, onToggle, disabled }: 
   );
 }
 
+/** Makes the two-step rejection explicit and shows a missing people-marking requirement when one blocks confirmation. */
+export function RejectActionNotice({ markingMessage }: { markingMessage?: string | null }) {
+  return (
+    <div style={{ display: 'grid', gap: '0.375rem' }} data-rejection-progress>
+      <h3 style={{ fontSize: '0.9375rem', margin: 0 }}>Reject this photo</h3>
+      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', margin: 0 }}>
+        This photo is still waiting. Select at least one reason, then press “Reject photo” to complete the rejection.{markingMessage ? ` ${markingMessage}` : ''}
+      </p>
+    </div>
+  );
+}
+
 interface RejectReasonPickerProps {
   vocabulary: ResolvedVocabulary;
   /** The reason keys chosen now. */
@@ -61,7 +73,7 @@ export function RejectReasonPicker({ vocabulary, reasons, onToggleReason, note, 
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }} data-reject-reasons>
       {options.length > 0 ? (
-        <ChoiceChips heading="Why is it rejected? Choose one or more." options={options} selected={reasons} onToggle={onToggleReason} disabled={disabled} />
+        <ChoiceChips heading="Select at least one rejection reason." options={options} selected={reasons} onToggle={onToggleReason} disabled={disabled} />
       ) : (
         <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', margin: 0 }}>No reasons are offered for this event, so a photo cannot be rejected here. Ask an admin to switch one on.</p>
       )}
