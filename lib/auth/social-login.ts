@@ -20,11 +20,12 @@ export function parseLoginProvider(
  */
 export function socialLoginHref(
   provider: SocialLoginProvider,
-  options?: { fromLogout?: boolean; captureEventId?: string; capturePage?: number }
+  options?: { fromLogout?: boolean; captureEventId?: string; capturePage?: number; capturePopup?: string }
 ): string {
   const p = new URLSearchParams({ provider });
   if (options?.fromLogout) p.set('from_logout', 'true');
   if (options?.captureEventId) p.set('captureEvent', options.captureEventId);
   if (options?.capturePage !== undefined) p.set('capturePage', String(options.capturePage));
+  if (options?.capturePopup) p.set('capturePopup', options.capturePopup);
   return `/api/auth/login?${p.toString()}`;
 }

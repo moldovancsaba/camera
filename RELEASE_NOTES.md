@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — social login stays available after the photo (2026-10-13)
+
+- **Fixed:** when the Who Are You page is ordered between Take Photo and Submit, its Google/Facebook options now follow the event's settings instead of being hidden. Sign-in opens in a separate tab; the original tab keeps the captured photo and continues after an attempt-specific callback signal and session read. A guest's old session on a shared device cannot trigger the resume. The callback leaves a brief completion page in the sign-in tab. If pop-ups are blocked, the guest can continue with the email form.
+- **Why:** the previous workaround hid social sign-in in this position because redirecting the only tab discarded the captured photo held in page memory.
+- **Verified:** dedicated coverage for the attempt-scoped popup signal, popup return target, and visible social buttons; full unit suite passed (343/343 files), TypeScript check and changed-file lint passed.
+- **Not yet verified:** a live SSO round trip in a browser, phone-width browser review, production deployment, and real event capture.
+
 ## Unreleased — return a mistaken decision to vetting and correct analysis silently (camera#641, 2026-10-13)
 
 - **Changed:** managers can return approved vetted photos from Gallery and approved/rejected photos from Vetting to the normal review queue. The existing share-token link shows an editable English/Hungarian further-review message with no image or preview while review is open. Reopening a photo that was publicly visible emails the guest; returning an already hidden rejected photo does not.

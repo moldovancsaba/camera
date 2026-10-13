@@ -14,6 +14,8 @@ import { NextRequest } from 'next/server';
 import { createSession } from '@/lib/auth/session';
 import type { TokenResponse } from '@/lib/auth/sso';
 import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
+import { capturePopupResponse } from '@/lib/auth/capture-popup';
+import { parseCapturePopupId } from '@/lib/auth/capture-return';
 
 export async function GET(request: NextRequest) {
   const blocked = blockDangerousApiInProduction();
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
   const accessParam = searchParams.get('access');
   const redirectTo = searchParams.get('redirectTo')?.trim() || '/';
   const userId = searchParams.get('userId')?.trim() || 'dev-user-001';
+  const capturePopupId = parseCapturePopupId(searchParams.get('capturePopup'));
   const appRole =
     roleParam === 'none' || roleParam === 'user' || roleParam === 'admin' || roleParam === 'superadmin'
       ? roleParam
@@ -65,7 +68,9 @@ export async function GET(request: NextRequest) {
   };
 
   const origin = request.nextUrl.origin;
-  const response = NextResponse.redirect(new URL(redirectTo, origin));
+  const response = capturePopupId
+    ? capturePopupResponse(capturePopupId, 'completed')
+    : NextResponse.redirect(new URL(redirectTo, origin));
   await createSession(mockUser, mockTokens, { appRole, appAccess }, response);
   return response;
 }

@@ -28,6 +28,7 @@ import { decodeSignedOAuthPkceState, getOAuthPkceStateSigningKey } from '@/lib/a
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 import { pushSsoSessionToMessmass } from '@/lib/messmassClient';
 import { clearCaptureReturn, captureReturnPath, readCaptureReturn } from '@/lib/auth/capture-return';
+import { capturePopupResponse } from '@/lib/auth/capture-popup';
 
 /**
  * WHAT: Best-effort -- also log this user into messmass, so one SSO login
@@ -62,10 +63,14 @@ function redirectOAuthFailure(
 
   let res: NextResponse;
   if (capture) {
-    const url = new URL(`/capture/${capture.eventId}`, request.url);
-    url.searchParams.set('error', errorCode);
-    url.searchParams.set('message', encodeURIComponent(message));
-    res = NextResponse.redirect(url);
+    if (capture.popupId) {
+      res = capturePopupResponse(capture.popupId, 'failed');
+    } else {
+      const url = new URL(`/capture/${capture.eventId}`, request.url);
+      url.searchParams.set('error', errorCode);
+      url.searchParams.set('message', encodeURIComponent(message));
+      res = NextResponse.redirect(url);
+    }
   } else {
     // /admin/login is the single place that surfaces a sign-in error --
     // the homepage is a plain public landing page and doesn't render one.
@@ -215,7 +220,9 @@ export async function GET(request: NextRequest) {
     if (capture) {
       console.log('✓ Resuming capture flow:', capture.eventId, 'page:', capture.page);
 
-      const response = NextResponse.redirect(new URL(captureReturnPath(capture), request.url));
+      const response = capture.popupId
+        ? capturePopupResponse(capture.popupId, 'completed')
+        : NextResponse.redirect(new URL(captureReturnPath(capture), request.url));
       clearCaptureReturn(response);
       clearPendingSessionCookieOnResponse(response);
 

@@ -133,6 +133,7 @@ export const hu: Record<MessageKey, string> = {
   'login.err.nameShort': 'A névnek legalább 2 karakterből kell állnia',
   'login.err.emailRequired': 'Az e-mail-cím megadása kötelező',
   'login.err.emailInvalid': 'Adj meg egy érvényes e-mail-címet',
+  'login.popupError': 'Ha a bejelentkezés nem indult el vagy nem fejeződött be, engedélyezd a felugró ablakokat, és próbáld újra. E-mail-címmel is folytathatod.',
   'login.or': 'VAGY',
   'social.google.aria': 'Folytatás Google-lel',
   'social.facebook.aria': 'Folytatás Facebookkal',

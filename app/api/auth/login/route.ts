@@ -52,6 +52,8 @@ export async function GET(request: NextRequest) {
       const redirectTo = resolveDevLoginRedirect(request);
       const devLoginUrl = new URL('/api/auth/dev-login', origin);
       devLoginUrl.searchParams.set('redirectTo', redirectTo);
+      const capture = captureReturnForLogin(request);
+      if (capture?.popupId) devLoginUrl.searchParams.set('capturePopup', capture.popupId);
       devLoginUrl.searchParams.set('role', resolveDevLoginRole(redirectTo));
       devLoginUrl.searchParams.set('access', 'true');
       console.log(`[Dev Mode] SSO is not configured; using dev-login and returning to ${redirectTo}`);

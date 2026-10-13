@@ -69,6 +69,8 @@ export interface WhoAreYouPageProps {
   eventId: string;
   pageIndex: number;
   buttonSize?: EventButtonSize;
+  /** Opens social sign-in separately so a photo between this page and Save remains in the original tab. */
+  socialLoginPopup?: boolean;
 }
 
 export default function WhoAreYouPage({
@@ -81,6 +83,7 @@ export default function WhoAreYouPage({
   eventId,
   pageIndex,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
+  socialLoginPopup = false,
 }: WhoAreYouPageProps) {
   const { t, own } = useT();
   const [name, setName] = useState('');
@@ -90,6 +93,7 @@ export default function WhoAreYouPage({
   const [accepted, setAccepted] = useState(acceptance?.checked === true);
   const acceptanceRequired = acceptance?.required !== false;
   const locked = acceptance !== undefined && acceptanceRequired && !accepted;
+
 
   // At least one way to say who you are stays on (planning item 36); an empty text falls back to its default.
   const { sso: enableSSOLogin, form: enablePseudoReg } = loginOptions(config);
@@ -176,7 +180,7 @@ export default function WhoAreYouPage({
           <Title order={4} ta="center">
             {socialHeading}
           </Title>
-          <SocialLoginButtons captureEventId={eventId} capturePage={pageIndex} disabled={locked} />
+          <SocialLoginButtons captureEventId={eventId} capturePage={pageIndex} capturePopup={socialLoginPopup} onCaptureLoginComplete={socialLoginPopup ? onNext : undefined} disabled={locked} />
         </Stack>
       ) : null}
 

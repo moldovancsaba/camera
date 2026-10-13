@@ -47,12 +47,14 @@ const LOOK: Record<BrandProvider, { mark: ReactNode; background: string; color: 
   facebook: { mark: <FacebookMark />, background: SOCIAL_FACEBOOK_BLUE, color: CAMERA_STAGE_WHITE, border: `1px solid ${SOCIAL_FACEBOOK_BLUE}` },
 };
 
-export default function BrandSignInButton({ provider, href, label, disabled = false }: { provider: BrandProvider; href: string; label: string; disabled?: boolean }) {
+export default function BrandSignInButton({ provider, href, label, disabled = false, openInNewTab = false, onPopupClick }: { provider: BrandProvider; href: string; label: string; disabled?: boolean; openInNewTab?: boolean; onPopupClick?: (href: string) => void }) {
   const look = LOOK[provider];
   return (
     <a
       // A disabled button has no address: nothing to follow with a tap, a key or a long press, and the page says so to a screen reader (the acceptance on the Who-are-you page, issue 523).
       href={disabled ? undefined : href}
+      {...(openInNewTab && !disabled ? { target: '_blank' } : {})}
+      onClick={openInNewTab && onPopupClick ? (event) => { event.preventDefault(); onPopupClick(href); } : undefined}
       aria-disabled={disabled || undefined}
       role={disabled ? 'link' : undefined}
       data-brand-signin={provider}

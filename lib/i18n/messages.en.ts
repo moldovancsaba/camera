@@ -133,6 +133,7 @@ export const en = {
   'login.err.nameShort': 'Name must be at least 2 characters',
   'login.err.emailRequired': 'Email is required',
   'login.err.emailInvalid': 'Please enter a valid email address',
+  'login.popupError': 'If sign-in did not open or finish, allow pop-ups and try again. You can also continue with email.',
   'login.or': 'OR',
   'social.google.aria': 'Continue with Google',
   'social.facebook.aria': 'Continue with Facebook',
