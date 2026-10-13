@@ -4,7 +4,7 @@ import type { CustomPage } from '@/lib/db/schemas';
 import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, sanitizeDefaultPageOrders, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
 import { documentSettings, effectiveCheckboxes } from './checkbox-settings';
-import { customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, moveTarget, setSubmitSeparate, type JourneyContext, type JourneyRow } from './journey';
+import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, moveTarget, setSubmitSeparate, type JourneyContext, type JourneyRow } from './journey';
 
 const page = (pageType: string, order: number, isActive = true, pageId = `${pageType}-${order}`): CustomPage =>
   ({ pageId, pageType, order, isActive, config: { title: pageType, description: '', buttonText: 'Next' }, createdAt: 'x', updatedAt: 'x' }) as unknown as CustomPage;
@@ -145,10 +145,32 @@ test('a default page can move among the pages before the photo, but never across
   assert.equal(moveTarget(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), -1), at(rows, DEFAULT_CONSENT_PAGE_ID));
   assert.equal(moveTarget(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1), null, 'the login cannot go behind the photo: a photo that is checked needs an identity first');
   assert.equal(moveTarget(rows, at(rows, 'take-photo-0'), -1), null, 'and the take-photo page cannot move in front of a default page');
+  assert.equal(canMoveJourneyRow(rows, at(rows, 'take-photo-0'), -1), true, 'the editor can make saving a later step and move photo-taking first');
   assert.equal(moveTarget(rows, at(rows, 'cta-1'), -1), at(rows, 'take-photo-0'), 'an own page moves past the built-in steps to the next page row');
   assert.equal(moveTarget(rows, at(rows, 'cta-1'), 1), null, 'nothing below the last page');
   assert.equal(moveTarget(rows, rows.findIndex((row) => row.kind === 'step'), 1), null, 'a built-in step has no place of its own');
   assert.equal(moveTarget(rows, at(rows, DEFAULT_CONSENT_PAGE_ID), -1), at(rows, 'welcome--1'), 'consent up: above the welcome page');
+});
+
+test('moving photo-taking above login automatically inserts a later Submit step and keeps login before saving', () => {
+  const rows = rowsOf(START);
+  const moved = moveJourneyRow(rows, at(rows, 'take-photo-0'), -1, () => 'submit-auto', NOW)!;
+  const after = effectiveJourney(moved.pages, { ...ALL, defaultOrders: moved.defaultOrders }, NOW);
+  assert.deepEqual(sequence(after), [
+    'own:welcome--1',
+    `default:${DEFAULT_CONSENT_PAGE_ID}`,
+    'own:take-photo-0',
+    `default:${DEFAULT_IDENTITY_PAGE_ID}`,
+    'own:submit-auto',
+    'step:waiting',
+    'step:emails',
+    'step:result',
+    'own:cta-1',
+  ]);
+  assert.equal(hasSeparateSubmit(after), true);
+  assert.deepEqual(moved.pages.find((p) => p.pageId === 'submit-auto')?.config, { title: '[Submit]', description: '', buttonText: '' });
+  assert.deepEqual(moved.defaultOrders, { [DEFAULT_CONSENT_PAGE_ID]: 1, [DEFAULT_IDENTITY_PAGE_ID]: 3 });
+  assert.equal(canMoveJourneyRow(after, at(after, 'take-photo-0'), -1), true, 'the user can continue moving photo-taking ahead');
 });
 
 test('moving a default page saves its place and the places of every page, and the editor and the user see the same journey afterwards', () => {

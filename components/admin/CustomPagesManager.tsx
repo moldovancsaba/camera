@@ -18,7 +18,7 @@ import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
-import { customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, moveTarget, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
+import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
 import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type CheckboxMode, type EffectiveCheckboxes, type StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 import CheckboxSettingsFields, { type CheckboxModes } from '@/components/admin/CheckboxSettingsFields';
 
@@ -328,7 +328,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
 
   /**
    * Move a row (an own page or a default page) one place up or down. With the journey known, every page row is numbered together (own pages and default pages), a default page keeps being
-   * a default and only its place is saved (issue 535); a default page never crosses the take-photo page (lib/events/journey.ts `moveTarget`).
+   * a default and only its place is saved (issue 535); moving the take-photo page above a default automatically separates the later save step.
    */
   const handleMove = (rowIndex: number, direction: -1 | 1) => {
     if (journeyContext) {
@@ -349,7 +349,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
 
   /** Whether the row can move one place up or down: the journey says (a default page stays before the photo), without it the own pages only. */
   const canMove = (rowIndex: number, direction: -1 | 1): boolean => {
-    if (journeyContext) return moveTarget(rows, rowIndex, direction) !== null;
+    if (journeyContext) return canMoveJourneyRow(rows, rowIndex, direction);
     const row = rows[rowIndex];
     const index = sortedPages.findIndex((p) => row.kind === 'own' && p.pageId === row.page.pageId);
     return index >= 0 && index + direction >= 0 && index + direction < sortedPages.length;

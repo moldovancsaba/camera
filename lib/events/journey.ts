@@ -95,6 +95,15 @@ const isPageRow = (row: JourneyRow): row is PageRow => row.kind !== 'step';
 const isTakePhotoRow = (row: PageRow) => row.kind === 'own' && row.page.pageType === CustomPageType.TAKE_PHOTO;
 const isSubmitRow = (row: PageRow) => row.kind === 'own' && row.page.pageType === CustomPageType.SUBMIT;
 
+/** Moving photo-taking in front of a default page is possible by making saving a later step first. */
+function needsSeparateSubmitForPhotoMove(rows: readonly JourneyRow[], index: number, direction: -1 | 1): boolean {
+  if (direction !== -1 || rows.some((row) => isPageRow(row) && isSubmitRow(row))) return false;
+  const row = rows[index];
+  if (!row || !isPageRow(row) || !isTakePhotoRow(row)) return false;
+  const previousPage = rows.slice(0, index).findLast(isPageRow);
+  return previousPage?.kind === 'default';
+}
+
 /**
  * The page row that the row at `index` swaps places with when it moves one place `up` (-1) or `down` (+1), or null when it cannot move. The built-in steps are not pages and stay where they are,
  * so the neighbour is the next page row in that direction. Three rules keep the journey sound: the Submit page stays after the take-photo page (they never swap); a default page never ends up
@@ -116,17 +125,34 @@ export function moveTarget(rows: readonly JourneyRow[], index: number, direction
   return null;
 }
 
+/** Whether a row can move, including the first photo-first move which separates saving automatically. */
+export function canMoveJourneyRow(rows: readonly JourneyRow[], index: number, direction: -1 | 1): boolean {
+  return moveTarget(rows, index, direction) !== null || needsSeparateSubmitForPhotoMove(rows, index, direction);
+}
+
 /**
  * The journey after the row at `index` moved one place (issue 535): every page row, own and default, gets its place in the list as its `order`. The own pages are returned as the pages to save,
  * the default pages as `defaultOrders` (`Event.defaultPageOrders`): a default page stays a default, only its place is saved. All pages are numbered together so the editor and the user keep seeing
  * one order, whether a default page was moved or an own page moved past one. Null when the row cannot move (`moveTarget`).
  */
-export function moveJourneyRow(rows: readonly JourneyRow[], index: number, direction: -1 | 1): { pages: CustomPage[]; defaultOrders: Record<string, number> } | null {
-  const target = moveTarget(rows, index, direction);
+export function moveJourneyRow(rows: readonly JourneyRow[], index: number, direction: -1 | 1, makeId: () => string = generateId, now: string = new Date().toISOString()): { pages: CustomPage[]; defaultOrders: Record<string, number> } | null {
+  const workingRows = rows;
+  const target = moveTarget(workingRows, index, direction);
+  if (target === null && needsSeparateSubmitForPhotoMove(workingRows, index, direction)) {
+    const sequence = workingRows.filter(isPageRow);
+    const photoAt = sequence.findIndex((row) => row === workingRows[index]);
+    const marker: PageRow = { kind: 'own', page: { pageId: makeId(), pageType: CustomPageType.SUBMIT, order: 0, isActive: true, config: { title: '[Submit]', description: '', buttonText: '' }, createdAt: now, updatedAt: now } };
+    sequence.splice(photoAt + 1, 0, marker);
+    const photo = sequence[photoAt];
+    const previous = sequence[photoAt - 1];
+    if (!photo || !previous) return null;
+    [sequence[photoAt - 1], sequence[photoAt]] = [photo, previous];
+    return numberPages(sequence);
+  }
   if (target === null) return null;
-  const sequence = rows.filter(isPageRow);
-  const from = sequence.indexOf(rows[index] as PageRow);
-  const to = sequence.indexOf(rows[target] as PageRow);
+  const sequence = workingRows.filter(isPageRow);
+  const from = sequence.indexOf(workingRows[index] as PageRow);
+  const to = sequence.indexOf(workingRows[target] as PageRow);
   [sequence[from], sequence[to]] = [sequence[to], sequence[from]];
   return numberPages(sequence);
 }
