@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { SubmissionNotificationInput } from '@/lib/email/submission-notification';
 import { emailDefaults } from '@/lib/email/submission-template-defaults';
-import { approvedShareUrl, NOT_APPROVED_BODY, NOT_APPROVED_SUBJECT, sendPhotoApprovedEmail, sendPhotoNotApprovedEmail, takeAnotherPhotoUrl } from './emails';
+import { approvedShareUrl, NOT_APPROVED_BODY, NOT_APPROVED_SUBJECT, sendPhotoApprovedEmail, sendPhotoNotApprovedEmail, sendPhotoUnderReviewEmail, takeAnotherPhotoUrl } from './emails';
 
 const SENT = { sent: true, provider: 'resend', messageId: 'm1', recipientEmail: 'ann@example.com' } as const;
 const guest = { userInfo: { name: 'Ann', email: 'ann@example.com' }, userEmail: 'anonymous@event', userName: 'Guest' };
@@ -36,6 +36,17 @@ test('the not-approved email has fixed wording and links to taking another photo
   assert.equal(calls[0].bodyTemplate, NOT_APPROVED_BODY);
   assert.equal(calls[0].shareUrl, 'https://x.test/capture/e1');
   assert.ok(NOT_APPROVED_BODY.includes('{link}') && NOT_APPROVED_BODY.includes('{name}'));
+});
+
+test('the further-review email uses the existing share link and the event language', async () => {
+  const { calls, send } = recorder();
+  const result = await sendPhotoUnderReviewEmail(guest, { name: 'Derby', uiLanguage: 'hu' } as never, 'https://x.test/share/tok', send);
+  assert.equal(result.sent, true);
+  assert.equal(calls[0].shareUrl, 'https://x.test/share/tok');
+  assert.equal(calls[0].language, 'hu');
+  assert.equal(calls[0].subjectTemplate, 'Frissítés a(z) {event} eseményen készült fotódról');
+  assert.match(calls[0].bodyTemplate ?? '', /további ellenőrzésnek kell alávetnünk/);
+  assert.doesNotMatch(calls[0].bodyTemplate ?? '', /https:\/\//, 'the email body uses a link button instead of showing the URL');
 });
 
 test('a guest without an address gets nothing sent to a made-up recipient', async () => {

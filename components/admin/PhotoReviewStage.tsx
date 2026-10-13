@@ -2,7 +2,7 @@
 
 /**
  * The one-screen vetting review (issue 628, owner request 2026-10-12; first built as the big view of issue 542): ONE photo at a time, as big as the screen allows, with everything needed to decide it
- * on the same screen and no phases. **Press and drag on the photo, at any time, to draw a rectangle: that makes a new person** and selects it; its gender and age (required), emotion and items
+ * on the same screen and no phases. Its save-only mode updates analysis on an approved photo without deciding it again. **Press and drag on the photo, at any time, to draw a rectangle: that makes a new person** and selects it; its gender and age (required), emotion and items
  * are plain text buttons beside the photo (under it on a narrow screen), in the words of the event's vocabulary (lib/photo-vetting/vocabulary.ts). A tap, or a sliver under 2 % a side, makes
  * nothing; a tap on a rectangle selects that person. "Nobody in this photo" counts as looking when the list is empty. **Approve** is open when every person is complete and there is somebody
  * or "nobody"; **Reject…** opens a separate reason step and does not decide yet. The photo stays in Waiting until at least one reason is selected and **Reject photo** is pressed; the final action also
@@ -63,6 +63,8 @@ interface Props {
   markPeople: boolean;
   /** Drawn inside the event's Vetting tab, not as a page of its own: the empty state has no way back to link to. */
   embedded?: boolean;
+  /** Edits people analysis on an already approved photo without changing status, visibility or email. */
+  analysisOnly?: boolean;
 }
 
 const ANSWER_TIMEOUT_MS = 120_000;
@@ -108,6 +110,7 @@ interface WorkspaceProps {
   total: number;
   vocabulary: ResolvedVocabulary;
   markPeople: boolean;
+  analysisOnly: boolean;
   canSkip: boolean;
   notice: DecisionNotice | null;
   onDecided: (id: string, notice: DecisionNotice) => void;
@@ -116,10 +119,10 @@ interface WorkspaceProps {
 }
 
 /** One photo and everything done to it. The parent keys it by the photo, so every new photo starts clean. */
-function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip, notice, onDecided, onSkip, onWorking }: WorkspaceProps) {
+function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysisOnly, canSkip, notice, onDecided, onSkip, onWorking }: WorkspaceProps) {
   const [draft, setDraft] = useState<ReviewDraft>(() => startDraft({ people: item.people, peopleMarked: item.peopleMarked }, vocabulary));
   const [drawing, setDrawing] = useState<PersonBox | null>(null);
-  const [busy, setBusy] = useState<'approve' | 'reject' | null>(null);
+  const [busy, setBusy] = useState<'approve' | 'reject' | 'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const [reasons, setReasons] = useState<string[]>([]);
@@ -201,6 +204,22 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
     }
   };
 
+  const saveAnalysis = async () => {
+    if (busy) return;
+    setBusy('save');
+    onWorking(true);
+    setError(null);
+    try {
+      await send(`/api/admin/submissions/${item.id}/people`, 'PUT', { people: peopleToSave(draft), analysisOnly: true });
+      onDecided(item.id, { text: 'Analysis updated. The photo remains visible.', warning: false });
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'The analysis could not be saved');
+    } finally {
+      onWorking(false);
+      setBusy(null);
+    }
+  };
+
   const nextColour = colourOf(draft.people.length);
   const groupSelection = (group: PersonGroup): string[] => {
     if (!selected) return [];
@@ -213,12 +232,12 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: 1400 }} data-photo-review-stage>
       <div style={{ alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem', justifyContent: 'space-between' }}>
         <strong data-review-position>
-          Photo {position} of {total} waiting
+          {analysisOnly ? `Updating analysis ${position} of ${total}` : `Photo ${position} of ${total} waiting`}
         </strong>
         {item.email ? <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{item.email}</span> : null}
       </div>
       <p style={DIMMED} data-review-help>
-        {markPeople
+        {analysisOnly ? 'Update the people marked on this photo. Saving changes the analysis only; visibility stays the same.' : markPeople
           ? '1. Draw a rectangle around each person. 2. Choose gender and age. Add emotion and items if you can. 3. Approve or reject.'
           : 'Look at the photo, then approve or reject it. A rejection needs a reason.'}
       </p>
@@ -347,7 +366,7 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
           ) : null}
 
           {/* The rejection step comes above the decision bar, so the bar (Approve, Reject…, Skip) stays where it is. */}
-          {rejecting ? (
+          {!analysisOnly && rejecting ? (
             <div id="photo-rejection-step" ref={rejectBlock} className={styles.rejectBlock} style={{ display: 'grid', gap: '0.75rem' }} data-reject-block>
               <RejectActionNotice markingMessage={markPeople ? missing : null} />
               <RejectReasonPicker vocabulary={vocabulary} reasons={reasons} onToggleReason={(key) => setReasons((current) => toggleReason(current, key))} note={note} onNote={setNote} disabled={busy !== null} />
@@ -363,11 +382,15 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
           ) : null}
 
           {/* The decision is always on the screen: this bar sticks to the bottom of the window while the panel is longer than the window. */}
-          <section className={styles.decision} aria-label="Decision" data-decision>
+          <section className={styles.decision} aria-label={analysisOnly ? 'Save analysis' : 'Decision'} data-decision>
             <p role="status" aria-live="polite" style={{ ...DIMMED, minHeight: '1.25rem' }} data-decision-hint>
               {hint}
             </p>
-            <div style={BUTTON_ROW}>
+            {analysisOnly ? (
+              <SemanticButton action="photo-review:save-analysis" type="button" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'save'} onClick={() => void saveAnalysis()}>
+                Save analysis
+              </SemanticButton>
+            ) : <div style={BUTTON_ROW}>
               <SemanticButton action="photo-review:approve" type="button" color="green.8" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'approve'} onClick={() => void decide('approve')}>
                 Approve
               </SemanticButton>
@@ -377,7 +400,7 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
               <SemanticButton action="photo-review:mark-skip" type="button" variant="outline" styles={DECISION_BUTTON} disabled={busy !== null || !canSkip} onClick={() => onSkip(item.id)}>
                 Skip for now
               </SemanticButton>
-            </div>
+            </div>}
           </section>
         </aside>
       </div>
@@ -385,7 +408,7 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, canSkip
   );
 }
 
-export default function PhotoReviewStage({ eventId, items, vocabulary, markPeople, embedded = false }: Props) {
+export default function PhotoReviewStage({ eventId, items, vocabulary, markPeople, embedded = false, analysisOnly = false }: Props) {
   const router = useRouter();
   // Photos decided here leave the queue at once (the server list catches up after router.refresh()); a photo skipped goes to the back and comes round again.
   const [decided, setDecided] = useState<string[]>([]);
@@ -402,19 +425,21 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
 
   // The screen asks the server for new photos by itself (as the Waiting list always did, camera#373), so an approver at the match does not reload the page; not while a decision is in flight.
   useEffect(() => {
+    if (analysisOnly) return;
     const timer = setInterval(() => {
       if (shouldRefreshWaiting({ status: 'pending_review', hidden: document.visibilityState === 'hidden', deciding: working, rejecting: false })) router.refresh();
     }, WAITING_REFRESH_MS);
     return () => clearInterval(timer);
-  }, [working, router]);
+  }, [working, router, analysisOnly]);
 
   const onDecided = useCallback(
     (id: string, message: DecisionNotice) => {
       setDecided((current) => [...current, id]);
       setNotice(message);
-      router.refresh();
+      if (analysisOnly) router.push(`/admin/events/${eventId}/vetting?photos=approved`);
+      else router.refresh();
     },
-    [router],
+    [router, analysisOnly, eventId],
   );
   const onSkip = useCallback((id: string) => {
     setNotice(null);
@@ -439,6 +464,7 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
       total={decided.length + waiting.length}
       vocabulary={vocabulary}
       markPeople={markPeople}
+      analysisOnly={analysisOnly}
       canSkip={waiting.length > 1}
       notice={notice}
       onDecided={onDecided}

@@ -80,6 +80,25 @@ test('nobody marked is saved too (looked at, nobody in it), and a second save re
   assert.deepEqual((calls.updates[0].update as { $set: { people: unknown[] } }).$set.people, []);
 });
 
+test('analysis updates on an approved photo leave its status and visibility untouched', async (t) => {
+  const calls = setup(t, { submission: { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'approved', isShareVisible: true } });
+  const { PUT } = await importRoute('analysis-only');
+  assert.equal((await PUT(put({ people: [person()], analysisOnly: true }), params)).status, 200);
+  const update = calls.updates[0].update as { $set: Record<string, unknown> };
+  assert.deepEqual(calls.updates[0].filter, { _id: new ObjectId(id), reviewStatus: 'approved' });
+  assert.deepEqual(Object.keys(update.$set).sort(), ['people', 'peopleReview']);
+  assert.equal(update.$set.reviewStatus, undefined);
+  assert.equal(update.$set.isShareVisible, undefined);
+});
+
+test('analysis-only saves are refused after another moderator has returned the photo to vetting', async (t) => {
+  const calls = setup(t, { submission: { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review', isShareVisible: false } });
+  const { PUT } = await importRoute('analysis-no-longer-approved');
+  const response = await PUT(put({ people: [person()], analysisOnly: true }), params);
+  assert.equal(response.status, 409);
+  assert.equal(calls.updates.length, 0);
+});
+
 test('a list that is not valid is refused and nothing is saved', async (t) => {
   const calls = setup(t);
   const { PUT } = await importRoute('bad');

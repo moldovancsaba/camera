@@ -40,18 +40,21 @@ export async function findShareSubmission(db: Db, id: string): Promise<ShareLook
 /**
  * What the page shows:
  * - `visible`: the photo, as before;
- * - `waiting` / `not_approved`: a vetted photo reached by its token that is waiting or was rejected (no photo, no preview image);
+ * - `waiting` / `under_review` / `not_approved`: a vetted photo reached by its token that is waiting, reopened for review, or rejected (no photo, no preview image);
  * - `hidden`: nothing, the page is not found (unknown, archived, removed from its events, pending or rejected by database id, a stored try-on
  *   result: never public, issue 557).
  */
-export type ShareState = 'visible' | 'waiting' | 'not_approved' | 'hidden';
+export type ShareState = 'visible' | 'waiting' | 'under_review' | 'not_approved' | 'hidden';
 
 export function shareStateOf(lookup: ShareLookup | null): ShareState {
   if (!lookup) return 'hidden';
   const { doc, byToken } = lookup;
   if (isPubliclyVisible(visibilityInputOf(doc))) return 'visible';
   if (!byToken || doc.submissionKind === 'tryon_result' || doc.isArchived === true) return 'hidden';
-  if (doc.reviewStatus === 'pending_review') return 'waiting';
+  if (doc.reviewStatus === 'pending_review') {
+    const review = doc.photoReview && typeof doc.photoReview === 'object' ? doc.photoReview as Document : {};
+    return typeof review.returnedAt === 'string' ? 'under_review' : 'waiting';
+  }
   if (doc.reviewStatus === 'rejected') return 'not_approved';
   return 'hidden';
 }

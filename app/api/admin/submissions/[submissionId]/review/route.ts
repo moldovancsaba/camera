@@ -1,7 +1,7 @@
 /**
  * POST /api/admin/submissions/[submissionId]/review (camera#267, docs/PHOTO_VETTING_PLAN.md)
  *
- * Approve or reject a photo of an event with vetting required. Allowed for global admins and for the event's partner Events
+ * Approve, reject or return a photo to vetting for an event. Allowed for global admins and for the event's partner Events
  * managers. Approval makes the picture, emails the user the share link and does not delete the private unframed photo at once (issue 509: after the answer it is
  * copied to ImgBB, every copy is recorded, and the private file is deleted only when the ImgBB copy is verified, lib/storage/image-copies.ts); rejection keeps the photo private and
  * emails the user a short note.
@@ -20,7 +20,7 @@ import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound, 
 import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
 import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
-import { approvePhoto, rejectPhoto, type ReviewFailure } from '@/lib/photo-vetting/review';
+import { approvePhoto, rejectPhoto, returnPhotoToVetting, type ReviewFailure } from '@/lib/photo-vetting/review';
 import { markPeopleOn } from '@/lib/photo-vetting/people';
 import { offeredReasons } from '@/lib/photo-vetting/review-state';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
@@ -48,8 +48,8 @@ export const POST = withErrorHandler(async (
 
   const body = (await request.json().catch(() => null)) as { action?: unknown; reason?: unknown; reasons?: unknown } | null;
   const action = body?.action;
-  if (action !== 'approve' && action !== 'reject') {
-    throw apiBadRequest('action must be "approve" or "reject"');
+  if (action !== 'approve' && action !== 'reject' && action !== 'return_to_vetting') {
+    throw apiBadRequest('action must be "approve", "reject" or "return_to_vetting"');
   }
   const reason = typeof body?.reason === 'string' && body.reason.trim() ? body.reason.trim().slice(0, MAX_REASON_LENGTH) : null;
   const chosen = Array.isArray(body?.reasons) ? [...new Set((body.reasons as unknown[]).filter((item): item is string => typeof item === 'string' && item.length > 0))] : [];
@@ -90,7 +90,9 @@ export const POST = withErrorHandler(async (
   const actor = { email: session.user.email ?? null, id: session.user.id ?? null };
   const result = action === 'approve'
     ? await approvePhoto(db, submission, actor)
-    : await rejectPhoto(db, submission, actor, reason, reasons);
+    : action === 'reject'
+      ? await rejectPhoto(db, submission, actor, reason, reasons)
+      : await returnPhotoToVetting(db, submission, actor);
 
   if (!result.ok) {
     throw apiError(result.message, STATUS_OF[result.reason]);
@@ -100,7 +102,7 @@ export const POST = withErrorHandler(async (
   scheduleCounterSync(db, event);
   return apiSuccess({
     submissionId,
-    reviewStatus: action === 'approve' ? 'approved' : 'rejected',
+    reviewStatus: action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'pending_review',
     email: result.email,
   });
 });

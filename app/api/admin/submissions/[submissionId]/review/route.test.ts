@@ -27,7 +27,7 @@ interface Options {
 }
 
 function setup(t: TestContext, options: Options = {}) {
-  const calls = { access: [] as Array<{ id: string; role: unknown }>, approve: [] as unknown[][], reject: [] as unknown[][] };
+  const calls = { access: [] as Array<{ id: string; role: unknown }>, approve: [] as unknown[][], reject: [] as unknown[][], reopen: [] as unknown[][] };
   const submission = options.submission === undefined ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review', peopleReview: { by: 'u1', at: '2026-10-10T10:00:00.000Z' } } : options.submission;
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
@@ -56,6 +56,7 @@ function setup(t: TestContext, options: Options = {}) {
     exports: {
       approvePhoto: async (...args: unknown[]) => (calls.approve.push(args), options.outcome ?? { ok: true, email: 'sent' }),
       rejectPhoto: async (...args: unknown[]) => (calls.reject.push(args), options.outcome ?? { ok: true, email: 'sent' }),
+      returnPhotoToVetting: async (...args: unknown[]) => (calls.reopen.push(args), options.outcome ?? { ok: true, email: 'sent' }),
     },
   });
   return calls;
@@ -75,6 +76,16 @@ test('an admin approves a photo; the event access check asks for the manager rol
   assert.deepEqual(calls.access, [{ id: eventId.toString(), role: 'manager' }]);
   assert.equal(calls.approve.length, 1);
   assert.deepEqual(calls.approve[0][2], { email: 'admin@example.com', id: 'u1' });
+});
+
+test('a manager returns a decided photo to vetting', async (t) => {
+  const calls = setup(t, { session: manager, submission: { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'approved', photoReview: { photoUrl: null } } });
+  const { POST } = await importRoute('return-to-vetting');
+  const response = await POST(post({ action: 'return_to_vetting' }), params);
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json() as { data: Record<string, unknown> }).data, { submissionId: id, reviewStatus: 'pending_review', email: 'sent' });
+  assert.equal(calls.reopen.length, 1);
+  assert.deepEqual(calls.reopen[0][2], { email: 'manager@example.com', id: 'u2' });
 });
 
 test('a rejection carries the moderator, a trimmed note cut to 500 characters and the reasons', async (t) => {

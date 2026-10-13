@@ -11,6 +11,8 @@ const SHARE_PAGE_TEXT_KEYS = {
   createYourOwnButton: 'sharePage.createYourOwnButton',
   waitingTitle: 'sharePage.waitingTitle',
   waitingMessage: 'sharePage.waitingMessage',
+  underReviewTitle: 'sharePage.underReviewTitle',
+  underReviewMessage: 'sharePage.underReviewMessage',
   notApprovedTitle: 'sharePage.notApprovedTitle',
   notApprovedMessage: 'sharePage.notApprovedMessage',
   notApprovedHint: 'sharePage.notApprovedHint',

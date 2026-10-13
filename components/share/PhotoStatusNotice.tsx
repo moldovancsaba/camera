@@ -1,6 +1,6 @@
 /**
  * The share page of a vetted photo that is not public yet (camera#269, docs/PHOTO_VETTING_PLAN.md): waiting for approval, or not
- * approved. It never shows the photo and sends no preview image; the waiting page refreshes itself.
+ * approved, reopened for review, or not approved. It never shows the photo and sends no preview image; waiting and reopened pages refresh themselves.
  */
 
 import PublicShell from '@/components/public/PublicPageShell';
@@ -11,7 +11,7 @@ import { useUiTexts } from '@/components/i18n/UiLanguageProvider';
 import type { UiLanguage } from '@/lib/i18n';
 
 interface PhotoStatusNoticeProps {
-  state: 'waiting' | 'not_approved';
+  state: 'waiting' | 'under_review' | 'not_approved';
   eventName: string;
   /** Where "Take another photo" goes (the capture page of the event). */
   captureHref: string;
@@ -37,6 +37,13 @@ export default function PhotoStatusNotice({ state, eventName, captureHref, setti
           <>
             <Alert color="blue" variant="light" title={text('waitingTitle')} styles={CENTERED_ALERT}>
               {text('waitingMessage')}
+            </Alert>
+            <AutoRefresh />
+          </>
+        ) : state === 'under_review' ? (
+          <>
+            <Alert color="blue" variant="light" title={text('underReviewTitle')} styles={CENTERED_ALERT}>
+              {text('underReviewMessage')}
             </Alert>
             <AutoRefresh />
           </>

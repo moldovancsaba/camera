@@ -168,7 +168,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     // A photo that is not public (pending, rejected, archived, removed from its events) gets no preview image and is not
     // indexed: a link preview must not leak what the page itself would not show (camera#262, camera#269).
-    if ((state === 'waiting' || state === 'not_approved') && submission) {
+    if ((state === 'waiting' || state === 'under_review' || state === 'not_approved') && submission) {
       // The notice speaks the language of the event, and so does its tab title (camera#352). A failed event lookup must not cost the
       // noindex: the title is then English.
       const noticeEvent = await resolveEventForSubmission(db, submission).catch(() => null);
@@ -283,7 +283,7 @@ export default async function SharePage({ params }: Props) {
 
   // A vetted photo reached by its token that is waiting or was not approved: a notice, never the photo (camera#269).
   const shareState = shareStateOf(lookup);
-  if ((shareState === 'waiting' || shareState === 'not_approved') && lookup) {
+  if ((shareState === 'waiting' || shareState === 'under_review' || shareState === 'not_approved') && lookup) {
     const noticeDb = await connectToDatabase();
     const noticeEvent = await resolveEventForSubmission(noticeDb, lookup.doc);
     const noticeLanguage = noticeEvent?.language ?? DEFAULT_UI_LANGUAGE;

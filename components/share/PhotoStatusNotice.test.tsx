@@ -6,7 +6,7 @@ import { MantineProvider } from '@mantine/core';
 type NoticeModule = typeof import('./PhotoStatusNotice');
 
 // The refresher reads the app router, which does not exist outside Next: the router is mocked for the whole file.
-async function render(t: TestContext, state: 'waiting' | 'not_approved', settings?: { texts?: Record<string, string> }, language?: 'en' | 'hu'): Promise<string> {
+async function render(t: TestContext, state: 'waiting' | 'under_review' | 'not_approved', settings?: { texts?: Record<string, string> }, language?: 'en' | 'hu'): Promise<string> {
   t.mock.module('next/navigation', { exports: { useRouter: () => ({ refresh: () => undefined }) } });
   const { default: PhotoStatusNotice } = (await import('./PhotoStatusNotice?case=' + state + (settings ? '-own' : '') + (language ? `-${language}` : ''))) as NoticeModule;
   return renderToStaticMarkup(
@@ -22,6 +22,27 @@ test('a photo that is waiting says so, offers no retake, and shows no picture', 
   assert.match(html, /data-share-state="waiting"/);
   assert.equal(/Take another photo/.test(html), false);
   assert.equal(/<img|<canvas/.test(html), false);
+});
+
+test('a returned photo shows only the further-review message and refreshes for the final decision', async (t) => {
+  const html = await render(t, 'under_review', undefined, 'en');
+  assert.match(html, /Further review needed/);
+  assert.match(html, /We need to review this photo further/);
+  assert.match(html, /data-share-state="under_review"/);
+  assert.equal(/Take another photo|href="\/capture|<img|<canvas/.test(html), false);
+});
+
+test('the further-review notice uses editable event copy', async (t) => {
+  const custom = await render(t, 'under_review', { texts: { underReviewTitle: 'Még vizsgáljuk', underReviewMessage: 'Hamarosan jelentkezünk.' } }, 'hu');
+  assert.match(custom, /Még vizsgáljuk/);
+  assert.match(custom, /Hamarosan jelentkezünk/);
+});
+
+test('the further-review notice uses Hungarian defaults', async (t) => {
+  const defaults = await render(t, 'under_review', undefined, 'hu');
+  assert.match(defaults, /További ellenőrzés szükséges/);
+  assert.match(defaults, /Az eredményről e-mailben értesítünk/);
+  assert.equal(/Further review needed|We need to review/i.test(defaults), false);
 });
 
 test('a photo that is not approved gets a notice and a way to take another one, and no picture', async (t) => {

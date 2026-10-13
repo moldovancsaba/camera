@@ -29,6 +29,12 @@ test('state: a waiting or rejected photo is shown only to its token', () => {
   assert.equal(shareStateOf(lookup({ reviewStatus: 'rejected', shareToken: TOKEN }, false)), 'hidden');
 });
 
+test('a returned approved photo shows the further-review notice only from its share token', () => {
+  const returned = { reviewStatus: 'pending_review', shareToken: TOKEN, photoReview: { returnedAt: '2026-10-13T12:00:00.000Z' } };
+  assert.equal(shareStateOf(lookup(returned, true)), 'under_review');
+  assert.equal(shareStateOf(lookup(returned, false)), 'hidden');
+});
+
 test('state: archived photos, unapproved try-on results and unknown links are hidden', () => {
   assert.equal(shareStateOf(lookup({ reviewStatus: 'pending_review', isArchived: true, shareToken: TOKEN }, true)), 'hidden');
   assert.equal(shareStateOf(lookup({ submissionKind: 'tryon_result', reviewStatus: 'pending_review', shareToken: TOKEN }, true)), 'hidden');

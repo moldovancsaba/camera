@@ -372,6 +372,8 @@ Plan and decisions: [docs/PHOTO_VETTING_PLAN.md](docs/PHOTO_VETTING_PLAN.md). Th
 - **The share link** of a vetted photo is `/share/<shareToken>` (in the approval email). Waiting: a notice that refreshes itself; rejected: a
   notice with "Take another photo"; approved: the photo. A waiting or rejected photo is only shown to its token, never to its database id.
   Run `npm run db:ensure-indexes` once before the rollout: it adds the unique `shareToken` index the lookup uses.
+- **Correct a previous decision:** in the event Gallery, use **Back to vetting** on an approved vetted photo. In Vetting's Rejected or Approved list, the same action returns the photo to Waiting. The share-token link shows the further-review notice and no image during review; that text is editable in the event editor under **Public result page**. Reopening a visible photo emails the guest; an already-hidden rejected photo does not trigger a visibility email. Review it through the standard flow.
+- **Correct people analysis only:** in Vetting > Approved, choose **Update analysis**, revise the people marks and save. This changes only `people` and `peopleReview`; it does not alter status, visibility, or send email.
 - **Pending photos in the Blob store** are referenced by `photoReview.photoUrl`, so the orphan finder does not report them and deleting the
   submission deletes the file.
 

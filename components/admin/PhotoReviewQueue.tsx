@@ -25,6 +25,7 @@ interface PhotoReviewQueueProps {
   status: QueueStatus;
   initialItems: PhotoQueueItem[];
   canReview: boolean;
+  eventId: string;
   /** The words of the event: the reasons of a rejection, and what a rejected card says. */
   vocabulary: ResolvedVocabulary;
   /**
@@ -62,7 +63,7 @@ class NoAnswerError extends Error {
   }
 }
 
-async function review(id: string, action: 'approve' | 'reject', rejection?: { reasons: string[]; note?: string }): Promise<ReviewAnswer> {
+async function review(id: string, action: 'approve' | 'reject' | 'return_to_vetting', rejection?: { reasons: string[]; note?: string }): Promise<ReviewAnswer> {
   let response: Response;
   try {
     response = await fetch(`/api/admin/submissions/${id}/review`, {
@@ -88,7 +89,7 @@ const emailNote = (answers: ReviewAnswer[]): string => {
   return parts.length ? ` (${parts.join(', ')})` : '';
 };
 
-export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, markPeopleEventId }: PhotoReviewQueueProps) {
+export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, eventId, markPeopleEventId }: PhotoReviewQueueProps) {
   const router = useRouter();
   // Photos decided here leave the list at once; everything else comes from the server (initialItems is fresh after each router.refresh()).
   const [decided, setDecided] = useState<string[]>([]);
@@ -178,6 +179,21 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
     }
   };
 
+  const returnToVetting = async (id: string) => {
+    setNotice(null);
+    markBusy([id]);
+    try {
+      const answer = await review(id, 'return_to_vetting');
+      removeFromList([id]);
+      setNotice({ severity: answer.email === 'failed' ? 'warning' : 'success', title: 'Back in vetting', message: answer.email === 'sent' ? 'The photo is hidden while it is reviewed. The guest has been emailed.' : answer.email === 'failed' ? 'The photo is hidden while it is reviewed, but the guest email could not be sent.' : 'The photo is hidden while it is reviewed. No email was sent.' });
+    } catch (error) {
+      setNotice({ severity: 'error', title: 'Could not return photo', message: error instanceof Error ? error.message : 'The photo could not be returned to vetting' });
+    } finally {
+      markFree([id]);
+      router.refresh();
+    }
+  };
+
   if (items.length === 0) {
     return (
       <div style={{ display: 'grid', gap: '1rem' }}>
@@ -238,7 +254,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
             metadata.push({ id: 'why', label: 'Why', value: item.rejectReasons.map((key) => optionLabel(vocabulary, 'reject_reason', key)).join(', '), tone: 'warning' });
           }
           if (item.last) {
-            metadata.push({ id: 'last', label: item.last.action === 'approve' ? 'Approved' : 'Rejected', value: item.last.by, tone: item.last.action === 'approve' ? 'positive' : 'warning' });
+            metadata.push({ id: 'last', label: item.last.action === 'approve' ? 'Approved' : item.last.action === 'reject' ? 'Rejected' : 'Returned to vetting', value: item.last.by, tone: item.last.action === 'approve' ? 'positive' : 'warning' });
             // The note is a row of its own: a long note beside the name squeezed the label of the row to nothing.
             if (item.last.reason) metadata.push({ id: 'note', label: 'Note', value: item.last.reason, tone: 'muted' });
           }
@@ -277,9 +293,19 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
           }
           if (item.status === 'approved') {
             actions.push(
+              <Link key="analysis" href={`/admin/events/${eventId}/vetting/review?analysis=${item.id}`} style={{ textDecoration: 'none' }}>
+                <SemanticButton action="photo-review:update-analysis" size="xs" variant="secondary">Update analysis</SemanticButton>
+              </Link>,
               <Link key="view" href={`/share/${item.id}`} style={{ textDecoration: 'none' }}>
                 <SemanticButton action="photo-review:view-photo" size="xs" variant="secondary">View</SemanticButton>
               </Link>
+            );
+          }
+          if (canReview && (item.status === 'approved' || item.status === 'rejected')) {
+            actions.push(
+              <SemanticButton key="return-to-vetting" action="photo-review:return-to-vetting" type="button" size="xs" variant="secondary" onClick={() => void returnToVetting(item.id)} disabled={isBusy}>
+                {isBusy ? 'Returning…' : 'Back to vetting'}
+              </SemanticButton>
             );
           }
 

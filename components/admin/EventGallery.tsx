@@ -37,6 +37,7 @@ interface SubmissionRecord {
   createdAt: string;
   playCount?: number;
   slideshowPlays?: Record<string, SlideshowPlayInfo | undefined>;
+  canReturnToVetting?: boolean;
 }
 
 interface SlideshowRecord {
@@ -280,6 +281,23 @@ export default function EventGallery({
   // The photos the person has asked to frame and not yet confirmed: the confirmation is in the page (the browser's own pop-up can be blocked and then nothing happens at all).
   const [frameConfirm, setFrameConfirm] = useState<string[] | null>(null);
   const [unframed, setUnframed] = useState(unframedUploadIds);
+  const [returnNotice, setReturnNotice] = useState<string | null>(null);
+
+  const returnToVetting = async (submissionId: string) => {
+    setRemoveState((current) => ({ ...current, busyIds: [submissionId], error: null }));
+    setReturnNotice(null);
+    try {
+      const response = await fetch(`/api/admin/submissions/${submissionId}/review`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'return_to_vetting' }),
+      });
+      const answer = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof answer.error === 'string' ? answer.error : typeof answer.message === 'string' ? answer.message : `The server answered ${response.status}`);
+      handleRemoveSuccess([submissionId]);
+      setReturnNotice(answer.data?.email === 'sent' ? 'The photo is back in vetting. The guest has been emailed.' : answer.data?.email === 'failed' ? 'The photo is back in vetting, but the guest email could not be sent.' : 'The photo is back in vetting. No email was sent.');
+    } catch (error) {
+      setRemoveState((current) => ({ ...current, busyIds: [], error: error instanceof Error ? error.message : 'The photo could not be returned to vetting.' }));
+    }
+  };
 
   // Puts the event's frame on the photos that were uploaded here (the server skips the others and says why), five at a time so no request runs long and the person sees it move
   // (camera#488, lib/gallery/frame-batches.ts). A photo that has a frame is skipped, so pressing again after a stop carries on with the rest.
@@ -418,6 +436,8 @@ export default function EventGallery({
       {canManage && frameState.progress ? <InlineAlert title="Adding the frame" message={frameState.progress} severity="info" /> : null}
       {canManage && frameState.error ? <InlineAlert title="The frame was not added" message={frameState.error} severity="error" /> : null}
       {canManage && frameState.message ? <InlineAlert title="Frame" message={frameState.message} severity="info" /> : null}
+      {canManage && returnNotice ? <InlineAlert title="Vetting" message={returnNotice} severity="success" /> : null}
+      {canManage && removeState.error ? <InlineAlert title="Gallery action failed" message={removeState.error} severity="error" /> : null}
 
       {canManage ? (
       <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', padding: '1rem' }}>
@@ -544,8 +564,7 @@ export default function EventGallery({
           }
 
           // Footer affordances kept as ReactNodes so SemanticButton loading/variant/confirm-flow survives.
-          // ListingCard lays actions out in a wrapping Group and caps at 4 (throws at >4): View +
-          // Download + the confirm/cancel pair = exactly 4, so do not add a 5th footer affordance here.
+          // ListingCard caps actions at 4: View + Download + Back to vetting + Remove; during confirmation the last two are replaced by Confirm + Cancel.
           // fullWidth is intentionally omitted — ListingCard wraps each action in a shrink-to-fit span.
           const actions: ReactNode[] = [
             <Link key="view" href={`/share/${submission._id}`} style={{ textDecoration: 'none' }}>
@@ -592,6 +611,13 @@ export default function EventGallery({
                 </SemanticButton>
               );
             } else {
+              if (submission.canReturnToVetting) {
+                actions.push(
+                  <SemanticButton key="return-to-vetting" action="event-gallery:return-to-vetting" type="button" size="xs" variant="secondary" onClick={() => void returnToVetting(submissionId)} disabled={busy}>
+                    {busy ? 'Returning…' : 'Back to vetting'}
+                  </SemanticButton>
+                );
+              }
               actions.push(
                 <SemanticButton
                   key="start-remove"

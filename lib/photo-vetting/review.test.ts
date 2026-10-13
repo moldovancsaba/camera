@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId, type Db } from 'mongodb';
 import sharp from 'sharp';
-import { approvePhoto, rejectPhoto, resolveFrameImageUrl, type ReviewActor, type ReviewDeps } from './review';
+import { approvePhoto, rejectPhoto, returnPhotoToVetting, resolveFrameImageUrl, type ReviewActor, type ReviewDeps } from './review';
 import { recordApprovalCopies, type ApprovalCopiesInput, type ImageCopyDeps } from '@/lib/storage/image-copies';
 import type { ImageCopy } from '@/lib/db/schemas';
 import { fakeDb as libraryFakeDb } from '@/lib/library/fake-db';
@@ -46,6 +46,17 @@ function setPath(target: Doc, path: string, value: unknown) {
   node[parts[parts.length - 1]] = value;
 }
 
+function deletePath(target: Doc, path: string) {
+  const parts = path.split('.');
+  let cursor = target;
+  for (const part of parts.slice(0, -1)) {
+    const next = cursor[part];
+    if (!next || typeof next !== 'object') return;
+    cursor = next as Doc;
+  }
+  delete cursor[parts.at(-1)!];
+}
+
 function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; beforeUpdate?: () => void } = {}) {
   const updates: Array<{ filter: Doc; update: Doc }> = [];
   const db = {
@@ -62,7 +73,7 @@ function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; 
         const allowed = typeof status === 'string' ? [status] : ((status as { $in: string[] } | undefined)?.$in ?? null);
         if (allowed && !allowed.includes(submission.reviewStatus as string)) return { matchedCount: 0 };
         for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(submission, path, value);
-        for (const path of Object.keys((update.$unset as Doc) ?? {})) delete submission[path];
+        for (const path of Object.keys((update.$unset as Doc) ?? {})) deletePath(submission, path);
         for (const [path, value] of Object.entries((update.$push as Doc) ?? {})) {
           const list = ((submission[path] as unknown[]) ??= []);
           list.push(value);
@@ -74,10 +85,10 @@ function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; 
   return { db: db as never, updates };
 }
 
-interface Calls { fetched: string[]; uploads: Array<{ base64: string; name: string }>; copies: ApprovalCopiesInput[]; approvedMails: unknown[]; rejectedMails: unknown[] }
+interface Calls { fetched: string[]; uploads: Array<{ base64: string; name: string }>; copies: ApprovalCopiesInput[]; approvedMails: unknown[]; rejectedMails: unknown[]; underReviewMails: unknown[] }
 
 function deps(photo: Buffer, frame: Buffer, overrides: Partial<ReviewDeps> = {}): { deps: ReviewDeps; calls: Calls } {
-  const calls: Calls = { fetched: [], uploads: [], copies: [], approvedMails: [], rejectedMails: [] };
+  const calls: Calls = { fetched: [], uploads: [], copies: [], approvedMails: [], rejectedMails: [], underReviewMails: [] };
   const base: ReviewDeps = {
     fetchImage: async (url) => {
       calls.fetched.push(url);
@@ -89,6 +100,7 @@ function deps(photo: Buffer, frame: Buffer, overrides: Partial<ReviewDeps> = {})
     },
     sendApproved: async (_s, _e, url) => (calls.approvedMails.push(url), { sent: true, provider: 'resend', messageId: 'm', recipientEmail: 'ann@example.com' }),
     sendNotApproved: async (_s, _e, url) => (calls.rejectedMails.push(url), { sent: true, provider: 'resend', messageId: 'm', recipientEmail: 'ann@example.com' }),
+    sendUnderReview: async (_s, _e, url) => (calls.underReviewMails.push(url), { sent: true, provider: 'resend', messageId: 'm', recipientEmail: 'ann@example.com' }),
     imageCopies: (_db, input) => void calls.copies.push(input),
     now: () => AT,
   };
@@ -117,6 +129,54 @@ test('approval makes the picture from the photo and the recorded frame image, pu
   assert.equal((submission.photoReview as Doc).photoUrl, PHOTO_URL, 'the private unframed photo is kept and still named (issue 509)');
   assert.equal(calls.copies.length, 1, 'the copies are recorded after the answer');
   assert.ok(updates[0].filter.reviewStatus, 'the update is conditional on the status');
+});
+
+test('returning a public approved photo hides it and emails the guest the review link', async () => {
+  const submission = pendingSubmission({
+    reviewStatus: 'approved', imageUrl: 'https://store.test/already-approved.jpg', finalImageUrl: 'https://store.test/already-approved.jpg',
+    isShareVisible: true, photoReview: { photoUrl: null, photoSize: 10, photoMime: 'image/jpeg', shareOptIn: true, submittedAt: AT },
+  });
+  const { db, updates } = fakeDb(submission);
+  const { deps: d, calls } = deps(Buffer.alloc(0), Buffer.alloc(0));
+  assert.deepEqual(await returnPhotoToVetting(db, submission as never, ACTOR, d), { ok: true, email: 'sent' });
+  assert.equal(submission.reviewStatus, 'pending_review');
+  assert.equal(submission.isShareVisible, false);
+  assert.equal((submission.photoReview as Doc).returnedWasPubliclyVisible, true);
+  assert.match(String(calls.underReviewMails[0]), /\/share\/tok123$/);
+  assert.equal(updates[0].filter.reviewStatus, 'approved', 'return is conditional on the status the moderator saw');
+});
+
+test('returning a rejected photo does not send a visibility email', async () => {
+  const submission = pendingSubmission({ reviewStatus: 'rejected', isShareVisible: false });
+  const { deps: d, calls } = deps(Buffer.alloc(0), Buffer.alloc(0));
+  const result = await returnPhotoToVetting(fakeDb(submission).db, submission as never, ACTOR, d);
+  assert.deepEqual(result, { ok: true, email: 'skipped' });
+  assert.equal(calls.underReviewMails.length, 0);
+});
+
+test('a returned public photo that is finally rejected sends the decline result', async () => {
+  const submission = pendingSubmission({ photoReview: { photoUrl: PHOTO_URL, photoSize: 10, photoMime: 'image/jpeg', shareOptIn: true, submittedAt: AT, returnedAt: AT, returnedWasPubliclyVisible: true } });
+  const { deps: d, calls } = deps(Buffer.alloc(0), Buffer.alloc(0));
+  const result = await rejectPhoto(fakeDb(submission).db, submission as never, ACTOR, null, ['nudity'], d);
+  assert.deepEqual(result, { ok: true, email: 'sent' });
+  assert.equal(calls.rejectedMails.length, 1);
+});
+
+test('re-approving a returned photo reuses its existing composite and restores the share link', async () => {
+  const submission = pendingSubmission({
+    reviewStatus: 'pending_review', imageUrl: 'https://store.test/already-approved.jpg', finalImageUrl: 'https://store.test/already-approved.jpg',
+    isShareVisible: false, metadata: { finalWidth: 1200, finalHeight: 1200, emailSentAfterSave: true },
+    photoReview: { photoUrl: null, photoSize: 10, photoMime: 'image/jpeg', shareOptIn: true, submittedAt: AT, returnedAt: AT, returnedFromStatus: 'approved', returnedWasPubliclyVisible: true },
+  });
+  const { db } = fakeDb(submission);
+  const { deps: d, calls } = deps(Buffer.alloc(0), Buffer.alloc(0));
+  assert.deepEqual(await approvePhoto(db, submission as never, ACTOR, d), { ok: true, email: 'sent' });
+  assert.equal(submission.reviewStatus, 'approved');
+  assert.equal(submission.isShareVisible, true);
+  assert.equal(submission.imageUrl, 'https://store.test/already-approved.jpg');
+  assert.equal(calls.fetched.length, 0);
+  assert.equal(calls.uploads.length, 0);
+  assert.equal(calls.approvedMails.length, 1, 'visibility becoming public again sends the result email');
 });
 
 test('approval schedules the screen-sized picture of the published photo once, and a failure there does not undo the approval', async () => {

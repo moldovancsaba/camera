@@ -98,3 +98,36 @@ export async function sendPhotoNotApprovedEmail(
     legal,
   });
 }
+
+/** Tells a guest when a previously public photo is temporarily returned to review. */
+export async function sendPhotoUnderReviewEmail(
+  submission: RecipientSource,
+  event: EventForEmail,
+  shareUrl: string,
+  send: EmailSender = sendSubmissionResultEmail,
+  theme: EventTheme | null = null,
+  texts: TextOverrides | null = null,
+  legal: string | null = null
+): Promise<SubmissionNotificationResult> {
+  const recipient = resolveSubmissionResultEmailRecipient(submission);
+  const language = normalizeUiLanguage(event?.uiLanguage);
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, language, texts);
+  if (!recipient.email) return { sent: false, skipped: true, reason: 'missing_recipient' };
+  const facts = emailFactsOf(event);
+  return send({
+    recipientEmail: recipient.email,
+    recipientName: recipient.name,
+    eventName: event?.name ?? null,
+    shareUrl,
+    termsUrl: policy.termsUrl,
+    senderName: policy.senderName,
+    subjectTemplate: translate(language, 'email.underReviewSubject', undefined, texts),
+    bodyTemplate: translate(language, 'email.underReviewBody', undefined, texts),
+    theme,
+    buttonLabel: translate(language, 'email.buttonSee', undefined, texts),
+    language,
+    texts,
+    facts,
+    legal,
+  });
+}
