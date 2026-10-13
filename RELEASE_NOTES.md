@@ -5,8 +5,9 @@
 - **Capture choices:** the user-selected frame/layout and message options now share one page. A section is omitted when only one option is available; messages are filtered to the chosen layout. Frame/layout choices use square buttons, with per-event tile images from the event image library or a chosen colour in the Frames settings.
 - **Reframing:** the event's Take Photo page can allow or disable zooming out, zooming in, and moving the selfie. Missing settings keep all existing controls enabled. Fitting the whole selfie may show space outside its bounds; AI-generated background fill is not included.
 - **Emails:** the email toolbar can add an optional CTA button with its own destination, separate from the existing photo button. The destination is hidden behind the button label in HTML email. Labeled text links were already supported and remain available for links such as “Visit our Facebook page”.
-- **Verified:** the full `release:check` and documentation inventory/link checks pass on the feature branch, including focused CTA and frame-tile regression tests.
-- **Not verified:** a real phone capture, event settings behind a login, or a real delivered email. AI-generated background fill is not implemented; the project's image-generation integration remains unqualified and disabled. The changes are not yet merged or live.
+- **Shipped:** PR [#636](https://github.com/moldovancsaba/camera/pull/636) merged to `main` on 2026-10-13 (merge commit `31ed8b7f0e7b709604625659fd56065bf53d75c6`); the production deployment completed successfully.
+- **Verified:** the full `release:check` and documentation inventory/link checks passed on the feature branch, including focused CTA and frame-tile regression tests; the production home page and session endpoint returned HTTP 200 after deploy.
+- **Not verified:** a real phone capture, event settings behind a login, or a real delivered email. AI-generated background fill is not implemented; the project's image-generation integration remains unqualified and disabled.
 
 ## Unreleased — the switch of the counters for messmass: a button on the Messmass tab (issue 628; owner answer 481 "yes")
 
