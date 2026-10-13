@@ -5,7 +5,8 @@
 - **Changed:** managers can return approved vetted photos from Gallery and approved/rejected photos from Vetting to the normal review queue. The existing share-token link shows an editable English/Hungarian further-review message with no image or preview while review is open. Reopening a photo that was publicly visible emails the guest; returning an already hidden rejected photo does not.
 - **Analysis-only:** the Approved list now opens the people-marking screen in save-only mode. It updates people analysis without changing status or visibility and sends no email. Re-approving a returned photo reuses the already-composed image if its private source file has been cleaned up.
 - **Verified:** `npm run release:check` passed (344/344 unit-test files, production guards, and production build); `npm run inventory:check` passed. No production photos were changed.
-- **Pending:** authenticated browser review and deployment verification.
+- **Deployed:** PR #642 reached production; the home page returned HTTP 200, an unknown share token returned 404, and the event admin returned 307 to login.
+- **Not verified:** an authenticated browser walkthrough of the event UI (the preview requires a Vercel login), or a real-event review/email. No production photos were changed.
 - **Not done:** no real-event review or guest email was run.
 
 ## Unreleased — rejection clearly stays pending until confirmed (owner feedback, 2026-10-13)
