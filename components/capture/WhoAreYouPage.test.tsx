@@ -30,7 +30,7 @@ test('without the acceptance the page is as it was: sign-in links, enabled field
 test('social sign-in after photo opens in another tab and returns to the still-open capture page', () => {
   const html = render(undefined, true);
   assert.equal((html.match(/target="_blank"/g) ?? []).length, 2);
-  assert.match(html, /capturePopup=1/);
+  assert.match(html, /captureEvent=e1/);
   assert.equal((html.match(/data-brand-signin=/g) ?? []).length, 2);
 });
 

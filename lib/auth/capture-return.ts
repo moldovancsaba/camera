@@ -25,17 +25,21 @@ export interface CaptureReturn {
   eventId: string;
   /** The step the guest was on (the login step), so the flow continues after it; null when unknown. */
   page: number | null;
-  /** Login happened in a separate tab so an in-memory photo can stay in the original capture page. */
-  popup?: boolean;
+  /** One-time attempt id sent only by this OAuth callback, so an old session cannot resume another guest's photo. */
+  popupId?: string;
 }
 
-export function parseCaptureReturn(eventId: unknown, page?: unknown, popup?: unknown): CaptureReturn | null {
+const POPUP_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const parseCapturePopupId = (value: unknown): string | null => typeof value === 'string' && POPUP_ID.test(value) ? value : null;
+
+export function parseCaptureReturn(eventId: unknown, page?: unknown, popupId?: unknown): CaptureReturn | null {
   if (typeof eventId !== 'string' || !EVENT_ID.test(eventId)) return null;
   const n = typeof page === 'string' && /^\d{1,2}$/.test(page) ? Number(page) : null;
-  return { eventId, page: n, ...(popup === '1' ? { popup: true } : {}) };
+  const validPopupId = parseCapturePopupId(popupId);
+  return { eventId, page: n, ...(validPopupId ? { popupId: validPopupId } : {}) };
 }
 
-export const encodeCaptureReturn = (r: CaptureReturn): string => `${r.eventId}:${r.page ?? ''}${r.popup ? ':1' : ''}`;
+export const encodeCaptureReturn = (r: CaptureReturn): string => `${r.eventId}:${r.page ?? ''}${r.popupId ? `:${r.popupId}` : ''}`;
 
 export function decodeCaptureReturn(value: string | undefined | null): CaptureReturn | null {
   if (!value) return null;

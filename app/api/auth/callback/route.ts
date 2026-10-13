@@ -28,6 +28,7 @@ import { decodeSignedOAuthPkceState, getOAuthPkceStateSigningKey } from '@/lib/a
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 import { pushSsoSessionToMessmass } from '@/lib/messmassClient';
 import { clearCaptureReturn, captureReturnPath, readCaptureReturn } from '@/lib/auth/capture-return';
+import { capturePopupResponse } from '@/lib/auth/capture-popup';
 
 /**
  * WHAT: Best-effort -- also log this user into messmass, so one SSO login
@@ -62,8 +63,8 @@ function redirectOAuthFailure(
 
   let res: NextResponse;
   if (capture) {
-    if (capture.popup) {
-      res = capturePopupResponse('failed');
+    if (capture.popupId) {
+      res = capturePopupResponse(capture.popupId, 'failed');
     } else {
       const url = new URL(`/capture/${capture.eventId}`, request.url);
       url.searchParams.set('error', errorCode);
@@ -82,18 +83,6 @@ function redirectOAuthFailure(
   }
   if (capture) clearCaptureReturn(res);
   return res;
-}
-
-/** Keep the popup on a small result page so the capture tab can retain its in-memory photo. */
-function capturePopupResponse(status: 'completed' | 'failed'): NextResponse {
-  const title = status === 'completed' ? 'Sign-in complete' : 'Sign-in could not be completed';
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><body><p id="status">${title}. ${status === 'completed' ? 'Return to the selfie tab; it will continue automatically.' : 'Return to the selfie tab and try again.'}</p></body></html>`;
-  return new NextResponse(html, {
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store',
-    },
-  });
 }
 
 export async function GET(request: NextRequest) {
@@ -231,8 +220,8 @@ export async function GET(request: NextRequest) {
     if (capture) {
       console.log('✓ Resuming capture flow:', capture.eventId, 'page:', capture.page);
 
-      const response = capture.popup
-        ? capturePopupResponse('completed')
+      const response = capture.popupId
+        ? capturePopupResponse(capture.popupId, 'completed')
         : NextResponse.redirect(new URL(captureReturnPath(capture), request.url));
       clearCaptureReturn(response);
       clearPendingSessionCookieOnResponse(response);
