@@ -700,6 +700,10 @@ function PageEditModal({
   const [showSharePage, setShowSharePage] = useState(page.config.showSharePage !== false);
   const [skipShareMessage, setSkipShareMessage] = useState(page.config.skipShareMessage || 'Thank you! Your photo has been saved.');
   const [showFrameOnCapture, setShowFrameOnCapture] = useState(page.config.showFrameOnCapture !== false); // Default true
+  // Reframe controls default on so older events keep their current behavior until an editor changes them.
+  const [allowZoomOut, setAllowZoomOut] = useState(page.config.allowZoomOut !== false);
+  const [allowZoomIn, setAllowZoomIn] = useState(page.config.allowZoomIn !== false);
+  const [allowPan, setAllowPan] = useState(page.config.allowPan !== false);
   // Texts while a photo waits for approval; empty = the default text, shown as the placeholder (camera#333)
   const [pendingTitle, setPendingTitle] = useState(page.config.pendingTitle || '');
   const [pendingSavedMessage, setPendingSavedMessage] = useState(page.config.pendingSavedMessage || '');
@@ -774,6 +778,9 @@ function PageEditModal({
           showSharePage,
           skipShareMessage,
           showFrameOnCapture,
+          allowZoomOut,
+          allowZoomIn,
+          allowPan,
           cameraPromptTitle,
           cameraPromptDescription,
           errorFrameMessage,
@@ -1173,6 +1180,27 @@ function PageEditModal({
               onChange={setShowFrameOnCapture}
               label="Show Frame During Live Capture"
               helper="If checked, frame overlay is visible during live camera view."
+            />
+
+            <DividerLabel>Photo framing for guests</DividerLabel>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
+              Choose which adjustments guests can make after taking a photo. Unset options keep the current behavior for existing events.
+            </p>
+            <Check
+              checked={allowZoomOut}
+              onChange={setAllowZoomOut}
+              label="Allow zooming out to show more of the selfie"
+              helper="When off, the photo always fills the frame. Filling empty space with an AI-generated background is not available yet."
+            />
+            <Check
+              checked={allowZoomIn}
+              onChange={setAllowZoomIn}
+              label="Allow zooming in"
+            />
+            <Check
+              checked={allowPan}
+              onChange={setAllowPan}
+              label="Allow moving the selfie inside the frame"
             />
 
             <DividerLabel>Camera start prompt</DividerLabel>

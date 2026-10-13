@@ -99,6 +99,20 @@ test('a link may use a variable as its address; an address that is not http, htt
   assert.equal(safeHref('//a.test'), null);
 });
 
+test('a CTA button hides its destination behind its label in HTML and keeps it in the plain-text part', () => {
+  const destination = 'https://camera.test/season-tickets';
+  const source = `Hello\n\n[button: Visit our page](${destination})`;
+  const out = html(source);
+  assert.equal(parseRich(source)[1].kind, 'button');
+  assert.ok(out.includes(`<a href="${destination}"`), 'the button points to its own destination');
+  assert.ok(out.includes('>Visit our page</a>'), 'the button label is shown');
+  assert.equal(out.includes(`>${destination}</a>`), false, 'the address is hidden from HTML');
+  assert.match(out, /<table role="presentation"/);
+  assert.equal(text(source), `Hello\n\nVisit our page (${destination})`, 'plain text retains a usable destination');
+  const unsafe = html('[button: Unsafe](javascript:alert(1))');
+  assert.equal(unsafe.includes('<a '), false, 'unsafe destinations never become links');
+});
+
 test('a variable with no value, or not a variable at all, is left out and reported, never sent as {name}', () => {
   const values: Values = { name: 'Ann', home: undefined, visitor: '' };
   const resolved = resolveRich(parseRich('Hi {name}, go {home}! Beat {visitor}, {nosuchthing}.'), values, URLS);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { insertAt, linkAddressProblem, makeLink, makePicture, paragraphKindAt, pictureProblem, setParagraphKind, wrapSelection } from './editor-ops';
+import { insertAt, linkAddressProblem, makeEmailButton, makeLink, makePicture, paragraphKindAt, pictureProblem, setParagraphKind, wrapSelection } from './editor-ops';
 import { parseRich, type TextBlock } from './rich';
 
 test('bold and italic go around the selection and come off again; with nothing selected a word to type over is put in', () => {
@@ -41,6 +41,13 @@ test('a link takes the selected words as its label, or a label to type over; a v
   assert.deepEqual(makeLink('Go now', 0, 0, ' {link} '), { text: '[link text]({link})Go now', start: 1, end: 10 });
   assert.deepEqual(insertAt('Hi , bye', 3, 3, '{name}'), { text: 'Hi {name}, bye', start: 9, end: 9 });
   assert.equal(insertAt('Hi NAME bye', 3, 7, '{name}').text, 'Hi {name} bye');
+});
+
+test('the email button toolbar inserts a separate label and destination paragraph', () => {
+  const button = makeEmailButton('Hello', 5, 'Visit our page', 'https://camera.test/page');
+  assert.equal(button.text, 'Hello\n\n[button: Visit our page](https://camera.test/page)');
+  assert.equal(button.start, button.end, 'the cursor stays collapsed after the inserted button');
+  assert.equal(button.start, button.text.length);
 });
 
 test('the address of a link: https, http, mailto or a link variable', () => {

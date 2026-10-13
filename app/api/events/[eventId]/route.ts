@@ -201,9 +201,20 @@ export const GET = withErrorHandler(async (
   // customPages is included automatically
   // A guest is not sent a picture that its host no longer has (issue 514, CLAUDE.md section 9): a logo, a page picture, the welcome screen. The admin editor reads the stored values.
   const shown = <T,>(value: T): T => withoutBroken(value, brokenPictures);
+  const savedFrameSelectionTiles = publicEvent.frameSelectionTiles && typeof publicEvent.frameSelectionTiles === 'object'
+    ? publicEvent.frameSelectionTiles as Record<string, unknown>
+    : {};
+  const frameSelectionTiles = Object.fromEntries(
+    Object.entries(savedFrameSelectionTiles).filter(([, tile]) => {
+      if (!tile || typeof tile !== 'object' || Array.isArray(tile)) return false;
+      const imageUrl = (tile as { imageUrl?: unknown }).imageUrl;
+      return !forGuest || typeof imageUrl !== 'string' || !brokenPictures.has(imageUrl);
+    }),
+  );
   return apiSuccess({
     event: shown({
       ...publicEvent,
+      frameSelectionTiles,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
       // A guest gets the consent checkboxes that are switched on only (issue 558): a page whose checkboxes are all off is not a step, and the acceptance on the Who-are-you page is the effective value (event, partner, standard).
       ...(forGuest ? { customPages: withShownCheckboxes(withPartnerPictures(withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, defaultOrders: event.defaultPageOrders as Record<string, number> | undefined, documents: chosenDocuments(checkboxes) }), partnerPictures)), acceptanceOnWhoAreYou: checkboxes.acceptance.shown } : {}),

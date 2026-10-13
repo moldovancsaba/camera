@@ -290,6 +290,12 @@ export interface CustomPage {
     pictureLink?: boolean;     // The whole picture is a link to the URL
     // For 'take-photo' type only
     captureButtonText?: string;  // Label for main capture/save button (e.g., "LOVE IT")
+    /** Whether guests may reframe beyond the current filling crop. Missing means the existing controls stay available. */
+    allowZoomOut?: boolean;
+    /** Whether guests may zoom in beyond the current filling crop. Missing means enabled. */
+    allowZoomIn?: boolean;
+    /** Whether guests may pan the selfie inside the frame. Missing means enabled. */
+    allowPan?: boolean;
     retryButtonText?: string;    // Label for retry button (e.g., "TRY AGAIN")
     shareNextButtonText?: string; // Label for next button on share screen (e.g., "NEXT")
     /** Share overlay heading (i18n) */
@@ -372,6 +378,8 @@ export interface Event {
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** How a user gets the layout and the message of the frame (epic 444, lib/frame/selection.ts): each `editor` (with a pick), `random` or `user`. Missing = what the event always did. */
   frameSelection?: { layout: { mode: 'editor' | 'random' | 'user'; pick: string | null }; message: { mode: 'editor' | 'random' | 'user'; pick: string | null } } | null;
+  /** Event-specific square tile appearance for frame/layout choices in the guest flow. */
+  frameSelectionTiles?: Record<string, { imageUrl?: string; color?: string }>;
   /** Replaced by `frameSelection` (the message-only setting of issue 329, never set on any event); read by the capture page until the selection flow replaces it. */
   frameChoice?: 'random' | 'user' | null;
   /** The guided tour of the capture flow (tips on the first visit and a "Show tour" link) is off unless this is true (camera#356). */

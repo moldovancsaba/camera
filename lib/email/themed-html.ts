@@ -38,7 +38,12 @@ export function renderThemedEmail({ theme, eventName, bodyText, content, legal, 
     : theme.emoji
       ? `<div style="font-size:44px;line-height:1;text-align:center;">${escapeHtml(theme.emoji)}</div>`
       : '';
-  const paragraphs = richHtml(content ?? resolveRich(parseRich(bodyText ?? ''), {}).blocks, { link: theme.link });
+  const paragraphs = richHtml(content ?? resolveRich(parseRich(bodyText ?? ''), {}).blocks, {
+    link: theme.link,
+    buttonBackground: theme.buttonBackground,
+    buttonText: theme.buttonText,
+    fontFamily: font,
+  });
   const cta = button
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 8px 0;max-width:100%;"><tr><td bgcolor="${theme.buttonBackground}" style="background:${theme.buttonBackground};border-radius:8px;${EMAIL_WRAP_STYLE}"><a href="${escapeHtml(button.url)}" style="display:inline-block;padding:14px 28px;box-sizing:border-box;max-width:100%;font-family:${font};font-size:16px;font-weight:700;color:${theme.buttonText};text-decoration:none;${EMAIL_WRAP_STYLE}">${escapeHtml(button.label)}</a></td></tr></table>`
     : '';

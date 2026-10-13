@@ -82,6 +82,7 @@ interface Frame {
   height: number;
   /** Set when this is the image of the generated default frame picked for one shutter press (camera#236). */
   generated?: { index: number | null; message: string | null; territories: Territory[] };
+  tileStyle?: { imageUrl?: string; color?: string };
 }
 
 interface EventData {
@@ -121,6 +122,7 @@ interface EventData {
   effectiveCameraMode?: CameraMode;
   /** How users get the layout and the message (epic 444): the editor's setting; the page reads it through `generatedFrame.selection`, and for the event's own frames from here. */
   frameSelection?: unknown;
+  frameSelectionTiles?: Record<string, { imageUrl?: string; color?: string }>;
   tryOn?: {
     enabled: boolean;
     setupId?: string | null;
@@ -595,7 +597,7 @@ export default function EventCapturePage({
             .map((assignment: EventFrameAssignment) => assignment.frameDetails)
             .filter((details): details is NonNullable<EventFrameAssignment['frameDetails']> => !!details && details.isActive !== false && typeof details.imageUrl === 'string' && details.imageUrl.length > 0)
             .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
-            .map((details) => ({ frameId: details.frameId, name: details.name ?? '', imageUrl: details.imageUrl as string, width: details.width ?? 0, height: details.height ?? 0 }));
+            .map((details) => ({ frameId: details.frameId, name: details.name ?? '', imageUrl: details.imageUrl as string, width: details.width ?? 0, height: details.height ?? 0, tileStyle: eventData.frameSelectionTiles?.[details.frameId] }));
           setFrames(eventFrames);
           
           // Auto-select if only one frame
@@ -791,7 +793,6 @@ export default function EventCapturePage({
 
   const handleFrameSelect = (frame: Frame) => {
     setSelectedFrame(frame);
-    setStep('capture-photo');
   };
 
   // The welcome e-mail (epic 463): once the user is identified (a typed name and e-mail, or a sign-in) and the event sends it, the server is told, once for each address on this device. The
@@ -817,7 +818,12 @@ export default function EventCapturePage({
   const messageChoices = useMemo(() => (selection && generatedFrame ? messagesToChoose(generatedFrame, choice) : []), [selection, generatedFrame, choice]);
   // Whether the page ever asks for a design or a message, for the step list: the message is asked whenever the user chooses it and the event has more than one.
   const asksLayout = layoutChoices.length > 0;
-  const asksMessage = Boolean(selection && generatedFrame && selection.message.mode === 'user' && messagesToChoose(generatedFrame, { layoutId: null, messageIndex: null }).length > 0);
+  const asksMessage = Boolean(
+    selection && generatedFrame && selection.message.mode === 'user' &&
+    (asksLayout && selection.layout.mode === 'user' && choice.layoutId
+      ? messageChoices.length > 0
+      : messagesToChoose(generatedFrame, { layoutId: null, messageIndex: null }).length > 0),
+  );
 
   // The image or frame of a photo is drawn when the camera step opens, so the live view and the move-and-zoom step show the dark area of the design that photo gets; a retake draws again.
   useEffect(() => {
@@ -843,20 +849,20 @@ export default function EventCapturePage({
     if (!generatedFrame) return;
     const next = chooseLayout(generatedFrame, choice, layoutIdOf(variant));
     setChoice(next);
-    setStep(nextStep(generatedFrame, next));
   };
 
   const handleMessageSelect = (variant: CaptureVariant) => {
     setChoice((current) => ({ ...current, messageIndex: variant.index }));
-    setStep('capture-photo');
   };
 
   // The steps the user sees in the list at the top: the frame when there are several of the event's own and the user picks, the design and the message when the user chooses them.
   const asksFrame = frames.length > 1 && !(ownLayout && ownLayout.mode !== 'user');
+  const asksAnySelection = asksFrame || asksLayout || asksMessage;
+  const selectionComplete = frames.length > 0
+    ? (!asksFrame || selectedFrame !== null)
+    : nextStep(generatedFrame, choice) === 'capture-photo';
   const progressSteps: Array<{ id: string; label: string; steps: Array<typeof step> }> = [
-    ...(asksFrame ? [{ id: 'frame', label: t('flow.step.selectFrame'), steps: ['select-frame' as const] }] : []),
-    ...(asksLayout ? [{ id: 'layout', label: t('flow.step.selectLayout'), steps: ['select-layout' as const] }] : []),
-    ...(asksMessage ? [{ id: 'message', label: t('flow.step.selectMessage'), steps: ['select-message' as const] }] : []),
+    ...(asksAnySelection ? [{ id: 'selection', label: t('flow.step.selectFrameMessage'), steps: ['select-frame' as const, 'select-layout' as const, 'select-message' as const] }] : []),
     { id: 'capture', label: t('flow.step.capture'), steps: ['capture-photo'] },
     { id: 'save', label: t('flow.step.save'), steps: ['reframe', 'preview'] },
   ];
@@ -1663,7 +1669,7 @@ export default function EventCapturePage({
                 step === 'preview' ? '[@media(max-height:640px)]:hidden' : ''
               }`}
             >
-              {/* One dot for each step the user goes through: the frame, or the design and the message when the user chooses them, then the photo and the save */}
+              {/* Frame and message choices share one page before the photo. */}
               {progressSteps.map((entry, position) => (
                 <Fragment key={entry.id}>
                   {position > 0 && <div className="w-4 h-0.5  "></div>}
@@ -1694,84 +1700,102 @@ export default function EventCapturePage({
             : 'overflow-y-auto overflow-x-hidden landscape:overflow-x-auto landscape:overflow-y-hidden'
         }`}
       >
-        {/* Step 1: Frame Selection - Fit to screen keeping aspect ratio */}
-        {step === 'select-frame' && (
-          <div className="h-full flex items-center justify-center p-4">
-            <div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-6xl"
-              data-tour-id="capture-frame-grid"
-            >
-              {frames.map((frame) => (
-                <div key={frame.frameId} className="flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={() => handleFrameSelect(frame)}
-                    className="overflow-hidden rounded-lg border-2  transition-all "
-                  >
-                    <Image
-                      src={frame.imageUrl}
-                      alt={frame.name}
-                      width={800}
-                      height={800}
-                      unoptimized
-                      className="h-auto max-h-[60vh] w-full object-contain"
-                    />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 1b: the user chooses the design of the generated frame (epic 444), the message comes next */}
-        {step === 'select-layout' && (
-          <div className="h-full flex items-center justify-center p-4">
-            <div className="w-full max-w-6xl">
-              <h2 className="mb-4 text-center text-lg font-bold">{t('flow.selectLayout.title')}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-tour-id="capture-layout-grid">
-                {layoutChoices.map((variant) => {
-                  // The design is shown with the message the user already chose when it carries it, else with its first message.
-                  const shown = generatedFrame?.variants.find((other) => layoutIdOf(other) === layoutIdOf(variant) && other.index === choice.messageIndex) ?? variant;
-                  return (
+        {/* Frame and message choices share one page. A section appears only when the event offers a real choice. */}
+        {(step === 'select-frame' || step === 'select-layout' || step === 'select-message') && asksAnySelection ? (
+          <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 p-4">
+            <h2 className="text-center text-lg font-bold">{t('flow.selectFrameMessage.title')}</h2>
+            {asksFrame ? (
+              <section aria-labelledby="capture-frame-heading">
+                <h3 id="capture-frame-heading" className="mb-3 text-center text-base font-semibold">{t('flow.selectFrame.title')}</h3>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" data-tour-id="capture-frame-grid">
+                  {frames.map((frame) => (
                     <button
-                      key={layoutIdOf(variant)}
+                      key={frame.frameId}
                       type="button"
-                      onClick={() => handleLayoutSelect(variant)}
-                      className="overflow-hidden rounded-lg border-2 transition-all"
-                      data-layout-choice
+                      onClick={() => handleFrameSelect(frame)}
+                      aria-pressed={selectedFrame?.frameId === frame.frameId}
+                      className="aspect-square overflow-hidden rounded-xl border-2 transition-all"
+                      style={{ backgroundColor: frame.tileStyle?.color || undefined, borderColor: selectedFrame?.frameId === frame.frameId ? 'var(--mantine-color-blue-6)' : undefined }}
+                      data-frame-choice
                     >
-                      <Image src={shown.imageUrl} alt="" width={800} height={450} unoptimized className="h-auto max-h-[40vh] w-full object-contain" />
+                      {frame.tileStyle?.imageUrl ? (
+                        <Image src={frame.tileStyle.imageUrl} alt={frame.name} width={600} height={600} unoptimized className="h-full w-full object-cover" />
+                      ) : frame.tileStyle?.color ? (
+                        <span className="flex h-full w-full items-center justify-center p-3 text-center font-semibold">{frame.name}</span>
+                      ) : (
+                        <Image src={frame.imageUrl} alt={frame.name} width={600} height={600} unoptimized className="h-full w-full object-cover" />
+                      )}
                     </button>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+            {asksLayout ? (
+              <section aria-labelledby="capture-layout-heading">
+                <h3 id="capture-layout-heading" className="mb-3 text-center text-base font-semibold">{t('flow.selectLayout.title')}</h3>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" data-tour-id="capture-layout-grid">
+                  {layoutChoices.map((variant) => {
+                    const id = layoutIdOf(variant);
+                    const tile = event?.frameSelectionTiles?.[id];
+                    const layoutName = id === 'generated'
+                      ? t('flow.selectLayout.generated')
+                      : event?.frames?.find((assignment) => assignment.frameId === id)?.frameDetails?.name || t('flow.selectLayout.title');
+                    const shown = generatedFrame?.variants.find((other) => layoutIdOf(other) === id && other.index === choice.messageIndex) ?? variant;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => handleLayoutSelect(variant)}
+                        aria-pressed={choice.layoutId === id}
+                        aria-label={layoutName}
+                        className="aspect-square overflow-hidden rounded-xl border-2 transition-all"
+                        style={{ backgroundColor: tile?.color || undefined, borderColor: choice.layoutId === id ? 'var(--mantine-color-blue-6)' : undefined }}
+                        data-layout-choice
+                      >
+                        {tile?.imageUrl ? (
+                          <Image src={tile.imageUrl} alt="" width={600} height={600} unoptimized className="h-full w-full object-cover" />
+                        ) : tile?.color ? (
+                          <span className="flex h-full w-full items-center justify-center p-3 text-center font-semibold">{layoutName}</span>
+                        ) : (
+                          <Image src={shown.imageUrl} alt="" width={600} height={600} unoptimized className="h-full w-full object-cover" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+            {asksMessage ? (
+              <section aria-labelledby="capture-message-heading">
+                <h3 id="capture-message-heading" className="mb-3 text-center text-base font-semibold">{t('flow.selectMessage.title')}</h3>
+                {messageChoices.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" data-tour-id="capture-message-grid">
+                    {messageChoices.map((variant) => (
+                      <button
+                        key={variant.index}
+                        type="button"
+                        onClick={() => handleMessageSelect(variant)}
+                        aria-pressed={choice.messageIndex === variant.index}
+                        className="rounded-xl border-2 p-4 text-left text-base font-semibold transition-all"
+                        style={{ borderColor: choice.messageIndex === variant.index ? 'var(--mantine-color-blue-6)' : undefined }}
+                        data-message-choice
+                      >
+                        {variant.message}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-sm">{t('flow.selectFrameMessage.chooseFrameFirst')}</p>
+                )}
+              </section>
+            ) : null}
+            <div className="flex justify-center pb-2">
+              <Button type="button" size={eventButtonSize} radius="md" onClick={() => setStep('capture-photo')} disabled={!selectionComplete}>
+                {t('flow.selectFrameMessage.continue')}
+              </Button>
             </div>
           </div>
-        )}
-
-        {/* Step 1c: the user chooses the message among those the design offers (issue 329, epic 444) */}
-        {step === 'select-message' && (
-          <div className="h-full flex items-center justify-center p-4">
-            <div className="w-full max-w-6xl">
-              <h2 className="mb-4 text-center text-lg font-bold">{t('flow.selectMessage.title')}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-tour-id="capture-message-grid">
-                {messageChoices.map((variant) => (
-                  <button
-                    key={variant.index}
-                    type="button"
-                    onClick={() => handleMessageSelect(variant)}
-                    className="overflow-hidden rounded-lg border-2 transition-all"
-                    aria-label={variant.message ?? undefined}
-                    data-message-choice
-                  >
-                    <Image src={variant.imageUrl} alt="" width={800} height={450} unoptimized className="h-auto max-h-[40vh] w-full object-contain" />
-                    <span className="block p-2 text-sm font-semibold">{variant.message}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        ) : null}
 
         {/* Step 2: Photo Capture - Fullscreen */}
         {step === 'capture-photo' && (
@@ -1845,6 +1869,7 @@ export default function EventCapturePage({
               // The dark area of the design: territories for a generated frame or one with a message area, the silhouette of an own frame (camera#265, lib/frame/dark-area.ts).
               frameImageUrl={darkArea}
               territories={selectedFrame?.generated?.territories}
+              permissions={{ zoomOut: takePhotoConfig?.allowZoomOut !== false, zoomIn: takePhotoConfig?.allowZoomIn !== false, pan: takePhotoConfig?.allowPan !== false }}
               buttonSize={eventButtonSize}
               onDone={handleReframeDone}
               onRetake={handleReframeRetake}
