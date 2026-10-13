@@ -10,6 +10,6 @@ The event's **Take Photo** page settings control three actions:
 
 Missing settings default to enabled, preserving the behavior of existing events. Disabled actions are constrained in pointer, touch, wheel, keyboard, segmented-control, and slider input. The displayed instructions match the available actions.
 
-An editor sets these options on the event's Take Photo page in the journey editor. The choices are saved with `CustomPage.config`; no submission or account data changes. **AI-generated background fill is a separate feature and is not implemented**: fitting the whole selfie can expose areas outside the source image, and this app has no background-generation service to fill them.
+An editor sets these options on the event's Take Photo page in the journey editor. The choices are saved with `CustomPage.config`; no submission or account data changes. Zooming out shows more of the original selfie within the frame.
 
 The same page also controls which parts of the photo are visible when it is reframed; the frame's dark-area overlay remains in place and is not affected by these permissions.
