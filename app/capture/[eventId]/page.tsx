@@ -354,6 +354,7 @@ export default function EventCapturePage({
     savedMessageIsOwn: pendingSavedMessageIsOwn,
     title: pendingTitle,
     waitingMessage: pendingWaitingMessage,
+    showWaitingPage: showApprovalWaitingPage,
   } = approvalTexts(takePhotoConfig, Boolean(selectedTryOnSuitId), language, uiTexts);
   const cameraPromptTitle = own('camera.ready.title', takePhotoConfig?.cameraPromptTitle);
   const cameraPromptDescription = own('camera.prompt.desktop', takePhotoConfig?.cameraPromptDescription);
@@ -935,6 +936,7 @@ export default function EventCapturePage({
     return consentRecords({ pageId: acceptanceBox.pageId, pageType: 'accept' }, { accepted: true, acceptedAt: new Date().toISOString(), unticked: items, shownText });
   };
 
+  const moveToThankYouRef = useRef<() => void>(() => undefined);
   const handleSave = async () => {
     if (!compositeImage || !event) return;
 
@@ -1039,12 +1041,17 @@ export default function EventCapturePage({
       setHasFinalizedSubmissionEmail(false);
       // A photo of a vetted event is saved and waits for approval: no share link yet, the guest gets it by email.
       if ((data.data ?? data).pending === true) {
-        setPendingApproval(true);
         setTryOnResult(null);
-        setStep('preview');
-        // The card on the preview step already says the photo waits (its title and its text), so the standard saved message is not shown on top of it: it ran into the card.
-        // A saved message an editor wrote is their own choice and is still shown.
-        if (pendingSavedMessageIsOwn) notifyCapture('success', pendingSavedMessage);
+        if (showApprovalWaitingPage) {
+          setPendingApproval(true);
+          setStep('preview');
+          // The card on the preview step already says the photo waits (its title and its text), so the standard saved message is not shown on top of it: it ran into the card.
+          // A saved message an editor wrote is their own choice and is still shown.
+          if (pendingSavedMessageIsOwn) notifyCapture('success', pendingSavedMessage);
+        } else {
+          setPendingApproval(false);
+          moveToThankYouRef.current();
+        }
         return;
       }
       const emailNotice = buildEmailDeliveryNotice(data.data?.submission?.metadata, language);
@@ -1305,6 +1312,9 @@ export default function EventCapturePage({
       handleNextPhoto();
     }
   };
+  useEffect(() => {
+    moveToThankYouRef.current = handleMoveToThankYou;
+  });
   
   /**
    * Restart flow from beginning
@@ -1315,7 +1325,7 @@ export default function EventCapturePage({
    * start and the consents accepted stay), so the next photo does not ask again; only an explicit "restart" page of the event starts over
    * from the first page (handleRestartFlow). The default of the guest journey; an event changes it with its own pages.
    */
-  const handleNextPhoto = () => {
+  function handleNextPhoto() {
     setCapturedImage(null);
     setCapturedOriginal(null);
     setGalleryTick(false);
@@ -1335,7 +1345,7 @@ export default function EventCapturePage({
     setChoice(NO_CHOICE);
     setFlowPhase('capture');
     setStep(frames.length > 1 && !selectedFrame ? (ownLayout && ownLayout.mode !== 'user' ? 'capture-photo' : 'select-frame') : nextStep(generatedFrame, NO_CHOICE));
-  };
+  }
 
   const handleRestartFlow = () => {
     // Reset capture state

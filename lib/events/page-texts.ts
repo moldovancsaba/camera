@@ -25,6 +25,7 @@ export interface ApprovalTextSettings {
   pendingSavedMessage?: string;
   pendingTitle?: string;
   pendingWaitingMessage?: string;
+  showApprovalWaitingPage?: boolean;
 }
 
 /** The text shown on the visit button of a CTA page after it was pressed. */
@@ -43,5 +44,6 @@ export function approvalTexts(settings: ApprovalTextSettings | null | undefined,
     savedMessageIsOwn: textOr(language, 'approval.saved', settings?.pendingSavedMessage, undefined, texts) !== translate(language, 'approval.saved', undefined, texts),
     title: textOr(language, 'approval.title', settings?.pendingTitle, undefined, texts),
     waitingMessage: ownIsDefault && tryOnChosen ? `${own}${translate(language, 'approval.tryOn', undefined, texts)}` : own,
+    showWaitingPage: settings?.showApprovalWaitingPage !== false,
   };
 }
