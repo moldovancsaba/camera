@@ -313,11 +313,14 @@ sets none follows its partner), `activity_log` and `activity_exports` (the activ
 Primary path:
 
 1. capture page collects image and optional onboarding data
-2. client composites photo + frame where required
-3. `POST /api/submissions`
-4. server uploads raster via `lib/imgbb/upload.ts` (Vercel Blob primary, imgbb best-effort mirror)
-5. server inserts Mongo submission document
-6. share, gallery, and slideshow flows consume that record
+2. as soon as the shutter returns the full camera image, the browser uploads an unlisted temporary copy to Vercel Blob at `capture-drafts/<eventId>/` through `POST /api/uploads/original`
+3. client composites the frame-sized photo + frame where required
+4. `POST /api/submissions`
+5. server uploads raster via `lib/imgbb/upload.ts` (Vercel Blob primary, imgbb best-effort mirror)
+6. server inserts Mongo submission document
+7. share, gallery, and slideshow flows consume that record
+
+The temporary full camera copy is not a submission and is never attached to the database record. The capture page requests its deletion after the normal save succeeds, on retake, or when the page exits; `POST /api/uploads/temporary-capture` validates that a deletion names only the random draft file for that event. Unreferenced leftovers can be found by `npm run blob:orphans`.
 
 Important implementation note:
 

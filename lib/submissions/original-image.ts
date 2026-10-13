@@ -15,6 +15,8 @@ export const ORIGINAL_MAX_BYTES = 15 * 1024 * 1024;
 export const ORIGINAL_ALLOWED_TYPE = 'image/jpeg';
 
 export const ORIGINAL_UPLOAD_ENDPOINT = '/api/uploads/original';
+export const TEMPORARY_CAPTURE_PREFIX = 'capture-drafts/';
+export const TEMPORARY_CAPTURE_DELETE_ENDPOINT = '/api/uploads/temporary-capture';
 
 /** How long an upload token stays valid. */
 export const ORIGINAL_TOKEN_TTL_MS = 10 * 60 * 1000;
@@ -30,6 +32,39 @@ export function isValidEventIdForPath(eventId: unknown): eventId is string {
 
 export function originalPathPrefix(eventId: string): string {
   return `originals/${eventId}/`;
+}
+
+export function temporaryCapturePathPrefix(eventId: string): string {
+  return `${TEMPORARY_CAPTURE_PREFIX}${eventId}/`;
+}
+
+/** A temporary camera original is never attached to a submission: it exists only while its capture flow is in progress. */
+export function validateTemporaryCapturePathname(pathname: unknown, eventId: unknown): boolean {
+  if (typeof pathname !== 'string' || !isValidEventIdForPath(eventId)) return false;
+  const prefix = temporaryCapturePathPrefix(eventId);
+  if (!pathname.startsWith(prefix)) return false;
+  const fileName = pathname.slice(prefix.length);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:-[A-Za-z0-9]+)?\.jpg$/i.test(fileName);
+}
+
+/** True only for this event's unguessable temporary capture in this project's Blob store. */
+export function isTemporaryCaptureBlobUrl(url: unknown, options: { eventId: unknown; storeHost: string | null }): url is string {
+  if (typeof url !== 'string' || !options.storeHost || !isValidEventIdForPath(options.eventId)) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'https:' || parsed.host.toLowerCase() !== options.storeHost.toLowerCase()) return false;
+  if (parsed.username || parsed.password || parsed.search || parsed.hash) return false;
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(parsed.pathname.replace(/^\//, ''));
+  } catch {
+    return false;
+  }
+  return validateTemporaryCapturePathname(pathname, options.eventId);
 }
 
 /** `originals/<eventId>/<one safe file name>.jpg`, nothing else. */
