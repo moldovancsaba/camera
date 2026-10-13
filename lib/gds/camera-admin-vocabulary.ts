@@ -29,6 +29,12 @@ export const cameraAdminVocabularyPacks = [
     'confirm-switch-off': { defaultMessage: 'Confirm: switch it off', icon: GdsIcons.Delete, feedback: deletedFeedback },
     cancel: { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
   }),
+  createGdsVocabularyPack('messmass-counters', {
+    'switch-on': { defaultMessage: 'Switch sending on', icon: GdsIcons.Toggle, feedback: savedFeedback },
+    'confirm-switch-on': { defaultMessage: 'Confirm: switch sending on', icon: GdsIcons.Check, feedback: savedFeedback },
+    'switch-off': { defaultMessage: 'Switch sending off', icon: GdsIcons.Toggle, feedback: savedFeedback },
+    cancel: { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
+  }),
   createGdsVocabularyPack('landing-pages', {
     create: { defaultMessage: 'Create landing page', icon: GdsIcons.Add, feedback: savedFeedback },
     edit: { defaultMessage: 'Edit landing page', icon: GdsIcons.Edit, feedback: savedFeedback },

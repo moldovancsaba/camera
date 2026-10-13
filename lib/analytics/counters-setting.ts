@@ -3,8 +3,8 @@
  * (`settingId: 'messmass-counters'`). While it is off, camera computes nothing for messmass and sends nothing; the first real push is the owner's decision, made when a real event can be
  * watched. Only a stored `true` is on: a missing document, a missing field, `"true"` as text or anything else is off. Unit-tested in counters-setting.test.ts.
  *
- * There is no screen for it yet and nothing calls the sync (lib/analytics/counters-sync.ts) from the live paths: wiring the push to a vetting decision, a play and a daily job touches the
- * approver's screens and the giant screen, which are frozen until after the match, and needs the receiving route in messmass. The switch and the wiring are added together.
+ * It is changed through PATCH /api/admin/settings/messmass-counters (global admins), from the button on the Messmass tab of the Analytics (components/admin/analytics/CountersSwitch.tsx), which asks
+ * before switching on. The switch pushes nothing itself: a push is asked for after a vetting decision or a saved marking of the people (lib/analytics/counters-trigger.ts).
  */
 
 import type { Db } from 'mongodb';

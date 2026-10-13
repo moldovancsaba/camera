@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the switch of the counters for messmass: a button on the Messmass tab (issue 628; owner answer 481 "yes")
+
+- **Why:** the counters push (off by default) could not be switched on by anyone: `setCountersSetting` had no caller and the Messmass tab only showed On or Off, so the only way was to write the `admin_settings` document by hand. This was found while checking the handover on 2026-10-13.
+- **Added:** `GET` and `PATCH /api/admin/settings/messmass-counters` (global admins only, `{ enabled: boolean }`, answers who changed it and when) and the switch on the Messmass tab (`components/admin/analytics/CountersSwitch.tsx`): **Switch sending on** asks first, in the page, with a warning that real numbers will go to messmass; **Switch sending off** is at once. The switch pushes nothing itself: the first push is asked for after the next vetting decision or saved marking of an event linked to messmass. `CounterState` carries `updatedBy`; the Messmass tab's texts now follow the state (they said "off" and "at most one push every 30 seconds").
+- **Not changed:** the setting is still off unless a stored `true`; nothing was switched on.
+- **Verified:** unit tests of the route (403 for anyone but a global admin, off until switched on, who and when, 400 for anything but a boolean, nothing written on a refusal) and of the tab's states; a browser harness with a fake server: the first press sends nothing, "Confirm" sends one `PATCH` with `enabled: true`, the tab then reads On with the name of who changed it; the full chain. **Not verified:** the real page behind a login, and a real push (nothing was sent to messmass).
+
 ## Unreleased — after the vetting merge: the one-photo screen tells the truth about the e-mail, the Messmass tab note is current, the privacy data lists the marks (issue 628)
 
 - **Changed:** after Approve or Reject the screen reads the answer of the review route about the e-mail (`sent`, `skipped`, `failed`) and says so: a failed e-mail is an orange warning ("Photo approved, but the e-mail with the link to the user could not be sent."), a missing address says no e-mail was sent; before, it always said the user gets the link (`decisionNotice`, `lib/photo-vetting/review-state.ts`). The Messmass tab no longer says the receiving route is not built: it is deployed (messmass PR 481) and the sending stays off until the owner switches it on.
