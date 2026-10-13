@@ -234,13 +234,13 @@ environment and enforces the disposable-database guard before any test runs.
 - The `/api/e2e/bootstrap` and `/api/e2e/cleanup` routes are gated by `assertDisposableE2EDatabase()` — requests are rejected with `403` unless `MONGODB_DB` contains a safe keyword (`e2e`, `test`, `dev`, `local`, `sandbox`, `staging`).
 - `playwright.config.ts` automatically sets `MONGODB_DB=camera_test` when spawning the web server via `PLAYWRIGHT_START_WEB_SERVER=true`.
 
-## Try-on (switched off, being removed)
+## Try-on (removed)
 
-Try-on (a guest picks a garment, a separate AI worker dresses the photo, an approver vets the result) is switched off on every event, its worker is stopped and its cron is gone. By the owner's decision (issue 557) it is removed from this app completely, in phases, so that it can be rebuilt later as a separate add-on.
+Try-on (a guest picks a garment, a separate AI worker dresses the photo, an approver vets the result) is switched off on every event, its worker is stopped and its cron is gone. By the owner's decision (issue 557) it is removed from this app completely, in phases, so that it can be rebuilt later as a separate add-on. All phases are in.
 
 - What existed, the data it left in the database and what a rebuild needs: [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md).
 - The last commit that has all of it: git tag `tryon-integration-final`.
-- The pages, routes, jobs, e-mail modes and settings are gone from the app; the capture page and the submission route follow in the last phase (held until after the match of 2026-10-16). No event enables try-on and none of it is supported.
+- Nothing of it is left in the app's code: the admin, the server side and the guest path (the suit selector and the try-on fields of the save) are gone, and no event can enable it. Old events may still store a `tryOn` setting; nothing reads it.
 - The separate try-on repository and the image.direct service are not part of this app and are not touched.
 
 ## Fleet integrations
