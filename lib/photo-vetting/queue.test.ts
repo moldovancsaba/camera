@@ -32,6 +32,16 @@ test('an approved photo shows the real picture and the last decision', () => {
   assert.deepEqual(item.last, { action: 'approve', by: 'mod@example.com', at: 't2', reason: null });
 });
 
+test('a returned approved photo uses its published composite when the private source is gone', () => {
+  const item = toPhotoQueueItem({
+    ...base(), reviewStatus: 'pending_review', imageUrl: 'https://s/already-approved.jpg',
+    photoReview: { photoUrl: null, returnedAt: '2026-10-13T12:00:00.000Z' },
+    reviewHistory: [{ action: 'return_to_vetting', by: 'mod@example.com', at: 't3' }],
+  }, V);
+  assert.equal(item.photoUrl, 'https://s/already-approved.jpg');
+  assert.deepEqual(item.last, { action: 'return_to_vetting', by: 'mod@example.com', at: 't3', reason: null });
+});
+
 test('frame kinds and missing names are read defensively', () => {
   assert.equal(toPhotoQueueItem({ ...base(), frameVariant: undefined, frameId: 'f1' }, V).frameKind, 'own');
   assert.equal(toPhotoQueueItem({ ...base(), frameVariant: undefined }, V).frameKind, 'none');

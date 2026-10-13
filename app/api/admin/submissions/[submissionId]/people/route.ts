@@ -13,7 +13,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp, type Submission } from '@/lib/db/schemas';
-import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound, apiForbidden, checkRateLimit } from '@/lib/api';
+import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound, apiForbidden, apiError, checkRateLimit } from '@/lib/api';
 import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
 import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
@@ -29,11 +29,14 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
   const { submissionId } = await context!.params!;
   if (!ObjectId.isValid(submissionId)) throw apiBadRequest('Invalid submission ID format');
 
-  const body = (await request.json().catch(() => null)) as { people?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { people?: unknown; analysisOnly?: unknown } | null;
+  if (body?.analysisOnly !== undefined && typeof body.analysisOnly !== 'boolean') throw apiBadRequest('analysisOnly must be a boolean');
+  const analysisOnly = body?.analysisOnly === true;
 
   const db = await connectToDatabase();
   const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: new ObjectId(submissionId) });
   if (!submission) throw apiNotFound('Submission');
+  if (analysisOnly && submission.reviewStatus !== 'approved') throw apiError('This photo is no longer approved. Reload the Vetting list before editing its analysis.', 409);
 
   const event = await resolveEventForSubmission(db, submission);
   if (event) {
@@ -48,7 +51,11 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
   if (!checked.ok) throw apiBadRequest(checked.reason);
 
   const peopleReview = { by: session.user.email ?? session.user.id ?? null, at: generateTimestamp(), vocabulary: vocabulary.version };
-  await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: new ObjectId(submissionId) }, { $set: { people: checked.value, peopleReview } });
+  const saved = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+    { _id: new ObjectId(submissionId), ...(analysisOnly ? { reviewStatus: 'approved' } : {}) },
+    { $set: { people: checked.value, peopleReview } }
+  );
+  if (analysisOnly && saved.matchedCount === 0) throw apiError('This photo is no longer approved. Reload the Vetting list before editing its analysis.', 409);
   // The counters for messmass read the people: ask for a push after the response (nothing happens while the counters are off).
   scheduleCounterSync(db, event);
   return apiSuccess({ submissionId, people: checked.value, peopleReview });

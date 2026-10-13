@@ -40,7 +40,7 @@ test('the English defaults stay word for word what the page showed before the la
   assert.equal(SHARE_PAGE_TEXT_DEFAULTS.waitingMessage, 'Your photo is waiting for approval. This page updates by itself, and we will email you the link as soon as it is approved.');
   assert.equal(SHARE_PAGE_TEXT_DEFAULTS.notApprovedMessage, 'Your photo could not be approved, so it will not be published.');
   assert.equal(SHARE_PAGE_TEXT_DEFAULTS.notApprovedHint, 'You are welcome to take another photo.');
-  assert.deepEqual([...TEXT_KEYS].sort(), ['createYourOwnButton', 'downloadButton', 'notApprovedHint', 'notApprovedMessage', 'notApprovedTitle', 'takeAnotherPhotoButton', 'waitingMessage', 'waitingTitle']);
+  assert.deepEqual([...TEXT_KEYS].sort(), ['createYourOwnButton', 'downloadButton', 'notApprovedHint', 'notApprovedMessage', 'notApprovedTitle', 'takeAnotherPhotoButton', 'underReviewMessage', 'underReviewTitle', 'waitingMessage', 'waitingTitle']);
   for (const key of TEXT_KEYS) {
     assert.equal(sharePageText(undefined, key, 'en'), SHARE_PAGE_TEXT_DEFAULTS[key], key);
     assert.equal(sharePageText(undefined, key), SHARE_PAGE_TEXT_DEFAULTS[key], `${key} without a language`);

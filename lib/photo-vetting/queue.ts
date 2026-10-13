@@ -25,7 +25,7 @@ export interface PhotoQueueItem {
   photoUrl: string | null;
   frameKind: 'generated' | 'own' | 'none';
   shareOptIn: boolean;
-  last: { action: 'approve' | 'reject'; by: string; at: string; reason: string | null } | null;
+  last: { action: 'approve' | 'reject' | 'return_to_vetting'; by: string; at: string; reason: string | null } | null;
   /** The people marked in the photo at vetting (issue 542), none when nobody looked or the saved list is not valid. */
   people: PersonTag[];
   /** Someone marked the people (also when nobody was in the photo). */
@@ -52,7 +52,7 @@ export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary):
     createdAt: text(doc.createdAt) ?? '',
     name,
     email: text(doc.userInfo?.email),
-    photoUrl: status === 'approved' ? text(doc.imageUrl) : text(review.photoUrl),
+    photoUrl: status === 'approved' || (status === 'pending_review' && typeof review.returnedAt === 'string') ? text(doc.imageUrl) ?? text(review.photoUrl) : text(review.photoUrl),
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',
     shareOptIn: review.shareOptIn === true,
     people: (() => {
@@ -62,7 +62,7 @@ export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary):
     peopleMarked: Array.isArray(doc.people),
     rejectReasons: Array.isArray(doc.rejectReasons) ? doc.rejectReasons.filter((key): key is string => typeof key === 'string' && key.length > 0) : [],
     last:
-      last && (last.action === 'approve' || last.action === 'reject')
+      last && (last.action === 'approve' || last.action === 'reject' || last.action === 'return_to_vetting')
         ? { action: last.action, by: text(last.by) ?? 'unknown', at: text(last.at) ?? '', reason: text(last.reason) }
         : null,
   };

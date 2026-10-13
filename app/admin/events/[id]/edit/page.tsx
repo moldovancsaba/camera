@@ -58,6 +58,8 @@ const SHARE_TEXT_FIELDS: Array<{ key: SharePageTextKey; label: string; long?: bo
   { key: 'createYourOwnButton', label: 'Create Your Own button text' },
   { key: 'waitingTitle', label: 'Waiting for approval: heading' },
   { key: 'waitingMessage', label: 'Waiting for approval: text', long: true },
+  { key: 'underReviewTitle', label: 'Further review: heading' },
+  { key: 'underReviewMessage', label: 'Further review: text', long: true },
   { key: 'notApprovedTitle', label: 'Not approved: heading' },
   { key: 'notApprovedMessage', label: 'Not approved: text', long: true },
   { key: 'notApprovedHint', label: 'Not approved: hint under the text' },
@@ -553,7 +555,7 @@ export default function EditEventPage({
               description="Display a CTA on the shared photo page that returns users to capture and start a new photo."
             />
             <Text size="sm" c="dimmed">
-              The fixed words of the shareable photo page and of its waiting and not-approved notices. Leave a field empty to keep the text in grey.
+              The fixed words of the shareable photo page and its waiting, further-review and not-approved notices. Leave a field empty to keep the text in grey.
             </Text>
             {SHARE_TEXT_FIELDS.map(({ key, label, long }) =>
               long ? (

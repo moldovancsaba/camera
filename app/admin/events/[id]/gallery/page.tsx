@@ -60,7 +60,18 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
         <EventGallery
           eventId={id}
           eventName={String(event.name)}
-          initialSubmissions={JSON.parse(JSON.stringify(submissions))}
+          initialSubmissions={JSON.parse(JSON.stringify(submissions.map((submission) => ({
+            _id: submission._id,
+            imageUrl: submission.imageUrl,
+            finalImageUrl: submission.finalImageUrl,
+            previewImageUrl: submission.previewImageUrl,
+            userName: submission.userName,
+            userInfo: submission.userInfo ? { name: submission.userInfo.name, email: submission.userInfo.email } : null,
+            createdAt: submission.createdAt,
+            playCount: submission.playCount,
+            slideshowPlays: submission.slideshowPlays,
+            canReturnToVetting: submission.reviewStatus === 'approved' && Boolean(submission.photoReview),
+          }))))}
           slideshows={JSON.parse(JSON.stringify(slideshows))}
           canManage={canManage}
           hasFrame={hasFrame}

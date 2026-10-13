@@ -877,6 +877,10 @@ export interface Submission {
     photoMime: string;
     shareOptIn: boolean;             // The guest's pledge-wall choice, applied when the photo is approved
     submittedAt: string;
+    /** Baseline of a moderator reopening a decided photo. Public links show a temporary review notice until the next decision. */
+    returnedAt?: string;
+    returnedFromStatus?: 'approved' | 'rejected';
+    returnedWasPubliclyVisible?: boolean;
     tryOn?: { leatherSuitId: string; setupId: string | null; cameraId: string | null; outfitBottomLeatherSuitId: string | null } | null; // Held until approval
   } | null;
   shareToken?: string | null;        // Opaque share id of a vetted photo (/share/<token>); older photos use their database id
@@ -891,7 +895,7 @@ export interface Submission {
   rejectReasons?: string[];
   /** The user's own, separate permission to show the photo in the public gallery, kept as evidence (issue 554, lib/events/gallery-consent.ts): present only when the box was ticked. */
   publicGalleryConsent?: { version: 1; grantedAt: string; required?: true } | null;
-  reviewHistory?: Array<{ action: 'approve' | 'reject'; by: string; at: string; reason?: string | null; reasons?: string[] }>; // `reasons`: the reject reason keys of a rejection (issue 628); older entries have none
+  reviewHistory?: Array<{ action: 'approve' | 'reject' | 'return_to_vetting'; by: string; at: string; reason?: string | null; reasons?: string[] }>; // `reasons`: the reject reason keys of a rejection (issue 628); older entries have none
   isShareVisible?: boolean;          // Public share-page publication flag
   isSlideshowEligible?: boolean;     // Slideshow playlist eligibility flag
   

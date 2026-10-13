@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — return a mistaken decision to vetting and correct analysis silently (camera#641, 2026-10-13)
+
+- **Changed:** managers can return approved vetted photos from Gallery and approved/rejected photos from Vetting to the normal review queue. The existing share-token link shows an editable English/Hungarian further-review message with no image or preview while review is open. Reopening a photo that was publicly visible emails the guest; returning an already hidden rejected photo does not.
+- **Analysis-only:** the Approved list now opens the people-marking screen in save-only mode. It updates people analysis without changing status or visibility and sends no email. Re-approving a returned photo reuses the already-composed image if its private source file has been cleaned up.
+- **Verified:** `npm run release:check` passed (344/344 unit-test files, production guards, and production build); `npm run inventory:check` passed. No production photos were changed.
+- **Pending:** authenticated browser review and deployment verification.
+- **Not done:** no real-event review or guest email was run.
+
 ## Unreleased — rejection clearly stays pending until confirmed (owner feedback, 2026-10-13)
 
 - **Why:** a reviewer said the rejection flow looked as if it did not reject the photo. The first red button only opens the reason step; the photo stays in Waiting until a reason is selected and the final action is confirmed. People marking is also required when enabled.

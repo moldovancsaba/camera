@@ -1,9 +1,9 @@
 /**
- * Approve or reject a pending photo (camera#267, docs/PHOTO_VETTING_PLAN.md).
+ * Approve, reject or reopen a decided photo (camera#267, docs/PHOTO_VETTING_PLAN.md).
  *
  * Approval is where the picture is made: the plain photo and the frame image the photo recorded (the generated frame variant, or the
  * event's own frame) are composed on the server, stored, and only then does the photo become visible. A photo whose frame cannot be
- * fetched or composed stays pending: the brand's frame is never skipped silently. The user gets the share link by email. The private plain
+ * fetched or composed stays pending: the brand's frame is never skipped silently. A reopened approved photo reuses its composed image if its private source is gone. The user gets the share link by email. The private plain
  * photo (the unframed crop) is NOT deleted here any more (issue 509, "never lose an image": that left the framed picture as the only copy). After the
  * answer is sent a copy of it goes to ImgBB (owner decision 295), every copy that exists is recorded and read back (`Submission.imageCopies`,
  * lib/storage/image-copies.ts), and **only when the ImgBB copy is verified is the private Blob file deleted** (owner decision "variant B"; `photoReview.photoUrl` then becomes null).
@@ -24,7 +24,8 @@ import { runAfterResponse } from '@/lib/api/run-after-response';
 import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import sharp from 'sharp';
 import { composePhotoWithFrame } from '@/lib/photo-vetting/compose';
-import { approvedShareUrl, sendPhotoApprovedEmail, sendPhotoNotApprovedEmail, takeAnotherPhotoUrl } from '@/lib/photo-vetting/emails';
+import { approvedShareUrl, sendPhotoApprovedEmail, sendPhotoNotApprovedEmail, sendPhotoUnderReviewEmail, takeAnotherPhotoUrl } from '@/lib/photo-vetting/emails';
+import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
 
 export interface ReviewActor {
   email: string | null;
@@ -48,6 +49,7 @@ export interface ReviewDeps {
   upload: (base64: string, name: string) => Promise<UploadedPicture>;
   sendApproved: typeof sendPhotoApprovedEmail;
   sendNotApproved: typeof sendPhotoNotApprovedEmail;
+  sendUnderReview: typeof sendPhotoUnderReviewEmail;
   /** Makes the screen-sized picture of the approved photo (camera#476, S7), after the answer is sent; never throws. Absent in tests that do not care. */
   screenPicture?: (db: Db, submission: { _id: ObjectId; imageUrl: string; finalImageUrl: string }) => void;
   /** Records and makes the copies of the approved photo's pictures (issue 509), after the answer is sent; never throws. Absent in tests that do not care. */
@@ -63,6 +65,7 @@ export const defaultReviewDeps: ReviewDeps = {
   },
   sendApproved: sendPhotoApprovedEmail,
   sendNotApproved: sendPhotoNotApprovedEmail,
+  sendUnderReview: sendPhotoUnderReviewEmail,
   screenPicture: (db, submission) => runAfterResponse(() => ensureScreenPicture(db, submission).then(() => undefined)),
   imageCopies: (db, input) => runAfterResponse(() => recordApprovalCopies(db, input).then(() => undefined)),
   now: () => new Date().toISOString(),
@@ -75,6 +78,10 @@ export type ApproveResult =
   | { ok: false; reason: ReviewFailure; message: string };
 
 export type RejectResult =
+  | { ok: true; email: 'sent' | 'skipped' | 'failed' }
+  | { ok: false; reason: ReviewFailure; message: string };
+
+export type ReturnToVettingResult =
   | { ok: true; email: 'sent' | 'skipped' | 'failed' }
   | { ok: false; reason: ReviewFailure; message: string };
 
@@ -95,26 +102,36 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
     return { ok: false, reason: 'not_reviewable', message: 'This photo is not waiting for a decision' };
   }
   const review = submission.photoReview;
-  if (!review?.photoUrl) return { ok: false, reason: 'no_photo', message: 'The photo file is not available' };
+  const reopeningExistingImage = Boolean(review?.returnedAt && submission.imageUrl);
+  if (!review || (!review.photoUrl && !reopeningExistingImage)) return { ok: false, reason: 'no_photo', message: 'The photo file is not available' };
 
-  let photo: Buffer;
+  let photo: Buffer | null = null;
   let picture: UploadedPicture;
   let size: { width: number; height: number };
-  try {
-    photo = await deps.fetchImage(review.photoUrl);
-    const frameUrl = await resolveFrameImageUrl(db, submission);
-    if (frameUrl) {
-      const composed = await composePhotoWithFrame(photo, await deps.fetchImage(frameUrl));
-      size = { width: composed.width, height: composed.height };
-      picture = await deps.upload(composed.buffer.toString('base64'), `submission-${Date.now()}`);
-    } else {
-      const { width, height } = await sharp(photo, { failOn: 'none' }).metadata();
-      size = { width: width ?? 0, height: height ?? 0 };
-      picture = await deps.upload(photo.toString('base64'), `submission-${Date.now()}`);
+  if (reopeningExistingImage) {
+    const { finalWidth, finalHeight } = submission.metadata ?? {};
+    size = { width: typeof finalWidth === 'number' ? finalWidth : 0, height: typeof finalHeight === 'number' ? finalHeight : 0 };
+    picture = {
+      imageUrl: submission.imageUrl!, deleteUrl: submission.deleteUrl ?? '', imageId: submission.imageId ?? '',
+      fileSize: submission.fileSize ?? 0, mimeType: submission.mimeType ?? 'image/jpeg',
+    };
+  } else {
+    try {
+      photo = await deps.fetchImage(review.photoUrl!);
+      const frameUrl = await resolveFrameImageUrl(db, submission);
+      if (frameUrl) {
+        const composed = await composePhotoWithFrame(photo, await deps.fetchImage(frameUrl));
+        size = { width: composed.width, height: composed.height };
+        picture = await deps.upload(composed.buffer.toString('base64'), `submission-${Date.now()}`);
+      } else {
+        const { width, height } = await sharp(photo, { failOn: 'none' }).metadata();
+        size = { width: width ?? 0, height: height ?? 0 };
+        picture = await deps.upload(photo.toString('base64'), `submission-${Date.now()}`);
+      }
+    } catch (error) {
+      logWarn('photo_vetting.compose_failed', 'The approved photo could not be composed; it stays pending', { submissionId: String(submission._id), error: errorMessage(error) });
+      return { ok: false, reason: 'compose_failed', message: 'The picture could not be made; the photo stays pending. Try again in a moment.' };
     }
-  } catch (error) {
-    logWarn('photo_vetting.compose_failed', 'The approved photo could not be composed; it stays pending', { submissionId: String(submission._id), error: errorMessage(error) });
-    return { ok: false, reason: 'compose_failed', message: 'The picture could not be made; the photo stays pending. Try again in a moment.' };
   }
 
   const at = deps.now();
@@ -141,7 +158,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
         updatedAt: at,
       },
       // A photo that was rejected and is approved again is not a rejected photo any more: its reject reasons go (they stay in the review history).
-      $unset: { rejectReasons: '' },
+      $unset: { rejectReasons: '', 'photoReview.returnedAt': '', 'photoReview.returnedFromStatus': '', 'photoReview.returnedWasPubliclyVisible': '' },
       $push: { reviewHistory: { action: 'approve', by: actorName(actor), at, reason: null } } as Document,
     }
   );
@@ -157,7 +174,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   const event = await resolveEventForSubmission(db, submission).catch(() => null);
 
   let email: 'sent' | 'skipped' | 'failed' = 'skipped';
-  if (submission.shareToken && submission.metadata?.emailSentAfterSave !== true) {
+  if (submission.shareToken && (reopeningExistingImage || submission.metadata?.emailSentAfterSave !== true)) {
     const shareUrl = approvedShareUrl(submission.shareToken);
     try {
       const result = await deps.sendApproved(submission, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
@@ -173,6 +190,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   // The plain photo is not deleted here (issue 509): it is the only unframed copy of the user's picture until its ImgBB copy is verified. The follow-up work makes that copy after the answer and
   // deletes the Blob file only then (variant B); a failure there never touches the approval, and until then `photoReview.photoUrl` keeps pointing at the file so deleting the submission deletes it.
   try {
+    if (!photo || !review.photoUrl) return { ok: true, email };
     deps.imageCopies?.(db, {
       submissionId: submission._id,
       composed: {
@@ -215,6 +233,8 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
 
   let email: 'sent' | 'skipped' | 'failed' = 'skipped';
   try {
+    // An already-hidden photo rejected again keeps the same visibility and gets no duplicate email. If it was public before reopening, the guest does get the final decline result.
+    if (submission.photoReview?.returnedAt && submission.photoReview.returnedWasPubliclyVisible !== true) return { ok: true, email };
     const event = await resolveEventForSubmission(db, submission).catch(() => null);
     const result = await deps.sendNotApproved(submission, event, takeAnotherPhotoUrl(String(submission.eventId ?? event?._id ?? ''), undefined, event), undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
     email = result.sent ? 'sent' : 'skipped' in result && result.skipped ? 'skipped' : 'failed';
@@ -222,6 +242,43 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
   } catch (error) {
     email = 'failed';
     logWarn('photo_vetting.rejection_email_failed', 'The not-approved email could not be sent', { submissionId: String(submission._id), error: errorMessage(error) });
+  }
+  return { ok: true, email };
+}
+
+/** Reopens an approved or rejected photo for the normal one-at-a-time review flow. */
+export async function returnPhotoToVetting(db: Db, submission: WithId<Submission>, actor: ReviewActor, deps: ReviewDeps = defaultReviewDeps): Promise<ReturnToVettingResult> {
+  if ((submission.reviewStatus !== 'approved' && submission.reviewStatus !== 'rejected') || !submission.photoReview) {
+    return { ok: false, reason: 'not_reviewable', message: 'This photo cannot be returned to vetting' };
+  }
+  const at = deps.now();
+  const wasVisible = isPubliclyVisible(visibilityInputOf(submission));
+  const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+    { _id: submission._id, reviewStatus: submission.reviewStatus },
+    {
+      $set: {
+        reviewStatus: 'pending_review',
+        isShareVisible: false,
+        'photoReview.returnedAt': at,
+        'photoReview.returnedFromStatus': submission.reviewStatus,
+        'photoReview.returnedWasPubliclyVisible': wasVisible,
+        updatedAt: at,
+      },
+      $push: { reviewHistory: { action: 'return_to_vetting', by: actorName(actor), at, reason: null } } as Document,
+    }
+  );
+  if (!won.matchedCount) return { ok: false, reason: 'not_reviewable', message: 'Someone else already changed this photo' };
+
+  let email: 'sent' | 'skipped' | 'failed' = 'skipped';
+  if (wasVisible && submission.shareToken) {
+    try {
+      const event = await resolveEventForSubmission(db, submission).catch(() => null);
+      const result = await deps.sendUnderReview(submission, event, approvedShareUrl(submission.shareToken), undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
+      email = result.sent ? 'sent' : 'skipped' in result && result.skipped ? 'skipped' : 'failed';
+    } catch (error) {
+      email = 'failed';
+      logWarn('photo_vetting.under_review_email_failed', 'The further-review email could not be sent', { submissionId: String(submission._id), error: errorMessage(error) });
+    }
   }
   return { ok: true, email };
 }
