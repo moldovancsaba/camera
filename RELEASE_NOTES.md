@@ -4,7 +4,7 @@
 
 - **Why:** a reviewer said the rejection flow looked as if it did not reject the photo. The first red button only opens the reason step; the photo stays in Waiting until a reason is selected and the final action is confirmed. People marking is also required when enabled.
 - **Changed:** the first action now reads **Reject…**; the expanded step says **Reject this photo**, states that it is still waiting, explains the final **Reject photo** action and shows any missing marking requirement. The reason picker now asks why the photo should be rejected, instead of sounding as if it is already rejected. The vetting plan matches the flow.
-- **Verified:** focused rendering tests for the reason picker and missing-reason state; full `release:check` and `inventory:check` pending.
+- **Verified:** focused rendering tests for the reason picker, the still-waiting message, and missing-marking guidance; `npm run release:check` passed (344/344 test files and production build), and `npm run inventory:check` passed.
 - **Not verified:** the authenticated event UI or a real rejection in production; no event photo was changed.
 
 ## Unreleased — one frame-and-message page, guest framing permissions, and email CTA buttons (2026-10-13)
