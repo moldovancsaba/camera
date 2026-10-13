@@ -317,6 +317,8 @@ export interface CustomPage {
     pendingSavedMessage?: string;     // Notification when the photo was saved and waits
     pendingTitle?: string;            // Heading of the waiting screen
     pendingWaitingMessage?: string;   // The waiting text with the email information; shown as written when set
+    /** Whether the post-save photo approval waiting page is shown; missing keeps the existing page visible. */
+    showApprovalWaitingPage?: boolean;
     showFrameOnCapture?: boolean; // If true, show frame overlay during live capture; if false, frame only applied after capture (default: true)
     // Camera prompt customization
     cameraPromptTitle?: string;  // Title shown on camera start screen (e.g., "Ready to capture?")

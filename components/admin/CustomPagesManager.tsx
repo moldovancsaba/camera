@@ -709,6 +709,7 @@ function PageEditModal({
   const [pendingSavedMessage, setPendingSavedMessage] = useState(page.config.pendingSavedMessage || '');
   const [pendingPreviewNotice, setPendingPreviewNotice] = useState(page.config.pendingPreviewNotice || '');
   const [pendingWaitingMessage, setPendingWaitingMessage] = useState(page.config.pendingWaitingMessage || '');
+  const [showApprovalWaitingPage, setShowApprovalWaitingPage] = useState(page.config.showApprovalWaitingPage !== false);
   // Camera prompt text
   const [cameraPromptTitle, setCameraPromptTitle] = useState(page.config.cameraPromptTitle || 'Ready to capture?');
   const [cameraPromptDescription, setCameraPromptDescription] = useState(page.config.cameraPromptDescription || 'Click to start your camera and take a photo');
@@ -792,6 +793,7 @@ function PageEditModal({
           pendingSavedMessage: pendingSavedMessage.trim() || undefined,
           pendingPreviewNotice: pendingPreviewNotice.trim() || undefined,
           pendingWaitingMessage: pendingWaitingMessage.trim() || undefined,
+          showApprovalWaitingPage,
         }),
         ...(page.pageType === CustomPageType.RESTART && {
           restartButtonText,
@@ -1253,6 +1255,12 @@ function PageEditModal({
             />
 
             <DividerLabel>Photo approval texts</DividerLabel>
+            <Check
+              checked={showApprovalWaitingPage}
+              onChange={setShowApprovalWaitingPage}
+              label="Show the approval waiting page after saving"
+              helper="If off, continue automatically to the next step. The photo still waits for approval and its link is still sent by email when approved."
+            />
             <Field
               label="Waiting Title"
               value={pendingTitle}
