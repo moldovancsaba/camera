@@ -15,8 +15,15 @@ test('without settings the four approval texts are the texts the code always sho
     title: 'Thank you!',
     waitingMessage: 'Your photo is waiting for approval. We will email you the link to it as soon as it is approved.',
     savedMessageIsOwn: false,
+    showWaitingPage: true,
   });
   assert.deepEqual(approvalTexts({}, false), approvalTexts(undefined, false));
+});
+
+test('the approval waiting page is shown by default and can be switched off', () => {
+  assert.equal(approvalTexts(undefined, false).showWaitingPage, true);
+  assert.equal(approvalTexts({ showApprovalWaitingPage: true }, false).showWaitingPage, true);
+  assert.equal(approvalTexts({ showApprovalWaitingPage: false }, false).showWaitingPage, false);
 });
 
 test('empty settings fall back to the defaults, filled settings replace them one by one', () => {

@@ -313,6 +313,7 @@ export default function ReframeStep({
     const stageEl = stageRef.current;
     if (!stageEl) return;
     const onWheel = (event: WheelEvent) => {
+      if (!allowZoomIn && !allowZoomOut) return;
       const current = viewRef.current;
       if (!current) return;
       event.preventDefault();
@@ -320,7 +321,7 @@ export default function ReframeStep({
     };
     stageEl.addEventListener('wheel', onWheel, { passive: false });
     return () => stageEl.removeEventListener('wheel', onWheel);
-  }, [zoomTo]);
+  }, [allowZoomIn, allowZoomOut, zoomTo]);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const current = viewRef.current;
@@ -329,23 +330,29 @@ export default function ReframeStep({
 
     switch (event.key) {
       case 'ArrowLeft':
+        if (!allowPan) return;
         dragBy(-step, 0);
         break;
       case 'ArrowRight':
+        if (!allowPan) return;
         dragBy(step, 0);
         break;
       case 'ArrowUp':
+        if (!allowPan) return;
         dragBy(0, -step);
         break;
       case 'ArrowDown':
+        if (!allowPan) return;
         dragBy(0, step);
         break;
       case '+':
       case '=':
+        if (!allowZoomIn) return;
         zoomTo(current.zoom * KEY_ZOOM_FACTOR);
         break;
       case '-':
       case '_':
+        if (!allowZoomOut) return;
         zoomTo(current.zoom / KEY_ZOOM_FACTOR);
         break;
       default:
@@ -389,6 +396,7 @@ export default function ReframeStep({
   const mode: ReframeMode = source && view ? modeOf(view, source.width, source.height, frameAspect) : 'fill';
   const zoomPercent = view ? Math.round(clampView(view, source?.width ?? 1, source?.height ?? 1, frameAspect).zoom * 100) : 100;
   const modeLabel = mode === 'fill' ? t('reframe.mode.fill') : mode === 'fit' ? t('reframe.mode.fit') : t('reframe.mode.custom');
+  const hasAdjustmentOptions = allowZoomOut || allowZoomIn || allowPan;
   const instructions = allowPan && (allowZoomOut || allowZoomIn)
     ? t('reframe.instructions')
     : allowPan
@@ -416,7 +424,7 @@ export default function ReframeStep({
           role="group"
           tabIndex={0}
           aria-label={t('reframe.stage.aria')}
-          aria-describedby={instructionsId}
+          aria-describedby={hasAdjustmentOptions ? instructionsId : undefined}
           className="relative overflow-hidden"
           style={{ width: stage.width || undefined, height: stage.height || undefined, touchAction: 'none', cursor: allowPan ? 'grab' : 'default' }}
           onPointerDown={onPointerDown}
@@ -431,12 +439,15 @@ export default function ReframeStep({
       </div>
 
       <div className="reframe-panel mx-auto flex w-full max-w-md flex-col gap-3 p-4">
-        <div className="reframe-options flex flex-col gap-3">
-        <p className="text-center text-xs" role="status" aria-live="polite">
-          {t('reframe.status', { percent: zoomPercent, mode: modeLabel })}
-        </p>
+        {hasAdjustmentOptions ? (
+        <div className="reframe-options flex flex-col gap-3" data-reframe-edit-controls>
+        {allowZoomOut || allowZoomIn ? (
+          <p className="text-center text-xs" role="status" aria-live="polite">
+            {t('reframe.status', { percent: zoomPercent, mode: modeLabel })}
+          </p>
+        ) : null}
 
-        <GdsSegmentedControl<ReframeMode>
+        {allowZoomOut || allowZoomIn ? <GdsSegmentedControl<ReframeMode>
           ariaLabel={t('reframe.fit.aria')}
           fullWidth
           value={mode}
@@ -450,7 +461,7 @@ export default function ReframeStep({
             ...(allowZoomOut ? [{ value: 'fit' as const, label: t('reframe.fit.all'), disabled: !canShowEverything }] : []),
             { value: 'custom', label: t('reframe.fit.custom'), disabled: true },
           ]}
-        />
+        /> : null}
 
         {allowZoomOut || allowZoomIn ? (
           <GdsSlider
@@ -469,6 +480,7 @@ export default function ReframeStep({
           {instructions}
         </p>
         </div>
+        ) : null}
 
         {children}
 
@@ -476,7 +488,7 @@ export default function ReframeStep({
           <Button type="button" variant="light" size={buttonSize} radius="md" onClick={onRetake} disabled={locked}>
             {labels?.retake ?? t('reframe.retake')}
           </Button>
-          <Button
+          {hasAdjustmentOptions ? <Button
             type="button"
             variant="light"
             size={buttonSize}
@@ -485,7 +497,7 @@ export default function ReframeStep({
             disabled={!source || locked}
           >
             {labels?.reset ?? t('reframe.reset')}
-          </Button>
+          </Button> : null}
           <Button type="button" size={buttonSize} radius="md" onClick={() => void finish()} disabled={!source || locked || continueBlocked} loading={locked}>
             {labels?.continue ?? t('reframe.continue')}
           </Button>
