@@ -67,6 +67,8 @@ export interface ReframeStepProps {
   busy?: boolean;
   /** True while something the page must have before the photo can be saved is missing (a required checkbox, issue 558): Continue stays off, Retake still works. */
   continueBlocked?: boolean;
+  /** Per-event controls; absent settings preserve the existing behavior. */
+  permissions?: { zoomOut?: boolean; zoomIn?: boolean; pan?: boolean };
   /** Shown above the buttons: a notice before the save, the try-on choice. */
   children?: ReactNode;
 }
@@ -101,8 +103,12 @@ export default function ReframeStep({
   labels,
   busy = false,
   continueBlocked = false,
+  permissions,
   children,
 }: ReframeStepProps) {
+  const allowZoomOut = permissions?.zoomOut !== false;
+  const allowZoomIn = permissions?.zoomIn !== false;
+  const allowPan = permissions?.pan !== false;
   const [source, setSource] = useState<Source | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [frameImage, setFrameImage] = useState<HTMLImageElement | null>(null);
@@ -246,20 +252,24 @@ export default function ReframeStep({
     (dxPx: number, dyPx: number) => {
       const current = viewRef.current;
       const stageEl = stageRef.current;
-      if (!current || !source || !stageEl) return;
+      if (!allowPan || !current || !source || !stageEl) return;
       const rect = stageEl.getBoundingClientRect();
       const box = viewBoxOf(current, source.width, source.height, frameAspect);
       const dx = (capture.mirrored ? 1 : -1) * dxPx * (box.width / rect.width);
       const dy = -dyPx * (box.height / rect.height);
       update(panView(current, dx, dy, source.width, source.height, frameAspect));
     },
-    [source, frameAspect, capture.mirrored, update]
+    [allowPan, source, frameAspect, capture.mirrored, update]
   );
+
+  const minAllowedZoom = source && allowZoomOut ? minZoom(source.width, source.height, frameAspect) : 1;
+  const maxAllowedZoom = allowZoomIn ? MAX_ZOOM : 1;
 
   const zoomTo = useCallback(
     (zoom: number, clientX?: number, clientY?: number) => {
       const current = viewRef.current;
       if (!current || !source) return;
+      zoom = Math.max(minAllowedZoom, Math.min(maxAllowedZoom, zoom));
       let anchor = clientX !== undefined && clientY !== undefined ? toSourcePoint(clientX, clientY) : null;
       if (!anchor) {
         const box = viewBoxOf(current, source.width, source.height, frameAspect);
@@ -267,7 +277,7 @@ export default function ReframeStep({
       }
       update(zoomView(current, zoom, anchor, source.width, source.height, frameAspect));
     },
-    [source, frameAspect, toSourcePoint, update]
+    [minAllowedZoom, maxAllowedZoom, source, frameAspect, toSourcePoint, update]
   );
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -373,11 +383,19 @@ export default function ReframeStep({
     }
   };
 
-  const low = source ? minZoom(source.width, source.height, frameAspect) : 1;
-  const canShowEverything = source ? canShowEverythingFor(source.width, source.height, frameAspect) : false;
+  const naturalLow = source ? minZoom(source.width, source.height, frameAspect) : 1;
+  const low = allowZoomOut ? naturalLow : 1;
+  const canShowEverything = allowZoomOut && source ? canShowEverythingFor(source.width, source.height, frameAspect) : false;
   const mode: ReframeMode = source && view ? modeOf(view, source.width, source.height, frameAspect) : 'fill';
   const zoomPercent = view ? Math.round(clampView(view, source?.width ?? 1, source?.height ?? 1, frameAspect).zoom * 100) : 100;
   const modeLabel = mode === 'fill' ? t('reframe.mode.fill') : mode === 'fit' ? t('reframe.mode.fit') : t('reframe.mode.custom');
+  const instructions = allowPan && (allowZoomOut || allowZoomIn)
+    ? t('reframe.instructions')
+    : allowPan
+      ? t('reframe.instructions.pan')
+      : allowZoomOut || allowZoomIn
+        ? t('reframe.instructions.zoom')
+        : t('reframe.instructions.fixed');
 
   if (loadFailed) {
     return (
@@ -400,7 +418,7 @@ export default function ReframeStep({
           aria-label={t('reframe.stage.aria')}
           aria-describedby={instructionsId}
           className="relative overflow-hidden"
-          style={{ width: stage.width || undefined, height: stage.height || undefined, touchAction: 'none', cursor: 'grab' }}
+          style={{ width: stage.width || undefined, height: stage.height || undefined, touchAction: 'none', cursor: allowPan ? 'grab' : 'default' }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerEnd}
@@ -429,24 +447,26 @@ export default function ReframeStep({
           }}
           options={[
             { value: 'fill', label: t('reframe.fit.fill') },
-            { value: 'fit', label: t('reframe.fit.all'), disabled: !canShowEverything },
+            ...(allowZoomOut ? [{ value: 'fit' as const, label: t('reframe.fit.all'), disabled: !canShowEverything }] : []),
             { value: 'custom', label: t('reframe.fit.custom'), disabled: true },
           ]}
         />
 
-        <GdsSlider
-          label={t('reframe.zoom')}
-          ariaLabel={t('reframe.zoom')}
-          min={Math.round(low * 100)}
-          max={MAX_ZOOM * 100}
-          step={1}
-          value={zoomPercent}
-          onChange={(value) => zoomTo(value / 100)}
-          disabled={!source}
-        />
+        {allowZoomOut || allowZoomIn ? (
+          <GdsSlider
+            label={t('reframe.zoom')}
+            ariaLabel={t('reframe.zoom')}
+            min={Math.round(low * 100)}
+            max={(allowZoomIn ? MAX_ZOOM : 1) * 100}
+            step={1}
+            value={zoomPercent}
+            onChange={(value) => zoomTo(value / 100)}
+            disabled={!source}
+          />
+        ) : null}
 
         <p id={instructionsId} className="text-center text-xs">
-          {t('reframe.instructions')}
+          {instructions}
         </p>
         </div>
 

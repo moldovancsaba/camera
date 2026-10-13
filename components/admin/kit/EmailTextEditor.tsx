@@ -10,7 +10,7 @@ import { useRef, useState } from 'react';
 import { InlineAlert } from '@sovereignsquad/gds-core/client';
 import { Button, Group, Textarea, TextInput } from '@/components/gds/PublicPrimitives';
 import ImagePicker from '@/components/admin/library/ImagePicker';
-import { insertAt, linkAddressProblem, makeLink, makePicture, paragraphKindAt, pictureProblem, setParagraphKind, wrapSelection, type Edit } from '@/lib/email/editor-ops';
+import { insertAt, linkAddressProblem, makeEmailButton, makeLink, makePicture, paragraphKindAt, pictureProblem, setParagraphKind, wrapSelection, type Edit } from '@/lib/email/editor-ops';
 import { MENU_VARIABLES } from '@/lib/email/variables';
 import type { PickerLevel } from '@/lib/library/picker';
 
@@ -58,6 +58,8 @@ export default function EmailTextEditor({ label, value, onChange, kind, disabled
   const line = useRef<HTMLInputElement | null>(null);
   const [link, setLink] = useState<{ start: number; end: number; address: string } | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [emailButton, setEmailButton] = useState<{ cursor: number; label: string; address: string } | null>(null);
+  const [emailButtonError, setEmailButtonError] = useState<string | null>(null);
   const [picture, setPicture] = useState<{ cursor: number; src: string; description: string; link: string } | null>(null);
   const [pictureError, setPictureError] = useState<string | null>(null);
   // Where the cursor is, to show which kind the paragraph under it is (refs are not read while drawing).
@@ -120,6 +122,22 @@ export default function EmailTextEditor({ label, value, onChange, kind, disabled
         >
           Link
         </Button>
+        {kind === 'body' ? (
+          <Button
+            type="button"
+            variant="light"
+            size="xs"
+            disabled={disabled}
+            onMouseDown={keepSelection}
+            onClick={() => {
+              setEmailButton({ cursor: selection().start, label: '', address: '' });
+              setEmailButtonError(null);
+            }}
+            aria-label="Add a call-to-action button"
+          >
+            Button
+          </Button>
+        ) : null}
         {pictureLevel && kind === 'body' ? (
           <Button
             type="button"
@@ -186,6 +204,45 @@ export default function EmailTextEditor({ label, value, onChange, kind, disabled
               <Button type="button" variant="light" size="xs" onClick={() => setLink(null)}>
                 Cancel
               </Button>
+            </Group>
+          ) : null}
+          {emailButton ? (
+            <Group gap="xs" wrap="wrap" align="flex-start">
+              <TextInput
+                label="Button text"
+                aria-label="Button text"
+                placeholder="Visit our Facebook page"
+                value={emailButton.label}
+                onChange={(event) => setEmailButton({ ...emailButton, label: event.currentTarget.value })}
+                style={{ flex: '1 1 12rem' }}
+                maxLength={120}
+              />
+              <TextInput
+                label="Button destination"
+                aria-label="Button destination"
+                placeholder="https://…"
+                value={emailButton.address}
+                onChange={(event) => setEmailButton({ ...emailButton, address: event.currentTarget.value })}
+                error={emailButtonError ?? undefined}
+                style={{ flex: '1 1 18rem' }}
+              />
+              <Button
+                type="button"
+                size="xs"
+                onClick={() => {
+                  if (!emailButton.label.trim()) return setEmailButtonError('Write the text to show on the button.');
+                  const problem = linkAddressProblem(emailButton.address);
+                  if (problem) return setEmailButtonError(problem);
+                  apply(makeEmailButton(value, emailButton.cursor, emailButton.label, emailButton.address));
+                  setEmailButton(null);
+                }}
+              >
+                Add the button
+              </Button>
+              <Button type="button" variant="light" size="xs" onClick={() => setEmailButton(null)}>
+                Cancel
+              </Button>
+              <div style={muted}>The email shows the button text. The destination stays behind it.</div>
             </Group>
           ) : null}
           {picture && pictureLevel ? (

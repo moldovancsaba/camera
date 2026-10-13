@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — one frame-and-message page, guest framing permissions, and email CTA buttons (2026-10-13)
+
+- **Capture choices:** the user-selected frame/layout and message options now share one page. A section is omitted when only one option is available; messages are filtered to the chosen layout. Frame/layout choices use square buttons, with per-event tile images from the event image library or a chosen colour in the Frames settings.
+- **Reframing:** the event's Take Photo page can allow or disable zooming out, zooming in, and moving the selfie. Missing settings keep all existing controls enabled. Fitting the whole selfie may show space outside its bounds; AI-generated background fill is not included.
+- **Emails:** the email toolbar can add an optional CTA button with its own destination, separate from the existing photo button. The destination is hidden behind the button label in HTML email. Labeled text links were already supported and remain available for links such as “Visit our Facebook page”.
+- **Verified:** the full `release:check` and documentation inventory/link checks pass on the feature branch, including focused CTA and frame-tile regression tests.
+- **Not verified:** a real phone capture, event settings behind a login, or a real delivered email. AI-generated background fill is not implemented; the project's image-generation integration remains unqualified and disabled. The changes are not yet merged or live.
+
 ## Unreleased — the switch of the counters for messmass: a button on the Messmass tab (issue 628; owner answer 481 "yes")
 
 - **Why:** the counters push (off by default) could not be switched on by anyone: `setCountersSetting` had no caller and the Messmass tab only showed On or Off, so the only way was to write the `admin_settings` document by hand. This was found while checking the handover on 2026-10-13.

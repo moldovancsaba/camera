@@ -11,6 +11,8 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/gds/PublicPrimitives';
 import { Group, InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
+import ImagePicker from '@/components/admin/library/ImagePicker';
+import { CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 import type { FrameSelection, LayoutOption, LayoutSituation, MessageOption, SelectMode, SelectionPart } from '@/lib/frame/selection';
 
 interface Loaded {
@@ -19,6 +21,7 @@ interface Loaded {
   situation: LayoutSituation;
   selection: FrameSelection | null;
   today: FrameSelection;
+  tiles: Record<string, { imageUrl?: string; color?: string }>;
 }
 
 const SITUATION_TEXT: Record<LayoutSituation, string> = {
@@ -93,6 +96,7 @@ export default function FrameSelectionPanel({ eventId }: { eventId: string }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState<FrameSelection | null>(null);
+  const [tileDraft, setTileDraft] = useState<Record<string, { imageUrl?: string; color?: string }>>({});
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ severity: 'success' | 'error'; title: string; message: string } | null>(null);
 
@@ -105,6 +109,7 @@ export default function FrameSelectionPanel({ eventId }: { eventId: string }) {
         if (cancelled) return;
         setLoaded(data);
         setDraft(data.selection ?? data.today);
+        setTileDraft(data.tiles ?? {});
       })
       .catch((error: unknown) => {
         if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Could not load the selection');
@@ -122,15 +127,36 @@ export default function FrameSelectionPanel({ eventId }: { eventId: string }) {
   const choosesLayout = loaded.layouts.length > 1;
   const choosesMessage = loaded.messages.length > 1;
   const saved = loaded.selection ?? loaded.today;
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(saved) || JSON.stringify(tileDraft) !== JSON.stringify(loaded.tiles ?? {});
+
+  const changeTile = (id: string, patch: { imageUrl?: string | null; color?: string | null }) => {
+    setTileDraft((current) => {
+      const next: { imageUrl?: string; color?: string } = { ...(current[id] ?? {}) };
+      if (patch.imageUrl !== undefined) {
+        if (patch.imageUrl) next.imageUrl = patch.imageUrl;
+        else delete next.imageUrl;
+      }
+      if (patch.color !== undefined) {
+        if (patch.color) next.color = patch.color;
+        else delete next.color;
+      }
+      if (patch.imageUrl) delete next.color;
+      if (patch.color) delete next.imageUrl;
+      const tiles = { ...current };
+      if (next.imageUrl || next.color) tiles[id] = next;
+      else delete tiles[id];
+      return tiles;
+    });
+  };
 
   const save = async (selection: FrameSelection | null) => {
     setBusy(true);
     setNotice(null);
     try {
-      const data = await call<Loaded>(endpoint, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ selection }) });
+      const data = await call<Loaded>(endpoint, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ selection, tiles: tileDraft }) });
       setLoaded(data);
       setDraft(data.selection ?? data.today);
+      setTileDraft(data.tiles ?? {});
       setNotice({
         severity: 'success',
         title: selection ? 'Saved' : 'Back to as before',
@@ -171,6 +197,36 @@ export default function FrameSelectionPanel({ eventId }: { eventId: string }) {
               </li>
             ))}
           </ul>
+          {loaded.layouts.length > 1 ? (
+            <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+              {loaded.layouts.map((layout) => (
+              <div key={`tile-${layout.id}`} style={{ display: 'grid', gap: '0.75rem', borderTop: '1px solid var(--mantine-color-default-border)', paddingTop: '0.75rem' }}>
+                <strong style={{ fontSize: '0.875rem' }}>Choice button for {layout.name}</strong>
+                <ImagePicker
+                  label="Square choice image (optional)"
+                  helper="Upload or choose a square picture. It is cropped to a square button in the selfie flow."
+                  value={tileDraft[layout.id]?.imageUrl ?? ''}
+                  onChange={(imageUrl) => changeTile(layout.id, { imageUrl: imageUrl || null })}
+                  level={{ scope: 'event', eventId }}
+                  fileTypes={['image/png', 'image/jpeg']}
+                  fileTypeWords="PNG or JPEG"
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', fontSize: '0.875rem', fontWeight: 600 }}>
+                  Choice button colour (optional)
+                  <input
+                    type="color"
+                    aria-label={`Choice button colour for ${layout.name}`}
+                    value={tileDraft[layout.id]?.color ?? CAMERA_STAGE_WHITE}
+                    onChange={(event) => changeTile(layout.id, { color: event.currentTarget.value })}
+                  />
+                  {tileDraft[layout.id]?.color ? (
+                    <Button type="button" size="xs" variant="light" onClick={() => changeTile(layout.id, { color: null })}>Clear colour</Button>
+                  ) : null}
+                </label>
+              </div>
+              ))}
+            </div>
+          ) : null}
           {loaded.messages.length > 0 ? (
             <p style={{ ...muted, margin: '0.5rem 0 0' }}>
               {loaded.messages.length} {loaded.messages.length === 1 ? 'message' : 'messages'}: {loaded.messages.map((message) => message.shown).join(' · ')}

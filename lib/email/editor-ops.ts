@@ -69,6 +69,16 @@ export function makeLink(text: string, start: number, end: number, address: stri
   return { text: text.slice(0, start) + link + text.slice(end), start: start + 1, end: start + 1 + label.length };
 }
 
+/** Adds a labelled call-to-action as its own paragraph; its URL is never the visible label. */
+export function makeEmailButton(text: string, cursor: number, label: string, address: string): Edit {
+  const cleanLabel = label.replace(/[\[\]\r\n]+/g, ' ').trim();
+  const markup = `[button: ${cleanLabel}](${address.trim()})`;
+  if (!text.trim()) return { text: markup, start: markup.length, end: markup.length };
+  const { to } = paragraphAt(text, cursor);
+  const at = to + 2 + markup.length;
+  return { text: `${text.slice(0, to)}\n\n${markup}${text.slice(to)}`, start: at, end: at };
+}
+
 /** Puts something (a variable) in place of the selection and the cursor after it. */
 export function insertAt(text: string, start: number, end: number, insert: string): Edit {
   return { text: text.slice(0, start) + insert + text.slice(end), start: start + insert.length, end: start + insert.length };

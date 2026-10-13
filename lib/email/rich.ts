@@ -6,6 +6,7 @@
  * - paragraphs, separated by a blank line; a line break inside a paragraph stays a line break;
  * - a paragraph that starts with `# ` is a title, `-# ` is small text, `+# ` is large text;
  * - `**bold**`, `*italic*`, `[label](https://address)` (a link, shown bold and underlined), a bare web address (a link, as before);
+ * - a paragraph `[button: label](https://address)` is a separate, theme-coloured call-to-action button;
  * - `{variable}` (lib/email/variables.ts), also as the address of a link: `[Your photo]({link})`;
  * - a paragraph that is only `![description](https://picture)` is a picture, and `[![description](https://picture)](https://address)` is a picture that is a link (issue 376: "a picture with
  *   a URL linked behind it"); the picture must be from the app's own storage (`allowedImage`), anything else is left out and reported;
@@ -18,6 +19,7 @@
  */
 
 import { escapeHtml } from '@/lib/email/escape';
+import { EVENT_THEME_DEFAULT } from '@/lib/gds/tokens/colors';
 import { allowedImage } from '@/lib/theme/event-theme';
 
 export type BlockKind = 'normal' | 'title' | 'small' | 'large';
@@ -44,7 +46,13 @@ export interface PictureBlock {
   href: Part[] | null;
 }
 
-export type Block = TextBlock | PictureBlock;
+export interface ButtonBlock {
+  kind: 'button';
+  label: Inline[];
+  href: Part[];
+}
+
+export type Block = TextBlock | PictureBlock | ButtonBlock;
 
 const VARIABLE = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
 const ESCAPABLE = '\\*[]()#{}+-';
@@ -138,6 +146,7 @@ const PREFIXES: Array<[string, BlockKind]> = [['-# ', 'small'], ['+# ', 'large']
 
 const PICTURE = /^!\[([^\]\n]*)\]\(([^)\s]+)\)$/;
 const LINKED_PICTURE = /^\[!\[([^\]\n]*)\]\(([^)\s]+?)\)\]\(([^)\s]+)\)$/;
+const BUTTON = /^\[button:\s*([^\]\n]+)\]\(([^)\s]+)\)$/i;
 
 function pictureBlock(part: string): PictureBlock | null {
   const linked = LINKED_PICTURE.exec(part);
@@ -154,13 +163,15 @@ export function parseRich(source: string): Block[] {
     .map((part) => part.trim())
     .filter(Boolean)
     .map((part): Block => {
+      const button = BUTTON.exec(part);
+      if (button) return { kind: 'button', label: parseInline(button[1].trim(), false), href: splitVariables(button[2]) };
       const picture = pictureBlock(part);
       if (picture) return picture;
       const prefix = PREFIXES.find(([mark]) => part.startsWith(mark));
       const text = prefix ? part.slice(prefix[0].length).trimStart() : part;
       return { kind: prefix?.[1] ?? 'normal', inlines: parseInline(text, true) };
     })
-    .filter((block) => block.kind === 'picture' || block.inlines.length > 0);
+    .filter((block) => block.kind === 'picture' || block.kind === 'button' || block.inlines.length > 0);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -195,7 +206,13 @@ export interface RPictureBlock {
   href: string | null;
 }
 
-export type RBlock = RTextBlock | RPictureBlock;
+export interface RButtonBlock {
+  kind: 'button';
+  label: RInline[];
+  href: string | null;
+}
+
+export type RBlock = RTextBlock | RPictureBlock | RButtonBlock;
 
 export interface Resolved {
   blocks: RBlock[];
@@ -232,6 +249,10 @@ export function resolveRich(blocks: Block[], values: Values, urlVariables: reado
   };
 
   const resolveBlock = (block: Block): RBlock | null => {
+    if (block.kind === 'button') {
+      const href = safeHref(block.href.map((part) => (part.kind === 'lit' ? part.text : valueOf(part.name))).join(''));
+      return { kind: 'button', label: block.label.map(resolveInline), href };
+    }
     if (block.kind !== 'picture') return { kind: block.kind, inlines: block.inlines.map(resolveInline) };
     const src = allowedImage(block.src);
     if (!src) {
@@ -266,7 +287,7 @@ export function resolveRich(blocks: Block[], values: Values, urlVariables: reado
     .map(resolveBlock)
     .filter((block): block is RBlock => block !== null)
     // A paragraph that is empty once the variables are left out (only a variable with no value) is dropped.
-    .filter((block) => block.kind === 'picture' || block.inlines.some((inline) => inline.t !== 'br' && inlineText(inline).trim() !== ''));
+    .filter((block) => block.kind === 'picture' || (block.kind === 'button' ? block.label.map(inlineTextOf).join('').trim() !== '' : block.inlines.some((inline) => inline.t !== 'br' && inlineText(inline).trim() !== '')));
   return { blocks: resolved, refusedPictures, missing: [...missing], unknown: [...unknown] };
 }
 
@@ -325,6 +346,9 @@ function withBreakPoints(escaped: string): string {
 export interface RichStyle {
   /** The link colour of the theme. */
   link: string;
+  buttonBackground?: string;
+  buttonText?: string;
+  fontFamily?: string;
 }
 
 /** The longest web address written out in full in the text of an e-mail; a longer one is shown as its first part and an ellipsis, the link behind it stays whole (issue 382). A share link is about 60 characters, so it is written out. */
@@ -381,6 +405,14 @@ export function richHtml(blocks: RBlock[], style: RichStyle, defaultKind: BlockK
         const image = `<img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt)}" style="display:inline-block;max-width:100%;height:auto;border:0;" />`;
         return `<p style="margin:0 0 16px 0;text-align:center;">${block.href ? `<a href="${escapeHtml(block.href)}" style="text-decoration:none;">${image}</a>` : image}</p>`;
       }
+      if (block.kind === 'button') {
+        const label = block.label.map((inline) => inlineHtml(inline, style)).join('');
+        if (!block.href) return `<p style="${BLOCK_STYLE[defaultKind]}">${label}</p>`;
+        const background = style.buttonBackground ?? EVENT_THEME_DEFAULT.buttonBackground;
+        const color = style.buttonText ?? EVENT_THEME_DEFAULT.buttonText;
+        const font = style.fontFamily ?? "Arial, 'Helvetica Neue', Helvetica, sans-serif";
+        return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px 0;max-width:100%;"><tr><td bgcolor="${escapeHtml(background)}" style="background:${escapeHtml(background)};border-radius:8px;${EMAIL_WRAP_STYLE}"><a href="${escapeHtml(block.href)}" style="display:inline-block;padding:12px 22px;box-sizing:border-box;max-width:100%;font-family:${escapeHtml(font)};font-size:16px;font-weight:700;color:${escapeHtml(color)};text-decoration:none;${EMAIL_WRAP_STYLE}">${label}</a></td></tr></table>`;
+      }
       return `<p style="${BLOCK_STYLE[block.kind === 'normal' ? defaultKind : block.kind]}">${block.inlines.map((inline) => inlineHtml(inline, style)).join('')}</p>`;
     })
     .join('');
@@ -405,7 +437,7 @@ function inlineTextOf(inline: RInline): string {
 /** The blocks as the plain-text part of the email: no markup, a link as `label (address)`, paragraphs separated by a blank line. */
 export function richText(blocks: RBlock[]): string {
   return blocks
-    .map((block) => (block.kind === 'picture' ? (block.href ? `${block.alt || 'Picture'}: ${block.href}` : block.alt) : block.inlines.map(inlineTextOf).join('').trim()))
+    .map((block) => (block.kind === 'picture' ? (block.href ? `${block.alt || 'Picture'}: ${block.href}` : block.alt) : block.kind === 'button' ? `${block.label.map(inlineTextOf).join('').trim()}${block.href ? ` (${block.href})` : ''}` : block.inlines.map(inlineTextOf).join('').trim()))
     .filter((paragraph) => paragraph !== '')
     .join('\n\n');
 }
