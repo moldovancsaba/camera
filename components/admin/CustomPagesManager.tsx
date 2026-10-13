@@ -1190,7 +1190,7 @@ function PageEditModal({
               checked={allowZoomOut}
               onChange={setAllowZoomOut}
               label="Allow zooming out to show more of the selfie"
-              helper="When off, the photo always fills the frame. Filling empty space with an AI-generated background is not available yet."
+              helper="When off, guests cannot zoom out beyond the default crop."
             />
             <Check
               checked={allowZoomIn}
