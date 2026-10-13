@@ -9,6 +9,7 @@
 import { WAITING_COUNTERS, counterRows } from '@/lib/analytics/counters';
 import type { CounterState } from '@/lib/analytics/counters-sync';
 import { formatCount, formatDateTime } from '@/lib/analytics/format';
+import CountersSwitch from './CountersSwitch';
 import { Metrics, Note, Panel, Table } from './ui';
 
 export default function MessmassSection({ state, timeZone }: { state: CounterState; timeZone: string }) {
@@ -17,15 +18,16 @@ export default function MessmassSection({ state, timeZone }: { state: CounterSta
   const sent = Object.keys(state.counters.totals).length + Object.keys(state.counters.averages).length;
   return (
     <>
+      <CountersSwitch enabled={state.enabled} updatedAt={state.updatedAt} updatedBy={state.updatedBy} timeZone={timeZone} />
       <Metrics
         items={[
-          { label: 'Sending to messmass', value: state.enabled ? 'On' : 'Off', description: state.enabled ? 'Switched on. The numbers below are sent when a trigger asks for a push, at most one every 30 seconds for the event.' : 'Off, as it is by default. Nothing is sent from this page or by any process.' },
+          { label: 'Sending to messmass', value: state.enabled ? 'On' : 'Off', description: state.enabled ? 'Switched on. After a vetting decision or a saved marking the numbers below are sent: one push at once and one more when 15 seconds have passed, so the last decision is always in.' : 'Off, as it is by default. Nothing is sent from this page or by any process.' },
           { label: 'Linked to messmass', value: state.linked ? 'Yes' : 'No', description: state.linked ? 'The event has a messmass event to send to.' : 'The event has no messmass event, so there is nowhere to send to.' },
           { label: 'Last push', value: state.lastPushAt ? formatDateTime(state.lastPushAt, timeZone) : 'Never', description: state.lastPushAt ? 'The numbers of that push are in the last column below.' : 'Nothing was ever sent for this event.' },
         ]}
       />
 
-      <Panel title="Counters that would be sent" description="Numbers only, never a person: no name, e-mail, reviewer or photo. Every name starts with camera_, because messmass holds variables of other sources. A total is the whole running total of the event (never a day's change), so sending it again changes nothing; the average is a whole value that messmass stores as it is.">
+      <Panel title="Counters that would be sent" description="Numbers only, never a person: no name, e-mail, reviewer or photo. Every name starts with camera_, because messmass holds variables of other sources. A total is the whole running total of the event (never a day's change), so sending it again changes nothing. No average is sent.">
         <Table
           caption="Counters for messmass"
           rows={rows}
@@ -56,7 +58,7 @@ export default function MessmassSection({ state, timeZone }: { state: CounterSta
             { key: 'waits', header: 'Waits for', render: (row) => row.waitsFor },
           ]}
         />
-        <Note>Sending is off. The receiving route in messmass (photo-stats) is deployed and registers each name in its variable catalog the first time it is received. Switching the sending on is the owner&apos;s decision, made after looking at these numbers on a real event.</Note>
+        <Note>{state.enabled ? 'Sending is on.' : 'Sending is off.'} The receiving route in messmass (photo-stats) registers each name in its variable catalog the first time it is received. Switching the sending on is the owner&apos;s decision, made after looking at these numbers on a real event.</Note>
       </Panel>
     </>
   );

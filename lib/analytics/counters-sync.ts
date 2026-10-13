@@ -85,6 +85,8 @@ export interface CounterState {
   /** The setting of lib/analytics/counters-setting.ts. */
   enabled: boolean;
   updatedAt: string;
+  /** Who last changed the setting (an e-mail), null when it never was. */
+  updatedBy: string | null;
   linked: boolean;
   /** The numbers that would be sent now. */
   counters: CounterSet;
@@ -99,6 +101,7 @@ export async function loadCounterState(db: Db, event: CounterEvent & Pick<Synced
   return {
     enabled: setting.enabled,
     updatedAt: setting.updatedAt,
+    updatedBy: setting.updatedBy,
     linked: typeof event.messmassEventId === 'string' && /^[0-9a-f]{24}$/i.test(event.messmassEventId),
     counters,
     lastPushAt: typeof event.counterSync?.pushedAt === 'string' ? event.counterSync.pushedAt : null,
