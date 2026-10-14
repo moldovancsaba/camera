@@ -15,6 +15,8 @@ export const hu: Record<MessageKey, string> = {
   'reframe.retake': 'Újra',
   'reframe.reset': 'Alaphelyzet',
   'reframe.continue': 'Tovább',
+  'reframe.uploading': 'Fotó feltöltése…',
+  'reframe.uploadFailed': 'Nem sikerült feltölteni a fotót. Próbáld újra.',
   'reframe.stage.aria': 'A fotó helyzete a keretben',
   'reframe.status': 'Nagyítás: {percent}%. {mode}.',
   'reframe.fit.aria': 'Hogyan illeszkedjen a fotó a keretbe',

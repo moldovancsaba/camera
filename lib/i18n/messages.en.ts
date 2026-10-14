@@ -14,6 +14,8 @@ export const en = {
   'reframe.retake': 'Retake',
   'reframe.reset': 'Reset',
   'reframe.continue': 'Continue',
+  'reframe.uploading': 'Uploading your photo…',
+  'reframe.uploadFailed': 'We could not upload your photo. Please try again.',
   'reframe.stage.aria': 'Photo position inside the frame',
   'reframe.status': 'Zoom {percent}%. {mode}.',
   'reframe.fit.aria': 'How the photo fits the frame',

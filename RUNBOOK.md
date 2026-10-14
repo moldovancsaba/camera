@@ -116,8 +116,7 @@ more than intended passed. The real ceiling is a Vercel Firewall rule:
 ## How the photo is taken, and what is kept (camera#257)
 
 It works the same way for every camera (owner decision 2026-10-06): the largest still the camera can take, at the moment
-of the shutter, then the guest zooms and pans anywhere in it, presses "Continue" (which saves the photo; the separate "Love it" screen is gone, camera#344), and **only the frame-sized result is saved**.
-The full-size photo stays in the browser during the reframe step and is dropped afterwards; nothing is uploaded for it.
+of the shutter, then the guest zooms and pans anywhere in it. Pressing "Continue" confirms the framing, uploads the original and cropped temporary copies with a visible progress state, and advances only after both uploads succeed. The photo is then submitted after any configured post-photo pages; the separate "Love it" screen is gone (camera#344).
 
 - **Every touch device** (iPhone, iPad, Android phones and tablets, any browser): the device's own camera app, through a file
   input with `capture`. The page has one "Take photo" button; the camera app opens on the front camera and the user changes between all
@@ -139,9 +138,9 @@ The full-size photo stays in the browser during the reframe step and is dropped 
 
 ## Full-frame originals (camera#210, no longer stored since camera#257)
 
-The guest keeps only the frame-sized image as the final submission (owner decision 2026-10-06). Since 2026-10-13 the camera
-also uploads the full camera image to `capture-drafts/<eventId>/` immediately after capture. Before a social sign-in after the
-photo, the reframed image is uploaded to the same temporary folder and the selected frame/message are kept in session storage;
+The guest keeps only the frame-sized image as the final submission (owner decision 2026-10-06). Since 2026-10-14, pressing
+Continue after reframing uploads the full camera image and its cropped draft to `capture-drafts/<eventId>/`. Before a social sign-in after the
+photo, the already-uploaded images and selected frame/message are kept in session storage;
 the same-tab SSO return restores them. Drafts remain in the event folder through sign-in, retakes, successful saves, and page
 exits; remove them during the event's post-event storage cleanup. The draft folder is separate from `originals/` and is never attached to the submission.
 Upload starts, successes, and failures are included in the event's Journey analytics when recording is enabled.

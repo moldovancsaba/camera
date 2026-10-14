@@ -5,6 +5,8 @@
 
 ## Current change
 
+The guest photo is uploaded only after they confirm the crop with **TOVÁBB**. The reframe screen shows an upload status, and the flow does not advance until both the original and cropped draft are stored. A failed upload leaves the photo on screen so it can be retried.
+
 The Pages editor now lets event editors move every journey page, including Take Photo, the frame/message selector, and default consent/login pages. If consent or login moves after photo-taking, the internal save step follows it so the photo is still saved only after those required pages are complete. See the newest entry in `RELEASE_NOTES.md`.
 
 The current unreleased camera change lets the built-in frame/message selector
