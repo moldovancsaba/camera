@@ -5,8 +5,10 @@
 
 ## Current change
 
-The current unreleased camera change makes frame/message selection a built-in,
-reorderable page in the guest journey. The Pages editor controls where it runs;
+The current unreleased camera change styles message choices on the
+frame/message selection page with the event's established pill buttons. The
+selected choice is filled and the other choices are white with the event ring.
+The page is a built-in, reorderable step in the guest journey. The Pages editor controls where it runs;
 the frame visibility choice leaves message selection independent. When frame
 choices are hidden, multiple generated layouts are randomized and a sole layout
 uses the Frames setting. See the 2026-10-14 entry at the top of

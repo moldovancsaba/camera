@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — use the event pill buttons for message choices (2026-10-14)
+
+- **Changed:** message choices on the frame/message selection page now use the event's established rounded pill button design. The selected message uses the filled event button style; other choices use its white, ringed style.
+- **Verified:** TypeScript check, lint, and production build passed locally. No browser walkthrough was run.
+
 ## Unreleased — ordered frame and message selection page (2026-10-14)
 
 - **Fixed:** Frame and message selection is now a built-in, reorderable page in the Pages journey, shown before Take Photo by default. Its choices and position are part of the guest flow; an empty page is skipped.
