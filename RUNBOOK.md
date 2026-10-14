@@ -140,9 +140,10 @@ The full-size photo stays in the browser during the reframe step and is dropped 
 ## Full-frame originals (camera#210, no longer stored since camera#257)
 
 The guest keeps only the frame-sized image as the final submission (owner decision 2026-10-06). Since 2026-10-13 the camera
-also uploads the full camera image to `capture-drafts/<eventId>/` immediately after capture so it survives the social sign-in
-step. Drafts remain in the event folder through sign-in, retakes, successful saves, and page exits; remove them during the
-event's post-event storage cleanup. The draft folder is separate from `originals/` and is never attached to the submission.
+also uploads the full camera image to `capture-drafts/<eventId>/` immediately after capture. Before a social sign-in after the
+photo, the reframed image is uploaded to the same temporary folder and the selected frame/message are kept in session storage;
+the same-tab SSO return restores them. Drafts remain in the event folder through sign-in, retakes, successful saves, and page
+exits; remove them during the event's post-event storage cleanup. The draft folder is separate from `originals/` and is never attached to the submission.
 Upload starts, successes, and failures are included in the event's Journey analytics when recording is enabled.
 The `capture-drafts/` path is visible in the report-only `npm run blob:orphans -- --list` inventory; the event's unsubmitted and submitted draft copies can be removed there during post-event cleanup. The rest of this section describes older
 submissions and the legacy original upload contract still accepted by the server.

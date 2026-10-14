@@ -20,12 +20,13 @@ export function parseLoginProvider(
  */
 export function socialLoginHref(
   provider: SocialLoginProvider,
-  options?: { fromLogout?: boolean; captureEventId?: string; capturePage?: number; capturePopup?: string }
+  options?: { fromLogout?: boolean; captureEventId?: string; capturePage?: number; capturePopup?: string; capturePhase?: 'onboarding' | 'presubmit' }
 ): string {
   const p = new URLSearchParams({ provider });
   if (options?.fromLogout) p.set('from_logout', 'true');
   if (options?.captureEventId) p.set('captureEvent', options.captureEventId);
   if (options?.capturePage !== undefined) p.set('capturePage', String(options.capturePage));
   if (options?.capturePopup) p.set('capturePopup', options.capturePopup);
+  if (options?.capturePhase) p.set('capturePhase', options.capturePhase);
   return `/api/auth/login?${p.toString()}`;
 }

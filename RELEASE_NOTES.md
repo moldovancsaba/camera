@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — keep social sign-in in the selfie tab (2026-10-14)
+
+- **Fixed:** Google and Facebook now use the existing central SSO in the same tab; no dark popup window opens. Before redirecting from a post-photo login page, the original and reframed photo are saved to the event's temporary image storage and the frame/message choices are kept for the return. After sign-in the guest resumes on the next journey page with the photo intact.
+- **Recovery:** if the temporary backup cannot be prepared, sign-in stays on the page and explains how to retry. If a stored photo cannot be restored after authentication, the guest is told to take it again rather than silently submitting without it.
+- **Verified locally:** `npm run release:check` passed (346/346 unit-test files, TypeScript, lint, production guards, and production build); `npm run inventory:check` passed. The build reports the existing Google Fonts CSS `@import` ordering warning.
+- **Not yet verified:** an authenticated Google/Facebook SSO round trip or a phone-width live capture; GitHub Verify runs on the pull request.
+
 ## Unreleased — use the event pill buttons for message choices (2026-10-14)
 
 - **Changed:** message choices on the frame/message selection page now use the event's established rounded pill button design, with one full-width choice per row. The selected message uses the filled event button style; other choices use its white, ringed style.

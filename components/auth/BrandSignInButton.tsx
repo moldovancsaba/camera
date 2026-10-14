@@ -6,7 +6,7 @@
  * four-colour G, which is never recoloured. Facebook: the Facebook blue, white text and the white f. Both are at least 48 px tall, one line, with the mark first.
  */
 
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import {
   CAMERA_STAGE_WHITE,
   SOCIAL_FACEBOOK_BLUE,
@@ -47,14 +47,13 @@ const LOOK: Record<BrandProvider, { mark: ReactNode; background: string; color: 
   facebook: { mark: <FacebookMark />, background: SOCIAL_FACEBOOK_BLUE, color: CAMERA_STAGE_WHITE, border: `1px solid ${SOCIAL_FACEBOOK_BLUE}` },
 };
 
-export default function BrandSignInButton({ provider, href, label, disabled = false, openInNewTab = false, onPopupClick }: { provider: BrandProvider; href: string; label: string; disabled?: boolean; openInNewTab?: boolean; onPopupClick?: (href: string) => void }) {
+export default function BrandSignInButton({ provider, href, label, disabled = false, onClick }: { provider: BrandProvider; href: string; label: string; disabled?: boolean; onClick?: (event: MouseEvent<HTMLAnchorElement>) => void }) {
   const look = LOOK[provider];
   return (
     <a
       // A disabled button has no address: nothing to follow with a tap, a key or a long press, and the page says so to a screen reader (the acceptance on the Who-are-you page, issue 523).
       href={disabled ? undefined : href}
-      {...(openInNewTab && !disabled ? { target: '_blank' } : {})}
-      onClick={openInNewTab && onPopupClick ? (event) => { event.preventDefault(); onPopupClick(href); } : undefined}
+      onClick={onClick}
       aria-disabled={disabled || undefined}
       role={disabled ? 'link' : undefined}
       data-brand-signin={provider}
