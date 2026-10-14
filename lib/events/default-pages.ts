@@ -16,7 +16,7 @@ import type { TextOverrides } from '@/lib/i18n/overrides';
 export const DEFAULT_CONSENT_PAGE_ID = 'default-consent';
 export const DEFAULT_WELCOME_PAGE_ID = 'default-welcome';
 
-/** The consent and identity page each have one role in the journey. Older saves could persist a generated default and a customised copy side by side; prefer the active custom page and discard the stale duplicate. */
+/** Older saves could persist a generated default and its customised copy side by side. Keep intentional multiple custom consent pages, but discard the default when a custom page now owns that role. */
 export function dedupeActiveRolePages(pages: readonly CustomPage[]): CustomPage[] {
   const roleDefaults: Partial<Record<CustomPage['pageType'], string>> = {
     accept: DEFAULT_CONSENT_PAGE_ID,
@@ -27,9 +27,10 @@ export function dedupeActiveRolePages(pages: readonly CustomPage[]): CustomPage[
     const active = result
       .filter((page) => page.isActive && page.pageType === pageType)
       .sort((a, b) => a.order - b.order);
-    if (active.length < 2) continue;
-    const keeper = active.find((page) => page.pageId !== defaultId) ?? active[0];
-    result = result.filter((page) => !active.some((duplicate) => duplicate !== keeper && duplicate.pageId === page.pageId));
+    if (active.length < 2 || !active.some((page) => page.pageId === defaultId)) continue;
+    if (active.some((page) => page.pageId !== defaultId)) {
+      result = result.filter((page) => page.pageId !== defaultId);
+    }
   }
   return result;
 }

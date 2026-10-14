@@ -2,7 +2,7 @@
 
 ## Unreleased — keep one consent and login page in the journey (2026-10-14)
 
-- **Fixed:** old saved events that contain both a generated Accept/Who-are-you page and its customised copy now keep one active page for that role. Editing or adding a page reuses that role instead of creating a second guest step.
+- **Fixed:** old saved events that contain both a generated Accept/Who-are-you page and its customised copy now use the custom page without the stale generated duplicate. Editing or adding a page reuses an existing role instead of creating a second guest step.
 - **Changed:** checkbox visibility and required settings are edited inside the Accept page editor. The consent page can still be opened from the editor when its acceptance is shown on the Who-are-you page, without adding it as an individual journey step.
 - **Fixed:** guest event settings resolve the event's own acceptance-on-login and gallery checkbox choices, so capture uses the same consent placement selected in the event editor.
 - **Verified:** type-check, lint, GDS checks, production-guard checks, inventory check, and production build passed locally. GitHub `Verify` is the remaining readiness check; no authenticated browser walkthrough was performed.
