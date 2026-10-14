@@ -4,7 +4,7 @@
 
 - **Fixed:** Frame and message selection is now a built-in, reorderable page in the Pages journey, shown before Take Photo by default. Its choices and position are part of the guest flow; an empty page is skipped.
 - **Fixed:** Hiding frame choices now randomises among multiple layouts, or uses the one available layout, while preserving user-selected messages. Message choices include every available message across random layouts.
-- **Verified locally:** TypeScript check, lint, production build, design-system checks, and inventory checks passed. No unit tests or browser walkthrough were run.
+- **Verified:** Local TypeScript, lint, production build, design-system, and inventory checks passed; GitHub Verify's full release check passed. No browser walkthrough was run.
 
 ## Unreleased — show saved frame choices and merge consent into a post-camera login (2026-10-14)
 
