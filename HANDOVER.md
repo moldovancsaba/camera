@@ -5,6 +5,8 @@
 
 ## Current change
 
+The Pages editor now lets event editors move every journey page, including Take Photo, the frame/message selector, and default consent/login pages. If consent or login moves after photo-taking, the internal save step follows it so the photo is still saved only after those required pages are complete. See the newest entry in `RELEASE_NOTES.md`.
+
 The current unreleased camera change lets event editors choose the frame and
 message variant in the Welcome page screen composition. That event-specific
 choice redraws the welcome composition and does not change guest capture

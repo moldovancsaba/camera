@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — let event editors order every journey page (2026-10-14)
+
+- **Changed:** all page rows, including Take Photo, the frame/message selector, and default Accept/Who-are-you pages, can move through the journey. When required consent or login moves after photo-taking, the save step follows it automatically so the photo is saved only after the guest completes the required interaction.
+- **Verified locally:** all 345 unit-test files, type-check, lint, production build, GDS checks, production guards, and inventory check passed.
+- **Not verified:** a browser walkthrough.
+
 ## Unreleased — choose the frame and message in the welcome screen composition (2026-10-14)
 
 - **Changed:** the event's Slideshows > Welcome page screen card now lets an editor choose the frame and compatible message drawn over its photo window. The choice is event-specific and does not change guest capture settings; older events keep the historical default until the editor changes it.

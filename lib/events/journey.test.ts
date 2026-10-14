@@ -138,21 +138,21 @@ const START = [page('welcome', -1), page('take-photo', 0), page('cta', 1)];
 const rowsOf = (own: CustomPage[], defaultOrders?: Record<string, number>) => effectiveJourney(own, { ...ALL, defaultOrders }, NOW);
 const at = (rows: JourneyRow[], id: string) => rows.findIndex((row) => row.kind !== 'step' && row.page.pageId === id);
 
-test('a default page can move among the pages before the photo, but never across the take-photo page, and the built-in steps are not pages', () => {
+test('every journey page can move across the camera, while built-in follow-up steps have no manual order', () => {
   const rows = rowsOf(START);
   // welcome, default consent, default login, take-photo, 3 built-in steps, cta
   assert.equal(moveTarget(rows, at(rows, DEFAULT_CONSENT_PAGE_ID), 1), at(rows, DEFAULT_IDENTITY_PAGE_ID), 'consent down: swaps with the login');
   assert.equal(moveTarget(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), -1), at(rows, DEFAULT_CONSENT_PAGE_ID));
-  assert.equal(moveTarget(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1), null, 'the login cannot go behind the photo: a photo that is checked needs an identity first');
-  assert.equal(moveTarget(rows, at(rows, 'take-photo-0'), -1), null, 'and the take-photo page cannot move in front of a default page');
-  assert.equal(canMoveJourneyRow(rows, at(rows, 'take-photo-0'), -1), true, 'the editor can make saving a later step and move photo-taking first');
+  assert.equal(moveTarget(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1), at(rows, 'take-photo-0'), 'login can be placed after photo-taking');
+  assert.equal(moveTarget(rows, at(rows, 'take-photo-0'), -1), at(rows, DEFAULT_IDENTITY_PAGE_ID), 'photo-taking can be placed before the login');
+  assert.equal(canMoveJourneyRow(rows, at(rows, 'take-photo-0'), -1), true);
   assert.equal(moveTarget(rows, at(rows, 'cta-1'), -1), at(rows, 'take-photo-0'), 'an own page moves past the built-in steps to the next page row');
   assert.equal(moveTarget(rows, at(rows, 'cta-1'), 1), null, 'nothing below the last page');
   assert.equal(moveTarget(rows, rows.findIndex((row) => row.kind === 'step'), 1), null, 'a built-in step has no place of its own');
   assert.equal(moveTarget(rows, at(rows, DEFAULT_CONSENT_PAGE_ID), -1), at(rows, 'welcome--1'), 'consent up: above the welcome page');
 });
 
-test('moving photo-taking above login automatically inserts a later Submit step and keeps login before saving', () => {
+test('moving photo-taking before a required page inserts a later Submit step and keeps login before saving', () => {
   const rows = rowsOf(START);
   const moved = moveJourneyRow(rows, at(rows, 'take-photo-0'), -1, () => 'submit-auto', NOW)!;
   const after = effectiveJourney(moved.pages, { ...ALL, defaultOrders: moved.defaultOrders }, NOW);
@@ -183,7 +183,8 @@ test('moving a default page saves its place and the places of every page, and th
   // the user gets exactly these pages in this order (the same function with the same places)
   const forUser = withDefaultJourneyPages(moved.pages, { vettingRequired: true, consentDefault: true, language: 'en', now: NOW, defaultOrders: moved.defaultOrders }).sort((a, b) => a.order - b.order).map((p) => p.pageId);
   assert.deepEqual(forUser, ['welcome--1', DEFAULT_IDENTITY_PAGE_ID, DEFAULT_CONSENT_PAGE_ID, 'take-photo-0', 'cta-1']);
-  assert.equal(moveJourneyRow(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1), null);
+  const loginAfterPhoto = moveJourneyRow(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1)!;
+  assert.ok(loginAfterPhoto.pages.some((p) => p.pageType === 'submit'), 'moving login behind photo-taking creates a later save boundary');
 });
 
 test('an own page that moves past a default page numbers the default pages too, so the order the editor shows is the order saved', () => {
@@ -228,20 +229,21 @@ test('a login between the photo and the Submit page counts as before the save, s
   assert.equal(consentBetween.includes(DEFAULT_CONSENT_PAGE_ID), false, 'a consent page between the two counts');
 });
 
-test('the Submit page stays after the take-photo page, and a default page may move between them but never behind the Submit page (issue 535)', () => {
+test('the Submit page stays after the take-photo page, and pages can be moved on either side of the save point', () => {
   const rows = rowsOf([page('welcome', -1), page('take-photo', 0), page('submit', 1)]);
   assert.equal(moveTarget(rows, at(rows, 'submit-1'), -1), null, 'the Submit page cannot go above the take-photo page');
   assert.equal(moveTarget(rows, at(rows, 'take-photo-0'), 1), null, 'and the take-photo page cannot go below it');
-  assert.equal(moveTarget(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1), at(rows, 'take-photo-0'), 'with a Submit page the login may move behind the photo');
+  assert.equal(moveTarget(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1), at(rows, 'take-photo-0'), 'login may be moved behind the photo');
   const moved = moveJourneyRow(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1)!;
   const after = effectiveJourney(moved.pages, { ...ALL, defaultOrders: moved.defaultOrders }, NOW);
   const seq = sequence(after).filter((id) => !id.startsWith('step:'));
   assert.deepEqual(seq.slice(-3), ['own:take-photo-0', `default:${DEFAULT_IDENTITY_PAGE_ID}`, 'own:submit-1']);
   const next = rowsOf(moved.pages, moved.defaultOrders);
-  assert.equal(moveTarget(next, at(next, DEFAULT_IDENTITY_PAGE_ID), 1), null, 'but never behind the Submit page');
-  // without a Submit page the rule of step 1 holds
-  const plain = rowsOf(START);
-  assert.equal(moveTarget(plain, at(plain, DEFAULT_IDENTITY_PAGE_ID), 1), null);
+  assert.equal(moveTarget(next, at(next, DEFAULT_IDENTITY_PAGE_ID), 1), at(next, 'submit-1'), 'login may be moved across the save point, which is then kept after it');
+  const loginAfterSave = moveJourneyRow(next, at(next, DEFAULT_IDENTITY_PAGE_ID), 1)!;
+  const afterLoginMove = rowsOf(loginAfterSave.pages, loginAfterSave.defaultOrders);
+  const ordered = afterLoginMove.filter((row) => row.kind !== 'step').map((row) => row.kind === 'default' ? row.page.pageId : row.page.pageId);
+  assert.ok(ordered.indexOf(DEFAULT_IDENTITY_PAGE_ID) < ordered.indexOf('submit-1'), 'the save point follows the login');
 });
 
 test('unticking "Submit is part of this page" puts a Submit page right after the take-photo page; ticking it takes it out again (issue 535)', () => {

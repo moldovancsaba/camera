@@ -109,68 +109,67 @@ const isPageRow = (row: JourneyRow): row is PageRow => row.kind !== 'step';
 const isTakePhotoRow = (row: PageRow) => row.kind === 'own' && row.page.pageType === CustomPageType.TAKE_PHOTO;
 const isSubmitRow = (row: PageRow) => row.kind === 'own' && row.page.pageType === CustomPageType.SUBMIT;
 
-/** Moving photo-taking in front of a default page is possible by making saving a later step first. */
-function needsSeparateSubmitForPhotoMove(rows: readonly JourneyRow[], index: number, direction: -1 | 1): boolean {
-  if (direction !== -1 || rows.some((row) => isPageRow(row) && isSubmitRow(row))) return false;
-  const row = rows[index];
-  if (!row || !isPageRow(row) || !isTakePhotoRow(row)) return false;
-  const previousPage = rows.slice(0, index).findLast(isPageRow);
-  if (previousPage?.page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID) return false;
-  return previousPage?.kind === 'default';
-}
-
 /**
  * The page row that the row at `index` swaps places with when it moves one place `up` (-1) or `down` (+1), or null when it cannot move. The built-in steps are not pages and stay where they are,
- * so the neighbour is the next page row in that direction. The Submit page stays after the take-photo page (they never swap); default consent and login stay before the save boundary, while
- * the frame/message selector and an own page can move anywhere. The selector's position determines whether it changes the current photo or the next one.
+ * so the neighbour is the next page row in that direction. Every journey page can be reordered; Submit stays after Take Photo and is automatically placed after consent/login pages so saving
+ * still happens only after required user interaction.
  */
 export function moveTarget(rows: readonly JourneyRow[], index: number, direction: -1 | 1): number | null {
   const row = rows[index];
   if (!row || !isPageRow(row)) return null;
-  const hasSubmit = rows.some((other) => isPageRow(other) && isSubmitRow(other));
   for (let j = index + direction; j >= 0 && j < rows.length; j += direction) {
     const other = rows[j];
     if (!isPageRow(other)) continue;
     if ((isSubmitRow(row) && isTakePhotoRow(other)) || (isTakePhotoRow(row) && isSubmitRow(other))) return null;
-    const defaultAndOther = row.kind === 'default' ? other : other.kind === 'default' ? row : null;
-    // Consent and login stay before the photo save boundary. The selector is different: its position decides whether a choice applies to
-    // the current photo (before Submit) or the next one (after saving), so it can cross Take Photo and Submit.
-    if (defaultAndOther && defaultAndOther.page.pageId !== DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID && (isSubmitRow(defaultAndOther) || (isTakePhotoRow(defaultAndOther) && !hasSubmit))) return null;
     return j;
   }
   return null;
 }
 
-/** Whether a row can move, including the first photo-first move which separates saving automatically. */
+/** Whether a page can swap with the adjacent page row in the requested direction. */
 export function canMoveJourneyRow(rows: readonly JourneyRow[], index: number, direction: -1 | 1): boolean {
-  return moveTarget(rows, index, direction) !== null || needsSeparateSubmitForPhotoMove(rows, index, direction);
+  return moveTarget(rows, index, direction) !== null;
 }
 
 /**
- * The journey after the row at `index` moved one place (issue 535): every page row, own and default, gets its place in the list as its `order`. The own pages are returned as the pages to save,
- * the default pages as `defaultOrders` (`Event.defaultPageOrders`): a default page stays a default, only its place is saved. All pages are numbered together so the editor and the user keep seeing
- * one order, whether a default page was moved or an own page moved past one. Null when the row cannot move (`moveTarget`).
+ * The journey after a page row moved one place: every page row, own and default, gets its place in the list as its `order`. Consent/login pages remain before saving; an internal Submit page is
+ * inserted or moved after them when needed. Own pages are returned as pages to save and default pages as `defaultOrders`.
  */
 export function moveJourneyRow(rows: readonly JourneyRow[], index: number, direction: -1 | 1, makeId: () => string = generateId, now: string = new Date().toISOString()): { pages: CustomPage[]; defaultOrders: Record<string, number> } | null {
   const workingRows = rows;
   const target = moveTarget(workingRows, index, direction);
-  if (target === null && needsSeparateSubmitForPhotoMove(workingRows, index, direction)) {
-    const sequence = workingRows.filter(isPageRow);
-    const photoAt = sequence.findIndex((row) => row === workingRows[index]);
-    const marker: PageRow = { kind: 'own', page: { pageId: makeId(), pageType: CustomPageType.SUBMIT, order: 0, isActive: true, config: { title: '[Submit]', description: '', buttonText: '' }, createdAt: now, updatedAt: now } };
-    sequence.splice(photoAt + 1, 0, marker);
-    const photo = sequence[photoAt];
-    const previous = sequence[photoAt - 1];
-    if (!photo || !previous) return null;
-    [sequence[photoAt - 1], sequence[photoAt]] = [photo, previous];
-    return numberPages(sequence);
-  }
   if (target === null) return null;
   const sequence = workingRows.filter(isPageRow);
   const from = sequence.indexOf(workingRows[index] as PageRow);
   const to = sequence.indexOf(workingRows[target] as PageRow);
   [sequence[from], sequence[to]] = [sequence[to], sequence[from]];
-  return numberPages(sequence);
+  return numberPages(keepSaveAfterRequiredPages(sequence, makeId, now));
+}
+
+/**
+ * Preserve the chosen page order while keeping consent and identity ahead of saving. When one is placed after Take Photo, put the internal Submit marker after
+ * the last one so the guest can finish those pages before the image is saved.
+ */
+function keepSaveAfterRequiredPages(sequence: readonly PageRow[], makeId: () => string, now: string): PageRow[] {
+  const result = [...sequence];
+  const photoAt = result.findIndex((row) => row.page.isActive && isTakePhotoRow(row));
+  if (photoAt === -1) return result;
+  const isRequired = (row: PageRow) => row.page.isActive && (row.page.pageType === CustomPageType.ACCEPT || row.page.pageType === CustomPageType.WHO_ARE_YOU);
+  const requiredAfterPhoto = result.some((row, index) => index > photoAt && isRequired(row));
+  const submitAt = result.findIndex((row) => row.page.isActive && isSubmitRow(row));
+  if (!requiredAfterPhoto && submitAt === -1) return result;
+
+  let submit = submitAt === -1 ? undefined : result.splice(submitAt, 1)[0];
+  if (!submit) {
+    const pageId = makeId();
+    submit = { kind: 'own', page: { pageId, pageType: CustomPageType.SUBMIT, order: 0, isActive: true, config: { title: '[Submit]', description: '', buttonText: '' }, createdAt: now, updatedAt: now } };
+  }
+  const currentPhotoAt = result.findIndex((row) => row.page.isActive && isTakePhotoRow(row));
+  const lastRequiredAt = result.reduce((last, row, index) => index > currentPhotoAt && isRequired(row) ? index : last, currentPhotoAt);
+  const preservedSubmitAt = submitAt === -1 ? 0 : submitAt;
+  const submitTarget = Math.max(preservedSubmitAt, lastRequiredAt + 1, currentPhotoAt + 1);
+  result.splice(submitTarget, 0, submit);
+  return result;
 }
 
 function numberPages(sequence: readonly PageRow[]): { pages: CustomPage[]; defaultOrders: Record<string, number> } {
