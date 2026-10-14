@@ -1,6 +1,6 @@
 /**
  * The acceptance on the Who-are-you page (issue 523; client feedback 2026-10-09): an event may show its consent page's checkboxes as **one small checkbox with one sentence** on the
- * Who-are-you page, under its intro text, instead of a page of its own; everything on the page stays disabled until the box is ticked. The switch is one setting of the event
+ * Who-are-you page, under its intro text, instead of a page of its own; everything on the page stays disabled until the box is ticked. When login follows the camera without a separate Submit step, saving waits until login is complete. The switch is one setting of the event
  * (`Event.acceptanceOnWhoAreYou`) that both page editors show, so the two checkboxes are always the same one. Off: the two pages one after the other, as before. Pure and DOM-free,
  * unit-tested in acceptance.test.ts.
  */
@@ -19,16 +19,25 @@ interface PageLike {
 }
 
 /**
- * The pages the user goes through, and the consent page whose checkboxes the Who-are-you page shows (null when nothing is merged). Merged only when the switch is on, the event
- * has an active Who-are-you page and an active consent page, both before the photo (the take-photo page, or anywhere when there is none): the first such consent page leaves the
- * list, the others stay. A consent page whose checkboxes are all switched off (issue 558) has nothing to show and is not the one. Nothing else changes.
+ * The pages the user goes through, and the consent page whose checkboxes the Who-are-you page shows (null when nothing is merged). Merged only when the switch is on, an active
+ * consent page with something to show comes before an active Who-are-you page, and both happen before the save. If a separate Submit step exists, both pages must be before it.
+ * Without a separate Submit step, a login after the camera becomes a save point: the capture is backed up first, and the submission is saved after login. Only the first eligible
+ * consent page leaves the list; other consent pages stay. Nothing else changes.
  */
 export function acceptanceOnLogin<T extends PageLike>(pages: readonly T[], enabled: boolean): { pages: T[]; acceptPage: T | null } {
   const all = [...pages];
   if (!enabled) return { pages: all, acceptPage: null };
   const before = pagesBeforeSave(all);
-  const hasLogin = before.some((page) => page.isActive && page.pageType === CustomPageType.WHO_ARE_YOU);
-  const acceptPage = before.find((page) => page.isActive && page.pageType === CustomPageType.ACCEPT && !consentPageIsEmpty(page.config ?? {})) ?? null;
+  const photoOrder = all.find((page) => page.isActive && page.pageType === 'take-photo')?.order;
+  const hasSeparateSubmit = photoOrder !== undefined && all.some((page) => page.isActive && page.pageType === 'submit' && page.order > photoOrder);
+  // With no separate Submit step, a post-camera login can carry consent because the guest flow waits to save until login is complete.
+  const eligible = hasSeparateSubmit ? before : all;
+  const sorted = [...eligible].filter((page) => page.isActive).sort((a, b) => a.order - b.order);
+  const login = sorted.find((page) => page.pageType === CustomPageType.WHO_ARE_YOU);
+  const acceptPage = login
+    ? sorted.find((page) => page.pageType === CustomPageType.ACCEPT && page.order < login.order && !consentPageIsEmpty(page.config ?? {})) ?? null
+    : null;
+  const hasLogin = login !== undefined;
   if (!hasLogin || !acceptPage) return { pages: all, acceptPage: null };
   return { pages: all.filter((page) => page !== acceptPage), acceptPage };
 }

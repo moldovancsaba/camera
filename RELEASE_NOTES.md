@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — show saved frame choices and merge consent into a post-camera login (2026-10-14)
+
+- **Frame/message selection:** the guest event API now passes the saved layout and message choices into the generated capture frame, so “The user chooses” settings reach the selector page.
+- **Consent on login:** when consent is set to appear on Who-are-you and that login follows the camera without a separate Submit step, the consent page is omitted and final submission waits until login is complete. The captured image is still uploaded to its temporary backup as soon as it is taken.
+- **Journey order:** the page editor places the built-in after-save steps after that login/save point, matching the guest flow.
+- **Verified locally:** TypeScript check, lint, production build, and inventory check passed. The build shows the existing Google Fonts `@import` ordering warning.
+- **Not verified:** unit tests, the GitHub `Verify` check, or a guest browser walkthrough.
+
 ## Unreleased — keep one consent and login page in the journey (2026-10-14)
 
 - **Fixed:** old saved events that contain both a generated Accept/Who-are-you page and its customised copy now use the custom page without the stale generated duplicate. Editing or adding a page reuses an existing role instead of creating a second guest step.

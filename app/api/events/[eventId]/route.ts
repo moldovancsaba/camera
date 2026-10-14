@@ -235,7 +235,11 @@ export const GET = withErrorHandler(async (
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
       journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, ...(chosenDocuments(checkboxes) ? { documents: chosenDocuments(checkboxes) } : {}), ...(event.defaultPageOrders ? { defaultOrders: event.defaultPageOrders as Record<string, number> } : {}) },
       _id: event._id.toString(),
-      generatedFrame: captureFrameOf({ frames: event.frames, frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] }),
+      generatedFrame: captureFrameOf({
+        frames: event.frames,
+        frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'],
+        frameSelection: event.frameSelection,
+      }),
     })
   });
 });
