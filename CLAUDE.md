@@ -116,6 +116,8 @@ check it.
 
 **Owner instruction (2026-10-14): GitHub only.** Use GitHub for branches, pull requests, checks, merges and pushes. Do not inspect or operate Vercel previews, deployments, dashboard, or CLI, and do not wait for Vercel checks. Decide readiness from GitHub's required checks (especially `Verify`) and pull request state.
 
+**Owner instruction (2026-10-14): keep GitHub workflow updates quiet and complete the work.** Finish the change, push one reviewable branch, open its PR, and follow the required GitHub checks through to a clear outcome. Do not repeatedly narrate that a PR was opened, that a check is pending, or that a push is underway. Report progress only when a check fails, a decision is needed, or the change is ready for the owner's merge instruction. When a GitHub check fails, inspect its log, fix the cause on the same PR, push, and follow the rerun. For protected guest-flow changes, wait for `Verify` to pass, then ask once for the specific PR merge; do not stop at the first failed or pending check. Never inspect Vercel to fill the gap.
+
 - A merged PR is finished. Never stack new commits on an already-merged branch —
   start a fresh branch from the current `main` for follow-up work, even if it
   reuses the same name.
