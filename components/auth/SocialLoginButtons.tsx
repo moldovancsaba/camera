@@ -8,6 +8,7 @@
 
 import BrandSignInButton from '@/components/auth/BrandSignInButton';
 import { socialLoginHref } from '@/lib/auth/social-login';
+import { journey } from '@/lib/journey/client';
 import { useT } from '@/components/i18n/UiLanguageProvider';
 import { useEffect, useRef, useState } from 'react';
 
@@ -69,6 +70,8 @@ export default function SocialLoginButtons({ fromLogout, captureEventId, capture
         const response = await fetch('/api/auth/session', { cache: 'no-store' });
         const session = await response.json();
         if (response.ok && session.authenticated && session.user) {
+          // Count the popup's successful return too; a full-page return is counted when the capture page resumes.
+          journey.record('journey.resume');
           popup.current?.close();
           popup.current = null;
           onCaptureLoginComplete?.({ name: session.user.name || '', email: session.user.email || '' });

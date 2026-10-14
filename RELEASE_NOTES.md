@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — back up a captured photo before sign-in (2026-10-13)
+
+- **Changed:** the camera uploads the full-size capture directly to this event's unlisted Vercel Blob draft folder as soon as the shutter finishes, then continues to the next capture step without waiting for the upload. The normal framed submission still uses the existing save route. Drafts stay in the event folder through sign-in, retakes, completed saves, and page exits for post-event cleanup.
+- **Sign-in:** successful social-login popups signal the original selfie tab and close themselves. The in-memory image remains usable while the temporary server copy provides a backup through sign-in; successful popup returns are also counted in Journey analytics.
+- **Analytics:** Journey analytics and its CSV export count temporary upload starts, successes, and failures when recording is enabled.
+- **Safety:** temporary paths are separate from permanent `originals/` paths, event-scoped and UUID-named. The cleanup endpoint only accepts a URL in this application's matching event draft folder.
+- **Not verified:** live Blob upload, post-event cleanup, a social sign-in round trip, or a phone capture.
+
 ## Unreleased — social login stays available after the photo (2026-10-13)
 
 - **Fixed:** when the Who Are You page is ordered between Take Photo and Submit, its Google/Facebook options now follow the event's settings instead of being hidden. Sign-in opens in a separate tab; the original tab keeps the captured photo and continues after an attempt-specific callback signal and session read. A guest's old session on a shared device cannot trigger the resume. The callback leaves a brief completion page in the sign-in tab. If pop-ups are blocked, the guest can continue with the email form.

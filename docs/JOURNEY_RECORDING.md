@@ -20,11 +20,12 @@ One record is a **name** from a fixed list, a **key** from that name's fixed lis
 | Name | Key | When | Recorded by |
 |---|---|---|---|
 | `journey.start` | the kind of device: `ios`, `android`, `desktop`, `unknown` | the capture page has the event | the page; the server makes the key from the request and does not keep the user agent |
-| `journey.resume` | none | the page opened again after a sign-in (`?resume=true`) | the page; not counted as a visit |
+| `journey.resume` | none | the capture flow returned from a completed sign-in | the page or the still-open capture tab; not counted as a visit |
 | `step.reach` | `welcome`, `consent`, `who-are-you`, `cta`, `restart`, `frame`, `layout`, `message`, `camera`, `reframe`, `saved`, `thank-you` | a step reached for the first time in the visit | the page |
 | `consent.shown`, `consent.accept` | `page` (the consent page) or `box` (the box on the Who-are-you page) | once per visit and form | the page |
 | `camera.permission` | `granted`, `denied`, `unavailable` | the live camera of a desktop was asked for (one record of each kind per visit) | the camera component |
 | `photo.taken` | `system` (the phone's own camera app), `still`, `frame` | a photo was taken | the page |
+| `photo.upload` | `started`, `succeeded`, `failed` | the temporary camera original upload started or finished | the page |
 | `photo.retake` | none | back from the move-and-zoom step to the camera | the page |
 | `photo.save` | `ok`, `failed` | the save answered | the page |
 | `journey.complete` | `under-1m`, `1-3m`, `3-10m`, `10-30m`, `over-30m` | the first saved photo of the visit (the key is how long it took) | the page |
@@ -72,7 +73,7 @@ Defined in `lib/analytics/journey.ts`; the same numbers feed the CSV export and 
 - **Saved a photo** = `journey.complete`: visits that saved at least one photo; **completion rate** = saved over visits.
 - **Steps reached** = `step.reach` per step, each visit once per step.
 - **Camera denied / granted / not available** = `camera.permission` (not available: no camera, in use by another program, or it failed). **Only the live camera of a desktop asks**; a phone takes the photo with its own camera app and asks nothing on the page, so a phone never appears here.
-- **Retakes** = `photo.retake`; per photo taken = retakes over `photo.taken`.
+- **Retakes** = `photo.retake`; per photo taken = retakes over `photo.taken`. Temporary upload starts, successes and failures are counted separately under Camera, photos and saving.
 - **Consent left** = shown minus accepted, for the consent page and for the box on the Who-are-you page separately, never below zero.
 - **Shares** = `share.click`; **photo page views** = `share.view`; **downloads** = `download`.
 - **Median time to the first photo** = the median `ms` of `journey.complete` over the raw rows still kept (30 days); the five buckets cover the whole recording.

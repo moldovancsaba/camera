@@ -134,14 +134,15 @@ The full-size photo stays in the browser during the reframe step and is dropped 
 
 ## Full-frame originals (camera#210, no longer stored since camera#257)
 
-Until 2026-10-06 the camera recorded the whole image, the fan framed it afterwards, and the pure original was stored with the
-submission next to the framed photo. **The capture page no longer uploads it** and no longer sends `originalImageUrl` or
-`reframe` (owner: keep only the frame-sized image). The section below describes what older submissions still carry and what
-the server still accepts (a page opened before the change may still send them). `POST /api/uploads/original` is not called by
-the page any more; remove it, the claim handling in `POST /api/submissions` and `npm run blob:orphans` once no page loaded
-before the change can still be open.
+The guest keeps only the frame-sized image as the final submission (owner decision 2026-10-06). Since 2026-10-13 the camera
+also uploads the full camera image to `capture-drafts/<eventId>/` immediately after capture so it survives the social sign-in
+step. Drafts remain in the event folder through sign-in, retakes, successful saves, and page exits; remove them during the
+event's post-event storage cleanup. The draft folder is separate from `originals/` and is never attached to the submission.
+Upload starts, successes, and failures are included in the event's Journey analytics when recording is enabled.
+The `capture-drafts/` path is visible in the report-only `npm run blob:orphans -- --list` inventory; the event's unsubmitted and submitted draft copies can be removed there during post-event cleanup. The rest of this section describes older
+submissions and the legacy original upload contract still accepted by the server.
 
-- **Where:** Vercel Blob, `originals/<eventId>/<random>-<suffix>.jpg` (public store, unguessable
+- **Where:** legacy full-frame originals are in Vercel Blob, `originals/<eventId>/<random>-<suffix>.jpg` (public store, unguessable
   path, never returned by a public route, never mirrored to imgbb). `submissions.originalImageUrl`
   points at it and `submissions.reframe` records how it was framed.
 - **How it gets there:** when a fan taps Save, the browser asks `POST /api/uploads/original` for a

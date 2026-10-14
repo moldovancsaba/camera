@@ -22,6 +22,7 @@ import {
   ORIGINAL_TOKEN_TTL_MS,
   isValidEventIdForPath,
   validateOriginalPathname,
+  validateTemporaryCapturePathname,
 } from '@/lib/submissions/original-image';
 import { reportServerError } from '@/lib/observability/logger';
 
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
           throw new Error('invalid_payload');
         }
 
-        if (!isValidEventIdForPath(eventId) || !validateOriginalPathname(pathname, eventId)) {
+        if (!isValidEventIdForPath(eventId) || (!validateOriginalPathname(pathname, eventId) && !validateTemporaryCapturePathname(pathname, eventId))) {
           throw new Error('invalid_path');
         }
 

@@ -165,6 +165,9 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport, jour
     add('journey camera', 'permission denied', journey.camera.denied);
     add('journey camera', 'camera not available (none, in use or failed)', journey.camera.unavailable);
     add('journey photos', 'taken', journey.photos.taken);
+    add('journey photos', 'temporary uploads started', journey.photos.uploadStarted);
+    add('journey photos', 'temporary uploads completed', journey.photos.uploadSucceeded);
+    add('journey photos', 'temporary uploads failed', journey.photos.uploadFailed);
     tallies('journey photos taken with', journey.photos.byMethod);
     add('journey photos', 'retakes', journey.photos.retakes);
     add('journey photos', 'saved', journey.saves.ok);

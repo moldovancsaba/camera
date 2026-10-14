@@ -17,6 +17,7 @@
 import { Fragment, type CSSProperties, type ReactNode, useState, useEffect, use, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { Button, Checkbox } from '@mantine/core';
+import { upload as uploadBlob } from '@vercel/blob/client';
 import CameraCapture from '@/components/camera/CameraCapture';
 import AppShellLock from '@/components/capture/AppShellLock';
 import { phasePageLock } from '@/lib/capture/page-lock';
@@ -50,6 +51,7 @@ import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
+import { ORIGINAL_UPLOAD_ENDPOINT, TEMPORARY_CAPTURE_PREFIX } from '@/lib/submissions/original-image';
 import { frameSilhouette } from '@/lib/frame/silhouette';
 import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
 import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
@@ -244,9 +246,9 @@ export default function EventCapturePage({
   // One draw per visit for the random pick of the logo: the same draw in every place, so a user sees the same logo throughout (camera#419).
   const logoDraw = useRef<number | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  // The whole photo at the camera's full size, held in the browser for the reframe step only: the guest zooms and pans
-  // anywhere in it, and only the frame-sized result is saved. The photo itself is dropped (owner decision 2026-10-06).
+  // The whole photo at the camera's full size is held in the browser for reframing and uploaded as a temporary server backup. Only the frame-sized result becomes the submission; the backup is then deleted.
   const [capturedOriginal, setCapturedOriginal] = useState<FullFrameCapture | null>(null);
+  // A copy of each camera original is uploaded immediately to an event-scoped temporary Blob path. Keep it through sign-in, page exits, retakes, and final save; the event cleanup removes these drafts after the event.
   // How the photo is taken in this environment (camera#257): the device's own camera on every touch device, a real still or
   // the video frame on a desktop webcam. Known after mount.
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
@@ -295,6 +297,23 @@ export default function EventCapturePage({
   // The pages between taking the photo and saving it (issue 535) were gone through: a failed save does not ask for them again, and the next photo of the same user does not either; a restart does.
   const [presubmitDone, setPresubmitDone] = useState(false);
   const vetted = event?.photoVettingRequired === true;
+
+  const storeTemporaryCapture = useCallback((capture: FullFrameCapture) => {
+    const uploadId = crypto.randomUUID();
+    const pathname = `${TEMPORARY_CAPTURE_PREFIX}${eventId}/${uploadId}.jpg`;
+    journey.record('photo.upload', 'started');
+    void uploadBlob(pathname, capture.blob, {
+      access: 'public',
+      contentType: 'image/jpeg',
+      handleUploadUrl: ORIGINAL_UPLOAD_ENDPOINT,
+      clientPayload: JSON.stringify({ eventId }),
+    }).then(() => {
+      journey.record('photo.upload', 'succeeded');
+    }).catch((error: unknown) => {
+      journey.record('photo.upload', 'failed');
+      console.warn('Temporary photo backup could not be uploaded; the normal save can still continue:', error);
+    });
+  }, [eventId]);
   
   // With the acceptance on the Who-are-you page (issue 523) the consent page is not a step of its own: its checkboxes are shown there as one (lib/events/acceptance.ts).
   const { pages: journeyPages, acceptPage: acceptanceBox } = acceptanceOnLogin(customPages, event?.acceptanceOnWhoAreYou === true);
@@ -859,6 +878,7 @@ export default function EventCapturePage({
         setSelectedFrame(variantFrame(variant));
       }
     }
+    storeTemporaryCapture(capture);
     setCapturedOriginal(capture);
     setStep('reframe');
   };
@@ -984,6 +1004,7 @@ export default function EventCapturePage({
       if (!submissionId) {
         throw new Error(t('flow.noSubmissionId'));
       }
+      // Keep the temporary capture copy with the event for post-event cleanup.
       setSavedSubmissionId(submissionId);
       journey.saved(true);
       setHasFinalizedSubmissionEmail(false);
