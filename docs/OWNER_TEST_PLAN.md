@@ -777,8 +777,8 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **Steps**
 
-1. Open the throw-away event and press **Edit Event**. The page must open.
-2. Scroll to the box **Pages of the user journey**. It lists the journey in order, with built-in steps marked **Built in** and default pages marked **Default**.
+1. Open the throw-away event and choose **Pages of the user journey** in the event menu. The dedicated page must open.
+2. It lists the journey in order, with built-in steps marked **Built in** and default pages marked **Default**. Choose **Edit** in the menu and confirm the event-details form opens without the journey list.
 3. Press **Add welcome page**: a window opens to write the page. Press **Cancel page**. Do not press **Save all**.
 4. On the default consent page's row press **Customise**: the window shows the checkboxes with the switches Shown and Required and the buttons **Add checkbox** and **Remove checkbox**. Press **Cancel page**.
 5. Open the left menu, Settings, then Journey defaults: the page opens with the box **Apply the journey defaults to existing events** and a **Save** button. Do not press Save.
@@ -960,7 +960,7 @@ The throw-away event of section C is the only event you may change. Never save a
 
 **Steps**
 
-1. Open the throw-away event, press **Edit Event** and scroll to the box **Pages of the user journey**.
+1. Open the throw-away event and choose **Pages of the user journey** in the event menu.
 2. Press the button at the top right of that box without changing anything. It reads **Save all**; the text above it calls it Save Pages.
 3. Watch the whole screen for five seconds, the corners included.
 

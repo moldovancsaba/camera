@@ -43,10 +43,12 @@ const defaultDeps: WelcomeScreenDeps = {
 
 export type WelcomeScreenResult = { ok: true; url: string; created: boolean } | { ok: false; reason: string };
 
-/** The frame the window shows: the event's frame without a message, else its first one. */
+/** The frame/message variant chosen for the welcome composition, else the historical no-message/first-variant default. */
 function frameImageUrl(event: Document): string | null {
   const variants = (event.frameDesign as FrameDesign | undefined)?.variants ?? [];
-  return (variants.find((variant) => variant.index === null) ?? variants[0])?.imageUrl ?? null;
+  const selected = event.welcomeScreenComposition as { frameId?: unknown; messageIndex?: unknown } | undefined;
+  const chosen = selected && variants.find((variant) => (variant.frameId ?? null) === (typeof selected.frameId === 'string' ? selected.frameId : null) && variant.index === (Number.isInteger(selected.messageIndex) ? selected.messageIndex : null));
+  return (chosen ?? variants.find((variant) => variant.index === null) ?? variants[0])?.imageUrl ?? null;
 }
 
 /**

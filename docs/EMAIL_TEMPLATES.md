@@ -74,7 +74,7 @@ Every preview has **Send me a test e-mail**: the e-mail as drawn is made and sen
 
 ## The Emails page of an event (epic 463)
 
-`Emails` in the event menu (`/admin/events/<id>/emails`) holds everything an editor sets about the e-mails of one event: for each of the five types a switch (shown as On or Off and whether it is the default or a choice; "Use the default" takes the choice away), the subject and the message in the toolbar editor with the preview beside it, the sender display name and the link to the terms, and the legal part of the event. A switch and a text that are the default are not stored: the event follows the default. `GET`/`PUT /api/admin/events/<id>/emails`. The footer picture of the e-mails stays with the other pictures (Edit and pages, and the partner's Pictures).
+`Emails` in the event menu (`/admin/events/<id>/emails`) holds everything an editor sets about the e-mails of one event: for each of the five types a switch (shown as On or Off and whether it is the default or a choice; "Use the default" takes the choice away), the subject and the message in the toolbar editor with the preview beside it, the sender display name and the link to the terms, and the legal part of the event. A switch and a text that are the default are not stored: the event follows the default. `GET`/`PUT /api/admin/events/<id>/emails`. The footer picture of the e-mails stays with the other pictures (Edit, and the partner's Pictures).
 
 ## The five e-mail types (epic 463, `lib/email/types.ts`)
 
