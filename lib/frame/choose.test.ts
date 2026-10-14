@@ -57,12 +57,13 @@ test('when the user changes the design, every design is offered, whatever messag
   assert.deepEqual(layoutsToChoose(both).map(layoutIdOf), ['blue', 'pink']);
 });
 
-test('the editor picks the design: the user is never asked for it, and only messages of that design are offered', () => {
+test('the editor picks the design: the user is not asked for it, but can choose every message and use its available design', () => {
   const picked = frame(sel({ mode: 'editor', pick: 'pink' }, USER));
   assert.equal(nextStep(picked, NO_CHOICE), 'select-message');
-  assert.deepEqual(messagesToChoose(picked, NO_CHOICE).map((v) => v.index), [0, 2, 3]);
+  assert.deepEqual(messagesToChoose(picked, NO_CHOICE).map((v) => v.index), [0, 1, 2, 3]);
   assert.deepEqual(layoutsToChoose(picked), []);
   assert.ok(fitting(picked, { layoutId: null, messageIndex: 2 }).every((v) => v.frameId === 'pink'));
+  assert.ok(fitting(picked, { layoutId: null, messageIndex: 1 }).every((v) => v.frameId === 'blue'), 'a message outside the fixed design uses the design that carries it');
 });
 
 test('the editor picks the message and the user the design: only designs that carry it are offered', () => {

@@ -3,8 +3,8 @@
  * step, so the order and the fallbacks are decided (and tested) in one place.
  *
  * Each of the two settings is `editor` (the editor's pick), `random` (a new draw at every photo, never the same image twice in a row) or `user` (the user chooses). When both are
- * `user`, the design comes first and the message second; a message is offered only on the designs it is written on; a change of design keeps the message if the new design offers it
- * and asks again if not. Pure and client-safe.
+ * `user`, the design comes first and the message list follows that design. When the guest has no design selector, message choices are independent: all messages are offered and the
+ * selected message uses a design that carries it. Pure and client-safe.
  */
 
 import type { CaptureFrame, CaptureSelection, CaptureVariant } from './capture';
@@ -60,7 +60,11 @@ export function fitting(frame: CaptureFrame, choice: Choice): CaptureVariant[] {
   if (!selection) return frame.variants;
   const layout = wantedLayout(frame, selection, choice);
   const message = wantedMessage(frame, selection, choice);
-  const attempts: Array<[string | null, number | null]> = [[layout, message], [layout, null], [null, message], [null, null]];
+  // If the guest chooses a message but has no layout selector, keep all messages usable even when the editor's fixed layout does not carry every message.
+  // In that case the message's available design takes precedence over the saved layout pick.
+  const attempts: Array<[string | null, number | null]> = selection.message.mode === 'user' && selection.layout.mode !== 'user'
+    ? [[layout, message], [null, message], [layout, null], [null, null]]
+    : [[layout, message], [layout, null], [null, message], [null, null]];
   for (const [l, m] of attempts) {
     const found = frame.variants.filter((variant) => (l === null || layoutIdOf(variant) === l) && (m === null || variant.index === m));
     if (found.length > 0) return found;
@@ -82,13 +86,14 @@ export function layoutsToChoose(frame: CaptureFrame): CaptureVariant[] {
 }
 
 /**
- * The messages the user can choose between, one image of each: only when the setting lets the user choose the message, limited to the design the editor picked or the user chose,
- * and more than one. Images without a message are not a choice.
+ * The messages the user can choose between, one image of each: only when the setting lets the user choose the message and more than one. When the layout is not offered as a guest
+ * choice, messages stay independent of the editor's fixed/random layout and every configured message is offered; the selected message then determines which available design can carry it.
+ * When guests choose a layout, messages are limited to that chosen layout. Images without a message are not a choice.
  */
 export function messagesToChoose(frame: CaptureFrame, choice: Choice): CaptureVariant[] {
   const selection = frame.selection;
   if (selection?.message.mode !== 'user') return [];
-  const layout = wantedLayout(frame, selection, choice);
+  const layout = selection.layout.mode === 'user' ? wantedLayout(frame, selection, choice) : null;
   const offered = frame.variants.filter((variant) => withMessage(variant) && (layout === null || layoutIdOf(variant) === layout));
   const messages = distinct(offered, (variant) => String(variant.index));
   return messages.length > 1 ? messages : [];

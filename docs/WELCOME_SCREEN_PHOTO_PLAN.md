@@ -45,6 +45,8 @@ And the rule behind (a), which is the owner's own model, already decided for log
 
 ### 3.2 What the window shows, and how it is drawn
 
+The **Welcome page screen** card also lets the event choose the frame and message variant composited over the window. The frame list comes from the event's generated frame variants, and the message list is limited to messages available on the selected frame. The chosen pair is saved on `Event.welcomeScreenComposition`; when no saved choice exists, the historical no-message variant (or first available variant) remains the default. Changing the pair redraws only the welcome screen image and does not change guest capture settings.
+
 The event chooses **one source** for the window (the default is the first):
 
 | Source | Window shows | Drawn how |
