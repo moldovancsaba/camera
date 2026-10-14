@@ -238,6 +238,16 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
   const handleAddPage = (type: CustomPageType) => {
     if (type === CustomPageType.TAKE_PHOTO) return; // Can't manually add
 
+    // Accept and Who-are-you each represent one journey role. Reopen its existing page instead of creating another copy.
+    if (type === CustomPageType.ACCEPT || type === CustomPageType.WHO_ARE_YOU) {
+      const existing = pages.find((candidate) => candidate.isActive && candidate.pageType === type);
+      if (existing) {
+        setEditingPage(existing);
+        setShowModal(true);
+        return;
+      }
+    }
+
     // The default Accept and Who-are-you pages already serve these roles. Adding the same page type should customise that step, not create a second copy beside it.
     if (type === CustomPageType.ACCEPT || type === CustomPageType.WHO_ARE_YOU) {
       const defaultRow = rows.find((row) => row.kind === 'default' && row.page.pageType === type);

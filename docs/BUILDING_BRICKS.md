@@ -90,8 +90,8 @@ Order: **welcome, consent, login, selfie taking, the rest.**
 | # | Page | Agreed content | Today |
 |---|---|---|---|
 | 1 | **Welcome** | START button; the welcome page screen, generated (items 22 to 24); up to four pictures | no default exists: it is there only when an editor adds "Welcome" |
-| 2 | **Consent** | three required checkboxes: Terms and conditions, Cookies, Privacy policy (labels of item 48); links open in a new tab; one record per checkbox | default added when the page is read (live since the journey defaults switch, 2026-10-08); not shown in the editor; an own page wins |
-| 3 | **Login** ("Who are you?") | heading, text, Google and Facebook, e-mail form, Continue; at least one login stays on; empty text falls back to the default | default added when the page is read for events with vetting (all); not shown in the editor |
+| 2 | **Consent** | three required checkboxes: Terms and conditions, Cookies, Privacy policy (labels of item 48); links open in a new tab; one record per checkbox | default added when the page is read (live since the journey defaults switch, 2026-10-08); not shown in the editor; one active custom page replaces it, including one saved after photo-taking |
+| 3 | **Login** ("Who are you?") | heading, text, Google and Facebook, e-mail form, Continue; at least one login stays on; empty text falls back to the default | default added when the page is read for events with vetting (all); an active custom page replaces it in the required pre-save slot |
 | 4 | **Selfie taking** | the built-in steps: frame picker (more than one frame), camera, one photo screen where Continue saves, saving, waiting or share | built in; the page type `take-photo` carries 20 settings, and the editor saves the English defaults as the event's own |
 | 5 | **The rest** | CTA, restart, thank-you as the editor adds them; nothing automatic (items 65, 69) | as agreed |
 
@@ -99,7 +99,7 @@ Between and after them are steps that are not pages: the waiting screen, the e-m
 
 **A default welcome page comes under the same rule (item 18) and the same global switch (item 26):** every event gets the START button and the generated welcome page screen in first place, until the editor adds its own welcome page. Nothing already set is touched.
 
-**The journey editor (#378, items 134 to 137):** the page list is built by the same function the user's page uses (the stored pages plus the defaults), so the editor and the user cannot disagree. Default pages are rows marked "Default"; **Customise** creates the event's own page filled with the default's texts, in the default's place; deleting that page brings the default back; the defaults cannot be deleted or moved before their place.
+**The journey editor (#378, items 134 to 137):** the page list is built by the same function the user's page uses (the stored pages plus the defaults), so the editor and the user cannot disagree. Default pages are rows marked "Default"; **Customise** opens the event's own page filled with the default's texts, in the default's place; adding or reopening an active Accept/Who-are-you page edits that page instead of creating another; deleting it brings the default back; the defaults cannot be deleted or moved before their place.
 
 Defects found on the way, to fix inside these steps (details in the inventory, section A): the editor creates accept, CTA, restart and welcome pages with English text stored, so a Hungarian event shows English there; a flow restarts at the first page after the last thank-you page, against docs/WELCOME_STEP.md; a CTA page with no address and a Continue button records a consent with an empty text that the server rejects; "Prompt Description" never reaches phones; "Loading text" never shows; the updated-photo e-mail default is never sent.
 

@@ -46,11 +46,14 @@ test("an event's own consent page before the photo is kept and no default consen
   assert.equal(pages.some((p) => p.pageId === DEFAULT_CONSENT_PAGE_ID), false);
 });
 
-test('a consent page after the photo, or one that is switched off, is not a consent page before the photo', () => {
+test('a custom consent page after the photo is reused before saving; a switched-off page does not replace the default', () => {
   assert.equal(hasConsentPageBeforePhoto([page('take-photo', 0), page('accept', 1)]), false);
   assert.equal(hasConsentPageBeforePhoto([page('accept', 0, false)]), false);
   const pages = withDefaultJourneyPages([page('take-photo', 0), page('accept', 1)], { vettingRequired: false, consentDefault: true, ...OPTIONS });
-  assert.deepEqual(sequence(pages), [DEFAULT_CONSENT_PAGE_ID, 'take-photo-0', 'accept-1']);
+  assert.deepEqual(sequence(pages), ['accept-1', 'take-photo-0']);
+  assert.equal(pages.find((item) => item.pageId === 'accept-1')?.order, -2);
+  const switchedOff = withDefaultJourneyPages([page('take-photo', 0), page('accept', 1, false)], { vettingRequired: false, consentDefault: true, ...OPTIONS });
+  assert.deepEqual(sequence(switchedOff), [DEFAULT_CONSENT_PAGE_ID, 'take-photo-0', 'accept-1']);
 });
 
 test("the user's own login page before the photo is kept: only the consent page is added", () => {

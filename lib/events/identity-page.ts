@@ -1,8 +1,7 @@
 /**
  * Every vetted event asks the guest for an email or a social login before the photo is saved, so there is an address to send
- * the approval to (owner, 2026-10-06, camera#264). The page is added at read time, not stored: an event that already has its own
- * "who are you" page before the photo keeps it, any other vetted event gets this default one first. Nothing is backfilled into
- * the events' own pages, and switching vetting off removes it again.
+ * the approval to (owner, 2026-10-06, camera#264). The default page is added at read time, not stored. An active custom
+ * "who are you" page is reused in the required pre-save slot, so editing it never creates a second login step.
  *
  * Pure, so it is unit-tested (identity-page.test.ts).
  */
@@ -48,7 +47,7 @@ export function loginOptions(config: { enableSSOLogin?: boolean; enablePseudoReg
   return sso || form ? { sso, form } : { sso: true, form: true };
 }
 
-/** The page a vetted event shows first when it has no "who are you" page of its own before the photo. */
+/** The page a vetted event shows first when it has no active "who are you" page of its own. */
 export function defaultIdentityPage(order: number, now: string = new Date().toISOString(), language: UiLanguage = 'en', texts?: TextOverrides | null): CustomPage {
   const t = identityTexts(language, texts);
   return {
@@ -79,7 +78,7 @@ export function hasIdentityPageBeforePhoto(pages: readonly CustomPage[]): boolea
   return pagesBeforeSave(pages).some((page) => page.pageType === 'who-are-you');
 }
 
-/** The event's pages as the guest sees them: with vetting required and no identity page before the photo, the default one is first. */
+/** The event's pages as the guest sees them: with vetting required and no active identity page, the default one is first. An existing custom page is moved into that slot. */
 export function withRequiredIdentityPage(pages: readonly CustomPage[] | null | undefined, vettingRequired: boolean, now?: string, language: UiLanguage = 'en', texts?: TextOverrides | null): CustomPage[] {
   const own = [...(pages ?? [])];
   if (!vettingRequired || hasIdentityPageBeforePhoto(own)) return own;
@@ -90,5 +89,9 @@ export function withRequiredIdentityPage(pages: readonly CustomPage[] | null | u
   while (sorted[leading]?.pageType === 'welcome') leading += 1;
   while (sorted[leading]?.pageType === 'accept') leading += 1;
   const order = leading > 0 ? sorted[leading - 1].order + 0.5 : (sorted.length > 0 ? sorted[0].order : 0) - 1;
+  // An event may already have a custom login page, but have it after the photo/save step. Adding a default login before the photo would show two login pages.
+  // Reuse that page in the required slot; it still has one editable page and every vetted guest identifies before saving.
+  const existingLogin = own.find((page) => page.isActive && page.pageType === 'who-are-you');
+  if (existingLogin) return own.map((page) => page.pageId === existingLogin.pageId ? { ...page, order } : page);
   return [defaultIdentityPage(order, now, language, texts), ...own];
 }

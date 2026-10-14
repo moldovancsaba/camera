@@ -1,7 +1,7 @@
 /**
  * The default consent page and the default order of the user flow (camera#330, docs/WELCOME_AND_DEFAULTS_PLAN.md items 38 to 48): welcome page,
  * consent page, login page, selfie taking, the rest. Like the default login page (identity-page.ts) the default consent page is added at read
- * time, not stored: an event that has its own consent page before the photo keeps it, and nothing is backfilled into the events' own pages.
+ * time, not stored: an event's active custom consent page is reused in the pre-save slot, so editing it never creates a second consent step.
  * It is added to an event only when the event gets the journey defaults (lib/admin/defaults-rollout.ts). Pure; unit-tested (default-pages.test.ts).
  */
 
@@ -86,7 +86,7 @@ export function hasConsentPageBeforePhoto(pages: readonly CustomPage[]): boolean
 
 /**
  * The event's pages as the user sees them: the default consent page right after the leading welcome page(s) when the event gets the defaults and has
- * no consent page before the photo, then the default login page after it (identity-page.ts) when the event requires vetting and has none.
+ * no active custom consent page, then the default login page after it (identity-page.ts) when the event requires vetting and has none.
  */
 export function withDefaultJourneyPages(
   pages: readonly CustomPage[] | null | undefined,
@@ -107,7 +107,11 @@ export function withDefaultJourneyPages(
     let leading = 0;
     while (sorted[leading]?.pageType === 'welcome') leading += 1;
     const order = leading > 0 ? sorted[leading - 1].order + 0.25 : (sorted.length > 0 ? sorted[0].order : 0) - 2;
-    withConsent = [defaultConsentPage(order, options.now, options.language, options.texts, options.documents), ...own];
+    // Reuse a custom consent page that was saved after photo-taking. Otherwise the generated default and the custom page appear as two consent steps.
+    const existingConsent = own.find((page) => page.isActive && page.pageType === 'accept');
+    withConsent = existingConsent
+      ? own.map((page) => page.pageId === existingConsent.pageId ? { ...page, order } : page)
+      : [defaultConsentPage(order, options.now, options.language, options.texts, options.documents), ...own];
   }
   return withDefaultOrders(withRequiredIdentityPage(withConsent, options.vettingRequired, options.now, options.language, options.texts), options.defaultOrders);
 }
