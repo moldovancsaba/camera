@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — show every message when guests do not choose a layout (2026-10-14)
+
+- **Fixed:** the message selector now offers all configured messages when the layout is editor-picked or randomised. Choosing a message uses an available layout that carries it, instead of hiding messages that belong to another layout.
+- **Verified locally:** the frame-choice unit tests and TypeScript check passed.
+
 ## Unreleased — let event editors order every journey page (2026-10-14)
 
 - **Changed:** all page rows, including Take Photo, the frame/message selector, and default Accept/Who-are-you pages, can move through the journey. When required consent or login moves after photo-taking, the save step follows it automatically so the photo is saved only after the guest completes the required interaction.
