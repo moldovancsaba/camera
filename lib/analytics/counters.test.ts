@@ -299,7 +299,7 @@ test('the preview rows list every fixed counter, then each family with a row for
   assert.ok(keys.indexOf('camera_images_annotated') < keys.indexOf('camera_gender_female'));
   assert.ok(keys.indexOf('camera_merch_scarf') < keys.indexOf('camera_rejected_nudity'));
   assert.ok(keys.indexOf('camera_images_rejected_no_reason') < keys.indexOf(REVIEW_QUEUE_NAMES[0]));
-  assert.deepEqual(keys.slice(-REVIEW_QUEUE_NAMES.length), REVIEW_QUEUE_NAMES);
+  assert.deepEqual(keys.slice(-REVIEW_QUEUE_NAMES.length), [...REVIEW_QUEUE_NAMES].sort());
   assert.equal(rows.find((r) => r.key === 'camera_rejected_nudity')?.label, 'Camera: rejected, Nudity or sexual content');
   assert.equal(rows.find((r) => r.key === 'camera_gender_female')?.value, 1);
   const bare = counterRows(NO_COUNTERS).map((r) => r.key);
