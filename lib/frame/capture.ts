@@ -36,6 +36,34 @@ export interface CaptureFrame {
   selection: CaptureSelection | null;
 }
 
+/** The visibility choice for the journey page controls layout visibility independently from message selection. */
+export type FrameMessageSelectionDisplay = 'automatic' | 'show' | 'hide';
+
+/** Apply the Pages setting to a generated frame: hide layouts while preserving a user-selected message across all layouts. */
+export function frameWithSelectionDisplay(frame: CaptureFrame | null | undefined, display: FrameMessageSelectionDisplay = 'automatic'): CaptureFrame | null {
+  if (!frame) return null;
+  if (display === 'show') {
+    return { ...frame, selection: { layout: { mode: 'user', pick: null }, message: { mode: 'user', pick: null } } };
+  }
+  if (display !== 'hide' || !frame.selection) return frame;
+  const layouts = [...new Set(frame.variants.map((variant) => variant.frameId ?? 'generated'))];
+  const soleLayout = layouts.length === 1 ? layouts[0] : null;
+  const savedLayout = frame.selection.layout;
+  return {
+    ...frame,
+    selection: {
+      // Hide frame choices by randomising multiple layouts; one layout is the editor's only available choice.
+      layout: layouts.length > 1
+        ? { mode: 'random', pick: null }
+        : soleLayout
+          ? { mode: 'editor', pick: savedLayout.mode === 'editor' && savedLayout.pick === soleLayout ? savedLayout.pick : soleLayout }
+          : savedLayout,
+      // Message mode is independent, so a user can still choose among all messages when layouts are hidden.
+      message: frame.selection.message,
+    },
+  };
+}
+
 /** A layer box as fractions (0..1) of the frame, for the 50% black territory shown before the real composition. */
 export interface Territory {
   id: LayerId;

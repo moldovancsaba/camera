@@ -8,7 +8,7 @@ test('every journey page is locked against zoom except the consent page, which i
   assert.deepEqual(
     locked.sort(),
     // SUBMIT is a marker page that is never shown (issue 535); it is locked like any type nobody decided about.
-    [CustomPageType.WHO_ARE_YOU, CustomPageType.CTA, CustomPageType.TAKE_PHOTO, CustomPageType.SUBMIT, CustomPageType.RESTART, CustomPageType.WELCOME].sort()
+    [CustomPageType.WHO_ARE_YOU, CustomPageType.CTA, CustomPageType.TAKE_PHOTO, CustomPageType.SUBMIT, CustomPageType.RESTART, CustomPageType.WELCOME, CustomPageType.FRAME_MESSAGE_SELECTION].sort()
   );
   assert.equal(phasePageLock(CustomPageType.ACCEPT), 'none');
   assert.equal(phasePageLock('something-new'), 'zoom', 'a page type added later is locked until someone decides it is for reading');
