@@ -26,18 +26,24 @@ export type StepKey = (typeof STEP_KEYS)[number];
 export const SHARE_CHANNELS = ['copy', 'facebook', 'twitter', 'linkedin', 'whatsapp'] as const;
 export type ShareChannel = (typeof SHARE_CHANNELS)[number];
 
-/** How long a user took from opening the page to the first saved photo. */
+/** Bounded duration bands for capture-flow completion. */
 export const TIME_BUCKETS = ['under-1m', '1-3m', '3-10m', '10-30m', 'over-30m'] as const;
 export type TimeBucket = (typeof TIME_BUCKETS)[number];
 
 export const DEVICE_KEYS = ['ios', 'android', 'desktop', 'unknown'] as const;
+export const CAPTURE_METHOD_KEYS = ['system', 'still', 'frame'] as const;
+export const UPLOAD_DURATION_BUCKETS = ['under-2s', '2-5s', '5-15s', '15-60s', 'over-60s'] as const;
+const TRANSITION_KEYS = STEP_KEYS.flatMap((from) => STEP_KEYS.filter((to) => to !== from).map((to) => `${from}>${to}`));
+const UPLOAD_OUTCOME_KEYS = CAPTURE_METHOD_KEYS.flatMap((method) => ['succeeded', 'failed'].map((outcome) => `${method}_${outcome}`));
+const UPLOAD_DURATION_KEYS = CAPTURE_METHOD_KEYS.flatMap((method) => UPLOAD_DURATION_BUCKETS.map((bucket) => `${method}_${bucket}`));
+const AUTH_RESULT_KEYS = (['google', 'facebook'] as const).flatMap((provider) => ['success', 'cancelled', 'provider_error', 'callback_error', 'session_expired'].map((outcome) => `${provider}_${outcome}`));
 
 /**
  * Every name that can be recorded, with the keys it may carry (`null`: no key) and who may record it. `client` names arrive through the public endpoint; `server` names are written by
  * the server itself when the share page is opened and the photo is downloaded (those make a server call anyway), so the endpoint refuses them. `serverKey` marks a name whose key the
  * server makes (the device kind of a `journey.start`, read from the request and not kept): whatever key the browser sends is ignored.
  */
-type VocabularyEntry = { keys: readonly string[] | null; from: 'client' | 'server'; serverKey?: true };
+type VocabularyEntry = { keys: readonly string[] | null; from: 'client' | 'server'; serverKey?: true; serverPrefix?: true };
 
 export const JOURNEY_VOCABULARY = {
   /** The page opened. The key is the kind of device, which the server reads from the request and does not keep. */
@@ -46,6 +52,8 @@ export const JOURNEY_VOCABULARY = {
   'journey.resume': { keys: null, from: 'client' },
   /** A step was reached for the first time in this visit. */
   'step.reach': { keys: STEP_KEYS, from: 'client' },
+  /** A visit moved directly from one known journey step to another, once per direction and visit. */
+  'step.transition': { keys: TRANSITION_KEYS, from: 'client' },
   /** The consent was shown (`page`: its own page, `box`: the box on the Who-are-you page), once per visit. */
   'consent.shown': { keys: ['page', 'box'], from: 'client' },
   'consent.accept': { keys: ['page', 'box'], from: 'client' },
@@ -53,17 +61,29 @@ export const JOURNEY_VOCABULARY = {
   'camera.permission': { keys: ['granted', 'denied', 'unavailable'], from: 'client' },
   /** A photo was taken, and how (the device's own camera, a real still, a video frame). */
   'photo.taken': { keys: ['system', 'still', 'frame'], from: 'client' },
-  /** The camera original's event-scoped temporary upload, before final submission. */
+  /** The established photo submission upload started or completed. */
   'photo.upload': { keys: ['started', 'succeeded', 'failed'], from: 'client' },
+  /** A full upload attempt by coarse device class and capture method; the server supplies the device. */
+  'photo.upload.attempt': { keys: CAPTURE_METHOD_KEYS, from: 'client', serverPrefix: true },
+  'photo.upload.result': { keys: UPLOAD_OUTCOME_KEYS, from: 'client', serverPrefix: true },
+  'photo.upload.duration': { keys: UPLOAD_DURATION_KEYS, from: 'client', serverPrefix: true },
   /** Back from the move-and-zoom step to the camera. */
   'photo.retake': { keys: null, from: 'client' },
   'photo.save': { keys: ['ok', 'failed'], from: 'client' },
-  /** The first saved photo of the visit; the key is how long it took. */
+  /** Legacy milestone retained for continuity: the first photo saved during this visit. */
   'journey.complete': { keys: TIME_BUCKETS, from: 'client' },
+  /** The guest reached the end of the configured journey after saving the photo. */
+  'journey.flow.complete': { keys: TIME_BUCKETS, from: 'client' },
   /** A guest pressed an enabled call-to-action action at least once in this visit. */
   'cta.click': { keys: null, from: 'client' },
+  /** The bounded action type on a call-to-action page. */
+  'cta.action': { keys: ['external', 'continue'], from: 'client' },
+  /** Return to the capture tab after opening an external CTA destination. */
+  'cta.return': { keys: null, from: 'client' },
   /** The sign-in/identity method the guest selected or successfully submitted; this is a choice, not proof of authentication. */
   'login.method': { keys: ['google', 'facebook', 'pseudo'], from: 'client' },
+  /** OAuth callback outcome, recorded server-side without identity or token fields. */
+  'auth.result': { keys: AUTH_RESULT_KEYS, from: 'server' },
   'share.click': { keys: SHARE_CHANNELS, from: 'client' },
   /** The public photo page was opened by a person (not a link preview). */
   'share.view': { keys: null, from: 'server' },
@@ -144,7 +164,7 @@ export function parseJourneyBatch(text: string): JourneyBatch | null {
 }
 
 /**
- * How long a user took from opening the page to the first saved photo, in the buckets of the Analytics view. Pure.
+ * Capture-flow duration bucket used for saved-photo and final-page milestones. Pure.
  */
 export function timeBucketOf(ms: number): TimeBucket {
   const minutes = clampMs(ms) / 60000;
@@ -153,4 +173,12 @@ export function timeBucketOf(ms: number): TimeBucket {
   if (minutes < 10) return '3-10m';
   if (minutes < 30) return '10-30m';
   return 'over-30m';
+}
+
+export function uploadDurationBucketOf(ms: number): (typeof UPLOAD_DURATION_BUCKETS)[number] {
+  if (ms < 2000) return 'under-2s';
+  if (ms < 5000) return '2-5s';
+  if (ms < 15000) return '5-15s';
+  if (ms < 60000) return '15-60s';
+  return 'over-60s';
 }

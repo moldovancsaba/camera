@@ -36,11 +36,13 @@
 
 ## Unreleased — complete the capture analytics audit and requested measures (2026-10-14)
 
-- **Added:** Journey Analytics now reports average and median time from capture-page open to first saved photo, unique CTA click-through, and shares of Google, Facebook and Pseudo identity-route choices. These are event-scoped counts; provider entries are selections, not successful sign-ins.
+- **Added:** Journey Analytics now reports step-to-step movement and completion from capture-page open through the final configured page after saving the photo, plus average/median duration, upload reliability, CTA actions/returns, Google/Facebook callback outcomes, and Google/Facebook/Pseudo route-choice shares. These are event-scoped counts; provider entries are selections, not successful sign-ins.
 - **Clarified:** Vetting shows each structured rejection reason as a share of currently rejected photos (a photo can have multiple reasons). Photos and users shows returning/new shares among identifiable users in the selected date range; “returning” means two or more photo submissions in that range.
-- **Documented:** `docs/ANALYTICS_DATA_DICTIONARY.md` audits collection fields and retention, distinguishes anonymous Journey records from identifiable submissions, explains metric denominators and limitations, and recommends next low-data measurement improvements. Analytics, Journey, audit, architecture, runbook and handover docs now point to current definitions.
-- **Privacy limit:** Raw Journey timings expire after 30 days; older daily aggregates remain. A page resumed after SSO starts a new in-memory timer, so pre-login time is not included when sign-in happens before photo saving.
-- **Verification:** Not yet run in this change.
+- **Documented:** `docs/ANALYTICS_DATA_DICTIONARY.md` audits stored fields, operational logs, collection paths and retention; distinguishes anonymous Journey records from identifiable submissions; explains metric denominators and limitations; relates Camera counters to Messmass's variable catalog; and recommends privacy-preserving KYC boundaries. Analytics, Journey, privacy, architecture, runbook and handover docs point to current definitions.
+- **Expanded:** added step transitions, upload outcomes and duration bands, bounded SSO callback categories, CTA action/return signals, pending-review age buckets, validated tracked-link attribution to saved photos, and cross-event returning-photo cohorts. The cross-event report returns aggregates only and does not store a person map.
+- **Messmass:** additive `camera_` aggregates now cover the new measures; journey batches, new submissions and tracked-link hits schedule the existing coalesced full-event sync. Duration is exported as a total plus sample count, so cross-event averages can be correctly weighted. The global sender remains off by default.
+- **Privacy and retention:** raw Journey rows expire after 30 days. Daily duration sums/sample counts remain as aggregates. A capture start timestamp is held in tab session storage only to preserve elapsed duration across an SSO reload, with a six-hour bound and clearing after the final configured page. Source attribution stores only a tracked-link slug validated against the event.
+- **Verification:** type-check, lint and production build passed. The test suite and live browser flow were not run in this change.
 
 ## Unreleased — resume social login by stable journey page ID (2026-10-14)
 

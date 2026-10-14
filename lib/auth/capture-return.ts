@@ -33,10 +33,15 @@ export interface CaptureReturn {
   submissionId?: string;
   /** Stable identity of the login page; page order can change while SSO is open. */
   pageId?: string;
+  /** Allow-listed short-link slug to retain campaign source through the SSO round trip. */
+  sourceSlug?: string;
+  /** Selected SSO provider, used only for a bounded callback outcome count. */
+  provider?: 'google' | 'facebook';
 }
 
 const POPUP_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAGE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+const SOURCE_SLUG = /^[a-z0-9-]{1,32}$/;
 export const parseCapturePopupId = (value: unknown): string | null => typeof value === 'string' && POPUP_ID.test(value) ? value : null;
 export const parseCapturePageId = (value: unknown): string | null => typeof value === 'string' && PAGE_ID.test(value) ? value : null;
 
@@ -52,18 +57,18 @@ export function parseCaptureSubmissionId(value: unknown): string | null {
   return typeof value === 'string' && /^[a-f\d]{24}$/i.test(value) ? value : null;
 }
 
-export const encodeCaptureReturn = (r: CaptureReturn): string => r.pageId
-  ? [r.eventId, r.page ?? '', r.popupId ?? '', r.phase ?? '', r.submissionId ?? '', r.pageId].join(':')
-  : `${r.eventId}:${r.page ?? ''}${r.popupId || r.phase || r.submissionId ? `:${r.popupId ?? ''}` : ''}${r.phase || r.submissionId ? `:${r.phase ?? ''}` : ''}${r.submissionId ? `:${r.submissionId}` : ''}`;
+export const encodeCaptureReturn = (r: CaptureReturn): string => [r.eventId, r.page ?? '', r.popupId ?? '', r.phase ?? '', r.submissionId ?? '', r.pageId ?? '', r.sourceSlug ?? '', r.provider ?? ''].join(':');
 
 export function decodeCaptureReturn(value: string | undefined | null): CaptureReturn | null {
   if (!value) return null;
   const [eventId, page] = value.split(':');
-  const [, , popupId, phase, submissionId, pageId] = value.split(':');
+  const [, , popupId, phase, submissionId, pageId, sourceSlug, provider] = value.split(':');
   const parsed = parseCaptureReturn(eventId, page, popupId, phase);
   const validSubmissionId = parseCaptureSubmissionId(submissionId);
   const validPageId = parseCapturePageId(pageId);
-  return parsed ? { ...parsed, ...(validSubmissionId ? { submissionId: validSubmissionId } : {}), ...(validPageId ? { pageId: validPageId } : {}) } : null;
+  const validSourceSlug = typeof sourceSlug === 'string' && SOURCE_SLUG.test(sourceSlug) ? sourceSlug : null;
+  const validProvider = provider === 'google' || provider === 'facebook' ? provider : null;
+  return parsed ? { ...parsed, ...(validSubmissionId ? { submissionId: validSubmissionId } : {}), ...(validPageId ? { pageId: validPageId } : {}), ...(validSourceSlug ? { sourceSlug: validSourceSlug } : {}), ...(validProvider ? { provider: validProvider } : {}) } : null;
 }
 
 /** The page to open after the login: the capture page, with the resume signal when the step is known. */
@@ -74,6 +79,7 @@ export function captureReturnPath(r: CaptureReturn): string {
   if (r.pageId) query.set('pageId', r.pageId);
   if (r.phase) query.set('phase', r.phase);
   if (r.submissionId) query.set('submission', r.submissionId);
+  if (r.sourceSlug) query.set('source', r.sourceSlug);
   return `/capture/${r.eventId}?${query.toString()}`;
 }
 
@@ -83,7 +89,9 @@ export function captureReturnForLogin(request: NextRequest): CaptureReturn | nul
   const target = parseCaptureReturn(params.get('captureEvent'), params.get('capturePage'), params.get('capturePopup'), params.get('capturePhase'));
   const submissionId = parseCaptureSubmissionId(params.get('captureSubmission'));
   const pageId = parseCapturePageId(params.get('capturePageId'));
-  return target ? { ...target, ...(submissionId && target.phase === 'presubmit' ? { submissionId } : {}), ...(pageId ? { pageId } : {}) } : null;
+  const sourceSlug = params.get('captureSource');
+  const provider = params.get('provider');
+  return target ? { ...target, ...(submissionId && target.phase === 'presubmit' ? { submissionId } : {}), ...(pageId ? { pageId } : {}), ...(sourceSlug && SOURCE_SLUG.test(sourceSlug) ? { sourceSlug } : {}), ...(provider === 'google' || provider === 'facebook' ? { provider } : {}) } : null;
 }
 
 /** Records the target on the login's redirect to SSO; with no target it removes an older one, so a dashboard login is never sent to a selfie page. */

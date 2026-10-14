@@ -15,7 +15,7 @@
  * (client.test.ts) and with a hanging, failing and refusing server in the browser harness.
  */
 
-import { JOURNEY_ENDPOINT, JOURNEY_MAX_BYTES, JOURNEY_MAX_EVENTS, JOURNEY_VERSION, NO_KEY, isJourneyKey, isJourneyName, timeBucketOf, JOURNEY_VOCABULARY, type JourneyName } from './events';
+import { JOURNEY_ENDPOINT, JOURNEY_MAX_BYTES, JOURNEY_MAX_EVENTS, JOURNEY_VERSION, NO_KEY, isJourneyKey, isJourneyName, timeBucketOf, uploadDurationBucketOf, JOURNEY_VOCABULARY, type JourneyName } from './events';
 
 /** Records wait this long after the last one, so a step change is one request. */
 export const FLUSH_DELAY_MS = 1500;
@@ -39,13 +39,21 @@ export interface JourneyDeps {
 
 export interface JourneyRecorder {
   /** Starts the recording of this page load; only the first call counts. `resumed` is true when the page opened again after a sign-in. */
-  start(options: { eventId: string; resumed?: boolean }): void;
+  start(options: { eventId: string; resumed?: boolean; elapsedMs?: number }): void;
   /** Queues a record (dropped when the recording is not started, the name or key is not in the vocabulary, or the visit has sent enough). */
   record(name: JourneyName, key?: string | null): void;
   /** Like `record`, but only the first time in this visit for this name and key. */
   once(name: JourneyName, key?: string | null): void;
-  /** The photo was saved (`ok`) or the save failed; the first saved photo of the visit also records how long the visit took. */
+  /** The photo save succeeded or failed. */
   saved(ok: boolean): void;
+  /** The guest reached the end of the configured journey after saving. */
+  finish(): void;
+  /** Record the start and outcome/duration of an upload without delaying the upload itself. */
+  uploadStarted(method: 'system' | 'still' | 'frame'): void;
+  uploadFinished(method: 'system' | 'still' | 'frame', ok: boolean): void;
+  /** Record a bounded external CTA action and, if the browser returns focus, its return signal. */
+  externalCtaOpened(): void;
+  ctaReturned(): void;
   /** Sends what is waiting now, with the browser's beacon (the page is being hidden or closed). */
   flushNow(): void;
   /** Whether the recording is running (for the page's own cleanup). */
@@ -61,7 +69,10 @@ export function createJourneyRecorder(deps: JourneyDeps): JourneyRecorder {
   let timer: unknown = null;
   let inFlight = false;
   let completed = false;
+  let flowFinished = false;
   const seen = new Set<string>();
+  const uploadStartedAt = new Map<string, number>();
+  let externalCtaPending = false;
 
   const body = (events: Tuple[]): string => JSON.stringify({ v: JOURNEY_VERSION, s: visit, e: eventId, ev: events });
 
@@ -133,18 +144,21 @@ export function createJourneyRecorder(deps: JourneyDeps): JourneyRecorder {
   };
 
   const api: JourneyRecorder = {
-    start({ eventId: id, resumed }) {
+    start({ eventId: id, resumed, elapsedMs = 0 }) {
       try {
         if (!id || eventId === id) return;
         // Another event in the same page load (a client-side navigation): what waits for the old one goes out, and this is a new visit.
         if (eventId !== null) api.flushNow();
         eventId = id;
         visit = deps.newVisitId();
-        startedAt = deps.now();
+        startedAt = deps.now() - Math.max(0, Math.min(6 * 60 * 60 * 1000, Math.round(elapsedMs)));
         queue = [];
         recorded = 0;
         completed = false;
+        flowFinished = false;
         seen.clear();
+        uploadStartedAt.clear();
+        externalCtaPending = false;
         record(resumed ? 'journey.resume' : 'journey.start');
       } catch {
         eventId = null;
@@ -171,6 +185,45 @@ export function createJourneyRecorder(deps: JourneyDeps): JourneyRecorder {
       } catch {
         // see record
       }
+    },
+    finish() {
+      try {
+        if (flowFinished || eventId === null) return;
+        flowFinished = true;
+        record('journey.flow.complete', timeBucketOf(deps.now() - startedAt));
+      } catch {
+        // Journey analytics cannot affect the capture flow.
+      }
+    },
+    uploadStarted(method) {
+      try {
+        uploadStartedAt.set(method, deps.now());
+        record('photo.upload', 'started');
+        record('photo.upload.attempt', method);
+      } catch {
+        // Analytics cannot affect photo upload.
+      }
+    },
+    uploadFinished(method, ok) {
+      try {
+        record('photo.upload', ok ? 'succeeded' : 'failed');
+        record('photo.upload.result', `${method}_${ok ? 'succeeded' : 'failed'}`);
+        const started = uploadStartedAt.get(method);
+        uploadStartedAt.delete(method);
+        if (started !== undefined) record('photo.upload.duration', `${method}_${uploadDurationBucketOf(Math.max(0, deps.now() - started))}`);
+      } catch {
+        // Analytics cannot affect photo upload.
+      }
+    },
+    externalCtaOpened() {
+      externalCtaPending = true;
+      api.once('cta.action', 'external');
+      api.once('cta.click');
+    },
+    ctaReturned() {
+      if (!externalCtaPending) return;
+      externalCtaPending = false;
+      api.once('cta.return');
     },
     flushNow() {
       try {

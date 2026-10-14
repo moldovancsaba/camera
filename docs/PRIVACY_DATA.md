@@ -1,6 +1,6 @@
 # What camera stores about a user, and for how long
 
-Written for owner decision 243 (2026-10-10, issue 521 phase 2): **stop storing the IP address of every photo, and review the full device string.** It is the one place that lists what is kept about the people who use the capture pages, where, and for how long, so the privacy notice and the answers to a request can be checked against it. The plan and the other decisions are in [ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md); the anonymous journey recording has its own page, [JOURNEY_RECORDING.md](JOURNEY_RECORDING.md). State of 2026-10-13.
+Written for owner decision 243 (2026-10-10, issue 521 phase 2): **stop storing the IP address of every photo, and review the full device string.** It is the one place that lists what is kept about the people who use the capture pages, where, and for how long, so the privacy notice and the answers to a request can be checked against it. The plan and the other decisions are in [ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md); the anonymous journey recording has its own page, [JOURNEY_RECORDING.md](JOURNEY_RECORDING.md). State of 2026-10-14.
 
 ## The decision and what changed
 
@@ -26,13 +26,18 @@ Written for owner decision 243 (2026-10-10, issue 521 phase 2): **stop storing t
 | What the vetting person marked in the photo (issue 628) | on the photo: `people`, `peopleReview`, `rejectReasons` | for each person in the picture a rectangle and the words chosen from the list of the event (gender and age as the person looks in the photo, how they look, what they wear or hold), who marked it (the reviewer's e-mail) and when, the version of the list used; for a rejected photo the reasons from a fixed list and the optional note. **These are a reviewer's reading of the picture, not facts about the person, and are kept with the photo; no name, e-mail or identity of the people in the picture is added.** Counted per event for the Analytics (and, once the owner switches it on, as `camera_` totals for messmass: counts only, never a person). **Rejected photos are marked too** and stay private (never shown to anyone but the vetting person). Not exported and not used to train anything; whether the terms the user accepted cover that is a question for legal ([AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md](AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md)) | with the photo |
 | Consents | on the photo, `consents[]` | the page, the exact text and link, the sentence read, accepted, the time. Only acceptances exist | with the photo |
 | Registration | `email_registrations` | the event, e-mail, name, first and last seen, whether the welcome e-mail went (only for events that send it) | until removed |
-| The anonymous journey | `journey_daily`, `journey_events` | counts and anonymous steps, **no IP address, no user agent, no cookie, no person** | rows 30 days, counts for good |
+| The anonymous journey | `journey_daily`, `journey_events` | fixed event/key counts, anonymous step transitions, upload outcome/duration bands and coarse device/method categories; no IP address, retained user agent, account identity or photo | raw rows 30 days; daily counts and completed-duration sum/sample aggregates indefinitely |
+| SSO completion analytics | `journey_daily`, `journey_events` | provider and bounded callback outcome category only; no account, token, raw error or provider response | raw rows 30 days; aggregate counts indefinitely |
+| Source-to-photo attribution | `submissions.metadata.sourceLinkSlug` | tracked-link slug validated against the event's link record; no arbitrary query string | with the photo submission |
 | Visits to a tracked link | `short_link_hits` | a count per link, day and kind of phone (`android`, `iphone`, `other`); bots and previews are not counted | for good |
 | Camera diagnostics | log lines only (`camera.capture_diagnostic`) | a random id of the page visit, the camera mode, timings, sizes, **the user agent cut at 200 characters**; no IP address, name, e-mail, image or cookie. Not stored in the database | the log service's retention |
 | Screen diagnostics | log lines only (`camera.slideshow_diagnostic`) | the same kind of record from the giant screens | the log service's retention |
 | A crash of a page | log line (`/api/observability/client-error`) | the error, the address of the page, the user agent | the log service's retention |
 | People who manage the service | `activity_log` | who did what and when, the outcome; **no IP address, no request body** | until the weekly export after the one that sent it |
 | A signed-in session | `web_sessions` | the session payload of a signed-in person | until it expires |
+| SSO elapsed-flow continuity | browser `sessionStorage` | event-scoped capture start timestamp only, used to span the SSO page reload; no visit ID or identity | until the final configured page, six-hour expiry/reset, or the tab is closed |
+
+The Analytics all-events repeat cohort groups existing photo submitter account/e-mail values in memory for a report and returns only counts to global admins. It does not create a stored cross-event identity map or join identities to anonymous Journey rows. The source slug is a narrow attribution field on the submission and should be included in the photo's normal deletion lifecycle.
 
 ## The IP address, everywhere it still appears
 

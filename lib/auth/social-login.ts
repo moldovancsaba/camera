@@ -20,7 +20,7 @@ export function parseLoginProvider(
  */
 export function socialLoginHref(
   provider: SocialLoginProvider,
-  options?: { fromLogout?: boolean; captureEventId?: string; capturePage?: number; capturePageId?: string; capturePopup?: string; capturePhase?: 'onboarding' | 'presubmit'; captureSubmissionId?: string }
+  options?: { fromLogout?: boolean; captureEventId?: string; capturePage?: number; capturePageId?: string; capturePopup?: string; capturePhase?: 'onboarding' | 'presubmit'; captureSubmissionId?: string; captureSourceSlug?: string }
 ): string {
   const p = new URLSearchParams({ provider });
   if (options?.fromLogout) p.set('from_logout', 'true');
@@ -30,5 +30,6 @@ export function socialLoginHref(
   if (options?.capturePopup) p.set('capturePopup', options.capturePopup);
   if (options?.capturePhase) p.set('capturePhase', options.capturePhase);
   if (options?.capturePhase === 'presubmit' && options.captureSubmissionId && /^[a-f\d]{24}$/i.test(options.captureSubmissionId)) p.set('captureSubmission', options.captureSubmissionId);
+  if (options?.captureSourceSlug && /^[a-z0-9-]{1,32}$/.test(options.captureSourceSlug)) p.set('captureSource', options.captureSourceSlug);
   return `/api/auth/login?${p.toString()}`;
 }

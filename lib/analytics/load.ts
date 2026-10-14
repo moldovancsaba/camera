@@ -13,6 +13,7 @@ import { PHOTO_PROJECTION, photoFactsOf, type PhotoFacts } from './facts';
 import { loadJourneySummary, type JourneySummary } from './journey';
 import { buildEventReport, buildEventsTable, type EventReport, type EventsTableRow, type RegistrationFact, type ReportOptions } from './report';
 import { buildSourcesReport, type SourceHit, type SourceLink, type SourcesReport } from './sources';
+import { dayInRange, localParts } from './time';
 
 export interface AnalyticsEvent {
   /** The Mongo id as a string (`/admin/events/<id>`, the key of the short link rows). */
@@ -87,7 +88,7 @@ export async function loadSlideshowNames(db: Db, event: AnalyticsEvent): Promise
   return docs.filter((doc) => typeof doc.slideshowId === 'string').map((doc) => ({ id: String(doc.slideshowId), name: text(doc.name) ?? 'Slideshow' }));
 }
 
-export async function loadSources(db: Db, event: AnalyticsEvent, range: { from?: string | null; to?: string | null }): Promise<SourcesReport> {
+export async function loadSources(db: Db, event: AnalyticsEvent, range: { from?: string | null; to?: string | null }, photos: readonly PhotoFacts[] = []): Promise<SourcesReport> {
   const [linkDocs, hitDocs] = await Promise.all([
     db.collection(COLLECTIONS.SHORT_LINKS).find({ eventId: event.id }).toArray(),
     db.collection(COLLECTIONS.SHORT_LINK_HITS).find({ eventId: event.id }, { projection: { slug: 1, day: 1, device: 1, count: 1 } }).toArray(),
@@ -98,7 +99,12 @@ export async function loadSources(db: Db, event: AnalyticsEvent, range: { from?:
   const hits: SourceHit[] = hitDocs
     .filter((doc) => typeof doc.slug === 'string' && typeof doc.day === 'string')
     .map((doc) => ({ slug: String(doc.slug), day: String(doc.day), device: doc.device === 'android' || doc.device === 'iphone' ? doc.device : 'other', count: typeof doc.count === 'number' ? doc.count : 0 }));
-  return buildSourcesReport(links, hits, event.shortUrlSlug, range);
+  const submissions = photos.flatMap((photo) => {
+    if (photo.source !== 'user' || photo.excluded || !photo.sourceSlug || !photo.createdAt) return [];
+    const date = new Date(photo.createdAt);
+    return Number.isNaN(date.getTime()) ? [] : [{ slug: photo.sourceSlug, day: date.toISOString().slice(0, 10) }];
+  });
+  return buildSourcesReport(links, hits, event.shortUrlSlug, range, submissions);
 }
 
 export interface EventAnalytics {
@@ -111,20 +117,22 @@ export interface EventAnalytics {
 
 /** Everything the Analytics view of one event shows, in the words of the event's annotation vocabulary. */
 export async function loadEventAnalytics(db: Db, event: AnalyticsEvent, options: ReportOptions): Promise<EventAnalytics> {
-  const [photos, registrations, slideshows, sources, journey, vocabulary] = await Promise.all([
+  const [photos, registrations, slideshows, journey, vocabulary] = await Promise.all([
     loadPhotoFacts(db, event),
     loadRegistrations(db, event),
     loadSlideshowNames(db, event),
-    loadSources(db, event, options),
     loadJourneySummary(db, event.eventId, options),
     loadEventVocabulary(db, { partnerId: event.partnerId, annotationVocabulary: event.annotationVocabulary }),
   ]);
+  const sources = await loadSources(db, event, options, photos);
   return { event, report: buildEventReport({ photos, registrations, slideshows, vocabulary }, { ...options, eventKey: event.eventId }), sources, journey };
 }
 
 export interface AllEventsAnalytics {
   report: EventReport;
   table: EventsTableRow[];
+  /** Aggregate-only: identifiable users active in the selected range who have photo records in more than one event at any time. */
+  crossEventReturning: { returning: number; identifiable: number; share: number | null };
 }
 
 /** The same numbers over every event, and one row per event. */
@@ -136,5 +144,21 @@ export async function loadAllEventsAnalytics(db: Db, options: ReportOptions): Pr
   ]);
   const events = eventDocs.filter((doc) => typeof doc.eventId === 'string').map((doc) => ({ key: String(doc.eventId), id: String(doc._id), name: text(doc.name) ?? String(doc.eventId) }));
   const slideshows = slideshowDocs.filter((doc) => typeof doc.slideshowId === 'string').map((doc) => ({ id: String(doc.slideshowId), name: text(doc.name) ?? 'Slideshow' }));
-  return { report: buildEventReport({ photos, slideshows }, options), table: buildEventsTable(photos, events, options) };
+  const eventSets = new Map<string, Set<string>>();
+  const activeUsers = new Set<string>();
+  const range = new Set(photos.filter((photo) => photo.source === 'user' && !photo.excluded && photo.userKey && (() => {
+    if (!options.from && !options.to) return true;
+    const day = localParts(photo.createdAt, options.timeZone)?.day;
+    return day ? dayInRange(day, options.from, options.to) : false;
+  })()).map((photo) => photo.userKey as string));
+  for (const photo of photos) {
+    if (photo.source !== 'user' || photo.excluded || !photo.userKey) continue;
+    const eventsForUser = eventSets.get(photo.userKey) ?? new Set<string>();
+    for (const eventKey of photo.eventKeys) if (eventKey) eventsForUser.add(eventKey);
+    if (photo.eventKey) eventsForUser.add(photo.eventKey);
+    eventSets.set(photo.userKey, eventsForUser);
+  }
+  for (const userKey of range) activeUsers.add(userKey);
+  const returning = [...activeUsers].filter((userKey) => (eventSets.get(userKey)?.size ?? 0) > 1).length;
+  return { report: buildEventReport({ photos, slideshows }, options), table: buildEventsTable(photos, events, options), crossEventReturning: { returning, identifiable: activeUsers.size, share: activeUsers.size > 0 ? returning / activeUsers.size : null } };
 }

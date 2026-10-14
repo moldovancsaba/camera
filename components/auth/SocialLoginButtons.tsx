@@ -21,18 +21,19 @@ export interface SocialLoginButtonsProps {
   capturePageId?: string;
   capturePhase?: 'onboarding' | 'presubmit';
   captureSubmissionId?: string | null;
+  captureSourceSlug?: string | null;
   /** Presubmit sign-in persists the current photo before the same-tab SSO redirect. */
   onBeforeCaptureLogin?: () => Promise<boolean>;
   /** Both buttons are off (the acceptance on the Who-are-you page is not ticked yet). */
   disabled?: boolean;
 }
 
-export default function SocialLoginButtons({ fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId, onBeforeCaptureLogin, disabled = false }: SocialLoginButtonsProps) {
+export default function SocialLoginButtons({ fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId, captureSourceSlug, onBeforeCaptureLogin, disabled = false }: SocialLoginButtonsProps) {
   const { t } = useT();
   const [preparing, setPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState(false);
-  const googleHref = socialLoginHref('google', { fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId: captureSubmissionId ?? undefined });
-  const facebookHref = socialLoginHref('facebook', { fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId: captureSubmissionId ?? undefined });
+  const googleHref = socialLoginHref('google', { fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId: captureSubmissionId ?? undefined, captureSourceSlug: captureSourceSlug ?? undefined });
+  const facebookHref = socialLoginHref('facebook', { fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId: captureSubmissionId ?? undefined, captureSourceSlug: captureSourceSlug ?? undefined });
 
   const followSso = async (event: MouseEvent<HTMLAnchorElement>, provider: 'google' | 'facebook') => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

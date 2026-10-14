@@ -1,7 +1,5 @@
 /**
- * The journey figures of the Analytics view (issue 521, phase 2; docs/JOURNEY_RECORDING.md): how many people opened the capture page, which steps they reached, how many saved a photo and how
- * long that took, the camera permission, retakes, the consent shown and left, and the shares and downloads of the photo link. Everything is read from the **daily counts** the recording keeps
- * (`journey_daily`: a count for each event, UTC day, name and key; nothing about a person), plus, for the median time, the raw rows of the last 30 days.
+ * The journey figures of the Analytics view (issue 521, phase 2; docs/JOURNEY_RECORDING.md): visits, reached steps and transitions, photo/upload outcomes, CTA and sign-in outcomes, consent and share interactions. Counts and completion duration sums/samples come from durable daily aggregates; medians and duration bands use raw rows retained for 30 days. Journey events contain no guest identity.
  *
  * What the numbers are, and are not:
  * - **A visit is a page load** with the anonymous id the page made for it (it is not a person: the same user opening the link twice is two visits, and a return from a sign-in is not a
@@ -16,7 +14,7 @@
 
 import type { Db } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { SHARE_CHANNELS, STEP_KEYS, TIME_BUCKETS, isJourneyName, type JourneyName } from '@/lib/journey/events';
+import { CAPTURE_METHOD_KEYS, DEVICE_KEYS, SHARE_CHANNELS, STEP_KEYS, TIME_BUCKETS, UPLOAD_DURATION_BUCKETS, isJourneyName, type JourneyName } from '@/lib/journey/events';
 import { average, dayInRange, median } from './time';
 
 export interface JourneyRow {
@@ -25,6 +23,9 @@ export interface JourneyRow {
   name: JourneyName;
   key: string;
   count: number;
+  /** Durable completed-journey duration totals; absent on legacy daily rows. */
+  durationTotalMs?: number;
+  durationSamples?: number;
 }
 
 export interface JourneyTally {
@@ -64,22 +65,33 @@ export interface JourneySummary {
   resumed: number;
   devices: JourneyTally[];
   steps: Array<JourneyTally & { shareOfOpens: number | null }>;
+  /** Observed direct step-to-step movement, counted once per visit and directed edge. */
+  transitions: Array<{ id: string; label: string; from: string; to: string; count: number; shareOfFrom: number | null }>;
   completed: number;
-  /** Completed over opens; null before the first open. */
+  /** Visits with a first successful photo save over opens; null before the first open. */
   completionRate: number | null;
+  /** Visits that reached the final configured page after saving a photo. */
+  finished: number;
+  /** Finished journeys over opens; null before the first open. */
+  finishRate: number | null;
   timeToComplete: JourneyTally[];
-  /** The median seconds from opening to the first saved photo over the raw rows still kept (30 days); null when there are none. */
+  /** The median seconds from opening through the last configured page over raw rows still kept (30 days); null when there are none. */
   medianCompleteSeconds: number | null;
-  /** The average seconds from opening the capture page to the first saved photo, over the same raw rows (30 days). */
+  /** The average seconds from opening the capture page through the last configured page. */
   averageCompleteSeconds: number | null;
+  averageCompleteSamples: number;
+  completedDurationTotalMs: number;
   /** A unique visit is counted once after the first CTA action. */
   ctaClicks: number;
   ctaClickRate: number | null;
+  ctaActions: Array<JourneyTally & { shareOfActions: number | null }>;
+  ctaReturns: number;
   /** Provider or pseudo-form selections/submissions; these indicate a chosen route, not a successful SSO login. */
   loginMethods: Array<JourneyTally & { shareOfChoices: number | null }>;
   loginMethodChoices: number;
+  authentication: Array<JourneyTally & { shareOfResults: number | null }>;
   camera: { granted: number; denied: number; unavailable: number; deniedRate: number | null };
-  photos: { taken: number; byMethod: JourneyTally[]; retakes: number; retakesPerPhoto: number | null; uploadStarted: number; uploadSucceeded: number; uploadFailed: number };
+  photos: { taken: number; byMethod: JourneyTally[]; retakes: number; retakesPerPhoto: number | null; uploadStarted: number; uploadSucceeded: number; uploadFailed: number; uploadsByDeviceMethod: Array<{ id: string; label: string; started: number; succeeded: number; failed: number; durations: JourneyTally[] }> };
   saves: { ok: number; failed: number };
   consent: { shown: number; accepted: number; abandoned: number; page: { shown: number; accepted: number }; box: { shown: number; accepted: number } };
   shares: { clicks: number; byChannel: JourneyTally[]; views: number; downloads: number };
@@ -95,6 +107,8 @@ export function summarizeJourney(rows: readonly JourneyRow[], range: { from?: st
   const lastDay = allDays[allDays.length - 1] ?? null;
 
   const counts = new Map<string, number>();
+  const durationTotalMs = rows.filter((row) => dayInRange(row.day, range.from, range.to)).reduce((sum, row) => sum + (row.name === 'journey.flow.complete' ? Math.max(0, row.durationTotalMs ?? 0) : 0), 0);
+  const durationSamples = rows.filter((row) => dayInRange(row.day, range.from, range.to)).reduce((sum, row) => sum + (row.name === 'journey.flow.complete' ? Math.max(0, row.durationSamples ?? 0) : 0), 0);
   const dayRows = new Map<string, { opens: number; completed: number }>();
   for (const row of rows) {
     if (!dayInRange(row.day, range.from, range.to)) continue;
@@ -115,6 +129,7 @@ export function summarizeJourney(rows: readonly JourneyRow[], range: { from?: st
   const deviceKeys = ['ios', 'android', 'desktop', 'unknown'] as const;
   const opens = sum('journey.start', deviceKeys);
   const completed = TIME_BUCKETS.reduce((total, key) => total + at('journey.complete', key), 0);
+  const finished = TIME_BUCKETS.reduce((total, key) => total + at('journey.flow.complete', key), 0);
   const cameraGranted = at('camera.permission', 'granted');
   const cameraDenied = at('camera.permission', 'denied');
   const cameraUnavailable = at('camera.permission', 'unavailable');
@@ -124,6 +139,29 @@ export function summarizeJourney(rows: readonly JourneyRow[], range: { from?: st
   const uploadStarted = at('photo.upload', 'started');
   const uploadSucceeded = at('photo.upload', 'succeeded');
   const uploadFailed = at('photo.upload', 'failed');
+  const transitionCounts = new Map<string, number>();
+  for (const row of rows) if (row.name === 'step.transition' && dayInRange(row.day, range.from, range.to)) transitionCounts.set(row.key, (transitionCounts.get(row.key) ?? 0) + whole(row.count));
+  const transitions = [...transitionCounts.entries()].flatMap(([key, count]) => {
+    const [from, to] = key.split('>');
+    if (!STEP_KEYS.includes(from as (typeof STEP_KEYS)[number]) || !STEP_KEYS.includes(to as (typeof STEP_KEYS)[number])) return [];
+    const fromCount = at('step.reach', from);
+    return [{ id: key, from, to, label: `${STEP_LABELS[from as keyof typeof STEP_LABELS]} → ${STEP_LABELS[to as keyof typeof STEP_LABELS]}`, count, shareOfFrom: fromCount > 0 ? count / fromCount : null }];
+  }).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  const actionKeys = ['external', 'continue'] as const;
+  const ctaActionTotal = actionKeys.reduce((sum, key) => sum + at('cta.action', key), 0);
+  const uploadDevices = DEVICE_KEYS;
+  const uploadMethods = CAPTURE_METHOD_KEYS;
+  const uploadLabels: Record<string, string> = { ios: 'iPhone or iPad', android: 'Android', desktop: 'Desktop', unknown: 'Not recognised', system: "device camera", still: 'live camera still', frame: 'video frame' };
+  const uploadsByDeviceMethod = uploadDevices.flatMap((device) => uploadMethods.map((method) => {
+    const prefix = `${device}_${method}`;
+    const started = at('photo.upload.attempt', `${device}_${method}`);
+    const succeeded = at('photo.upload.result', `${prefix}_succeeded`);
+    const failed = at('photo.upload.result', `${prefix}_failed`);
+    const durations = UPLOAD_DURATION_BUCKETS.map((bucket) => ({ id: bucket, label: ({ 'under-2s': 'Under 2 seconds', '2-5s': '2 to 5 seconds', '5-15s': '5 to 15 seconds', '15-60s': '15 seconds to 1 minute', 'over-60s': 'Over 1 minute' })[bucket], count: at('photo.upload.duration', `${prefix}_${bucket}`) }));
+    return { id: prefix, label: `${uploadLabels[device]} · ${uploadLabels[method]}`, started, succeeded, failed, durations };
+  })).filter((row) => row.started + row.succeeded + row.failed > 0);
+  const authKeys = ['google_success', 'google_cancelled', 'google_provider_error', 'google_callback_error', 'google_session_expired', 'facebook_success', 'facebook_cancelled', 'facebook_provider_error', 'facebook_callback_error', 'facebook_session_expired'] as const;
+  const authTotal = authKeys.reduce((sum, key) => sum + at('auth.result', key), 0);
   const retakes = at('photo.retake');
   const pageShown = at('consent.shown', 'page');
   const boxShown = at('consent.shown', 'box');
@@ -140,13 +178,20 @@ export function summarizeJourney(rows: readonly JourneyRow[], range: { from?: st
     resumed: at('journey.resume'),
     devices: tallies('journey.start', deviceKeys, DEVICE_LABELS),
     steps: STEP_KEYS.map((key) => ({ id: key, label: STEP_LABELS[key], count: at('step.reach', key), shareOfOpens: opens > 0 ? at('step.reach', key) / opens : null })),
+    transitions,
     completed,
     completionRate: opens > 0 ? completed / opens : null,
-    timeToComplete: tallies('journey.complete', TIME_BUCKETS, TIME_LABELS),
+    finished,
+    finishRate: opens > 0 ? finished / opens : null,
+    timeToComplete: tallies('journey.flow.complete', TIME_BUCKETS, TIME_LABELS),
     medianCompleteSeconds: median(medianMs.map((ms) => Math.round(ms / 1000))),
-    averageCompleteSeconds: average(medianMs.map((ms) => ms / 1000)),
+    averageCompleteSeconds: durationSamples > 0 ? durationTotalMs / durationSamples / 1000 : average(medianMs.map((ms) => ms / 1000)),
+    averageCompleteSamples: durationSamples || medianMs.length,
+    completedDurationTotalMs: durationSamples > 0 ? durationTotalMs : Math.round((average(medianMs.map((ms) => ms / 1000)) ?? 0) * (medianMs.length || 0) * 1000),
     ctaClicks: at('cta.click'),
     ctaClickRate: at('step.reach', 'cta') > 0 ? at('cta.click') / at('step.reach', 'cta') : null,
+    ctaActions: actionKeys.map((key) => ({ id: key, label: key === 'external' ? 'External link opened' : 'Continue pressed', count: at('cta.action', key), shareOfActions: ctaActionTotal > 0 ? at('cta.action', key) / ctaActionTotal : null })),
+    ctaReturns: at('cta.return'),
     loginMethods: (() => {
       const choices = sum('login.method', ['google', 'facebook', 'pseudo']);
       return (['google', 'facebook', 'pseudo'] as const).map((key) => ({
@@ -157,8 +202,14 @@ export function summarizeJourney(rows: readonly JourneyRow[], range: { from?: st
       }));
     })(),
     loginMethodChoices: sum('login.method', ['google', 'facebook', 'pseudo']),
+    authentication: authKeys.map((key) => {
+      const [provider, outcome] = key.split('_');
+      const providerLabel = provider === 'google' ? 'Google' : 'Facebook';
+      const outcomeLabel = ({ success: 'completed', cancelled: 'cancelled', provider_error: 'provider error', callback_error: 'callback error', session_expired: 'session expired' } as Record<string, string>)[key.slice(provider.length + 1)] ?? outcome;
+      return { id: key, label: `${providerLabel} ${outcomeLabel}`, count: at('auth.result', key), shareOfResults: authTotal > 0 ? at('auth.result', key) / authTotal : null };
+    }),
     camera: { granted: cameraGranted, denied: cameraDenied, unavailable: cameraUnavailable, deniedRate: cameraAsked > 0 ? cameraDenied / cameraAsked : null },
-    photos: { taken, byMethod: tallies('photo.taken', methods, METHOD_LABELS), retakes, retakesPerPhoto: taken > 0 ? retakes / taken : null, uploadStarted, uploadSucceeded, uploadFailed },
+    photos: { taken, byMethod: tallies('photo.taken', methods, METHOD_LABELS), retakes, retakesPerPhoto: taken > 0 ? retakes / taken : null, uploadStarted, uploadSucceeded, uploadFailed, uploadsByDeviceMethod },
     saves: { ok: at('photo.save', 'ok'), failed: at('photo.save', 'failed') },
     consent: {
       shown: pageShown + boxShown,
@@ -178,18 +229,18 @@ export const isRecorded = (summary: JourneySummary | null | undefined): summary 
 
 /** The daily counts of an event, whole (the range is applied by `summarizeJourney`). Read only. */
 export async function loadJourneyRows(db: Db, eventId: string): Promise<JourneyRow[]> {
-  const docs = await db.collection(COLLECTIONS.JOURNEY_DAILY).find({ eventId }, { projection: { day: 1, name: 1, key: 1, count: 1 } }).toArray();
+  const docs = await db.collection(COLLECTIONS.JOURNEY_DAILY).find({ eventId }, { projection: { day: 1, name: 1, key: 1, count: 1, durationTotalMs: 1, durationSamples: 1 } }).toArray();
   const rows: JourneyRow[] = [];
   for (const doc of docs) {
     if (typeof doc.day !== 'string' || !isJourneyName(doc.name)) continue;
-    rows.push({ day: doc.day, name: doc.name, key: typeof doc.key === 'string' ? doc.key : '', count: whole(doc.count) });
+    rows.push({ day: doc.day, name: doc.name, key: typeof doc.key === 'string' ? doc.key : '', count: whole(doc.count), durationTotalMs: typeof doc.durationTotalMs === 'number' ? doc.durationTotalMs : undefined, durationSamples: typeof doc.durationSamples === 'number' ? doc.durationSamples : undefined });
   }
   return rows;
 }
 
-/** The milliseconds from opening to the first saved photo, from the raw rows still kept (30 days). Read only. */
+/** The milliseconds from opening through the last configured page, from the raw rows still kept (30 days). Read only. */
 export async function loadCompleteMs(db: Db, eventId: string, range: { from?: string | null; to?: string | null } = {}): Promise<number[]> {
-  const docs = await db.collection(COLLECTIONS.JOURNEY_EVENTS).find({ eventId, name: 'journey.complete' }, { projection: { ms: 1, at: 1 } }).toArray();
+  const docs = await db.collection(COLLECTIONS.JOURNEY_EVENTS).find({ eventId, name: 'journey.flow.complete' }, { projection: { ms: 1, at: 1 } }).toArray();
   return docs
     .filter((doc) => {
       if (!range.from && !range.to) return true;

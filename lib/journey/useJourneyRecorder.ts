@@ -45,7 +45,17 @@ export function useJourneyRecorder(flow: JourneyFlow): void {
   // Starts the visit, and sends what is left when the page is hidden or closed.
   useEffect(() => {
     if (!flow.enabled) return;
-    journey.start({ eventId: flow.eventId, resumed: resumed.current });
+    const durationKey = `camera-journey-start:${flow.eventId}`;
+    let elapsedMs = 0;
+    try {
+      const savedStartedAt = Number(window.sessionStorage.getItem(durationKey));
+      const elapsed = Date.now() - savedStartedAt;
+      if (resumed.current && Number.isFinite(savedStartedAt) && savedStartedAt > 0 && elapsed >= 0 && elapsed <= 6 * 60 * 60 * 1000) elapsedMs = elapsed;
+      else window.sessionStorage.setItem(durationKey, String(Date.now()));
+    } catch {
+      // The journey can still record locally from this page load if tab storage is unavailable.
+    }
+    journey.start({ eventId: flow.eventId, resumed: resumed.current, elapsedMs });
     const onHide = () => {
       try {
         if (document.visibilityState === 'hidden') journey.flushNow();
@@ -54,18 +64,37 @@ export function useJourneyRecorder(flow: JourneyFlow): void {
       }
     };
     const onLeave = () => journey.flushNow();
+    const onReturn = () => {
+      try {
+        if (document.visibilityState === 'visible') journey.ctaReturned();
+      } catch {
+        // never affects the page
+      }
+    };
     document.addEventListener('visibilitychange', onHide);
+    document.addEventListener('visibilitychange', onReturn);
+    window.addEventListener('focus', onReturn);
     window.addEventListener('pagehide', onLeave);
     return () => {
       document.removeEventListener('visibilitychange', onHide);
+      document.removeEventListener('visibilitychange', onReturn);
+      window.removeEventListener('focus', onReturn);
       window.removeEventListener('pagehide', onLeave);
       journey.flushNow();
     };
   }, [flow.enabled, flow.eventId]);
 
   const key = stepKeyOf({ flowPhase: flow.flowPhase, pageType: flow.pageType, step: flow.step, saved: flow.saved });
+  const previousJourneyStep = useRef<string | null>(null);
   useEffect(() => {
-    if (flow.enabled && key) journey.once('step.reach', key);
+    previousJourneyStep.current = null;
+  }, [flow.eventId]);
+  useEffect(() => {
+    if (!flow.enabled || !key) return;
+    journey.once('step.reach', key);
+    const previous = previousJourneyStep.current;
+    if (previous && previous !== key) journey.once('step.transition', `${previous}>${key}`);
+    previousJourneyStep.current = key;
   }, [flow.enabled, key]);
 
   const shown = consentFormShown({ flowPhase: flow.flowPhase, pageType: flow.pageType, acceptanceBox: flow.acceptanceBox });

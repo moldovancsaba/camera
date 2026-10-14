@@ -93,15 +93,19 @@ export default function CTAPage({
   const opening = redirectingText(config.redirectingText, language, texts);
 
   const handleRedirect = () => {
-    journey.once('cta.click');
     if (urlToVisit) {
       if (hasButton) {
+        journey.externalCtaOpened();
         setIsRedirecting(true);
         window.open(urlToVisit, '_blank');
       } else {
+        journey.once('cta.click');
+        journey.once('cta.action', 'external');
         window.location.href = urlToVisit;
       }
     } else if (hasButton) {
+      journey.once('cta.click');
+      journey.once('cta.action', 'continue');
       onNext({
         accepted: true,
         acceptedAt: new Date().toISOString(),
@@ -111,6 +115,7 @@ export default function CTAPage({
 
   const handleContinue = () => {
     journey.once('cta.click');
+    journey.once('cta.action', 'continue');
     onNext({
       accepted: true,
       acceptedAt: new Date().toISOString(),
@@ -124,6 +129,7 @@ export default function CTAPage({
     const hasWriting = layout.showTexts || layout.showVisitButton || layout.showContinueButton;
     const handlePictureTap = () => {
       if (layout.pictureTap === 'visit-and-continue') {
+        journey.externalCtaOpened();
         window.open(urlToVisit, '_blank', 'noopener');
         handleContinue();
       } else {

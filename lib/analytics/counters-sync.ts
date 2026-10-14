@@ -21,7 +21,7 @@ import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { buildCounters, hasCounters, parseCounterSet, sameCounters, type CounterSet } from './counters';
 import { getCountersSetting } from './counters-setting';
 import { loadJourneyRows, summarizeJourney } from './journey';
-import { loadPhotoFacts } from './load';
+import { loadPhotoFacts, loadSources, type AnalyticsEvent } from './load';
 import { buildEventReport } from './report';
 
 export const COUNTER_SYNC_THROTTLE_MS = 30_000;
@@ -49,8 +49,15 @@ export interface CounterSyncDeps {
 
 /** The counters of the whole event (no range of days: a counter is a running total), read from the photos, the journey recording and the event's annotation vocabulary. */
 export async function loadEventCounters(db: Db, event: CounterEvent): Promise<CounterSet> {
-  const [photos, journeyRows, vocabulary] = await Promise.all([loadPhotoFacts(db, event), loadJourneyRows(db, event.eventId), loadEventVocabulary(db, event)]);
-  return buildCounters(buildEventReport({ photos, vocabulary }, { timeZone: 'UTC' }), summarizeJourney(journeyRows), vocabulary);
+  const [photos, journeyRows, vocabulary, eventDoc] = await Promise.all([
+    loadPhotoFacts(db, event),
+    loadJourneyRows(db, event.eventId),
+    loadEventVocabulary(db, event),
+    db.collection(COLLECTIONS.EVENTS).findOne({ eventId: event.eventId }, { projection: { _id: 1, eventId: 1, name: 1, shortUrlSlug: 1, uiLanguage: 1, messmassEventId: 1 } }),
+  ]);
+  const sourceEvent: AnalyticsEvent | null = eventDoc?._id ? { id: String(eventDoc._id), eventId: event.eventId, name: typeof eventDoc.name === 'string' ? eventDoc.name : 'Event', shortUrlSlug: typeof eventDoc.shortUrlSlug === 'string' ? eventDoc.shortUrlSlug : null, uiLanguage: typeof eventDoc.uiLanguage === 'string' ? eventDoc.uiLanguage : null, messmassEventId: typeof eventDoc.messmassEventId === 'string' ? eventDoc.messmassEventId : null } : null;
+  const sources = sourceEvent ? await loadSources(db, sourceEvent, {}, photos) : null;
+  return buildCounters(buildEventReport({ photos, vocabulary }, { timeZone: 'UTC' }), summarizeJourney(journeyRows), vocabulary, sources);
 }
 
 const realDeps: CounterSyncDeps = { push: pushPhotoStatsToMessmass, counters: loadEventCounters, now: () => new Date() };

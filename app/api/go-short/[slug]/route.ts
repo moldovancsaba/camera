@@ -33,14 +33,17 @@ export const GET = withErrorHandler(async (
   const tracked = await resolveTrackedLink(db, slug);
   if (tracked) {
     after(() => countVisit(db, { event: tracked.event, slug, kind: tracked.link.kind, method: request.method, headers: request.headers }));
-    return NextResponse.redirect(`${defaultCameraOrigin()}/capture/${tracked.event._id.toString()}`, 302);
+    const destination = new URL(`/capture/${tracked.event._id.toString()}`, defaultCameraOrigin());
+    destination.searchParams.set('source', slug);
+    return NextResponse.redirect(destination, 302);
   }
 
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ shortUrlSlug: slug });
   if (event?._id) {
-    const dest = `${defaultCameraOrigin()}/capture/${(event._id as ObjectId).toString()}`;
+    const destination = new URL(`/capture/${(event._id as ObjectId).toString()}`, defaultCameraOrigin());
+    destination.searchParams.set('source', slug);
     after(() => countVisit(db, { event: { _id: event._id as ObjectId, messmassEventId: event.messmassEventId as string | undefined }, slug, kind: 'link', method: request.method, headers: request.headers }));
-    return NextResponse.redirect(dest, 302);
+    return NextResponse.redirect(destination, 302);
   }
 
   // (An event's old Greatest Hits address, a try-on page, redirected here until the try-on integration was removed: issue 557.)

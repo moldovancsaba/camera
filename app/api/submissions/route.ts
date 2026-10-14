@@ -46,6 +46,7 @@ import {
   RATE_LIMITS,
 } from '@/lib/api';
 import { safeLinkUrl } from '@/lib/events/consent';
+import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
 interface EventLookupFilter {
   $or: Array<Record<string, unknown>>;
 }
@@ -121,6 +122,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       shareOptIn,
       // The version of the sentence the user ticked when the event asks for the permission to show the photo in the public gallery (issue 554, lib/events/gallery-consent.ts).
       publicGalleryConsentVersion,
+      sourceSlug: claimedSourceSlug,
     } = body;
 
   // frameId can be null if the event has no frames
@@ -133,10 +135,18 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const vettingEvent =
     typeof eventId === 'string' && eventId.trim()
       ? ((await db.collection(COLLECTIONS.EVENTS).findOne(buildEventLookupFilterByIdentifier(eventId), {
-          projection: { photoVetting: 1, galleryConsent: 1, partnerId: 1, consentSettings: 1, acceptanceOnWhoAreYou: 1, customPages: 1, journeyDefaults: 1, defaultPageOrders: 1 },
+          projection: { eventId: 1, messmassEventId: 1, photoVetting: 1, galleryConsent: 1, partnerId: 1, consentSettings: 1, acceptanceOnWhoAreYou: 1, customPages: 1, journeyDefaults: 1, defaultPageOrders: 1, shortUrlSlug: 1 },
         })) as (GuardEvent & { _id: unknown; galleryConsent?: unknown; partnerId?: unknown; journeyDefaults?: unknown }) | null)
       : null;
   const vetted = photoVettingRequired(vettingEvent);
+  // Source attribution is accepted only when it names a real tracked link for this event (or its own short address).
+  // The raw query string is never stored as a label or analytics key.
+  let sourceLinkSlug: string | null = null;
+  if (typeof claimedSourceSlug === 'string' && /^[a-z0-9-]{1,32}$/.test(claimedSourceSlug) && vettingEvent?._id) {
+    const sourceLink = await db.collection(COLLECTIONS.SHORT_LINKS).findOne({ slug: claimedSourceSlug, eventId: String(vettingEvent._id) }, { projection: { _id: 1 } });
+    const isOwnShortLink = (vettingEvent as { shortUrlSlug?: unknown }).shortUrlSlug === claimedSourceSlug;
+    if (sourceLink || isOwnShortLink) sourceLinkSlug = claimedSourceSlug;
+  }
   // The partner's defaults for the public gallery permission and the other checkbox settings (issues 554 and 558): read from the event's partner, never from what the page says it asked.
   const settingsPartner =
     vettingEvent && typeof vettingEvent.partnerId === 'string' && vettingEvent.partnerId
@@ -359,6 +369,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         // Only a coarse device (decision 243, issue 521): the class and the browser family, made from the user agent, which is not kept; and no IP address. Photos taken before this change still hold both; the
         // Analytics Devices figure reads the class, else classifies the stored string (lib/analytics/facts.ts).
         ...deviceMetadataOf(request.headers.get('user-agent')),
+        ...(sourceLinkSlug ? { sourceLinkSlug } : {}),
         originalWidth: verifiedOriginal?.width ?? (imageWidth || frame?.width || 1920),
         originalHeight: verifiedOriginal?.height ?? (imageHeight || frame?.height || 1080),
         originalFileSize: verifiedOriginal?.fileSize ?? (uploadResult?.fileSize || pendingPhoto?.size || 0),
@@ -382,6 +393,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     const result = await db.collection('submissions').insertOne(submission);
     const submissionId = getSubmissionMongoIdString(result.insertedId);
+    scheduleCounterSync(db, vettingEvent as unknown as Record<string, unknown> | null);
 
     // The "arrived" e-mail (epic 463), when the event has it on and the user's address is already known: after the answer is sent, so it never slows the photo. Without an address yet
     // the finalize call sends it once the contact is saved.

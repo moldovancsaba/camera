@@ -16,7 +16,7 @@ import { REPORT_TIME_ZONES } from '@/lib/analytics/time';
 import AnalyticsFilterForm from './AnalyticsFilterForm';
 import JourneySection, { type JourneySettingState } from './JourneySection';
 import { EmailsSection, OverviewSection, PhotosSection, ScreensSection, SourcesSection, VettingSection } from './sections';
-import { Note } from './ui';
+import { Metrics, Note, Panel } from './ui';
 
 interface TabDefinition {
   id: AnalyticsViewId;
@@ -53,9 +53,11 @@ export interface AnalyticsViewProps {
   /** The Messmass tab is offered (global admins, one event); its content is given only while that tab is open, so the numbers are not computed otherwise. */
   showMessmass?: boolean;
   messmass?: ReactNode;
+  /** Cross-event repeat cohort is sent only by the global-admin all-events page as an aggregate. */
+  crossEventReturning?: { returning: number; identifiable: number; share: number | null };
 }
 
-export default function AnalyticsView({ basePath, query, defaultTimeZone, report, sources, journey, journeySetting, table, eventMongoId, exportHref, showMessmass, messmass }: AnalyticsViewProps) {
+export default function AnalyticsView({ basePath, query, defaultTimeZone, report, sources, journey, journeySetting, table, eventMongoId, exportHref, showMessmass, messmass, crossEventReturning }: AnalyticsViewProps) {
   const tabs = TABS.filter((tab) => (tab.id === 'sources' ? Boolean(sources) : tab.id === 'journey' ? Boolean(journey && journeySetting) : tab.id === 'messmass' ? Boolean(showMessmass) : true));
   const active: AnalyticsViewId = tabs.some((tab) => tab.id === query.view) ? query.view : 'overview';
   const { scope } = report;
@@ -71,6 +73,11 @@ export default function AnalyticsView({ basePath, query, defaultTimeZone, report
           : `Counting ${formatCount(scope.counted)} photos (${formatCount(report.photos.taken)} taken by users, ${formatCount(scope.addedByEditors)} added by editors), from ${formatDateTime(scope.firstPhotoAt, report.options.timeZone)} to ${formatDateTime(scope.lastPhotoAt, report.options.timeZone)}.`}
         {scope.removed + scope.brokenPictures + scope.deletedAutomaticallyNoLogin + scope.deletedAutomaticallyOther + scope.deletedManually > 0 ? ` Outcomes also include ${formatCount(scope.deletedAutomaticallyNoLogin)} automatically deleted without a user, ${formatCount(scope.deletedAutomaticallyOther)} automatically deleted with a registered identity, and ${formatCount(scope.deletedManually)} manually deleted; ${formatCount(scope.brokenPictures)} more have a missing picture.` : ''} Times are on the clock of {REPORT_TIME_ZONES.find((zone) => zone.id === report.options.timeZone)?.label ?? report.options.timeZone}. Try-on results are not photos of this report.
       </Note>
+      {crossEventReturning ? (
+        <Panel title="Returning users across events" description="Aggregate only. Users active in the selected period are counted as returning if their existing photo records show activity in more than one event. Matching is done in memory; no identity key is stored in a cross-event profile or appears in this report.">
+          <Metrics items={[{ label: 'Returning across events', value: formatCount(crossEventReturning.returning), description: `${formatCount(crossEventReturning.identifiable)} identifiable active users · ${crossEventReturning.share === null ? 'n/a' : `${Math.round(crossEventReturning.share * 100)}%`}` }]} />
+        </Panel>
+      ) : null}
 
       <nav aria-label="Analytics sections" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
         {tabs.map((tab) => {

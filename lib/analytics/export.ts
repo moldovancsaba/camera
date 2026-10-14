@@ -165,11 +165,13 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport, jour
     add('journey', 'returns from a sign-in (not opens)', journey.resumed);
     tallies('journey devices', journey.devices);
     for (const step of journey.steps) add('journey steps reached', step.label, step.count);
-    add('journey', 'completed (saved a photo)', journey.completed);
-    add('journey', 'completion rate (0 to 1)', journey.completionRate === null ? null : Math.round(journey.completionRate * 1000) / 1000);
-    tallies('journey time to the first saved photo', journey.timeToComplete);
-    add('journey', 'average seconds to the first saved photo (last 30 days)', journey.averageCompleteSeconds);
-    add('journey', 'median seconds to the first saved photo (last 30 days)', journey.medianCompleteSeconds);
+    add('journey', 'visits with a saved photo', journey.completed);
+    add('journey', 'photo save rate (0 to 1)', journey.completionRate === null ? null : Math.round(journey.completionRate * 1000) / 1000);
+    add('journey', 'finished journeys', journey.finished);
+    add('journey', 'finished journey rate (0 to 1)', journey.finishRate === null ? null : Math.round(journey.finishRate * 1000) / 1000);
+    tallies('selfie flow duration', journey.timeToComplete);
+    add('journey', 'average selfie flow seconds (durable aggregate)', journey.averageCompleteSeconds);
+    add('journey', 'median selfie flow seconds (last 30 days)', journey.medianCompleteSeconds);
     add('journey', 'CTA clicks (unique visits)', journey.ctaClicks);
     add('journey', 'CTA click rate (0 to 1)', journey.ctaClickRate === null ? null : Math.round(journey.ctaClickRate * 1000) / 1000);
     add('journey', 'sign-in and identity method choices', journey.loginMethodChoices);

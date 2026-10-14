@@ -56,9 +56,10 @@ function Recorded({ journey }: { journey: JourneySummary }) {
       <Metrics
         items={[
           { label: 'Visits', value: formatCount(journey.opens), description: `${plural(journey.resumed, 'return')} from a sign-in not counted as visits` },
-          { label: 'Saved a photo', value: formatCount(journey.completed), description: `${formatRate(journey.completionRate)} of the visits` },
-          { label: 'Average time to the first photo', value: formatDuration(journey.averageCompleteSeconds), description: journey.averageCompleteSeconds === null ? 'No saved photo among the last 30 days of records' : 'From opening the first page to the first photo saved, last 30 days' },
-          { label: 'Median time to the first photo', value: formatDuration(journey.medianCompleteSeconds), description: 'From opening the first page to the first photo saved, last 30 days' },
+          { label: 'Saved a photo', value: formatCount(journey.completed), description: `${formatRate(journey.completionRate)} of visits saved at least one photo` },
+          { label: 'Finished journeys', value: formatCount(journey.finished), description: `${formatRate(journey.finishRate)} of visits reached the final configured page after saving` },
+          { label: 'Average selfie flow time', value: formatDuration(journey.averageCompleteSeconds), description: journey.averageCompleteSeconds === null ? 'No completed journey duration is recorded yet' : `From opening the first page through the final configured page; ${formatCount(journey.averageCompleteSamples)} completed journeys` },
+          { label: 'Median selfie flow time', value: formatDuration(journey.medianCompleteSeconds), description: 'From opening the first page through the final configured page, last 30 days' },
           { label: 'CTA click rate', value: formatRate(journey.ctaClickRate), description: `${formatCount(journey.ctaClicks)} of ${formatCount(journey.steps.find((step) => step.id === 'cta')?.count ?? 0)} visits that reached a CTA page clicked an action` },
           { label: 'Camera denied', value: formatCount(camera.denied), description: `${formatRate(camera.deniedRate)} of the times a desktop camera was asked for` },
           { label: 'Retakes', value: formatCount(photos.retakes), description: photos.retakesPerPhoto === null ? 'No photo taken yet' : `${(Math.round(photos.retakesPerPhoto * 100) / 100).toString()} for each photo taken` },
@@ -73,14 +74,39 @@ function Recorded({ journey }: { journey: JourneySummary }) {
         {journey.loginMethodChoices === 0 ? <Note>No sign-in or identity method has been selected during the recorded visits.</Note> : null}
       </Panel>
 
+      <Panel title="Google and Facebook sign-in outcomes" description="The OAuth callback records only provider and a fixed outcome category. No email, account ID, token, or provider error text is stored in Journey analytics.">
+        <Table caption="Sign-in callback outcomes" rows={journey.authentication.filter((row) => row.count > 0)} getKey={(row) => row.id} empty="No capture-flow SSO callback outcomes have been recorded yet." columns={[
+          { key: 'outcome', header: 'Outcome', rowHeader: true, render: (row) => row.label },
+          { key: 'count', header: 'Count', numeric: true, render: (row) => formatCount(row.count) },
+          { key: 'share', header: 'Share of outcomes', numeric: true, render: (row) => formatRate(row.shareOfResults) },
+        ]} />
+      </Panel>
+
       <Panel title="Steps reached" description="How many visits reached each step at least once, out of all visits. The steps an event does not have stay at zero; the order is the usual one, an editor can change it.">
         <Bars label="Steps reached" rows={journey.steps} total={journey.opens} />
       </Panel>
 
+      <Panel title="Step-to-step movement" description="A direct transition is counted once per visit and direction. This shows where visits continued between the steps they actually saw; custom orders and branches are retained.">
+        <Table caption="Direct journey transitions" rows={journey.transitions} getKey={(row) => row.id} empty="No direct step transitions have been recorded yet." columns={[
+          { key: 'transition', header: 'From → to', rowHeader: true, render: (row) => row.label },
+          { key: 'visits', header: 'Visits', numeric: true, render: (row) => formatCount(row.count) },
+          { key: 'share', header: 'Of visits reaching the starting step', numeric: true, render: (row) => formatRate(row.shareOfFrom) },
+        ]} />
+      </Panel>
+
+      <Panel title="CTA actions and returns" description="External link openings and internal Continue actions, plus a return to the capture tab after an external link was opened. A return can only be observed when the capture tab regains focus.">
+        <Table caption="CTA actions" rows={journey.ctaActions} getKey={(row) => row.id} columns={[
+          { key: 'action', header: 'Action', rowHeader: true, render: (row) => row.label },
+          { key: 'count', header: 'Visits', numeric: true, render: (row) => formatCount(row.count) },
+          { key: 'share', header: 'Share of CTA actions', numeric: true, render: (row) => formatRate(row.shareOfActions) },
+        ]} />
+        <Metrics items={[{ label: 'Returned to capture', value: formatCount(journey.ctaReturns), description: 'Capture tab regained focus after an external CTA opened' }]} />
+      </Panel>
+
       <Panel title="Devices and time" description="The kind of device is read from the request when the page opens and is the only thing kept of it: the device string itself is not stored.">
         <Bars label="Devices of the visits" rows={journey.devices} total={journey.opens} />
-        <strong style={{ fontSize: 'var(--mantine-font-size-sm)' }}>From opening the page to the first saved photo</strong>
-        <Bars label="Time to the first saved photo" rows={journey.timeToComplete} total={journey.completed} empty="No visit saved a photo yet." />
+        <strong style={{ fontSize: 'var(--mantine-font-size-sm)' }}>From opening the first page through the final configured page</strong>
+        <Bars label="Selfie flow duration" rows={journey.timeToComplete} total={journey.finished} empty="No journey has reached its final page yet." />
       </Panel>
 
       <Panel title="Camera, photos and saving" description="A phone takes the photo with its own camera app, which asks for nothing on the page; the permission figures are for the live camera of a desktop.">
@@ -98,6 +124,17 @@ function Recorded({ journey }: { journey: JourneySummary }) {
           ]}
         />
         <Bars label="How photos were taken" rows={photos.byMethod} total={photos.taken} empty="No photo taken yet." />
+      </Panel>
+
+      <Panel title="Upload reliability by device and capture method" description="One row per upload attempt group. Upload timing is stored as short duration bands; no exact network address or image is part of Journey analytics.">
+        <Table caption="Photo uploads by device and capture method" rows={photos.uploadsByDeviceMethod} getKey={(row) => row.id} empty="No upload details have been recorded yet." columns={[
+          { key: 'group', header: 'Device · method', rowHeader: true, render: (row) => row.label },
+          { key: 'started', header: 'Started', numeric: true, render: (row) => formatCount(row.started) },
+          { key: 'succeeded', header: 'Succeeded', numeric: true, render: (row) => formatCount(row.succeeded) },
+          { key: 'failed', header: 'Failed', numeric: true, render: (row) => formatCount(row.failed) },
+          { key: 'successRate', header: 'Success rate', numeric: true, render: (row) => formatRate(row.started > 0 ? row.succeeded / row.started : null) },
+          { key: 'duration', header: 'Duration bands', render: (row) => row.durations.filter((duration) => duration.count > 0).map((duration) => `${duration.label}: ${formatCount(duration.count)}`).join(' · ') || 'n/a' },
+        ]} />
       </Panel>
 
       <Panel title="Consent" description="Shown is counted once per visit and form: the consent page, or the box on the Who-are-you page. Left is shown and not accepted.">
@@ -131,7 +168,7 @@ function Recorded({ journey }: { journey: JourneySummary }) {
           columns={[
             { key: 'day', header: 'Day (UTC)', rowHeader: true, render: (row) => formatDay(row.day) },
             { key: 'opens', header: 'Visits', numeric: true, render: (row) => formatCount(row.opens) },
-            { key: 'completed', header: 'Saved a photo', numeric: true, render: (row) => formatCount(row.completed) },
+            { key: 'completed', header: 'Photos saved', numeric: true, render: (row) => formatCount(row.completed) },
           ]}
         />
       </Panel>
