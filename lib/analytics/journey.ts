@@ -192,6 +192,7 @@ export async function loadCompleteMs(db: Db, eventId: string, range: { from?: st
   const docs = await db.collection(COLLECTIONS.JOURNEY_EVENTS).find({ eventId, name: 'journey.complete' }, { projection: { ms: 1, at: 1 } }).toArray();
   return docs
     .filter((doc) => {
+      if (!range.from && !range.to) return true;
       const at = doc.at instanceof Date ? doc.at : typeof doc.at === 'string' ? new Date(doc.at) : null;
       return at !== null && !Number.isNaN(at.getTime()) && dayInRange(at.toISOString().slice(0, 10), range.from, range.to);
     })
