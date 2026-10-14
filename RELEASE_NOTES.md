@@ -1,8 +1,8 @@
 # RELEASE_NOTES.md
 
-## Unreleased — restore the exact uploaded photo after social login (2026-10-14)
+## Unreleased — resume social login by stable journey page ID (2026-10-14)
 
-- **Fixed:** the capture login return now carries the saved submission ID alongside the journey page and phase. After sign-in, the page links that submission to the account and reloads its saved image through an owner-checked API before continuing, preventing the preview from becoming an empty blue screen.
+- **Fixed:** the capture login return now carries the stable ID of the page where sign-in started, alongside the phase and saved submission ID. The flow resolves that page in the current journey order and continues after it, even if pages were reordered while SSO was open. After sign-in, the page links that submission to the account and reloads its saved image through an owner-checked API before continuing, preventing the preview from becoming an empty blue screen.
 - **Unchanged:** the photo uses the established `/api/submissions` upload once, before post-capture pages; sign-in does not upload it again.
 - **Verified locally:** type-check, lint, and production build passed. No browser walkthrough was performed.
 

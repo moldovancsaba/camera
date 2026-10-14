@@ -1208,16 +1208,26 @@ export default function EventCapturePage({
     if (isLoading) return;
     const urlParams = new URLSearchParams(window.location.search);
     const isResume = urlParams.get('resume') === 'true';
-    const resumePageIndex = urlParams.get('page');
-    const resumePhase = urlParams.get('phase') === 'presubmit' ? 'presubmit' : 'onboarding';
+    const resumePageId = urlParams.get('pageId');
+    const rawResumePhase = urlParams.get('phase') === 'presubmit' ? 'presubmit' : 'onboarding';
 
-    if (!isResume || resumePageIndex === null || resumeHandled.current) return;
+    if (!isResume || resumeHandled.current) return;
     resumeHandled.current = true;
     setResumePending(true);
-    const pageIndex = parseInt(resumePageIndex, 10);
+    const numericPageIndex = urlParams.get('page');
+    let pageIndex = numericPageIndex !== null && /^\d{1,2}$/.test(numericPageIndex) ? Number(numericPageIndex) : null;
+    const resumePhase: 'onboarding' | 'presubmit' = rawResumePhase;
+    if (resumePageId) {
+      const phasePages = rawResumePhase === 'presubmit' ? presubmitPages : onboardingPages;
+      const foundIndex = phasePages.findIndex((page) => page.pageId === resumePageId);
+      // A stable page ID is authoritative. If that page was removed while the
+      // guest was at SSO, never resume a different page just because its old
+      // numeric position is now occupied by another step.
+      pageIndex = foundIndex >= 0 ? foundIndex : null;
+    }
 
     const cleanResumeUrl = () => window.history.replaceState({}, '', window.location.pathname);
-    if (!Number.isInteger(pageIndex) || pageIndex < 0) {
+    if (pageIndex === null || !Number.isInteger(pageIndex) || pageIndex < 0) {
       setSignInError({ code: 'capture_resume_failed', message: t('login.captureRestoreError') });
       setCurrentPageIndex(0);
       setFlowPhase(resumePhase);
@@ -1306,7 +1316,7 @@ export default function EventCapturePage({
         cleanResumeUrl();
         setResumePending(false);
       });
-  }, [eventId, isLoading, t, captureSubmissionResumeKey, onboardingPages.length, enterCaptureStep]);
+  }, [eventId, isLoading, t, captureSubmissionResumeKey, onboardingPages, presubmitPages, enterCaptureStep]);
   
   /**
    * Handle completion of Who Are You page
@@ -1607,6 +1617,7 @@ export default function EventCapturePage({
             buttonSize={eventButtonSize}
             eventId={eventId}
             pageIndex={currentPageIndex}
+            pageId={currentPage.pageId}
             capturePhase={flowPhase === 'presubmit' ? 'presubmit' : 'onboarding'}
             captureSubmissionId={flowPhase === 'presubmit' ? savedSubmissionId : null}
             onBeforeSocialLogin={flowPhase === 'presubmit' ? prepareCaptureForSocialLogin : undefined}
