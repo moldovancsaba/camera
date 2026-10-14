@@ -25,9 +25,6 @@ import {
   Textarea,
   TextInput,
 } from '@/components/gds/PublicPrimitives';
-import { notifyAdminSuccess } from '@/components/admin/notify';
-import { type CustomPage } from '@/lib/db/schemas';
-import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { EMAIL_PICTURE_TYPES, EMAIL_PICTURE_WORDS } from '@/lib/library/image-files';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
@@ -35,8 +32,6 @@ import { FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import type { JourneyContext } from '@/lib/events/journey';
-import type { EffectiveCheckboxes, StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
-import type { FrameMessageSelectionDisplay } from '@/lib/db/schemas';
 import {
   DEFAULT_EVENT_BUTTON_SIZE,
   EVENT_BUTTON_SIZE_OPTIONS,
@@ -85,11 +80,8 @@ interface EventRecord {
   theme?: { buttonBackground?: string; buttonRing?: string };
   shortUrlSlug?: string;
   eventId?: string;
-  customPages?: CustomPage[];
   /** What decides which default pages the event gets: the page editor builds the journey from it (camera#378). */
   journeyContext?: JourneyContext;
-  /** The consent page is one checkbox on the Who-are-you page (issue 523); null or missing: no choice of its own, the event follows its partner (issue 558). */
-  acceptanceOnWhoAreYou?: boolean | null;
   visualSettings?: {
     buttonSize?: EventButtonSize;
   };
@@ -98,13 +90,6 @@ interface EventRecord {
   /** The event's own camera mode (issue 547); `effectiveCameraMode` is what the event uses (its own, else its partner's, else the standard). */
   cameraMode?: string | null;
   effectiveCameraMode?: string | null;
-  /** The event's own choice on asking for the permission to show a photo in the public gallery (issue 554) and what it does now (its own, else its partner's, else not). */
-  galleryConsent?: boolean | null;
-  effectiveGalleryConsent?: boolean;
-  /** The event's own choices for the other checkbox settings, and what the event would get if it followed its partner (issue 558, lib/events/checkbox-settings.ts). */
-  consentSettings?: StoredCheckboxSettings | null;
-  partnerCheckboxes?: EffectiveCheckboxes;
-  frameMessageSelectionDisplay?: FrameMessageSelectionDisplay;
   sharePage?: {
     showCreateYourOwnButton?: boolean;
     texts?: Record<string, string>;
@@ -144,7 +129,6 @@ export default function EditEventPage({
   const [coloursTouched, setColoursTouched] = useState(false);
   const [brandColor, setBrandColor] = useState('');
   const [brandBorderColor, setBrandBorderColor] = useState('');
-  const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [showCreateYourOwnButton, setShowCreateYourOwnButton] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.showCreateYourOwnButton
@@ -178,7 +162,6 @@ export default function EditEventPage({
         }
 
         setEvent(eventData);
-        setCustomPages(eventData.customPages || []);
         setLogoPreview(eventData.logoUrl || null);
         setEmailFooterImageUrl(eventData.emailFooterImageUrl || '');
         setOwnColours(Boolean(eventData.brandColor || eventData.brandBorderColor));
@@ -595,53 +578,6 @@ export default function EditEventPage({
         </Stack>
       </form>
 
-      <Text size="sm" c="dimmed" mt="xl" mb="xs">
-        Event Pages below save separately from the fields above — its own &quot;Save Pages&quot; button, not
-        &quot;Save changes&quot;. Save both sections if you&apos;ve edited both.
-      </Text>
-      <CustomPagesManager
-        key={customPages.length}
-        eventId={mongoId}
-        initialPages={customPages}
-        journeyContext={event?.journeyContext}
-        acceptanceOnWhoAreYou={typeof event?.acceptanceOnWhoAreYou === 'boolean' ? event.acceptanceOnWhoAreYou : null}
-        galleryConsent={typeof event?.galleryConsent === 'boolean' ? event.galleryConsent : null}
-        consentSettings={event?.consentSettings ?? null}
-        partnerCheckboxes={event?.partnerCheckboxes}
-        frameMessageSelectionDisplay={event?.frameMessageSelectionDisplay}
-        onSave={async (pages, options) => {
-          try {
-            const response = await fetch(`/api/events/${mongoId}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ customPages: pages, acceptanceOnWhoAreYou: options.acceptanceOnWhoAreYou, galleryConsent: options.galleryConsent, consentSettings: options.consentSettings, frameMessageSelectionDisplay: options.frameMessageSelectionDisplay, ...(options.defaultPageOrders ? { defaultPageOrders: options.defaultPageOrders } : {}) }),
-            });
-
-            if (!response.ok) {
-              let message = 'Failed to save pages';
-              try {
-                const result = await response.json();
-                message = result.error || message;
-              } catch {
-                message = `Save failed (HTTP ${response.status})`;
-              }
-              throw new Error(message);
-            }
-
-            const updatedEventResponse = await fetch(`/api/events/${mongoId}`);
-            const updatedEventData = await updatedEventResponse.json();
-            if (updatedEventResponse.ok) {
-              const eventData = updatedEventData.data?.event || updatedEventData.event;
-              setCustomPages(eventData?.customPages || []);
-              setEvent(eventData);
-            }
-
-            notifyAdminSuccess({ title: 'Pages saved', message: 'Custom page flow updated successfully.' });
-          } catch (err: unknown) {
-            throw new Error(getErrorMessage(err));
-          }
-        }}
-      />
     </EditorScaffold>
   );
 }
