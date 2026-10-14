@@ -19,7 +19,7 @@ export function getCaptureSelectFrameSteps(language: UiLanguage = 'en'): TourSte
   ];
 }
 
-export function getCapturePhotoSteps(options: { hasMultipleFrames: boolean; method?: 'system' | 'still' | 'frame' | null; language?: UiLanguage }): TourStepConfig[] {
+export function getCapturePhotoSteps(options: { method?: 'system' | 'still' | 'frame' | null; language?: UiLanguage }): TourStepConfig[] {
   const t = (key: Parameters<typeof translate>[1]) => translate(options.language ?? 'en', key);
   // Touch devices take the photo with their own camera app (camera#257): there is no live shutter on the page, only the "Take photo" button, so that is what
   // the tour points at. Changing between the cameras is done in the camera app; the page has no switch (owner, 2026-10-09).
@@ -41,18 +41,7 @@ export function getCapturePhotoSteps(options: { hasMultipleFrames: boolean; meth
     },
   ];
 
-  const steps = options.method === 'system' ? deviceCameraSteps : liveCameraSteps;
-
-  if (options.hasMultipleFrames) {
-    steps.push({
-      id: 'capture-change-frame',
-      targetSelector: '[data-tour-id="capture-change-frame-button"]',
-      title: t('tour.changeFrame.title'),
-      description: t('tour.changeFrame.text'),
-    });
-  }
-
-  return steps;
+  return options.method === 'system' ? deviceCameraSteps : liveCameraSteps;
 }
 
 export function getCapturePreviewSteps(language: UiLanguage = 'en'): TourStepConfig[] {

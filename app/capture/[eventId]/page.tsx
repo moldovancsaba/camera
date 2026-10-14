@@ -437,7 +437,7 @@ export default function EventCapturePage({
   });
   const photoTour = useTourController(
     'capture:photo:v1',
-    getCapturePhotoSteps({ hasMultipleFrames: frames.length > 1, method: captureMethod, language }),
+    getCapturePhotoSteps({ method: captureMethod, language }),
     { autoStart: tourEnabled && step === 'capture-photo' }
   );
   const previewTour = useTourController('capture:preview:v1', getCapturePreviewSteps(language), {

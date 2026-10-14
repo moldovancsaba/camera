@@ -305,7 +305,6 @@ export interface CustomPage {
     shareSuggestedMessageLabel?: string;
     /** Caption for Twitter/WhatsApp etc.; use `{event}` for the event name */
     shareSocialCaptionTemplate?: string;
-    changeButtonText?: string;   // Label for change frame button (e.g., "Change")
     successMessage?: string;     // Message shown after successful save (e.g., "Photo saved successfully! You can now share it.")
     showSharePage?: boolean;     // If false, skip share page and show thank you message instead
     skipShareMessage?: string;   // Message shown when share page is skipped (e.g., "Thank you! Your photo has been saved.")

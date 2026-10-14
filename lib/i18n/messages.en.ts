@@ -60,8 +60,6 @@ export const en = {
   'tour.takePhoto.title': 'Take your photo',
   'tour.takePhoto.deviceText': 'Tap here to open your camera. Take the photo, then move and zoom it into the frame.',
   'tour.shutter.text': 'Tap the shutter button when you’re ready to capture.',
-  'tour.changeFrame.title': 'Change frame',
-  'tour.changeFrame.text': 'Not the right frame? Pick a different one here.',
   'tour.copyLink.title': 'Copy your link',
   'tour.copyLink.text': 'Copy the share link to send your photo anywhere.',
   'tour.viewPhoto.title': 'View your photo',
@@ -254,11 +252,9 @@ export const en = {
   'welcome.screenAlt': 'The giant screen with the live photos and the QR code to scan',
   'flow.step.selectMessage': 'Choose message',
   'flow.selectMessage.title': 'Choose your message',
-  'flow.changeMessage': 'Change message',
   'flow.step.selectLayout': 'Choose design',
   'flow.selectLayout.title': 'Choose your design',
   'flow.selectLayout.generated': 'Generated frame',
-  'flow.changeLayout': 'Change design',
 } as const;
 
 export type MessageKey = keyof typeof en;
