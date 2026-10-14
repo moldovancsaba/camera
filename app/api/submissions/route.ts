@@ -22,7 +22,7 @@ import { sanitizeFrameVariant, type RecordedFrameVariant } from '@/lib/frame/cap
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { effectiveGalleryConsent, galleryChoice } from '@/lib/events/gallery-consent';
 import { effectiveCheckboxes } from '@/lib/events/checkbox-settings';
-import { mayRefuse, missingRequiredConsent, type GuardEvent } from '@/lib/events/consent-guard';
+import { GALLERY_MISSING_MESSAGE, mayRefuse, missingRequiredConsent, type GuardEvent } from '@/lib/events/consent-guard';
 import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
 import { guestIdentity, newShareToken, storePendingPhoto } from '@/lib/photo-vetting/pending';
 import {
@@ -146,16 +146,16 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const gallerySetting = effectiveGalleryConsent(vettingEvent, settingsPartner);
   const galleryRequired = effectiveCheckboxes(vettingEvent, settingsPartner).gallery.checked;
 
-  // A consent an editor chose to require must be there (issue 558, owner answer 297: the page is never the only guard): refused before anything is uploaded. Nothing is read or checked for an event
-  // that chose nothing, so the standard requirements stay what they were, enforced by the page only (lib/events/consent-guard.ts).
+  // Required consent no longer blocks the established upload. Keep the check as a retention signal:
+  // the photo stays private while consent is missing and is deleted after 24 hours if none arrives.
+  let consentRefusal: string | null = null;
   if (vettingEvent && mayRefuse(vettingEvent, settingsPartner)) {
-    const refusal = missingRequiredConsent(
+    consentRefusal = missingRequiredConsent(
       vettingEvent,
       settingsPartner,
       { consents: Array.isArray(consents) ? consents : [], shareOptIn, publicGalleryConsentVersion },
       { consentDefault: eventGetsDefaults(vettingEvent, await getDefaultsRollout(db)), vettingRequired: vetted },
     );
-    if (refusal) throw apiBadRequest(refusal);
   }
 
     // Check the claimed full-frame original before anything is uploaded or stored (camera#210).
@@ -271,6 +271,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     // A vetted event needs to know who the guest is (the approval email goes there) and keeps the plain photo privately.
     const createdAt = new Date().toISOString();
+    const consentExpiresAt = consentRefusal ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null;
     // What the request and the event's setting make of the public gallery choice: `shareOptIn` (eligible for the wall) and the evidence of a ticked box.
     const wall = galleryChoice(gallerySetting, { shareOptIn, publicGalleryConsentVersion }, createdAt, galleryRequired);
     let identity: ReturnType<typeof guestIdentity> = null;
@@ -335,7 +336,13 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Public pledge-wall visibility: true only when shareOptIn === true in the request
       // (the capture UI's checkbox defaults to checked); false otherwise. May later be
       // bulk-set to true by publish-selfies (see the shareOptIn note above).
-      isShareVisible: vetted ? false : wall.shareOptIn,
+      isShareVisible: vetted || consentRefusal ? false : wall.shareOptIn,
+      ...(consentRefusal ? { consentShareOptIn: wall.shareOptIn } : {}),
+      ...(consentRefusal ? {
+        consentStatus: 'pending',
+        consentExpiresAt,
+        consentPendingReason: consentRefusal === GALLERY_MISSING_MESSAGE ? 'gallery' : 'acceptance',
+      } : {}),
       ...(wall.consent ? { publicGalleryConsent: wall.consent } : {}),
       // User info from onboarding pages (a social login gives the email without the page)
       ...(validatedUserInfo

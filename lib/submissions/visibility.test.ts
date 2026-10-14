@@ -10,6 +10,8 @@ test('a plain photo is public unless it is pending or rejected; a missing status
   assert.equal(isPubliclyVisible({ submissionKind: 'original', reviewStatus: 'pending_review' }), false);
   assert.equal(isPubliclyVisible({ submissionKind: 'original', reviewStatus: 'rejected' }), false);
   assert.equal(isPubliclyVisible({ reviewStatus: 'pending_review' }), false, 'a photo without a kind is a plain photo');
+  assert.equal(isPubliclyVisible({ consentStatus: 'pending' }), false, 'a photo awaiting consent is private');
+  assert.equal(isPubliclyVisible({ consentStatus: 'expired' }), false, 'an expired photo stays private');
 });
 
 test('a stored try-on result is never public, whatever its review or sharing flag says (issue 557)', () => {
@@ -43,11 +45,12 @@ test('no photo at all is not public', () => {
 
 test('the query clauses express the same rule', () => {
   const clauses = publiclyVisibleClauses(['e1', 'u1']);
-  assert.equal(clauses.length, 4);
+  assert.equal(clauses.length, 5);
   assert.deepEqual(clauses[0], { isArchived: { $ne: true } });
   assert.deepEqual(clauses[1], { 'mediaHealth.broken': { $ne: true } }, 'a picture that is gone is not public');
-  assert.deepEqual(clauses[2], { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: ['e1', 'u1'] } }] });
-  const review = clauses[3] as { $and: object[] };
+  assert.deepEqual(clauses[2], { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } });
+  assert.deepEqual(clauses[3], { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: ['e1', 'u1'] } }] });
+  const review = clauses[4] as { $and: object[] };
   assert.deepEqual(review.$and[0], plainPhotoClause, 'a plain photo: no kind or original');
   assert.deepEqual(review.$and[1], { reviewStatus: { $nin: ['pending_review', 'rejected'] } });
   assert.doesNotMatch(JSON.stringify(clauses), /tryon_result/, 'a stored try-on result has no branch that lets it in');

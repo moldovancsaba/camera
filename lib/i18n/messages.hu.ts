@@ -82,7 +82,7 @@ export const hu: Record<MessageKey, string> = {
   'errorPage.goHome': 'Vissza a főoldalra',
   'errorPage.errorId': 'Hibaazonosító: {id}',
   'share.publicGalleryConsentRequired': 'Hozzájárulok, hogy a fotóm megjelenjen a kampány nyilvános falán.',
-  'share.publicGalleryConsentHelpRequired': 'A fotód mentéséhez ehhez hozzá kell járulnod.',
+  'share.publicGalleryConsentHelpRequired': 'Hozzájárulás nélkül a fotód privát marad, és 24 óra múlva töröljük.',
   'share.title': 'Oszd meg a fotódat',
   'share.copy': 'Másolás',
   'share.view': 'Fotód megtekintése (megnyitja a megosztási linket)',

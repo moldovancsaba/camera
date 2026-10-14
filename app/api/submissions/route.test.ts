@@ -539,28 +539,31 @@ test('a record that says it was not ticked is refused unless it says it was opti
   assert.equal(claimsRequired.status, 400, 'only an optional box can be recorded as not ticked');
 });
 
-test('a required checkbox an editor chose on an own consent page: a save without its record is refused before anything is uploaded, a save with it is stored', async (t) => {
+test('a required checkbox on an own consent page no longer blocks upload; the photo is private and expires after 24 hours until consent is recorded', async (t) => {
   const run = scenario(t);
   const event = { customPages: [OWN_PAGE([{ text: 'A', required: true }, { text: 'B', required: true }, { text: 'C', required: false }]), PHOTO_PAGE] };
   const refused = await run('consent-own-refused', event, null, { consents: [{ pageId: 'c', pageType: 'accept', checkboxText: 'A', accepted: true, acceptedAt: 'x' }] });
-  assert.equal(refused.status, 400);
-  assert.equal(refused.error, 'A required consent is missing');
-  assert.equal(refused.uploaded, 0, 'the picture is not uploaded');
-  assert.equal(refused.inserted.length, 0);
+  assert.equal(refused.status, 201);
+  assert.equal(refused.uploaded, 1, 'the established upload still runs');
+  assert.equal(refused.inserted.length, 1);
+  assert.equal(refused.inserted[0].consentStatus, 'pending');
+  assert.equal(typeof refused.inserted[0].consentExpiresAt, 'string');
+  assert.equal(refused.inserted[0].isShareVisible, false, 'a photo awaiting required consent stays private');
   const none = await run('consent-own-none', event, null, {});
-  assert.equal(none.status, 400);
+  assert.equal(none.status, 201);
   const records = ['A', 'B'].map((checkboxText) => ({ pageId: 'c', pageType: 'accept', checkboxText, accepted: true, acceptedAt: '2026-10-10T10:00:00.000Z' }));
   const saved = await run('consent-own-saved', event, null, { consents: records });
   assert.equal(saved.status, 201);
   assert.equal(saved.inserted[0].consents.length, 2);
 });
 
-test('the default consent page: a document required at the partner is checked for an event that gets the defaults, and one switched off needs nothing', async (t) => {
+test('the default consent page: missing partner-required consent no longer blocks upload, and one switched off needs nothing', async (t) => {
   const run = scenario(t);
   const partner = { partnerId: 'P1', consentSettings: { terms: { shown: true, required: true }, cookies: { shown: false } } };
   const event = { partnerId: 'P1', customPages: [PHOTO_PAGE], journeyDefaults: true };
   const refused = await run('consent-partner-refused', event, partner, {});
-  assert.equal(refused.status, 400);
+  assert.equal(refused.status, 201);
+  assert.equal(refused.inserted[0].consentStatus, 'pending');
   const saved = await run('consent-partner-saved', event, partner, { consents: THREE.slice(0, 2) });
   assert.equal(saved.status, 201);
   const noDefaults = await run('consent-partner-no-defaults', { partnerId: 'P1', customPages: [PHOTO_PAGE] }, partner, {});
@@ -569,14 +572,15 @@ test('the default consent page: a document required at the partner is checked fo
   assert.equal(ownChoice.status, 201, 'the event chose optional for the terms; its partner’s choice is not borrowed');
 });
 
-test('the public gallery permission set to required: refused without the ticked box and its version, stored with evidence that it was required when ticked', async (t) => {
+test('the public gallery permission set to required: upload proceeds privately without the tick, and stores evidence when ticked', async (t) => {
   const run = scenario(t);
   const event = { galleryConsent: true, consentSettings: { gallery: { required: true } } };
   for (const [caseId, body] of [['no-tick', { shareOptIn: false, publicGalleryConsentVersion: 1 }], ['old-page', { shareOptIn: true }], ['nothing', {}]] as const) {
     const refused = await run(`gallery-required-${caseId}`, event, null, body);
-    assert.equal(refused.status, 400, caseId);
-    assert.equal(refused.error, 'The permission to show the photo in the public gallery is required');
-    assert.equal(refused.inserted.length, 0);
+    assert.equal(refused.status, 201, caseId);
+    assert.equal(refused.inserted.length, 1);
+    assert.equal(refused.inserted[0].consentStatus, 'pending');
+    assert.equal(refused.inserted[0].isShareVisible, false);
   }
   const saved = await run('gallery-required-ticked', event, null, { shareOptIn: true, publicGalleryConsentVersion: 1 });
   assert.equal(saved.status, 201);
@@ -585,14 +589,17 @@ test('the public gallery permission set to required: refused without the ticked 
   assert.equal(doc.publicGalleryConsent.version, 1);
   assert.equal(doc.publicGalleryConsent.required, true);
   const viaPartner = await run('gallery-required-partner', { partnerId: 'P1' }, { partnerId: 'P1', galleryConsent: true, consentSettings: { gallery: { required: true } } }, { shareOptIn: false });
-  assert.equal(viaPartner.status, 400, 'an event that made no choice follows its partner’s requirement');
+  assert.equal(viaPartner.status, 201, 'an event that made no choice follows its partner’s requirement without blocking upload');
+  assert.equal(viaPartner.inserted[0].consentStatus, 'pending');
 });
 
 test('the acceptance sentence set to required needs a record for each shown checkbox of the consent page it stands for', async (t) => {
   const run = scenario(t);
   const login = { pageId: 'l', pageType: 'who-are-you', order: -1, isActive: true, config: { title: 'W', buttonText: 'Go', nameLabel: 'n', emailLabel: 'e' } };
   const event = { customPages: [OWN_PAGE([{ text: 'A' }, { text: 'B' }, { text: 'C', shown: false }]), login, PHOTO_PAGE], acceptanceOnWhoAreYou: true, consentSettings: { acceptance: { required: true } } };
-  assert.equal((await run('acceptance-required-none', event, null, {})).status, 400);
+  const pending = await run('acceptance-required-none', event, null, {});
+  assert.equal(pending.status, 201);
+  assert.equal(pending.inserted[0].consentStatus, 'pending');
   const records = ['A', 'B'].map((checkboxText) => ({ pageId: 'c', pageType: 'accept', checkboxText, shownText: 'A, B', accepted: true, acceptedAt: '2026-10-10T10:00:00.000Z' }));
   assert.equal((await run('acceptance-required-saved', event, null, { consents: records })).status, 201);
   const optional = { ...event, consentSettings: { acceptance: { required: false } } };

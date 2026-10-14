@@ -9,6 +9,10 @@
       "schedule": "30 5 * * *"
     },
     {
+      "path": "/api/internal/purge-unconsented-captures",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/internal/follow-up-emails",
       "schedule": "0 7 * * *"
     }

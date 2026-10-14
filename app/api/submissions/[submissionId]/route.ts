@@ -257,7 +257,22 @@ export const PATCH = withErrorHandler(async (
       }))
       .filter((record) => !existing.some((stored) => stored.pageId === record.pageId && stored.checkboxText === record.checkboxText && stored.accepted === record.accepted));
     if (next.length > 0) {
-      await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne({ _id: objectId }, { $push: { consents: { $each: next } }, $set: { updatedAt: new Date().toISOString() } });
+      const now = new Date().toISOString();
+      const acceptedAny = next.some((record) => record.accepted) && submission.consentPendingReason !== 'gallery';
+      await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+        { _id: objectId },
+        {
+          $push: { consents: { $each: next } },
+          $set: {
+            updatedAt: now,
+            ...(acceptedAny && submission.consentStatus === 'pending' ? {
+              consentStatus: 'received',
+              isShareVisible: submission.consentShareOptIn === true,
+            } : {}),
+          },
+          ...(acceptedAny && submission.consentStatus === 'pending' ? { $unset: { consentExpiresAt: '', consentPendingReason: '', consentShareOptIn: '' } } : {}),
+        },
+      );
     }
     return apiSuccess({ submissionId, action, appendedConsents: next.length });
   }

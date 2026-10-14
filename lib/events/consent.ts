@@ -14,7 +14,7 @@ export interface ConsentCheckbox {
   /** `false`: the checkbox is switched off, not shown and no record is made. Missing (the standard) or true: shown. Only `false` is ever stored. */
   shown?: boolean;
   /**
-   * Whether it must be ticked. Missing (the standard): required on the page, as the page always did. `true`: an editor chose "required", so the server refuses a photo saved without it too.
+   * Whether it must be ticked. Missing (the standard): required on the page, as the page always did. `true`: an editor chose "required", so a photo saved without it stays private and is deleted after 24 hours.
    * `false`: optional, shown with "(optional)", may stay unticked, and the record says whether it was ticked.
    */
   required?: boolean;
@@ -140,4 +140,3 @@ export function consentRecords(
   }
   return [{ pageId: page.pageId, pageType: page.pageType, checkboxText: page.checkboxText || '', accepted: data.accepted, acceptedAt: data.acceptedAt }];
 }
-
