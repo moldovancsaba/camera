@@ -34,7 +34,8 @@ test('a submit page right after the photo has nothing between: saving is a step 
 test('a submit page that is switched off, before the photo, or in an event with no take-photo page does not count, and is never a page the user sees', () => {
   const off = splitCustomPages([page('take-photo', 0), page('cta', 1), page('submit', 2, false), page('restart', 3)]);
   assert.equal(off.submitSeparate, false);
-  assert.deepEqual(ids(off.thankYouPages), ['cta-1', 'restart-3'], 'the switched off marker is not shown');
+  assert.deepEqual(ids(off.presubmitPages), ['cta-1', 'restart-3'], 'post-camera pages follow the immediate upload when the marker is switched off');
+  assert.deepEqual(ids(off.thankYouPages), []);
   const before = splitCustomPages([page('submit', -1), page('welcome', -2), page('take-photo', 0)]);
   assert.equal(before.submitSeparate, false);
   assert.deepEqual(ids(before.onboardingPages), ['welcome--2']);
