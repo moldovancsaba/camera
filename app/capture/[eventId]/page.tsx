@@ -337,7 +337,7 @@ export default function EventCapturePage({
   
   // With the acceptance on the Who-are-you page (issue 523) the consent page is not a step of its own: its checkboxes are shown there as one (lib/events/acceptance.ts).
   const { pages: journeyPages, acceptPage: acceptanceBox } = acceptanceOnLogin(customPages, event?.acceptanceOnWhoAreYou === true);
-  const { onboardingPages, presubmitPages, thankYouPages, takePhotoPage } = splitCustomPages(journeyPages);
+  const { onboardingPages, presubmitPages, thankYouPages, takePhotoPage } = splitCustomPages(journeyPages, { saveThroughWhoAreYou: acceptanceBox !== null });
 
   // Get take-photo page config for button texts and messages
   const configuredTakePhotoPage = takePhotoPage;

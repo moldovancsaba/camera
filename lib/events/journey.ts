@@ -27,7 +27,7 @@ export interface JourneyContext {
   defaultOrders?: Record<string, number> | null;
   /** The settings of the three documents of the default consent page for this event (issue 558, lib/events/checkbox-settings.ts); missing: the standard (all shown, all required). */
   documents?: DocumentSettings;
-  /** The effective setting: the consent page is rendered as one checkbox on Who-are-you, when both pages are present before save. */
+  /** The effective setting: consent is rendered as one checkbox on Who-are-you when that page runs before saving; without Submit, post-camera login delays saving until it completes. */
   acceptanceOnWhoAreYou?: boolean;
 }
 
@@ -50,17 +50,17 @@ const REASON: Record<string, string> = {
  * The steps that follow the photo and are not pages. With photo approval on the user waits for the approval, and the approved photo comes by e-mail
  * with a link to the public photo page; without approval the user sees the share screen at once.
  */
-function stepsAfterPhoto(context: JourneyContext, separateSubmit = false): JourneyRow[] {
+function stepsAfterPhoto(context: JourneyContext, separateSubmit = false, saveAfterLogin = false): JourneyRow[] {
   const saves = separateSubmit ? 'the Submit step saves the photo' : 'Continue saves the photo';
   if (context.vettingRequired) {
     return [
-      { kind: 'step', id: 'waiting', title: 'Waiting for approval', description: `After ${saves} the user waits until it is approved. Built in.`, editedIn: 'The take-photo page in this list (approval texts) and the Public result page section above.' },
+      { kind: 'step', id: 'waiting', title: 'Waiting for approval', description: `${saveAfterLogin ? 'After the login page, the photo is saved and the user waits until it is approved.' : `After ${saves} the user waits until it is approved.`} Built in.`, editedIn: 'The take-photo page in this list (approval texts) and the Public result page section above.' },
       { kind: 'step', id: 'emails', title: 'E-mails', description: 'The user gets the saved e-mail, then the approved or not-approved e-mail with the link. Built in.', editedIn: 'The Email module section above.' },
       { kind: 'step', id: 'result', title: 'The public photo page', description: 'The page the e-mail links to: the photo and its download. Built in.', editedIn: 'The Public result page section above.' },
     ];
   }
   return [
-    { kind: 'step', id: 'share', title: 'Share screen', description: `After ${saves} the user can copy the link and share it. Built in.`, editedIn: 'The take-photo page in this list (share texts) and the Public result page section above.' },
+    { kind: 'step', id: 'share', title: 'Share screen', description: `${saveAfterLogin ? 'After the login page, the photo is saved and the user can copy the link and share it.' : `After ${saves} the user can copy the link and share it.`} Built in.`, editedIn: 'The take-photo page in this list (share texts) and the Public result page section above.' },
     { kind: 'step', id: 'emails', title: 'E-mails', description: 'The user gets the saved e-mail when an address is known. Built in.', editedIn: 'The Email module section above.' },
     { kind: 'step', id: 'result', title: 'The public photo page', description: 'The page the e-mail links to: the photo and its download. Built in.', editedIn: 'The Public result page section above.' },
   ];
@@ -74,15 +74,20 @@ function stepsAfterPhoto(context: JourneyContext, separateSubmit = false): Journ
 export function effectiveJourney(storedPages: readonly CustomPage[] | null | undefined, context: JourneyContext, now?: string): JourneyRow[] {
   const defaults = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen, texts: context.texts, defaultOrders: context.defaultOrders, documents: context.documents });
   // Match the guest flow: if consent is merged into the Who-are-you page, it is a part of that parent step, not a standalone journey page.
-  const pages = acceptanceOnLogin(defaults, context.acceptanceOnWhoAreYou === true).pages;
+  const acceptance = acceptanceOnLogin(defaults, context.acceptanceOnWhoAreYou === true);
+  const pages = acceptance.pages;
   const rows: JourneyRow[] = [...pages]
     .sort((a, b) => a.order - b.order)
     .map((page) => (isDefaultPage(page) ? { kind: 'default', page, reason: REASON[page.pageId] } : { kind: 'own', page }));
   const photoAt = rows.findIndex((row) => row.kind === 'own' && row.page.isActive && row.page.pageType === CustomPageType.TAKE_PHOTO);
   // An active Submit page after the take-photo page makes saving a step of its own (issue 535): the built-in steps that follow the save come after it, and the pages between the two run before the save.
   const submitAt = photoAt === -1 ? -1 : rows.findIndex((row, index) => index > photoAt && row.kind === 'own' && row.page.isActive && row.page.pageType === CustomPageType.SUBMIT);
-  const steps = stepsAfterPhoto(context, submitAt !== -1);
-  const after = submitAt !== -1 ? submitAt : photoAt;
+  const loginAt = acceptance.acceptPage && submitAt === -1 && photoAt !== -1
+    ? rows.findIndex((row, index) => index > photoAt && row.kind !== 'step' && row.page.isActive && row.page.pageType === CustomPageType.WHO_ARE_YOU)
+    : -1;
+  const saveAfterLogin = loginAt !== -1;
+  const steps = stepsAfterPhoto(context, submitAt !== -1, saveAfterLogin);
+  const after = submitAt !== -1 ? submitAt : saveAfterLogin ? loginAt : photoAt;
   if (after === -1) return [...rows, ...steps];
   return [...rows.slice(0, after + 1), ...steps, ...rows.slice(after + 1)];
 }
