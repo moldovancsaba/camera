@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — use Messmass domains for generated public links (2026-10-14)
+
+- **Changed:** e-mail capture/photo links and links copied from capture, landing-page and slideshow screens now canonicalize legacy Done Is Better app hosts to `camera.messmass.com`; short-link origins canonicalize to `go.messmass.com`. Preview and local hosts remain usable, and tests can still use Done Is Better fixtures.
+- **Operations:** new public links no longer depend on a legacy production URL environment value. Existing links and DNS aliases are unaffected by this code change.
+- **Security/infrastructure:** `sso.doneisbetter.com` remains the shared production identity provider and is deliberately unchanged; retire the parent domain only after the SSO fleet is migrated.
+- **Verified:** `npm run inventory:check` passed; `npm run release:check` passed (345/345 unit-test files, production guards, and production build). Focused URL tests and lint passed. The build reported the existing Google Fonts `@import` ordering warning; compilation and build succeeded.
+- **Deployment:** pending PR review and production deploy.
+
 ## Unreleased — back up a captured photo before sign-in (2026-10-13)
 
 - **Changed:** the camera uploads the full-size capture directly to this event's unlisted Vercel Blob draft folder as soon as the shutter finishes, then continues to the next capture step without waiting for the upload. The normal framed submission still uses the existing save route. Drafts stay in the event folder through sign-in, retakes, completed saves, and page exits for post-event cleanup.

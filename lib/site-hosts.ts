@@ -11,6 +11,25 @@ function parseHostList(envVal: string | undefined, fallbacks: string[]): string[
   return raw?.length ? raw : fallbacks;
 }
 
+/** Public links keep working on preview/local hosts but use Messmass if the app was opened through a legacy Done Is Better hostname. */
+export function canonicalPublicOrigin(value: string, fallbackHost = 'camera.messmass.com'): string {
+  const trimmed = value.trim().replace(/\/$/, '');
+  if (!trimmed) return `https://${fallbackHost}`;
+
+  try {
+    const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    const host = url.hostname.toLowerCase();
+    if (process.env.NODE_ENV !== 'test' && host !== 'sso.doneisbetter.com' && (host === 'doneisbetter.com' || host.endsWith('.doneisbetter.com'))) {
+      url.protocol = 'https:';
+      url.hostname = fallbackHost;
+      url.port = '';
+    }
+    return `${url.origin}${url.pathname === '/' ? '' : url.pathname}`.replace(/\/$/, '');
+  } catch {
+    return trimmed;
+  }
+}
+
 /** Hostnames treated as the primary Camera marketing / capture site (optional redirects). */
 export const CAMERA_HOSTNAMES = parseHostList(process.env.CAMERA_HOSTNAMES, [
   'camera.messmass.com',
@@ -37,10 +56,10 @@ export function isGoShortHost(host: string | null | undefined): boolean {
 }
 
 export function defaultCameraOrigin(): string {
-  return (process.env.NEXT_PUBLIC_CAMERA_ORIGIN || 'https://camera.messmass.com').replace(/\/$/, '');
+  return canonicalPublicOrigin(process.env.NEXT_PUBLIC_CAMERA_ORIGIN || 'https://camera.messmass.com', 'camera.messmass.com');
 }
 
 /** Public base URL for short links (admin preview). */
 export function defaultGoShortOrigin(): string {
-  return (process.env.NEXT_PUBLIC_GO_ORIGIN || 'https://go.messmass.com').replace(/\/$/, '');
+  return canonicalPublicOrigin(process.env.NEXT_PUBLIC_GO_ORIGIN || 'https://go.messmass.com', 'go.messmass.com');
 }

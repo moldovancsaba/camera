@@ -48,6 +48,7 @@ import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import RestartPage from '@/components/capture/RestartPage';
 import WelcomePage from '@/components/capture/WelcomePage';
 import { type CustomPage } from '@/lib/db/schemas';
+import { canonicalPublicOrigin } from '@/lib/site-hosts';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
@@ -992,7 +993,7 @@ export default function EventCapturePage({
       }
 
       const data = await response.json();
-      const origin = window.location.origin;
+      const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
       // Response is wrapped in { success: true, data: { submission: {...} } }
       const rawId = data.data?.submission?._id ?? data.submission?._id;
       const submissionId =

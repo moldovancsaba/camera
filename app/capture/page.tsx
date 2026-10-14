@@ -17,6 +17,7 @@ import { Button } from '@mantine/core';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import { cropCaptureToAspect } from '@/lib/camera/frame-crop';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
+import { canonicalPublicOrigin } from '@/lib/site-hosts';
 
 
 interface Frame {
@@ -273,7 +274,7 @@ export default function CapturePage() {
       setSubmissionId(resolvedId);
       
       // Generate share URL
-      const origin = window.location.origin;
+      const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
       setShareUrl(`${origin}/share/${resolvedId}`);
       const emailNotice = buildEmailDeliveryNotice(submission?.metadata);
       const successMessage = emailNotice

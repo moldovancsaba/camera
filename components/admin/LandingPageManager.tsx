@@ -2,6 +2,7 @@
 
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
+import { canonicalPublicOrigin } from '@/lib/site-hosts';
 import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { EmptyState, InlineAlert, LabelTag, useGdsConfirm } from '@sovereignsquad/gds-core/client';
@@ -59,7 +60,7 @@ export default function LandingPageManager({
   };
 
   const copyUrl = (slug: string) => {
-    const url = `${window.location.origin}/landing/${slug}`;
+    const url = `${canonicalPublicOrigin(window.location.origin, 'camera.messmass.com')}/landing/${slug}`;
     void navigator.clipboard.writeText(url);
     notifyAdminSuccess({ title: 'URL copied', message: 'Landing page URL copied to clipboard.' });
   };
