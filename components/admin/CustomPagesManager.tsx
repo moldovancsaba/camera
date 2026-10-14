@@ -16,7 +16,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
 import ImagePicker from '@/components/admin/library/ImagePicker';
-import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
+import { CustomPageType, type CustomPage, type FrameMessageSelectionDisplay, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
 import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
 import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type CheckboxMode, type EffectiveCheckboxes, type StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
@@ -37,7 +37,8 @@ export interface CustomPagesManagerProps {
   galleryConsent?: boolean | null;
   consentSettings?: StoredCheckboxSettings | null;
   partnerCheckboxes?: EffectiveCheckboxes;
-  onSave: (pages: CustomPage[], options: { acceptanceOnWhoAreYou: boolean | null; galleryConsent: boolean | null; consentSettings: StoredCheckboxSettings | null; defaultPageOrders?: Record<string, number> }) => Promise<void>;
+  frameMessageSelectionDisplay?: FrameMessageSelectionDisplay;
+  onSave: (pages: CustomPage[], options: { acceptanceOnWhoAreYou: boolean | null; galleryConsent: boolean | null; consentSettings: StoredCheckboxSettings | null; frameMessageSelectionDisplay: FrameMessageSelectionDisplay; defaultPageOrders?: Record<string, number> }) => Promise<void>;
 }
 
 function Field({
@@ -152,7 +153,7 @@ function MoveButtons({ canUp, canDown, onUp, onDown }: { canUp: boolean; canDown
   );
 }
 
-export default function CustomPagesManager({ eventId, initialPages, journeyContext, acceptanceOnWhoAreYou = null, galleryConsent = null, consentSettings = null, partnerCheckboxes, onSave }: CustomPagesManagerProps) {
+export default function CustomPagesManager({ eventId, initialPages, journeyContext, acceptanceOnWhoAreYou = null, galleryConsent = null, consentSettings = null, partnerCheckboxes, frameMessageSelectionDisplay = 'automatic', onSave }: CustomPagesManagerProps) {
   const [pages, setPages] = useState<CustomPage[]>(initialPages);
   // One value for each kind of checkbox (issue 558): the list at the top and the page editors that show a kind (the Who-are-you page's acceptance, the consent page's acceptance and gallery permission)
   // read and write it here, so they are always the same one. "" is no choice of its own: the event follows its partner.
@@ -163,6 +164,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
   const changeMode = (kind: CheckboxKind, mode: CheckboxMode) => setModes((current) => ({ ...current, [kind]: mode }));
   // Where the default pages are (issue 535): the places the editor saved, changed here by the up/down buttons and saved with Save Pages. Null: the default places.
   const [defaultOrders, setDefaultOrders] = useState<Record<string, number> | null>(journeyContext?.defaultOrders ?? null);
+  const [selectionDisplay, setSelectionDisplay] = useState<FrameMessageSelectionDisplay>(frameMessageSelectionDisplay);
   const [showModal, setShowModal] = useState(false);
   const [editingPage, setEditingPage] = useState<CustomPage | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -413,7 +415,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
         ...p,
         order: typeof p.order === 'number' && Number.isFinite(p.order) ? p.order : Number(p.order),
       }));
-      await onSave(pagesToSave, { ...settingsToStore(modes), ...(defaultOrders ? { defaultPageOrders: defaultOrders } : {}) });
+      await onSave(pagesToSave, { ...settingsToStore(modes), frameMessageSelectionDisplay: selectionDisplay, ...(defaultOrders ? { defaultPageOrders: defaultOrders } : {}) });
     } catch (error) {
       console.error('Failed to save pages:', error);
       const msg = error instanceof Error ? error.message : 'Failed to save pages. Please try again.';
@@ -453,6 +455,23 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
             </p>
           </div>
           <CheckboxSettingsFields modes={modes} onChange={changeMode} level="event" followed={partnerCheckboxes} />
+        </section>
+
+        <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', display: 'grid', gap: '0.75rem', padding: '1rem' }} data-frame-message-selection-settings>
+          <div style={{ display: 'grid', gap: '0.25rem' }}>
+            <h3 style={{ margin: 0 }}>Frame and message selection</h3>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
+              This is one capture-flow page before the camera. Show it to let guests choose from available options, hide it to use the event&apos;s fixed or random choices, or follow the settings on the Frames page. Empty sections and a page with nothing to choose are skipped automatically.
+            </p>
+          </div>
+          <label style={{ display: 'grid', gap: '0.35rem', maxWidth: '32rem' }}>
+            <span>When to show the selector</span>
+            <select value={selectionDisplay} onChange={(event) => setSelectionDisplay(event.currentTarget.value as FrameMessageSelectionDisplay)}>
+              <option value="automatic">Follow the settings on the Frames page</option>
+              <option value="show">Show guests all available choices</option>
+              <option value="hide">Hide the selector</option>
+            </select>
+          </label>
         </section>
 
       {/* Page List */}

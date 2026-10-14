@@ -36,6 +36,7 @@ import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import type { JourneyContext } from '@/lib/events/journey';
 import type { EffectiveCheckboxes, StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
+import type { FrameMessageSelectionDisplay } from '@/lib/db/schemas';
 import {
   DEFAULT_EVENT_BUTTON_SIZE,
   EVENT_BUTTON_SIZE_OPTIONS,
@@ -103,6 +104,7 @@ interface EventRecord {
   /** The event's own choices for the other checkbox settings, and what the event would get if it followed its partner (issue 558, lib/events/checkbox-settings.ts). */
   consentSettings?: StoredCheckboxSettings | null;
   partnerCheckboxes?: EffectiveCheckboxes;
+  frameMessageSelectionDisplay?: FrameMessageSelectionDisplay;
   sharePage?: {
     showCreateYourOwnButton?: boolean;
     texts?: Record<string, string>;
@@ -606,12 +608,13 @@ export default function EditEventPage({
         galleryConsent={typeof event?.galleryConsent === 'boolean' ? event.galleryConsent : null}
         consentSettings={event?.consentSettings ?? null}
         partnerCheckboxes={event?.partnerCheckboxes}
+        frameMessageSelectionDisplay={event?.frameMessageSelectionDisplay}
         onSave={async (pages, options) => {
           try {
             const response = await fetch(`/api/events/${mongoId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ customPages: pages, acceptanceOnWhoAreYou: options.acceptanceOnWhoAreYou, galleryConsent: options.galleryConsent, consentSettings: options.consentSettings, ...(options.defaultPageOrders ? { defaultPageOrders: options.defaultPageOrders } : {}) }),
+              body: JSON.stringify({ customPages: pages, acceptanceOnWhoAreYou: options.acceptanceOnWhoAreYou, galleryConsent: options.galleryConsent, consentSettings: options.consentSettings, frameMessageSelectionDisplay: options.frameMessageSelectionDisplay, ...(options.defaultPageOrders ? { defaultPageOrders: options.defaultPageOrders } : {}) }),
             });
 
             if (!response.ok) {

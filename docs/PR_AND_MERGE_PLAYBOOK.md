@@ -5,6 +5,8 @@
 
 Why this exists: on 10 and 11 October 2026 about a dozen parallel streams (analytics, the try-on removal, consent settings, the follow-up e-mail, journey recording, documentation) each prepared pull requests in their own git worktree while `main` moved every ten minutes. Many pull requests could not be merged at the moment they were green, and merge commands failed for two different reasons: **GitHub's own rules** and **Claude Code's permission system**. This file says what failed, how each case was fixed, how to avoid it, and the routine to follow. The short rules are in `CLAUDE.md` sections 3, 5 and 10; this is the long version. The tooling it mentions (`npm run sync:main`, the stable inventory scanner; camera PR 592, 2026-10-11) is described in `RUNBOOK.md` ("Parallel branches in git worktrees").
 
+**Owner instruction (2026-10-14): GitHub only.** Use GitHub for branches, pull requests, checks, merges and pushes. Do not inspect or operate Vercel previews, deployments, dashboard, or CLI, and do not wait for Vercel checks. Decide readiness from GitHub's required checks and pull request state.
+
 ## 1. Why a green pull request could not be merged (GitHub side)
 
 `main` is protected (CLAUDE.md section 2): a pull request, a passing `Verify` check, **the branch must be up to date with `main`**, admins cannot bypass, force-pushes are off, and **auto-merge is disabled** for the repository. Every merge moves `main`, so every other open pull request becomes "behind" at once. That single rule explains most of what was seen:
@@ -14,7 +16,7 @@ Why this exists: on 10 and 11 October 2026 about a dozen parallel streams (analy
 | `X Pull request ... is not mergeable: the merge commit cannot be cleanly created`, state `DIRTY`/`CONFLICTING` | `main` changed the same lines (see 2) | rebase, resolve, regenerate, push (see section 4) | small pull requests, merge as soon as green, surgical edits in shared files |
 | `base branch policy prohibits the merge. To have the pull request merged after all the requirements have been met, add the --auto flag. To use administrator privileges ... --admin` (state `BEHIND`) | the branch was not up to date with `main`; `--auto` is disabled and `--admin` is blocked by the protection | `gh pr update-branch <n> --repo moldovancsaba/camera` (merges `main` into the branch), wait for `Verify` again, merge | merge in sequence, never queue three green pull requests and expect them all to stay green; use `npm run sync:main` before the last push |
 | `gh pr update-branch` answers `Cannot update PR branch due to conflicts` | a real conflict (see 2) | rebase locally | as above |
-| state `UNSTABLE`, `Vercel` check `pending` for hours | the Vercel preview deployment was stuck or queued behind many deployments; it is **not** a required check (only `Verify` is) | after `Verify` passed and the change was docs-only or already proven, `gh pr merge` worked (the production deployment is separate and was watched afterwards) | do not wait forever: after 20 minutes of a pending preview with a green `Verify`, say so and merge on `Verify` |
+| a non-GitHub preview status is pending | Preview hosts are outside this delivery workflow | Ignore it; use GitHub's required checks and PR state | Do not inspect the preview or wait on its status |
 | the pull request was `MERGEABLE`+`CLEAN` a minute ago, `BEHIND` now | another stream merged in between | `update-branch` and wait again | accept it: it costs one CI cycle (8 to 12 minutes) per merge that happened in between |
 
 ## 2. Why pull requests conflicted, and the fixes

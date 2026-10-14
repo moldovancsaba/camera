@@ -114,6 +114,8 @@ check it.
 
 ## 3. Git workflow actually used in this repo
 
+**Owner instruction (2026-10-14): GitHub only.** Use GitHub for branches, pull requests, checks, merges and pushes. Do not inspect or operate Vercel previews, deployments, dashboard, or CLI, and do not wait for Vercel checks. Decide readiness from GitHub's required checks (especially `Verify`) and pull request state.
+
 - A merged PR is finished. Never stack new commits on an already-merged branch —
   start a fresh branch from the current `main` for follow-up work, even if it
   reuses the same name.
