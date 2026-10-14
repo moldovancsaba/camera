@@ -36,17 +36,26 @@ export interface CaptureFrame {
   selection: CaptureSelection | null;
 }
 
-/** The visibility choice for the journey page controls layout visibility independently from message selection. */
-export type FrameMessageSelectionDisplay = 'automatic' | 'show' | 'hide';
+/** How the journey selector displays layout and message choices. */
+export type FrameMessageSelectionDisplay = 'automatic' | 'show' | 'hide' | 'messages-only';
 
-/** Apply the Pages setting to a generated frame: hide layouts while preserving a user-selected message across all layouts. */
+/** Apply the Pages setting to a generated frame: a messages-only page offers every message across its carrying layouts. */
 export function frameWithSelectionDisplay(frame: CaptureFrame | null | undefined, display: FrameMessageSelectionDisplay = 'automatic'): CaptureFrame | null {
   if (!frame) return null;
   if (display === 'show') {
     return { ...frame, selection: { layout: { mode: 'user', pick: null }, message: { mode: 'user', pick: null } } };
   }
-  if (display !== 'hide' || !frame.selection) return frame;
   const layouts = [...new Set(frame.variants.map((variant) => variant.frameId ?? 'generated'))];
+  if (display === 'messages-only') {
+    return {
+      ...frame,
+      selection: {
+        layout: layouts.length > 1 ? { mode: 'random', pick: null } : { mode: 'editor', pick: layouts[0] ?? null },
+        message: { mode: 'user', pick: null },
+      },
+    };
+  }
+  if (display !== 'hide' || !frame.selection) return frame;
   const soleLayout = layouts.length === 1 ? layouts[0] : null;
   const savedLayout = frame.selection.layout;
   return {

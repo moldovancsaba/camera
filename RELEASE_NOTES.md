@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — show message choices without frame tiles (2026-10-14)
+
+- **Changed:** Pages now offers a message-only selector mode that lists every available message and automatically uses an available frame assigned to that message, while keeping frame choices hidden.
+- **Fixed:** frame and layout selector buttons use the configured square choice image. If there is no square image, the button shows the frame or layout name instead of reusing the full frame artwork. The Take Photo page stays free of frame/message change buttons.
+- **Verified locally:** type-check, lint, production build, GDS checks, and inventory checks passed.
+
 ## Unreleased — keep social sign-in in the selfie tab (2026-10-14)
 
 - **Fixed:** Google and Facebook now use the existing central SSO in the same tab; no dark popup window opens. Before redirecting from a post-photo login page, the original and reframed photo are saved to the event's temporary image storage and the frame/message choices are kept for the return. After sign-in the guest resumes on the next journey page with the photo intact.

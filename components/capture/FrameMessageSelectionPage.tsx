@@ -59,25 +59,26 @@ export default function FrameMessageSelectionPage({
         <section aria-labelledby="capture-frame-heading">
           <h3 id="capture-frame-heading" className="mb-3 text-center text-base font-semibold">{frameHeading}</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" data-tour-id="capture-frame-grid">
-            {frames.map((frame) => (
-              <button
-                key={frame.frameId}
-                type="button"
-                onClick={() => onFrameSelect(frame)}
-                aria-pressed={selectedFrameId === frame.frameId}
-                className="aspect-square overflow-hidden rounded-xl border-2 transition-all"
-                style={{ backgroundColor: frame.tileStyle?.color || undefined, borderColor: selectedFrameId === frame.frameId ? `var(--event-button-bg, ${brandColor || 'var(--mantine-color-blue-6)'})` : undefined }}
-                data-frame-choice
-              >
-                {frame.tileStyle?.imageUrl ? (
-                  <Image src={frame.tileStyle.imageUrl} alt={frame.name} width={600} height={600} unoptimized className="h-full w-full object-cover" />
-                ) : frame.tileStyle?.color ? (
-                  <span className="flex h-full w-full items-center justify-center p-3 text-center font-semibold">{frame.name}</span>
-                ) : (
-                  <Image src={frame.imageUrl} alt={frame.name} width={600} height={600} unoptimized className="h-full w-full object-cover" />
-                )}
-              </button>
-            ))}
+            {frames.map((frame) => {
+              const tile = tiles[frame.frameId] ?? frame.tileStyle;
+              return (
+                <button
+                  key={frame.frameId}
+                  type="button"
+                  onClick={() => onFrameSelect(frame)}
+                  aria-pressed={selectedFrameId === frame.frameId}
+                  className="aspect-square overflow-hidden rounded-xl border-2 transition-all"
+                  style={{ backgroundColor: tile?.color || undefined, borderColor: selectedFrameId === frame.frameId ? `var(--event-button-bg, ${brandColor || 'var(--mantine-color-blue-6)'})` : undefined }}
+                  data-frame-choice
+                >
+                  {tile?.imageUrl ? (
+                    <Image src={tile.imageUrl} alt={frame.name} width={600} height={600} unoptimized className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center p-3 text-center font-semibold">{frame.name}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </section>
       ) : null}
@@ -89,7 +90,6 @@ export default function FrameMessageSelectionPage({
               const id = variant.frameId ?? 'generated';
               const tile = tiles[id];
               const name = id === 'generated' ? generatedLayoutName : layoutName(id);
-              const shown = layoutChoices.find((other) => (other.frameId ?? 'generated') === id && other.index === selectedMessageIndex) ?? variant;
               return (
                 <button
                   key={id}
@@ -103,10 +103,8 @@ export default function FrameMessageSelectionPage({
                 >
                   {tile?.imageUrl ? (
                     <Image src={tile.imageUrl} alt="" width={600} height={600} unoptimized className="h-full w-full object-cover" />
-                  ) : tile?.color ? (
-                    <span className="flex h-full w-full items-center justify-center p-3 text-center font-semibold">{name}</span>
                   ) : (
-                    <Image src={shown.imageUrl} alt={name} width={600} height={600} unoptimized className="h-full w-full object-cover" />
+                    <span className="flex h-full w-full items-center justify-center p-3 text-center font-semibold">{name}</span>
                   )}
                 </button>
               );
