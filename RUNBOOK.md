@@ -136,9 +136,10 @@ The full-size photo stays in the browser during the reframe step and is dropped 
 
 The guest keeps only the frame-sized image as the final submission (owner decision 2026-10-06). Since 2026-10-13 the camera
 also uploads the full camera image to `capture-drafts/<eventId>/` immediately after capture so it survives the social sign-in
-step. That copy is temporary: the page requests deletion after a successful submission, a retake, or leaving the page. The
-cleanup request is best effort; `npm run blob:orphans` can list leftovers if a browser closes before it completes. The draft
-folder is separate from `originals/` and is never attached to the submission. The rest of this section describes older
+step. Drafts remain in the event folder through sign-in, retakes, successful saves, and page exits; remove them during the
+event's post-event storage cleanup. The draft folder is separate from `originals/` and is never attached to the submission.
+Upload starts, successes, and failures are included in the event's Journey analytics when recording is enabled.
+The `capture-drafts/` path is visible in the report-only `npm run blob:orphans -- --list` inventory; the event's unsubmitted and submitted draft copies can be removed there during post-event cleanup. The rest of this section describes older
 submissions and the legacy original upload contract still accepted by the server.
 
 - **Where:** legacy full-frame originals are in Vercel Blob, `originals/<eventId>/<random>-<suffix>.jpg` (public store, unguessable

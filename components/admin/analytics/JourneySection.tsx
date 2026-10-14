@@ -83,6 +83,9 @@ function Recorded({ journey }: { journey: JourneySummary }) {
             { label: 'Camera permission denied', value: formatCount(camera.denied) },
             { label: 'Camera not available', value: formatCount(camera.unavailable), description: 'No camera, in use by another program, or it failed' },
             { label: 'Photos taken', value: formatCount(photos.taken), description: 'Counted on the page, before saving' },
+            { label: 'Photo uploads started', value: formatCount(photos.uploadStarted), description: 'Temporary camera copies sent to event storage immediately after capture' },
+            { label: 'Photo uploads completed', value: formatCount(photos.uploadSucceeded), description: 'Temporary camera copies stored for the capture flow' },
+            { label: 'Photo uploads failed', value: formatCount(photos.uploadFailed), description: 'Temporary upload errors; the normal save can still continue' },
             { label: 'Saved', value: formatCount(saves.ok) },
             { label: 'Save failed', value: formatCount(saves.failed), description: 'The user saw an error and could try again' },
           ]}

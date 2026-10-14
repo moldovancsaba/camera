@@ -53,6 +53,8 @@ export const JOURNEY_VOCABULARY = {
   'camera.permission': { keys: ['granted', 'denied', 'unavailable'], from: 'client' },
   /** A photo was taken, and how (the device's own camera, a real still, a video frame). */
   'photo.taken': { keys: ['system', 'still', 'frame'], from: 'client' },
+  /** The camera original's event-scoped temporary upload, before final submission. */
+  'photo.upload': { keys: ['started', 'succeeded', 'failed'], from: 'client' },
   /** Back from the move-and-zoom step to the camera. */
   'photo.retake': { keys: null, from: 'client' },
   'photo.save': { keys: ['ok', 'failed'], from: 'client' },

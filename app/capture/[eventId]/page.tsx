@@ -51,7 +51,7 @@ import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
-import { ORIGINAL_UPLOAD_ENDPOINT, TEMPORARY_CAPTURE_DELETE_ENDPOINT, TEMPORARY_CAPTURE_PREFIX } from '@/lib/submissions/original-image';
+import { ORIGINAL_UPLOAD_ENDPOINT, TEMPORARY_CAPTURE_PREFIX } from '@/lib/submissions/original-image';
 import { frameSilhouette } from '@/lib/frame/silhouette';
 import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
 import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
@@ -248,9 +248,7 @@ export default function EventCapturePage({
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   // The whole photo at the camera's full size is held in the browser for reframing and uploaded as a temporary server backup. Only the frame-sized result becomes the submission; the backup is then deleted.
   const [capturedOriginal, setCapturedOriginal] = useState<FullFrameCapture | null>(null);
-  // A copy of the just-taken camera original is uploaded immediately to an unlisted temporary Blob path. The frame-sized submission remains on the normal save path; this copy is removed on save, retake, or page exit.
-  const temporaryCaptureUrl = useRef<string | null>(null);
-  const temporaryCaptureUploadId = useRef<string | null>(null);
+  // A copy of each camera original is uploaded immediately to an event-scoped temporary Blob path. Keep it through sign-in, page exits, retakes, and final save; the event cleanup removes these drafts after the event.
   // How the photo is taken in this environment (camera#257): the device's own camera on every touch device, a real still or
   // the video frame on a desktop webcam. Known after mount.
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
@@ -300,48 +298,22 @@ export default function EventCapturePage({
   const [presubmitDone, setPresubmitDone] = useState(false);
   const vetted = event?.photoVettingRequired === true;
 
-  const deleteTemporaryCapture = useCallback((url = temporaryCaptureUrl.current) => {
-    if (!url) return;
-    if (url === temporaryCaptureUrl.current) temporaryCaptureUrl.current = null;
-    void fetch(TEMPORARY_CAPTURE_DELETE_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId, url }),
-      keepalive: true,
-    }).catch(() => undefined);
-  }, [eventId]);
-
-  const discardTemporaryCapture = useCallback(() => {
-    temporaryCaptureUploadId.current = null;
-    deleteTemporaryCapture();
-  }, [deleteTemporaryCapture]);
-
   const storeTemporaryCapture = useCallback((capture: FullFrameCapture) => {
-    discardTemporaryCapture();
     const uploadId = crypto.randomUUID();
-    temporaryCaptureUploadId.current = uploadId;
     const pathname = `${TEMPORARY_CAPTURE_PREFIX}${eventId}/${uploadId}.jpg`;
+    journey.record('photo.upload', 'started');
     void uploadBlob(pathname, capture.blob, {
       access: 'public',
       contentType: 'image/jpeg',
       handleUploadUrl: ORIGINAL_UPLOAD_ENDPOINT,
       clientPayload: JSON.stringify({ eventId }),
-    }).then((stored) => {
-      if (temporaryCaptureUploadId.current !== uploadId) {
-        deleteTemporaryCapture(stored.url);
-        return;
-      }
-      temporaryCaptureUrl.current = stored.url;
+    }).then(() => {
+      journey.record('photo.upload', 'succeeded');
     }).catch((error: unknown) => {
+      journey.record('photo.upload', 'failed');
       console.warn('Temporary photo backup could not be uploaded; the normal save can still continue:', error);
     });
-  }, [deleteTemporaryCapture, discardTemporaryCapture, eventId]);
-
-  useEffect(() => {
-    const cleanupOnExit = () => discardTemporaryCapture();
-    window.addEventListener('pagehide', cleanupOnExit);
-    return () => window.removeEventListener('pagehide', cleanupOnExit);
-  }, [discardTemporaryCapture]);
+  }, [eventId]);
   
   // With the acceptance on the Who-are-you page (issue 523) the consent page is not a step of its own: its checkboxes are shown there as one (lib/events/acceptance.ts).
   const { pages: journeyPages, acceptPage: acceptanceBox } = acceptanceOnLogin(customPages, event?.acceptanceOnWhoAreYou === true);
@@ -932,7 +904,6 @@ export default function EventCapturePage({
   }, [step]);
 
   const handleReframeRetake = () => {
-    discardTemporaryCapture();
     setCapturedOriginal(null);
     setGalleryTick(false);
     setStep('capture-photo');
@@ -1033,8 +1004,7 @@ export default function EventCapturePage({
       if (!submissionId) {
         throw new Error(t('flow.noSubmissionId'));
       }
-      // The final frame-sized photo is now saved through the normal submission route; discard the short-lived full camera original.
-      discardTemporaryCapture();
+      // Keep the temporary capture copy with the event for post-event cleanup.
       setSavedSubmissionId(submissionId);
       journey.saved(true);
       setHasFinalizedSubmissionEmail(false);
@@ -1323,7 +1293,6 @@ export default function EventCapturePage({
    * from the first page (handleRestartFlow). The default of the guest journey; an event changes it with its own pages.
    */
   function handleNextPhoto() {
-    discardTemporaryCapture();
     setCapturedImage(null);
     setCapturedOriginal(null);
     setGalleryTick(false);
@@ -1343,7 +1312,6 @@ export default function EventCapturePage({
   }
 
   const handleRestartFlow = () => {
-    discardTemporaryCapture();
     // Reset capture state
     setCapturedImage(null);
     setCapturedOriginal(null);

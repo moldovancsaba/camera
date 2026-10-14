@@ -320,7 +320,7 @@ Primary path:
 6. server inserts Mongo submission document
 7. share, gallery, and slideshow flows consume that record
 
-The temporary full camera copy is not a submission and is never attached to the database record. The capture page requests its deletion after the normal save succeeds, on retake, or when the page exits; `POST /api/uploads/temporary-capture` validates that a deletion names only the random draft file for that event. Unreferenced leftovers can be found by `npm run blob:orphans`.
+The temporary full camera copy is not a submission and is never attached to the database record. It is retained in the event folder through sign-in, retakes, completed saves, and page exits for post-event cleanup; `POST /api/uploads/temporary-capture` can remove a specific random draft file for that event. Journey analytics count upload starts, successes, and failures when recording is enabled. Unreferenced drafts can be found by `npm run blob:orphans`.
 
 Important implementation note:
 

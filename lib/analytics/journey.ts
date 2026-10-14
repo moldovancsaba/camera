@@ -71,7 +71,7 @@ export interface JourneySummary {
   /** The median seconds from opening to the first saved photo over the raw rows still kept (30 days); null when there are none. */
   medianCompleteSeconds: number | null;
   camera: { granted: number; denied: number; unavailable: number; deniedRate: number | null };
-  photos: { taken: number; byMethod: JourneyTally[]; retakes: number; retakesPerPhoto: number | null };
+  photos: { taken: number; byMethod: JourneyTally[]; retakes: number; retakesPerPhoto: number | null; uploadStarted: number; uploadSucceeded: number; uploadFailed: number };
   saves: { ok: number; failed: number };
   consent: { shown: number; accepted: number; abandoned: number; page: { shown: number; accepted: number }; box: { shown: number; accepted: number } };
   shares: { clicks: number; byChannel: JourneyTally[]; views: number; downloads: number };
@@ -113,6 +113,9 @@ export function summarizeJourney(rows: readonly JourneyRow[], range: { from?: st
   const cameraAsked = cameraGranted + cameraDenied + cameraUnavailable;
   const methods = ['system', 'still', 'frame'] as const;
   const taken = sum('photo.taken', methods);
+  const uploadStarted = at('photo.upload', 'started');
+  const uploadSucceeded = at('photo.upload', 'succeeded');
+  const uploadFailed = at('photo.upload', 'failed');
   const retakes = at('photo.retake');
   const pageShown = at('consent.shown', 'page');
   const boxShown = at('consent.shown', 'box');
@@ -134,7 +137,7 @@ export function summarizeJourney(rows: readonly JourneyRow[], range: { from?: st
     timeToComplete: tallies('journey.complete', TIME_BUCKETS, TIME_LABELS),
     medianCompleteSeconds: median(medianMs.map((ms) => Math.round(ms / 1000))),
     camera: { granted: cameraGranted, denied: cameraDenied, unavailable: cameraUnavailable, deniedRate: cameraAsked > 0 ? cameraDenied / cameraAsked : null },
-    photos: { taken, byMethod: tallies('photo.taken', methods, METHOD_LABELS), retakes, retakesPerPhoto: taken > 0 ? retakes / taken : null },
+    photos: { taken, byMethod: tallies('photo.taken', methods, METHOD_LABELS), retakes, retakesPerPhoto: taken > 0 ? retakes / taken : null, uploadStarted, uploadSucceeded, uploadFailed },
     saves: { ok: at('photo.save', 'ok'), failed: at('photo.save', 'failed') },
     consent: {
       shown: pageShown + boxShown,
