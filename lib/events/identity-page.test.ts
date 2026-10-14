@@ -35,10 +35,13 @@ test('an event that already asks before the photo keeps its own page and gets no
   assert.equal(withRequiredIdentityPage([page('accept', 0), page('who-are-you', 1)], true).length, 2, 'no take-photo page: everything is before the photo');
 });
 
-test('a who-are-you page after the photo, or an inactive one, does not count', () => {
+test('a who-are-you page after the photo is reused before saving, while an inactive one does not count', () => {
   assert.equal(hasIdentityPageBeforePhoto([page('take-photo', 0), page('who-are-you', 1)]), false);
   assert.equal(hasIdentityPageBeforePhoto([page('who-are-you', 0, false), page('take-photo', 1)]), false);
-  assert.equal(withRequiredIdentityPage([page('take-photo', 0), page('who-are-you', 1)], true).length, 3);
+  const reused = withRequiredIdentityPage([page('take-photo', 0), page('who-are-you', 1)], true);
+  assert.equal(reused.length, 2);
+  assert.equal(reused.find((item) => item.pageType === 'who-are-you')?.pageId, 'who-are-you-1');
+  assert.ok(reused.find((item) => item.pageType === 'who-are-you')!.order < reused.find((item) => item.pageType === 'take-photo')!.order);
   assert.equal(withRequiredIdentityPage([page('who-are-you', 0, false)], true)[0].pageId, DEFAULT_IDENTITY_PAGE_ID);
 });
 
@@ -80,4 +83,3 @@ test('an empty text falls back to its default text, and the default login page u
   assert.equal(config.nameLabel, DEFAULT_IDENTITY_TEXTS.nameLabel);
   assert.equal(config.description, DEFAULT_IDENTITY_TEXTS.description);
 });
-

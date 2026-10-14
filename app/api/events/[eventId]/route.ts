@@ -195,7 +195,8 @@ export const GET = withErrorHandler(async (
   // A picture field a page left empty shows the partner's default picture, at read time and never stored (lib/events/partner-pictures.ts, issue 368).
   const partnerPictures = storedPartnerPictures(partner?.pictures);
   // What the event gets for every kind of checkbox (issue 558, lib/events/checkbox-settings.ts): its own choice, else its partner's, else the standard (what the journey always did).
-  const checkboxes = effectiveCheckboxes(event as { consentSettings?: unknown }, partner);
+  // Resolve the two legacy checkbox choices from the event as well as consentSettings. Omitting these fields here made a guest follow the partner/standard setting even when the event had chosen its own value.
+  const checkboxes = effectiveCheckboxes(event as { consentSettings?: unknown; acceptanceOnWhoAreYou?: unknown; galleryConsent?: unknown }, partner);
 
   // Return event with serialized _id
   // customPages is included automatically

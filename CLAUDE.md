@@ -85,10 +85,8 @@ rather than claim compliance.
 **`main` is protected, including for admins (since 2026-09-30).** `main` requires a
 pull request and a passing `Verify` check (`.github/workflows/ci.yml`: `npm run
 inventory:check` and `npm run release:check`), admins cannot bypass it, and
-force-pushes are blocked, so a red CI run cannot reach `main` or production. Vercel
-still deploys whatever lands on `main` without waiting for Actions; the protection
-rule is what keeps a broken commit out. Open a PR for every change and run the gate
-locally first:
+force-pushes are blocked, so a red CI run cannot reach `main`. Open a PR for every
+change and run the gate locally first:
 
 Before every push, run: `npx tsc --noEmit` and `npm run lint`
 (`eslint .`, effectively zero-warning in practice) at minimum; `npm run build` for
@@ -116,15 +114,17 @@ check it.
 
 **Owner instruction (2026-10-14): GitHub only.** Use GitHub for branches, pull requests, checks, merges and pushes. Do not inspect or operate Vercel previews, deployments, dashboard, or CLI, and do not wait for Vercel checks. Decide readiness from GitHub's required checks (especially `Verify`) and pull request state.
 
+**Owner instruction (2026-10-14): keep GitHub workflow updates quiet and complete the work.** Finish the change, push one reviewable branch, open its PR, and follow the required GitHub checks through to a clear outcome. Do not repeatedly narrate that a PR was opened, that a check is pending, or that a push is underway. Report progress only when a check fails, a decision is needed, or the change is ready for the owner's merge instruction. When a GitHub check fails, inspect its log, fix the cause on the same PR, push, and follow the rerun. For protected guest-flow changes, wait for `Verify` to pass, then ask once for the specific PR merge; do not stop at the first failed or pending check. Never inspect Vercel to fill the gap.
+
 - A merged PR is finished. Never stack new commits on an already-merged branch —
   start a fresh branch from the current `main` for follow-up work, even if it
   reuses the same name.
 - Before any push, self-check: type-check + lint (+ build/release:check when
   relevant) clean, no scratch/debug files staged, no AI branding per §1.
-- Open a PR, wait for the `Verify` CI check and Vercel's preview deployment to
-  succeed, then merge directly (merging deploys to production — Vercel does not
-  wait on CI, see §2). Don't leave a green PR sitting unmerged
-  waiting for a human unless explicitly told to.
+- Open a PR and use GitHub's required `Verify` check as the readiness gate. Do not
+  inspect, wait for, or operate Vercel previews or deployments. For protected guest-
+  flow changes, wait for `Verify` to pass and ask the owner once for the specific PR
+  merge instruction; do not merge without it.
 - Clean up local test infrastructure (dev servers, scratch scripts) before
   considering a task done.
 - **Parallel work happens in worktrees outside `.claude`** (`/Users/Shared/Projects/_worktrees/nav/<name>`, a name without `tokens` or `theme`, a real `npm ci`, never a symlinked `node_modules`), and **before every push run `npm run sync:main`** (rebase onto `origin/main`, regenerate the generated `docs/_audit/*.json`), then `inventory:check` and `release:check`. `main` needs an up-to-date branch and auto-merge is off, so a green pull request goes `BEHIND` every time something else merges: `gh pr update-branch <n> --repo moldovancsaba/camera`, wait for `Verify`, merge. Parallel streams do not edit `RELEASE_NOTES.md`, `HANDOVER.md`, `ARCHITECTURE.md`; the lead consolidates per wave. **Never run `rebase`, `reset`, `checkout` or `merge` in a primary checkout** (`/Users/Shared/Projects/camera`, `.../messmass`, ...): other sessions use them; in a script address every worktree with `git -C <path>` or `cd <path> || exit 1` (an unquoted variable is not split in zsh, so a `cd` can fail silently and the next command runs in the wrong directory). The failures seen, their causes and fixes are in `docs/PR_AND_MERGE_PLAYBOOK.md`.

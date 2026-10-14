@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — keep one consent and login page in the journey (2026-10-14)
+
+- **Fixed:** old saved events that contain both a generated Accept/Who-are-you page and its customised copy now use the custom page without the stale generated duplicate. Editing or adding a page reuses an existing role instead of creating a second guest step.
+- **Changed:** checkbox visibility and required settings are edited inside the Accept page editor. The consent page can still be opened from the editor when its acceptance is shown on the Who-are-you page, without adding it as an individual journey step.
+- **Fixed:** guest event settings resolve the event's own acceptance-on-login and gallery checkbox choices, so capture uses the same consent placement selected in the event editor.
+- **Verified:** type-check, lint, GDS checks, production-guard checks, inventory check, and production build passed locally. GitHub `Verify` is the remaining readiness check; no authenticated browser walkthrough was performed.
+
 ## Unreleased — use Messmass domains for generated public links (2026-10-14)
 
 - **Changed:** e-mail capture/photo links and links copied from capture, landing-page and slideshow screens now canonicalize legacy Done Is Better app hosts to `camera.messmass.com`; short-link origins canonicalize to `go.messmass.com`. Preview and local hosts remain usable, and tests can still use Done Is Better fixtures.

@@ -1,7 +1,7 @@
 /**
  * The default consent page and the default order of the user flow (camera#330, docs/WELCOME_AND_DEFAULTS_PLAN.md items 38 to 48): welcome page,
  * consent page, login page, selfie taking, the rest. Like the default login page (identity-page.ts) the default consent page is added at read
- * time, not stored: an event that has its own consent page before the photo keeps it, and nothing is backfilled into the events' own pages.
+ * time, not stored: an event's active custom consent page is reused in the pre-save slot, so editing it never creates a second consent step.
  * It is added to an event only when the event gets the journey defaults (lib/admin/defaults-rollout.ts). Pure; unit-tested (default-pages.test.ts).
  */
 
@@ -15,6 +15,25 @@ import type { TextOverrides } from '@/lib/i18n/overrides';
 
 export const DEFAULT_CONSENT_PAGE_ID = 'default-consent';
 export const DEFAULT_WELCOME_PAGE_ID = 'default-welcome';
+
+/** Older saves could persist a generated default and its customised copy side by side. Keep intentional multiple custom consent pages, but discard the default when a custom page now owns that role. */
+export function dedupeActiveRolePages(pages: readonly CustomPage[]): CustomPage[] {
+  const roleDefaults: Partial<Record<CustomPage['pageType'], string>> = {
+    accept: DEFAULT_CONSENT_PAGE_ID,
+    'who-are-you': DEFAULT_IDENTITY_PAGE_ID,
+  };
+  let result = [...pages];
+  for (const [pageType, defaultId] of Object.entries(roleDefaults)) {
+    const active = result
+      .filter((page) => page.isActive && page.pageType === pageType)
+      .sort((a, b) => a.order - b.order);
+    if (active.length < 2 || !active.some((page) => page.pageId === defaultId)) continue;
+    if (active.some((page) => page.pageId !== defaultId)) {
+      result = result.filter((page) => page.pageId !== defaultId);
+    }
+  }
+  return result;
+}
 
 /**
  * The three legal pages every user accepts (owner, 2026-10-07): all required, in the language of the event (camera#352); the links go to the legal
@@ -86,13 +105,13 @@ export function hasConsentPageBeforePhoto(pages: readonly CustomPage[]): boolean
 
 /**
  * The event's pages as the user sees them: the default consent page right after the leading welcome page(s) when the event gets the defaults and has
- * no consent page before the photo, then the default login page after it (identity-page.ts) when the event requires vetting and has none.
+ * no active custom consent page, then the default login page after it (identity-page.ts) when the event requires vetting and has none.
  */
 export function withDefaultJourneyPages(
   pages: readonly CustomPage[] | null | undefined,
   options: { vettingRequired: boolean; consentDefault: boolean; now?: string; language?: UiLanguage; hasWelcomeScreen?: boolean; texts?: TextOverrides | null; defaultOrders?: Record<string, number> | null; documents?: DocumentSettings },
 ): CustomPage[] {
-  const stored = [...(pages ?? [])];
+  const stored = dedupeActiveRolePages(pages ?? []);
   // The default welcome page: only for an event that gets the journey defaults, has the picture drawn from its default slideshow and has no welcome page of its own (a switched off one
   // counts: the editor chose). It goes first, so the consent page follows it.
   const withWelcome =
@@ -107,7 +126,11 @@ export function withDefaultJourneyPages(
     let leading = 0;
     while (sorted[leading]?.pageType === 'welcome') leading += 1;
     const order = leading > 0 ? sorted[leading - 1].order + 0.25 : (sorted.length > 0 ? sorted[0].order : 0) - 2;
-    withConsent = [defaultConsentPage(order, options.now, options.language, options.texts, options.documents), ...own];
+    // Reuse a custom consent page that was saved after photo-taking. Otherwise the generated default and the custom page appear as two consent steps.
+    const existingConsent = own.find((page) => page.isActive && page.pageType === 'accept');
+    withConsent = existingConsent
+      ? own.map((page) => page.pageId === existingConsent.pageId ? { ...page, order } : page)
+      : [defaultConsentPage(order, options.now, options.language, options.texts, options.documents), ...own];
   }
   return withDefaultOrders(withRequiredIdentityPage(withConsent, options.vettingRequired, options.now, options.language, options.texts), options.defaultOrders);
 }

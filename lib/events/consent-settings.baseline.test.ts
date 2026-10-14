@@ -91,6 +91,13 @@ test('the default consent page and the whole default journey are the same as bef
           for (const language of ['en', 'hu'] as const) {
             for (const defaultOrders of [undefined, { 'default-consent': -5 }]) {
               const options = { vettingRequired, consentDefault, now: NOW, language, hasWelcomeScreen, defaultOrders };
+              // A custom Accept page saved after photo-taking used to sit beside the generated default. It is now promoted into that default's pre-save slot to prevent duplicate consent steps.
+              if (name === 'consentAfterPhoto' && consentDefault) {
+                const actual = withDefaultJourneyPages(pages, options);
+                assert.equal(actual.some((page) => page.pageId === 'default-consent'), false);
+                assert.ok(actual.find((page) => page.pageId === 'c')!.order < actual.find((page) => page.pageId === 'tp')!.order);
+                continue;
+              }
               const before = oldDefaults.withDefaultJourneyPages(pages, options);
               same(withDefaultJourneyPages(pages, options), before, `${name} ${JSON.stringify(options)}`);
               same(withDefaultJourneyPages(pages, { ...options, documents: documentSettings(nothingChosen) }), before, `${name} with the standard settings written out`);
