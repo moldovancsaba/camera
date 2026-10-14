@@ -8,6 +8,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
  */
 
 import { useState } from 'react';
+import { canonicalPublicOrigin } from '@/lib/site-hosts';
 import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { EmptyState, LabelTag } from '@sovereignsquad/gds-core/client';
@@ -94,7 +95,7 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
   };
 
   const copySlideshowUrl = (slideshowId: string) => {
-    const url = `${window.location.origin}/slideshow/${slideshowId}`;
+    const url = `${canonicalPublicOrigin(window.location.origin, 'camera.messmass.com')}/slideshow/${slideshowId}`;
     navigator.clipboard.writeText(url);
     alert('Slideshow URL copied to clipboard!');
   };

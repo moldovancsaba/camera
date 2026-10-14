@@ -2,6 +2,7 @@
 
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
+import { canonicalPublicOrigin } from '@/lib/site-hosts';
 import Link from 'next/link';
 import { EmptyState, LabelTag } from '@sovereignsquad/gds-core/client';
 
@@ -75,7 +76,7 @@ export default function SlideshowLayoutManager({
   };
 
   const copyUrl = (layoutId: string) => {
-    const url = `${window.location.origin}/slideshow-layout/${layoutId}`;
+    const url = `${canonicalPublicOrigin(window.location.origin, 'camera.messmass.com')}/slideshow-layout/${layoutId}`;
     navigator.clipboard.writeText(url);
     alert('Layout URL copied to clipboard');
   };

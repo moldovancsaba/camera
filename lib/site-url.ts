@@ -1,8 +1,5 @@
 import { headers } from 'next/headers';
-
-function normalizeUrl(value: string): string {
-  return value.trim().replace(/\/$/, '');
-}
+import { canonicalPublicOrigin, defaultCameraOrigin } from '@/lib/site-hosts';
 
 function withProtocol(hostname: string): string {
   const trimmed = hostname.trim();
@@ -21,15 +18,15 @@ export function getConfiguredSiteUrl(): string {
     process.env.NEXTAUTH_URL ||
     process.env.SITE_URL;
   if (explicit) {
-    return normalizeUrl(explicit);
+    return canonicalPublicOrigin(explicit, 'camera.messmass.com');
   }
 
   const vercelUrl = process.env.VERCEL_URL || process.env.VERCEL_BRANCH_URL || process.env.VERCEL_DEPLOYMENT_URL;
   if (vercelUrl) {
-    return normalizeUrl(withProtocol(vercelUrl));
+    return canonicalPublicOrigin(withProtocol(vercelUrl), 'camera.messmass.com');
   }
 
-  return 'https://camera.doneisbetter.com';
+  return defaultCameraOrigin();
 }
 
 /** Absolute site URL for the current request (share links, redirects). */
@@ -37,6 +34,6 @@ export async function getSiteUrlFromRequest(): Promise<string> {
   const h = await headers();
   const host = h.get('x-forwarded-host') ?? h.get('host');
   const proto = h.get('x-forwarded-proto') ?? (process.env.NODE_ENV === 'production' ? 'https' : 'http');
-  if (host) return `${proto}://${host}`;
+  if (host) return canonicalPublicOrigin(`${proto}://${host}`, 'camera.messmass.com');
   return getConfiguredSiteUrl();
 }

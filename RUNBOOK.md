@@ -18,9 +18,14 @@ production = `origin/main`). Vercel does not wait for GitHub Actions — run
 `npm run inventory:check && npm run release:check` before pushing.
 `npx vercel@latest --prod` is for manual redeploy/rollback only.
 
-The build is promoted to all production domains: `camera.messmass.com`,
-`go.messmass.com` and `camera.doneisbetter.com` (savetheworld reads camera
-through it; do not detach it). `fff.messmass.com` was detached on 2026-09-30.
+The canonical public domains are `camera.messmass.com` and `go.messmass.com`.
+Newly generated e-mail, capture, share, landing-page and slideshow links use
+those domains even if the app is reached through a legacy Camera hostname.
+`camera.doneisbetter.com` may remain attached temporarily for older links, but
+it is no longer emitted by public-link code. Do not retire the Done Is Better
+DNS zone as part of this change: `sso.doneisbetter.com` is still the shared live
+identity provider for the app fleet. `fff.messmass.com` was detached on
+2026-09-30.
 
 `main` has a GitHub branch protection rule requiring a pull request (0
 approvals) and the `Verify` status check (`.github/workflows/ci.yml`). Since
