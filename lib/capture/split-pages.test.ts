@@ -7,13 +7,13 @@ const page = (pageType: string, order: number, isActive = true): CustomPage =>
   ({ pageId: `${pageType}-${order}`, pageType, order, isActive, config: { title: pageType, description: '', buttonText: 'Next' }, createdAt: 'x', updatedAt: 'x' }) as unknown as CustomPage;
 const ids = (pages: CustomPage[]) => pages.map((p) => p.pageId);
 
-test('without a submit page the split is what it always was: before the photo, and after it', () => {
+test('without a submit page, a login after the photo still runs before save', () => {
   const s = splitCustomPages([page('cta', 2), page('welcome', -1), page('take-photo', 0), page('who-are-you', 1)]);
   assert.deepEqual(ids(s.onboardingPages), ['welcome--1']);
-  assert.deepEqual(ids(s.presubmitPages), []);
-  assert.deepEqual(ids(s.thankYouPages), ['who-are-you-1', 'cta-2']);
+  assert.deepEqual(ids(s.presubmitPages), ['who-are-you-1']);
+  assert.deepEqual(ids(s.thankYouPages), ['cta-2']);
   assert.equal(s.takePhotoPage?.pageId, 'take-photo-0');
-  assert.equal(s.submitSeparate, false);
+  assert.equal(s.submitSeparate, true);
 });
 
 test('a submit page after the take-photo page splits the pages after the photo: before the save, and after it', () => {

@@ -6,6 +6,10 @@ Research and recommendation of 2026-10-09 (owner question 222, issue 509). Every
 
 **"Unframed original images final destination is ImgBB; other than that I am ok."** So the recommendation below stands for everything else (the composed and screen pictures and the library on the public store, the verified copies, the queue, the manifest), **except that the unframed pictures, the naked crop and the original-size picture, end their life on ImgBB** as their final store; this overrules the sentence below that would not put naked or original photos on ImgBB, and the "delete at approval" of today's process (the naked crop is not deleted at approval: **variant B** of 2026-10-12 decides how long the private store keeps its working copy: until ImgBB holds a verified copy, then it is deleted; see "Built" below). What is left to decide when this is built, in its own step: whether the backup copy covers them, and the privacy wording for it (the owner's earlier answers on retention, 224 to 228, are the starting point). **Nothing changes before the match on 2026-10-16.**
 
+## Guest capture drafts (issue 659)
+
+The capture page uploads the full camera image to `capture-drafts/<eventId>/` as soon as the shutter returns it. After the guest confirms the reframe, it uploads the framed crop to the same event-scoped temporary area before moving to the next configured journey page. Both are temporary flow state, not submissions; submission save still happens at the configured save step. If social login is next, the guest stays in the same browser tab. The callback restores the temporary image URLs, frame choice, and journey section/page position, then continues after the login page. The draft URLs are held in short-lived browser session storage while SSO is in progress. Event-scoped draft files are retained for post-event cleanup and can be inventoried with `npm run blob:orphans -- --list`.
+
 ## Built: step 1, approval never deletes the only copy (issue 509, pull request 1 of 2; variant B)
 
 What is in the code (2026-10-11). It touches the approval path only, on the server; the capture path, the approver's screens and the time an approval takes are unchanged.

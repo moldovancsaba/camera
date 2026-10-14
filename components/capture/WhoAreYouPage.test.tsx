@@ -9,11 +9,11 @@ import WhoAreYouPage from './WhoAreYouPage';
 
 const noop = () => undefined;
 const config = { title: 'Ki vagy te?', description: 'Jelentkezz be.', nameLabel: 'A neved', emailLabel: 'Az e-mail-címed', buttonText: 'Tovább', enableSSOLogin: true, enablePseudoReg: true };
-const render = (acceptance?: Parameters<typeof WhoAreYouPage>[0]['acceptance'], socialLoginPopup = false) =>
+const render = (acceptance?: Parameters<typeof WhoAreYouPage>[0]['acceptance'], capturePhase: 'onboarding' | 'presubmit' | 'thankyou' = 'onboarding') =>
   renderToStaticMarkup(
     <MantineProvider>
       <UiLanguageProvider language="hu">
-        <WhoAreYouPage config={config} acceptance={acceptance} onNext={noop} eventId="e1" pageIndex={0} socialLoginPopup={socialLoginPopup} />
+        <WhoAreYouPage config={config} acceptance={acceptance} onNext={noop} eventId="e1" pageIndex={0} capturePhase={capturePhase} />
       </UiLanguageProvider>
     </MantineProvider>,
   );
@@ -27,10 +27,11 @@ test('without the acceptance the page is as it was: sign-in links, enabled field
   assert.ok(!/<input[^>]*disabled/.test(html), 'the fields are on');
 });
 
-test('social sign-in after photo opens in another tab and returns to the still-open capture page', () => {
-  const html = render(undefined, true);
-  assert.equal((html.match(/target="_blank"/g) ?? []).length, 2);
+test('social sign-in after photo uses the current tab and returns to the next page in the same journey section', () => {
+  const html = render(undefined, 'presubmit');
+  assert.equal((html.match(/target="_blank"/g) ?? []).length, 0);
   assert.match(html, /captureEvent=e1/);
+  assert.match(html, /capturePhase=presubmit/);
   assert.equal((html.match(/data-brand-signin=/g) ?? []).length, 2);
 });
 

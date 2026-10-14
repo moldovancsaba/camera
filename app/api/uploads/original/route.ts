@@ -1,5 +1,5 @@
 /**
- * Upload token for the full-frame original (camera#210).
+ * Upload token for the capture's event-scoped temporary images and the legacy full-frame original.
  *
  * The browser uploads the pure camera image straight to Vercel Blob (the original plus the
  * composite can exceed the 4.5 MB request-body limit of Vercel Functions). This public route only
@@ -8,8 +8,9 @@
  * cannot be guessed. POST /api/submissions later accepts the resulting URL only if it is inside
  * the same folder and passes a lookup. Nothing is uploaded through this function.
  *
- * No page calls this route since camera#257 (the full-size original is no longer uploaded); it stays only for a
- * capture page that was opened before that change. RUNBOOK ("Full-frame originals") lists what to remove with it.
+ * The capture page uploads the full camera image at shutter time and the confirmed crop before a post-photo journey
+ * page. Both use `capture-drafts/<eventId>/`; neither becomes part of the submission. The legacy `originals/` path is
+ * still accepted for compatibility. RUNBOOK ("Full-frame originals") documents temporary-draft cleanup.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

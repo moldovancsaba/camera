@@ -60,7 +60,7 @@ export interface ReframeStepProps {
   /** Layer boxes of the generated event frame, shown as 50% black territories instead of the frame (camera#236). */
   territories?: readonly Territory[];
   buttonSize?: EventButtonSize;
-  onDone: (result: ReframeResult) => void;
+  onDone: (result: ReframeResult) => void | Promise<void>;
   onRetake: () => void;
   labels?: { continue?: string; retake?: string; reset?: string };
   /** True while the page makes the picture and saves it: the buttons stay locked and Continue shows its spinner. */
@@ -376,7 +376,7 @@ export default function ReframeStep({
       }
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
       if (!blob) throw new Error('Failed to encode the cropped image');
-      onDone({
+      await onDone({
         blob,
         dataUrl: await blobToDataUrl(blob),
         width: size.width,

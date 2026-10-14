@@ -2,7 +2,7 @@
  * The pages of the user journey split by where they are in the flow (issue 535): before the photo (onboarding), between taking the photo and saving it (presubmit), and after it
  * (thank you). The photo is taken on the take-photo page; by default saving it is part of that page (Continue on the reframe screen saves). An event whose editor unticked "Submit is part
  * of this page" has a `submit` page after the take-photo page: the pages between the two run after the photo is taken and before it is saved (a login, a CTA), the pages after the
- * submit page run after the save as before. If consent is merged into a Who-are-you page after the camera without a Submit page, save waits until login is complete. A submit page
+ * submit page run after the save as before. Without a Submit page, a Who-are-you page after the camera still runs before save so same-tab SSO can resume the uploaded photo draft. A submit page
  * that is not active, or before the take-photo page, does not count. The frame/message selector can also be placed after capture: before Submit it is followed by a final reframe with the chosen design; after saving it sets the next photo's choices. Pure; unit-tested (split-pages.test.ts).
  */
 
@@ -17,7 +17,7 @@ export interface SplitPages {
   submitSeparate: boolean;
 }
 
-export function splitCustomPages(pages: readonly CustomPage[], options: { saveThroughWhoAreYou?: boolean } = {}): SplitPages {
+export function splitCustomPages(pages: readonly CustomPage[]): SplitPages {
   const sorted = [...pages].sort((a, b) => a.order - b.order);
   const takePhotoIndex = sorted.findIndex((page) => page.pageType === 'take-photo');
   if (takePhotoIndex === -1) {
@@ -29,10 +29,8 @@ export function splitCustomPages(pages: readonly CustomPage[], options: { saveTh
   const after = sorted.slice(takePhotoIndex + 1).filter((page) => page.pageType !== 'take-photo');
   const submitIndex = after.findIndex((page) => page.pageType === 'submit' && page.isActive);
   if (submitIndex === -1) {
-    // If consent was merged into a login page after the camera, keep that login before saving. The original photo has already been uploaded as a temporary capture.
-    const whoAreYouIndex = options.saveThroughWhoAreYou
-      ? after.findIndex((page) => page.pageType === 'who-are-you' && page.isActive)
-      : -1;
+    // Keep a login after the camera before saving, whether or not consent was merged into that page.
+    const whoAreYouIndex = after.findIndex((page) => page.pageType === 'who-are-you' && page.isActive);
     if (whoAreYouIndex >= 0) {
       return {
         onboardingPages,

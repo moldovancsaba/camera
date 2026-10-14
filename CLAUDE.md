@@ -187,9 +187,9 @@ any auth code here:
   status, time; never a token, a secret or a person). The permission calls in
   `lib/auth/sso-permissions.ts` are not bounded yet.
 - **A guest's login returns to the capture page it started on, never to `/admin`.** The social buttons on the "who are you" step link to
-  `/api/auth/login?provider=…&captureEvent=<id>&capturePage=<step>`; the login route records the target in the server-set `capture_return`
+  `/api/auth/login?provider=…&captureEvent=<id>&capturePage=<step>&capturePhase=<section>`; the login route records the target in the server-set `capture_return`
   cookie (15 minutes, same attributes as the OAuth pending cookie; an id that is not a capture event id is ignored, and a login with no target
-  clears an older one) and the callback (`lib/auth/capture-return.ts`) redirects there with `?resume=true&page=<step>` whatever rights the
+  clears an older one) and the callback (`lib/auth/capture-return.ts`) redirects there with `?resume=true&page=<step>&phase=<section>` whatever rights the
   account has. Only a login with no target goes to `/admin`. It used to depend on two cookies the page script wrote just before the click
   (10 minutes); when they were missing the callback fell back to `/admin`, and a guest without dashboard rights saw "no access". The old
   cookies are still read as a fallback. Verified with a fake SSO (token and permission endpoints) in a local round trip.
@@ -223,7 +223,7 @@ any auth code here:
   or `/theme/`, so a local `release:check` passes where CI fails (camera#416: `#415` written in a script comment was read as a hex colour). Write issue
   numbers in source comments as `issue 415`, and name worktrees something else.
 - **A fit-to-width text must not be capped by a stored size** (owner, 2026-10-09: "it is not scaled"): a cap left a short address at 80 % of its box. A `fit` text ignores `size` and is measured on every display (live stage and server picture), so nothing goes stale after a save.
-- **The photo lives in the capture page's memory only (a data URL in React state), so anything that leaves the page loses it** (issue 535): a social sign-in (Google, Facebook) is a redirect to SSO and back. That is why a Who are you page between taking the photo and saving it (`presubmit` phase) offers the name and e-mail form only. A feature that needs a redirect in that place must first store and restore the picture, the frame choices and the contact.
+- **A photo that precedes login must survive the real same-tab SSO redirect** (issue 535): upload the camera original as soon as it is taken; when the guest confirms framing, upload the crop and keep both event-scoped URLs plus the page section in the short-lived browser draft. After SSO, restore the image and selected frame before advancing past the login page. Social login uses the current tab; do not substitute a popup to keep a React component mounted.
 - **Never use the browser's own `confirm()` / `alert()` for an admin action:** a browser or an embedded view can block it, and then the press does nothing at all (the gallery's frame button looked dead). Confirm in the page with the buttons the gallery already uses, show progress, and put the result next to the button, not far below.
 - **The design system's `InlineAlert` (a Mantine `Alert`) hides what is wider than its box**, and `SemanticButton` takes its label from the vocabulary (its children are ignored) and does not wrap: give a button inside an alert `styles` that let the label wrap, and check it at a narrow width.
 - **Colours in admin code come from `--mantine-*` tokens, not from `--gds-*` role tokens** (`--gds-border-card`, `--gds-text-meta`, `--gds-bg-*` are declared with

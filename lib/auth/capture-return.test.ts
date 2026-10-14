@@ -34,6 +34,9 @@ test('the target survives the cookie and opens the capture page, resuming at the
   assert.equal(decodeCaptureReturn(''), null);
   assert.equal(decodeCaptureReturn('/admin:1'), null);
   assert.equal(captureReturnPath(withPage), `/capture/${EVENT}?resume=true&page=0`);
+  const afterPhoto = { eventId: EVENT, page: 1, phase: 'presubmit' as const };
+  assert.deepEqual(decodeCaptureReturn(encodeCaptureReturn(afterPhoto)), afterPhoto);
+  assert.equal(captureReturnPath(afterPhoto), `/capture/${EVENT}?resume=true&page=1&phase=presubmit`);
   assert.equal(captureReturnPath({ eventId: EVENT, page: null }), `/capture/${EVENT}`);
   const popup = { eventId: EVENT, page: 2, popupId: '11111111-1111-4111-8111-111111111111' };
   assert.deepEqual(decodeCaptureReturn(encodeCaptureReturn(popup)), popup);
@@ -41,6 +44,7 @@ test('the target survives the cookie and opens the capture page, resuming at the
 
 test('a login names its target by the link it followed; a dashboard login names none', () => {
   assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?provider=google&captureEvent=${EVENT}&capturePage=2`)), { eventId: EVENT, page: 2 });
+  assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?captureEvent=${EVENT}&capturePage=2&capturePhase=presubmit`)), { eventId: EVENT, page: 2, phase: 'presubmit' });
   assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?captureEvent=${EVENT}&capturePage=2&capturePopup=11111111-1111-4111-8111-111111111111`)), { eventId: EVENT, page: 2, popupId: '11111111-1111-4111-8111-111111111111' });
   assert.equal(captureReturnForLogin(request('/api/auth/login', { referer: `${ORIGIN}/admin/login` })), null);
   assert.equal(captureReturnForLogin(request('/api/auth/login?captureEvent=../admin')), null);
@@ -51,6 +55,8 @@ test('the social buttons carry the capture page and step in their link', () => {
   assert.equal(url.searchParams.get('provider'), 'google');
   assert.equal(url.searchParams.get('captureEvent'), EVENT);
   assert.equal(url.searchParams.get('capturePage'), '0');
+  const inJourneyUrl = new URL(socialLoginHref('google', { captureEventId: EVENT, capturePage: 1, capturePhase: 'presubmit' }), ORIGIN);
+  assert.equal(inJourneyUrl.searchParams.get('capturePhase'), 'presubmit');
   const popupUrl = new URL(socialLoginHref('google', { captureEventId: EVENT, capturePage: 0, capturePopup: '11111111-1111-4111-8111-111111111111' }), ORIGIN);
   assert.equal(popupUrl.searchParams.get('capturePopup'), '11111111-1111-4111-8111-111111111111');
   assert.equal(new URL(socialLoginHref('facebook'), ORIGIN).searchParams.has('captureEvent'), false);
@@ -58,12 +64,12 @@ test('the social buttons carry the capture page and step in their link', () => {
 
 test('the target is recorded on the redirect to SSO, read back by the callback, and cleared once used', () => {
   const out = NextResponse.redirect(`${ORIGIN}/sso`);
-  setCaptureReturnCookie(out, { eventId: EVENT, page: 1 });
+  setCaptureReturnCookie(out, { eventId: EVENT, page: 1, phase: 'presubmit' });
   const recorded = out.cookies.get(CAPTURE_RETURN_COOKIE);
-  assert.equal(recorded?.value, `${EVENT}:1`);
+  assert.equal(recorded?.value, `${EVENT}:1::presubmit`);
 
-  const back = request('/api/auth/callback', { cookie: `${CAPTURE_RETURN_COOKIE}=${encodeURIComponent(`${EVENT}:1`)}` });
-  assert.deepEqual(readCaptureReturn(back), { eventId: EVENT, page: 1 });
+  const back = request('/api/auth/callback', { cookie: `${CAPTURE_RETURN_COOKIE}=${encodeURIComponent(`${EVENT}:1::presubmit`)}` });
+  assert.deepEqual(readCaptureReturn(back), { eventId: EVENT, page: 1, phase: 'presubmit' });
 
   const done = NextResponse.redirect(`${ORIGIN}/capture/${EVENT}`);
   clearCaptureReturn(done);

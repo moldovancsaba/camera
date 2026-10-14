@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — upload the capture and continue through same-tab login in journey order (2026-10-14)
+
+- **Fixed:** the camera original starts uploading as soon as the shutter finishes. After the guest confirms framing, the crop is also stored temporarily before the next configured page appears.
+- **Fixed:** a Who-are-you page after Take Photo stays before save even without a separate Submit marker. Social sign-in uses the current tab, then restores the temporary photo and continues after the login page in the same journey section.
+- **Verified locally:** `npm run release:check` passed (GDS, type-check, lint, all 346 unit-test files, production guards, production build); `npm run inventory:check` passed. The browser E2E runner could not start because `MONGODB_URI` is not configured in this worktree, so a real SSO/photo browser round trip was not run.
+
 ## Unreleased — show every message when guests do not choose a layout (2026-10-14)
 
 - **Fixed:** the message selector now offers all configured messages when the layout is editor-picked or randomised. Choosing a message uses an available layout that carries it, instead of hiding messages that belong to another layout.
@@ -66,7 +72,7 @@
 ## Unreleased — back up a captured photo before sign-in (2026-10-13)
 
 - **Changed:** the camera uploads the full-size capture directly to this event's unlisted Vercel Blob draft folder as soon as the shutter finishes, then continues to the next capture step without waiting for the upload. The normal framed submission still uses the existing save route. Drafts stay in the event folder through sign-in, retakes, completed saves, and page exits for post-event cleanup.
-- **Sign-in:** successful social-login popups signal the original selfie tab and close themselves. The in-memory image remains usable while the temporary server copy provides a backup through sign-in; successful popup returns are also counted in Journey analytics.
+- **Sign-in:** superseded by the 2026-10-14 same-tab flow. That change resumes the uploaded photo and advances after the configured login page rather than relying on an open capture tab.
 - **Analytics:** Journey analytics and its CSV export count temporary upload starts, successes, and failures when recording is enabled.
 - **Safety:** temporary paths are separate from permanent `originals/` paths, event-scoped and UUID-named. The cleanup endpoint only accepts a URL in this application's matching event draft folder.
 - **Not verified:** live Blob upload, post-event cleanup, a social sign-in round trip, or a phone capture.

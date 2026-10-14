@@ -5,6 +5,14 @@
 
 ## Current change
 
+Capture now uploads the full camera image as soon as the shutter returns it. When
+the guest confirms framing, the crop is uploaded before the next configured page
+opens. Social login stays in the current tab; its return restores the draft photo
+and continues after that login page, including when login is after the camera.
+Local release and inventory checks passed. The browser E2E runner could not
+start because this checkout has no `MONGODB_URI`, so the live-flow browser pass
+remains outstanding.
+
 The Pages editor now lets event editors move every journey page, including Take Photo, the frame/message selector, and default consent/login pages. If consent or login moves after photo-taking, the internal save step follows it so the photo is still saved only after those required pages are complete. See the newest entry in `RELEASE_NOTES.md`.
 
 The current unreleased camera change lets event editors choose the frame and
