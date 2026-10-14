@@ -51,8 +51,9 @@ import { type CustomPage, type FrameMessageSelectionDisplay } from '@/lib/db/sch
 import { canonicalPublicOrigin } from '@/lib/site-hosts';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
-import type { FullFrameCapture } from '@/lib/camera/frame-capture';
+import { blobToDataUrl, type FullFrameCapture } from '@/lib/camera/frame-capture';
 import { ORIGINAL_UPLOAD_ENDPOINT, TEMPORARY_CAPTURE_PREFIX } from '@/lib/submissions/original-image';
+import { captureResumeDraftKey, forgetCaptureResumeDraft, parseCaptureResumeDraft, type CaptureResumeDraft } from '@/lib/capture/resumable-draft';
 import { frameSilhouette } from '@/lib/frame/silhouette';
 import { frameWithSelectionDisplay, pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
 import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
@@ -252,8 +253,10 @@ export default function EventCapturePage({
   // One draw per visit for the random pick of the logo: the same draw in every place, so a user sees the same logo throughout (camera#419).
   const logoDraw = useRef<number | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  // The whole photo at the camera's full size is held in the browser for reframing and uploaded as a temporary server backup. Only the frame-sized result becomes the submission; the backup is then deleted.
+  // The whole photo at the camera's full size is held for reframing and uploaded as a temporary server backup. The frame-sized result becomes the submission; both temporary copies stay for event cleanup.
   const [capturedOriginal, setCapturedOriginal] = useState<FullFrameCapture | null>(null);
+  const temporaryCaptureUrl = useRef<string | null>(null);
+  const temporaryCaptureUpload = useRef<Promise<string | null> | null>(null);
   // A copy of each camera original is uploaded immediately to an event-scoped temporary Blob path. Keep it through sign-in, page exits, retakes, and final save; the event cleanup removes these drafts after the event.
   // How the photo is taken in this environment (camera#257): the device's own camera on every touch device, a real still or
   // the video frame on a desktop webcam. Known after mount.
@@ -299,28 +302,70 @@ export default function EventCapturePage({
   const [flowPhase, setFlowPhase] = useState<'onboarding' | 'presubmit' | 'capture' | 'thankyou'>('onboarding');
   const nextPhotoRef = useRef<() => void>(() => undefined);
   const [signInError, setSignInError] = useState<{ code: string; message: string } | null>(null);
+  const resumeHandled = useRef(false);
   // Continue on the reframe screen saves the photo (camera#344): true from that press until the save starts, so nothing else is asked in between.
   const [saveRequested, setSaveRequested] = useState(false);
   // The pages between taking the photo and saving it (issue 535) were gone through: a failed save does not ask for them again, and the next photo of the same user does not either; a restart does.
   const [presubmitDone, setPresubmitDone] = useState(false);
   const vetted = event?.photoVettingRequired === true;
 
-  const storeTemporaryCapture = useCallback((capture: FullFrameCapture) => {
+  const storeTemporaryCapture = useCallback((capture: FullFrameCapture): Promise<string | null> => {
+    if (temporaryCaptureUpload.current) return temporaryCaptureUpload.current;
     const uploadId = crypto.randomUUID();
     const pathname = `${TEMPORARY_CAPTURE_PREFIX}${eventId}/${uploadId}.jpg`;
     journey.record('photo.upload', 'started');
-    void uploadBlob(pathname, capture.blob, {
+    temporaryCaptureUpload.current = uploadBlob(pathname, capture.blob, {
       access: 'public',
       contentType: 'image/jpeg',
       handleUploadUrl: ORIGINAL_UPLOAD_ENDPOINT,
       clientPayload: JSON.stringify({ eventId }),
-    }).then(() => {
+    }).then(({ url }) => {
+      temporaryCaptureUrl.current = url;
       journey.record('photo.upload', 'succeeded');
+      return url;
     }).catch((error: unknown) => {
       journey.record('photo.upload', 'failed');
       console.warn('Temporary photo backup could not be uploaded; the normal save can still continue:', error);
+      temporaryCaptureUpload.current = null;
+      return null;
     });
+    return temporaryCaptureUpload.current;
   }, [eventId]);
+
+  const prepareCaptureForSocialLogin = useCallback(async (): Promise<boolean> => {
+    if (flowPhase !== 'presubmit' || !capturedOriginal || !capturedImage) return false;
+    const originalUrl = temporaryCaptureUrl.current ?? await storeTemporaryCapture(capturedOriginal);
+    if (!originalUrl) return false;
+    const framedId = crypto.randomUUID();
+    const framedBlob = await (await fetch(capturedImage)).blob();
+    if (!framedBlob.size) return false;
+    const { url: framedUrl } = await uploadBlob(`${TEMPORARY_CAPTURE_PREFIX}${eventId}/${framedId}-framed.jpg`, framedBlob, {
+      access: 'public',
+      contentType: 'image/jpeg',
+      handleUploadUrl: ORIGINAL_UPLOAD_ENDPOINT,
+      clientPayload: JSON.stringify({ eventId }),
+    });
+    const draft: CaptureResumeDraft = {
+      version: 1,
+      eventId,
+      originalUrl,
+      framedUrl,
+      capture: {
+        width: capturedOriginal.width,
+        height: capturedOriginal.height,
+        facingMode: capturedOriginal.facingMode,
+        mirrored: capturedOriginal.mirrored,
+        ...(capturedOriginal.method ? { method: capturedOriginal.method } : {}),
+        ...(capturedOriginal.nativeWidth ? { nativeWidth: capturedOriginal.nativeWidth } : {}),
+        ...(capturedOriginal.nativeHeight ? { nativeHeight: capturedOriginal.nativeHeight } : {}),
+      },
+      selectedFrame,
+      choice,
+      galleryTick,
+    };
+    window.sessionStorage.setItem(captureResumeDraftKey(eventId), JSON.stringify(draft));
+    return true;
+  }, [flowPhase, capturedOriginal, capturedImage, storeTemporaryCapture, eventId, selectedFrame, choice, galleryTick]);
   
   // With the acceptance on the Who-are-you page (issue 523) the consent page is not a step of its own: its checkboxes are shown there as one (lib/events/acceptance.ts).
   const { pages: journeyPages, acceptPage: acceptanceBox } = acceptanceOnLogin(customPages, event?.acceptanceOnWhoAreYou === true);
@@ -402,19 +447,22 @@ export default function EventCapturePage({
 
   // Check for SSO resume after authentication
   useEffect(() => {
+    if (isLoading) return;
     const urlParams = new URLSearchParams(window.location.search);
     const isResume = urlParams.get('resume') === 'true';
     const resumePageIndex = urlParams.get('page');
+    const resumePhase = urlParams.get('phase') === 'presubmit' ? 'presubmit' : 'onboarding';
     
     // Only process resume once and only if explicitly signaled
-    if (isResume && resumePageIndex !== null) {
+    if (isResume && resumePageIndex !== null && !resumeHandled.current) {
+      resumeHandled.current = true;
       const pageIndex = parseInt(resumePageIndex, 10);
       
       if (!isNaN(pageIndex)) {
         // Fetch session to get authenticated user data
-        fetch('/api/auth/session')
+        void fetch('/api/auth/session')
           .then(res => res.json())
-          .then(sessionData => {
+          .then(async sessionData => {
             if (sessionData.authenticated && sessionData.user) {
               // Auto-populate userInfo from authenticated session, and what was accepted before the sign-in (the page's own state went with the redirect, lib/capture/consent-memory.ts)
               const remembered = recallConsents(window.sessionStorage, eventId);
@@ -426,10 +474,39 @@ export default function EventCapturePage({
                 },
                 consents: [...prev.consents, ...remembered.filter((record) => !prev.consents.some((c) => c.pageId === record.pageId && c.checkboxText === record.checkboxText))],
               }));
-              
-              // Advance to next page (skip who-are-you since we have the data)
-              setCurrentPageIndex(pageIndex + 1);
-              setFlowPhase('onboarding');
+              if (resumePhase === 'presubmit') {
+                const draft = parseCaptureResumeDraft(window.sessionStorage.getItem(captureResumeDraftKey(eventId)), eventId);
+                if (!draft) throw new Error('The temporary photo backup is missing');
+                const [originalResponse, framedResponse] = await Promise.all([fetch(draft.originalUrl), fetch(draft.framedUrl)]);
+                if (!originalResponse.ok || !framedResponse.ok) throw new Error('The temporary photo backup is unavailable');
+                const originalBlob = await originalResponse.blob();
+                const framedBlob = await framedResponse.blob();
+                if (!originalBlob.size || !framedBlob.size) throw new Error('The temporary photo backup is empty');
+                setCapturedOriginal({ blob: originalBlob, dataUrl: await blobToDataUrl(originalBlob), ...draft.capture });
+                setCapturedImage(await blobToDataUrl(framedBlob));
+                setSelectedFrame(draft.selectedFrame as Frame | null);
+                setChoice(draft.choice as Choice);
+                setGalleryTick(draft.galleryTick);
+                temporaryCaptureUrl.current = draft.originalUrl;
+                temporaryCaptureUpload.current = Promise.resolve(draft.originalUrl);
+                setPresubmitDone(false);
+                setCurrentPageIndex(pageIndex + 1);
+                setFlowPhase('presubmit');
+                journey.record('journey.resume');
+              } else {
+                // Advance to next page (skip who-are-you since we have the data).
+                setCurrentPageIndex(pageIndex + 1);
+                setFlowPhase('onboarding');
+              }
+            } else {
+              if (resumePhase === 'presubmit') {
+                setSignInError({ code: 'capture_resume_failed', message: t('login.captureRestoreError') });
+                setFlowPhase('capture');
+                setCurrentPageIndex(0);
+                setStep('capture-photo');
+              } else {
+                setSignInError({ code: 'session_expired', message: t('flow.signin.hint') });
+              }
             }
             
             // Clean URL to prevent re-processing on refresh
@@ -437,6 +514,12 @@ export default function EventCapturePage({
           })
           .catch(err => {
             console.warn('Failed to fetch session during resume:', err);
+            if (resumePhase === 'presubmit') {
+              setSignInError({ code: 'capture_resume_failed', message: t('login.captureRestoreError') });
+              setFlowPhase('capture');
+              setCurrentPageIndex(0);
+              setStep('capture-photo');
+            }
             // Clean URL even on error
             window.history.replaceState({}, '', window.location.pathname);
           });
@@ -445,7 +528,7 @@ export default function EventCapturePage({
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
-  }, [eventId]); // Runs once on mount: the event id of the page never changes
+  }, [eventId, isLoading, t]); // Resume only after event settings have loaded, so initial event state cannot overwrite the restored capture.
 
   // OAuth / SSO sign-in failed (callback redirected here with ?error=&message=)
   useEffect(() => {
@@ -915,7 +998,9 @@ export default function EventCapturePage({
         setSelectedFrame(variantFrame(variant));
       }
     }
-    storeTemporaryCapture(capture);
+    temporaryCaptureUrl.current = null;
+    temporaryCaptureUpload.current = null;
+    void storeTemporaryCapture(capture);
     setCapturedOriginal(capture);
     setStep('reframe');
   };
@@ -941,6 +1026,7 @@ export default function EventCapturePage({
   }, [step]);
 
   const handleReframeRetake = () => {
+    forgetCaptureResumeDraft(window.sessionStorage, eventId);
     setCapturedOriginal(null);
     setGalleryTick(false);
     setStep('capture-photo');
@@ -1042,6 +1128,7 @@ export default function EventCapturePage({
         throw new Error(t('flow.noSubmissionId'));
       }
       // Keep the temporary capture copy with the event for post-event cleanup.
+      forgetCaptureResumeDraft(window.sessionStorage, eventId);
       setSavedSubmissionId(submissionId);
       journey.saved(true);
       setHasFinalizedSubmissionEmail(false);
@@ -1487,7 +1574,8 @@ export default function EventCapturePage({
             buttonSize={eventButtonSize}
             eventId={eventId}
             pageIndex={currentPageIndex}
-            socialLoginPopup={flowPhase === 'presubmit'}
+            capturePhase={flowPhase === 'presubmit' ? 'presubmit' : 'onboarding'}
+            onBeforeSocialLogin={flowPhase === 'presubmit' ? prepareCaptureForSocialLogin : undefined}
             onNext={handleWhoAreYouComplete}
             acceptance={
               acceptanceBox

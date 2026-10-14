@@ -37,10 +37,14 @@ test('the target survives the cookie and opens the capture page, resuming at the
   assert.equal(captureReturnPath({ eventId: EVENT, page: null }), `/capture/${EVENT}`);
   const popup = { eventId: EVENT, page: 2, popupId: '11111111-1111-4111-8111-111111111111' };
   assert.deepEqual(decodeCaptureReturn(encodeCaptureReturn(popup)), popup);
+  const presubmit = { eventId: EVENT, page: 2, phase: 'presubmit' as const };
+  assert.deepEqual(decodeCaptureReturn(encodeCaptureReturn(presubmit)), presubmit);
+  assert.equal(captureReturnPath(presubmit), `/capture/${EVENT}?resume=true&page=2&phase=presubmit`);
 });
 
 test('a login names its target by the link it followed; a dashboard login names none', () => {
   assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?provider=google&captureEvent=${EVENT}&capturePage=2`)), { eventId: EVENT, page: 2 });
+  assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?provider=google&captureEvent=${EVENT}&capturePage=2&capturePhase=presubmit`)), { eventId: EVENT, page: 2, phase: 'presubmit' });
   assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?captureEvent=${EVENT}&capturePage=2&capturePopup=11111111-1111-4111-8111-111111111111`)), { eventId: EVENT, page: 2, popupId: '11111111-1111-4111-8111-111111111111' });
   assert.equal(captureReturnForLogin(request('/api/auth/login', { referer: `${ORIGIN}/admin/login` })), null);
   assert.equal(captureReturnForLogin(request('/api/auth/login?captureEvent=../admin')), null);
@@ -51,6 +55,8 @@ test('the social buttons carry the capture page and step in their link', () => {
   assert.equal(url.searchParams.get('provider'), 'google');
   assert.equal(url.searchParams.get('captureEvent'), EVENT);
   assert.equal(url.searchParams.get('capturePage'), '0');
+  const presubmitUrl = new URL(socialLoginHref('google', { captureEventId: EVENT, capturePage: 0, capturePhase: 'presubmit' }), ORIGIN);
+  assert.equal(presubmitUrl.searchParams.get('capturePhase'), 'presubmit');
   const popupUrl = new URL(socialLoginHref('google', { captureEventId: EVENT, capturePage: 0, capturePopup: '11111111-1111-4111-8111-111111111111' }), ORIGIN);
   assert.equal(popupUrl.searchParams.get('capturePopup'), '11111111-1111-4111-8111-111111111111');
   assert.equal(new URL(socialLoginHref('facebook'), ORIGIN).searchParams.has('captureEvent'), false);

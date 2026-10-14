@@ -69,8 +69,9 @@ export interface WhoAreYouPageProps {
   eventId: string;
   pageIndex: number;
   buttonSize?: EventButtonSize;
-  /** Opens social sign-in separately so a photo between this page and Save remains in the original tab. */
-  socialLoginPopup?: boolean;
+  /** Presubmit SSO persists the photo before leaving this tab, then restores it from the SSO return. */
+  capturePhase?: 'onboarding' | 'presubmit';
+  onBeforeSocialLogin?: () => Promise<boolean>;
 }
 
 export default function WhoAreYouPage({
@@ -83,7 +84,8 @@ export default function WhoAreYouPage({
   eventId,
   pageIndex,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
-  socialLoginPopup = false,
+  capturePhase,
+  onBeforeSocialLogin,
 }: WhoAreYouPageProps) {
   const { t, own } = useT();
   const [name, setName] = useState('');
@@ -180,7 +182,7 @@ export default function WhoAreYouPage({
           <Title order={4} ta="center">
             {socialHeading}
           </Title>
-          <SocialLoginButtons captureEventId={eventId} capturePage={pageIndex} capturePopup={socialLoginPopup} onCaptureLoginComplete={socialLoginPopup ? onNext : undefined} disabled={locked} />
+          <SocialLoginButtons captureEventId={eventId} capturePage={pageIndex} capturePhase={capturePhase} onBeforeCaptureLogin={onBeforeSocialLogin} disabled={locked} />
         </Stack>
       ) : null}
 
