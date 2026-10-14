@@ -10,6 +10,7 @@ import BrandSignInButton from '@/components/auth/BrandSignInButton';
 import { socialLoginHref } from '@/lib/auth/social-login';
 import { useT } from '@/components/i18n/UiLanguageProvider';
 import { useState, type MouseEvent } from 'react';
+import { journey } from '@/lib/journey/client';
 
 export interface SocialLoginButtonsProps {
   /** After logout, force IdP login screen */
@@ -33,10 +34,12 @@ export default function SocialLoginButtons({ fromLogout, captureEventId, capture
   const googleHref = socialLoginHref('google', { fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId: captureSubmissionId ?? undefined });
   const facebookHref = socialLoginHref('facebook', { fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId: captureSubmissionId ?? undefined });
 
-  const followSso = async (event: MouseEvent<HTMLAnchorElement>) => {
-    if (!onBeforeCaptureLogin || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    event.preventDefault();
+  const followSso = async (event: MouseEvent<HTMLAnchorElement>, provider: 'google' | 'facebook') => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     if (disabled || preparing) return;
+    journey.record('login.method', provider);
+    if (!onBeforeCaptureLogin) return;
+    event.preventDefault();
     const href = event.currentTarget.href;
     setPrepareError(false);
     setPreparing(true);
@@ -52,8 +55,8 @@ export default function SocialLoginButtons({ fromLogout, captureEventId, capture
 
   return (
     <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 15rem), 1fr))' }}>
-      <BrandSignInButton provider="google" href={googleHref} label={t('social.google.aria')} disabled={disabled || preparing} onClick={followSso} />
-      <BrandSignInButton provider="facebook" href={facebookHref} label={t('social.facebook.aria')} disabled={disabled || preparing} onClick={followSso} />
+      <BrandSignInButton provider="google" href={googleHref} label={t('social.google.aria')} disabled={disabled || preparing} onClick={(event) => followSso(event, 'google')} />
+      <BrandSignInButton provider="facebook" href={facebookHref} label={t('social.facebook.aria')} disabled={disabled || preparing} onClick={(event) => followSso(event, 'facebook')} />
       {preparing ? <div role="status" style={{ gridColumn: '1 / -1', textAlign: 'center' }}>{t('login.preparingPhoto')}</div> : null}
       {prepareError ? <div role="alert" style={{ gridColumn: '1 / -1', color: 'var(--mantine-color-red-7)', textAlign: 'center' }}>{t('login.captureBackupError')}</div> : null}
     </div>

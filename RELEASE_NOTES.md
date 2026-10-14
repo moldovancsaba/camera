@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — complete the capture analytics audit and requested measures (2026-10-14)
+
+- **Added:** Journey Analytics now reports average and median time from capture-page open to first saved photo, unique CTA click-through, and shares of Google, Facebook and Pseudo identity-route choices. These are event-scoped counts; provider entries are selections, not successful sign-ins.
+- **Clarified:** Vetting shows each structured rejection reason as a share of currently rejected photos (a photo can have multiple reasons). Photos and users shows returning/new shares among identifiable users in the selected date range; “returning” means two or more photo submissions in that range.
+- **Documented:** `docs/ANALYTICS_DATA_DICTIONARY.md` audits collection fields and retention, distinguishes anonymous Journey records from identifiable submissions, explains metric denominators and limitations, and recommends next low-data measurement improvements. Analytics, Journey, audit, architecture, runbook and handover docs now point to current definitions.
+- **Privacy limit:** Raw Journey timings expire after 30 days; older daily aggregates remain. A page resumed after SSO starts a new in-memory timer, so pre-login time is not included when sign-in happens before photo saving.
+- **Verification:** Not yet run in this change.
+
 ## Unreleased — resume social login by stable journey page ID (2026-10-14)
 
 - **Fixed:** the capture login return now carries the stable ID of the page where sign-in started, alongside the phase and saved submission ID. The flow resolves that page in the current journey order and continues after it, even if pages were reordered while SSO was open. After sign-in, the page links that submission to the account and reloads its saved image through an owner-checked API before continuing, preventing the preview from becoming an empty blue screen.

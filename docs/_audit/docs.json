@@ -21,6 +21,7 @@
   {"file": "docs/AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md", "title": "Using annotated photos to train automatic annotation: purpose and consent (draft)"},
   {"file": "docs/ANALYTICS.md", "title": "Analytics (issue 521)"},
   {"file": "docs/ANALYTICS_AUDIT.md", "title": "Analytics audit: what we know about the users and the service, what we could know, and how to feed messmass"},
+  {"file": "docs/ANALYTICS_DATA_DICTIONARY.md", "title": "Analytics data inventory and metric definitions"},
   {"file": "docs/ANNOTATION_VOCABULARY.md", "title": "The words of the annotation: a list with three levels (issue 628)"},
   {"file": "docs/AUTHORIZATION.md", "title": "Authorization Guide"},
   {"file": "docs/BRANCHING.md", "title": "Branching model"},

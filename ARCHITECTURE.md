@@ -49,6 +49,7 @@ Browser / Public Screens
 - slideshow generation in `lib/slideshow/*`
 - partner-scoped access helpers in `lib/partners/*`
 - analytics in `lib/analytics/*` (pure aggregations, the only database access is `load.ts`, read only)
+- anonymous capture Journey vocabulary and aggregation in `lib/journey/*` and `lib/analytics/journey.ts` (daily aggregate counts are retained; raw rows expire after 30 days; Journey has no guest identity)
 - outbound call deadlines and outcome logs in `lib/observability/outbound.ts`
 - transactional email (templates, per-event sender name) in `lib/email/*`
 - event export logic in `lib/events/*`
@@ -237,6 +238,10 @@ is `/admin/login`, since that page already does its own session check and
 doesn't want the authenticated `AdminShell` chrome (v2.19.0, PR #99).
 
 ## 7. Data architecture
+
+### Event analytics and Journey recording
+
+Event Analytics reads submission, review, consent, registration, screen and tracked-link records through `lib/analytics/load.ts`; `lib/analytics/report.ts` computes photo, vetting and photo-based user measures, and `lib/analytics/export.ts` exports the same report. The event-only Journey tab reads the allow-listed events in `lib/journey/events.ts`: visits, reached steps, camera/photo outcomes, CTA actions, selected login routes, consent interactions and share actions. Daily rollups live in `journey_daily`; raw per-record timing rows in `journey_events` have a 30-day TTL. Journey rows do not include a person ID, IP address, user agent, name, e-mail, photo or URL. The admin switch can stop Journey collection. See [docs/ANALYTICS_DATA_DICTIONARY.md](docs/ANALYTICS_DATA_DICTIONARY.md) for each metric's source, denominator, limitation and retention.
 
 The system uses mixed identifier semantics by design.
 

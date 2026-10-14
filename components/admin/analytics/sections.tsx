@@ -23,7 +23,7 @@ export function OverviewSection({ report, sources, table }: { report: EventRepor
     <>
       <Metrics
         items={[
-          { label: 'Users', value: formatCount(users.distinct), description: `${formatCount(users.returning)} took more than one photo. ${plural(users.photosWithoutIdentity, 'photo')} without an e-mail or an account are not in this number.` },
+          { label: 'Users', value: formatCount(users.distinct), description: `${formatShare(users.returning, users.distinct)} returned with 2+ photos; ${formatShare(users.distinct - users.returning, users.distinct)} had one photo in this range. ${plural(users.photosWithoutIdentity, 'photo')} without an e-mail or an account cannot be classified.` },
           { label: 'Approval rate', value: formatRate(photos.approvalRate), description: `${formatCount(photos.approved)} approved, ${formatCount(photos.rejected)} declined` },
           { label: 'Time to first decision', value: formatDuration(vetting.timeToFirstDecision.avgSeconds), description: vetting.timeToFirstDecision.count > 0 ? `Median ${formatDuration(vetting.timeToFirstDecision.medianSeconds)}, over ${plural(vetting.timeToFirstDecision.count, 'decided photo')}` : 'No photo has been decided yet' },
           { label: 'Plays on the screens', value: formatCount(screens.plays), description: `${plural(screens.photosShown, 'photo')} shown, ${formatShare(screens.eligibleShown, screens.eligible)} of those that may be shown` },
@@ -123,7 +123,8 @@ export function PhotosSection({ report }: { report: EventReport }) {
             { label: 'Different users', value: formatCount(users.distinct), description: `${formatCount(report.photos.taken)} photos, ${formatCount(users.photosPerUser)} a user` },
             { label: 'Signed in', value: formatCount(users.signedIn), description: 'With an account (Google, Facebook or another)' },
             { label: 'Gave an e-mail', value: formatCount(users.typedEmail), description: 'Typed their e-mail and did not sign in' },
-            { label: 'Took more than one photo', value: formatCount(users.returning), description: formatShare(users.returning, users.distinct) + ' of the users' },
+            { label: 'Returning users (2+ photos)', value: formatShare(users.returning, users.distinct), description: `${formatCount(users.returning)} of ${formatCount(users.distinct)} identifiable users in this date range` },
+            { label: 'New users (one photo)', value: formatShare(users.distinct - users.returning, users.distinct), description: `${formatCount(users.distinct - users.returning)} of ${formatCount(users.distinct)} identifiable users in this date range` },
             { label: 'Photos with no e-mail or account', value: formatCount(users.photosWithoutIdentity), description: 'Older photos and events that do not ask' },
             { label: 'Registered', value: formatCount(users.registered), description: `${formatCount(users.registeredWithPhoto)} of them took a photo (${formatShare(users.registeredWithPhoto, users.registered)}). People who gave their e-mail at the Who-are-you step.` },
           ]}
@@ -201,7 +202,7 @@ export function VettingSection({ report }: { report: EventReport }) {
         />
       </Panel>
 
-      <Panel title="Why photos were declined" description="The reasons the reviewer chose from the list when declining, counted over the photos that are declined now (a photo with two reasons is in both). The words a reviewer wrote beside them are counted below.">
+      <Panel title="Why photos were declined" description="Each reason shows its share of photos declined now. A photo can have more than one reason, so these percentages can add up to more than 100%. The words a reviewer wrote beside them are counted below.">
         <Bars label="Reasons chosen for declines" rows={vetting.rejectReasons} total={photos.rejected} empty="No declined photo carries a reason from the list yet." />
         <Note>
           {plural(photos.rejected - vetting.rejectedWithoutReasons, 'declined photo')} with a reason from the list, {formatCount(vetting.rejectedWithoutReasons)} without (declined before the list existed).

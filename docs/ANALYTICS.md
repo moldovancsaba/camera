@@ -1,6 +1,6 @@
 # Analytics (issue 521)
 
-The Analytics view of an event, and of all events together. **Phase 1** says what the data that already exists says (photos, vetting, users, screens, links, e-mails, consents): nothing is recorded for it. **Phase 2** adds the **Journey** tab, from an anonymous recording of the capture pages ([JOURNEY_RECORDING.md](JOURNEY_RECORDING.md): what is recorded, what never is, the 30 days, the kill switch). The plan and the owner's decisions are in [ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md) (decisions 241 to 246: counters only go to messmass, the order is the photo and vetting numbers on existing data first, the journey recording and the change of the photo's IP address after).
+The Analytics view of an event, and of all events together. The **Journey** tab uses anonymous, event-scoped interaction counts ([JOURNEY_RECORDING.md](JOURNEY_RECORDING.md)); other tabs report submissions, vetting, users, screens, links, e-mails and consents from their existing records. The current field-by-field collection and retention audit is [ANALYTICS_DATA_DICTIONARY.md](ANALYTICS_DATA_DICTIONARY.md). The assessment and additional measurement recommendations are in [ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md).
 
 ## Where it is
 
@@ -10,7 +10,7 @@ The Analytics view of an event, and of all events together. **Phase 1** says wha
 | Operations **Analytics** (`/admin/analytics`; the old address `/admin/tryon/analytics` is redirected) | global admins | the same numbers over every event, and one row per event (the name opens that event's tab) |
 | `GET /api/admin/events/<id>/export/analytics` | like the tab | the figures of every tab as one CSV (`section,item,value`), with the same days and clock |
 
-Tabs are links (`?view=`), and the days and the clock are in the address too, so a report can be shared as a link. The tabs: **Overview** (the key figures, photos per day and per hour, what is not measured), **Journey** (one event: visits, steps reached, photos saved, camera permission, retakes, consent left, shares and downloads, and the kill switch of the recording; the days are UTC days), **Photos and users**, **Vetting and people**, **Screens**, **Sources** (one event), **E-mails and consent**, **Messmass** (global admins: a preview of the counters that would go to messmass, with their names and labels; nothing is sent). There is no Try-on tab any more (it went with the try-on integration, issue 557; an old `?view=tryon` address shows the Overview).
+Tabs are links (`?view=`), and the days and the clock are in the address too, so a report can be shared as a link. The tabs: **Overview** (the key figures, photos per day and per hour, what is not measured), **Journey** (one event: visits, steps reached, first photo saved and its average/median time, CTA clicks, sign-in-method choices, camera permission, retakes, consent left, shares and downloads, and the recording switch; Journey days are UTC), **Photos and users** (including returning/new shares among identifiable photo submitters), **Vetting and people** (approval/rejection counts and reason shares), **Screens**, **Sources** (one event), **E-mails and consent**, **Messmass** (global admins: a preview of the counters that would go to messmass, with their names and labels; nothing is sent). A decline can carry multiple reasons; each reason's share uses rejected photos as its denominator, and shares can sum above 100%. There is no Try-on tab any more (it went with the try-on integration, issue 557; an old `?view=tryon` address shows the Overview).
 
 ## What is counted
 
@@ -48,9 +48,9 @@ The photos filed under the event (its UUID in `eventId` or `eventIds`) that are 
 
 Days can be limited (`from`, `to`; **both included**, on the chosen clock): they limit the photos by the day they were taken, and the decisions and plays of those photos follow them. The link visits are limited by their own UTC day.
 
-## Counters for messmass (prepared, switched off, never sent)
+## Counters for messmass (prepared, switched off by default)
 
-Owner decision 245 and the request of 2026-10-12 (issue 628): the numbers sent to messmass are **counters only, never a person** (decision 241). The pipeline is prepared; **nothing was sent to messmass, and nothing can be until the owner decides** (the push is off by default and messmass has no receiving route yet).
+Owner decision 245 and the request of 2026-10-12 (issue 628): the numbers sent to messmass are **counters only, never a person** (decision 241). The receiving route is in messmass (PR [#481](https://github.com/moldovancsaba/messmass/pull/481)); Camera's sender is wired to vetting decisions and saved people-markings, but its global switch is off by default. No counter is sent while it is off. The Analytics data dictionary describes which of the requested measures stay in Camera and which can be shared as event totals.
 
 **Every name starts with `camera_`** (lower case snake case: `camera_gender_female`, `^camera_[a-z0-9_]{1,80}$`, `COUNTER_NAME_PATTERN` in `lib/photo-vetting/vocabulary.ts`). messmass already holds variables of other sources (`female`, `male`, `genAlpha`, `jersey`, `scarf`, `approvedImages`, `fanmass*`, ...) and camera's names must never meet them. A counter sent to messmass is a **whole running total for the event** (every annotated photo of the event, never a day's change), so a repeated push changes nothing; `camera_gender_female` says at any moment how many female people were counted over all the annotated photos, and `camera_images_annotated` says how many photos that count covers.
 
@@ -87,10 +87,10 @@ Owner decision 245 and the request of 2026-10-12 (issue 628): the numbers sent t
 
 **Not done, on purpose, and what it needs:**
 
-1. **No trigger is wired.** `requestCounterSync` exists; the routes that save a decision and a marking (`app/api/admin/submissions/[id]/review`, `.../people`) call it in the change that owns those routes. A push on a play and a daily catch-up job are not built; the giant screen is frozen until after the match.
-2. **No switch on a screen.** The setting can only be stored in the database today; the switch (and a manual "Send now" for one chosen event) come with the first real event.
-3. **The receiving side is built by its own stream.** Until messmass answers `photo-stats` and has registered the names in its variable catalog (`variables_metadata`; a stat without an entry is stored but invisible, and a derived variable is silently skipped), a push is refused (false), which the sync reports as `failed` and does not remember. The audit's section 6 lists what that route needs; the names now all carry the `camera_` prefix, so they cannot collide with what operators type in the clicker or with other sources.
-4. CLAUDE.md section 8 applies in full: the pipeline is tested with fakes; the first end-to-end proof is the owner's, at a real event.
+1. **The sender runs only after a vetting decision or saved people-marking.** Both paths are wired through `scheduleCounterSync`. New submissions, journey events, link hits, screen plays and deletions do not trigger their own push; their values are included in the next triggered full-event snapshot. A scheduled catch-up is not built.
+2. **The global switch is off by default.** The event Analytics → Messmass panel shows the preview and lets a global admin switch sending on. Switching it on does not immediately send a snapshot; a later vetting decision or saved people-marking triggers the first push. There is no manual “Send now” control.
+3. **The receiver and variable catalog are live in messmass.** The route validates `camera_` names, writes only those `projects.stats` paths, keeps an audit copy, and creates missing `variables_metadata` entries without overwriting entries an operator already edited. Camera retries the next time a sync is triggered after a failed push.
+4. CLAUDE.md section 8 applies in full: the pipeline is tested with fakes; the first production end-to-end proof is the owner's, at a real event.
 
 ## What cannot be computed yet, and why
 

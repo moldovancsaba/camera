@@ -23,6 +23,7 @@ import {
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
+import { journey } from '@/lib/journey/client';
 
 export interface WhoAreYouPageConfig {
   title: string;
@@ -132,6 +133,7 @@ export default function WhoAreYouPage({
   const handleNext = () => {
     if (locked) return;
     if (validate()) {
+      journey.record('login.method', 'pseudo');
       onNext({
         name: name.trim(),
         email: email.trim(),

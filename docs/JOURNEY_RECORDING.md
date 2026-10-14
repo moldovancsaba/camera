@@ -1,8 +1,8 @@
 # Journey recording (issue 521, phase 2)
 
-An anonymous record of the steps users take through the capture pages, so the Analytics view can say how many people opened the link, where they got to, how many saved a photo, how many said no to the camera, retook, left the consent, shared and downloaded. Owner decision 241 (2026-10-10): **record the journey anonymously for everyone, and send messmass counters only.** The plan is in [ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md) (sections 7.1 to 7.3, steps B and C); the figures are in [ANALYTICS.md](ANALYTICS.md).
+An anonymous record of the steps users take through the capture pages, so the Analytics view can say how many visits opened the link, where they got to, how many saved a photo, how many denied the camera, retook, left consent, selected a sign-in method, clicked a CTA, shared or downloaded. Owner decision 241 (2026-10-10): **record the journey anonymously for everyone, and send messmass counters only.** The current data inventory and definitions are in [ANALYTICS_DATA_DICTIONARY.md](ANALYTICS_DATA_DICTIONARY.md); the audit and recommendations are in [ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md); dashboard figures are in [ANALYTICS.md](ANALYTICS.md).
 
-**Status.** Built in two changes of issue 521: the receiving side (the beacon route, the vocabulary, the daily counts and raw rows, the kill switch, the Journey tab, the counters for messmass) and the **page beacons** (the capture page, the camera, the share page and the download send the records). The recording is **on by default** (owner decision 241) and the owner can switch it off from the Journey tab without a deploy.
+**Status.** The beacon route, fixed vocabulary, daily counts, 30-day raw rows, kill switch, Journey tab and page beacons are built. The recording is **on by default** (owner decision 241) and a global admin can switch it off from the Journey tab. CTA action and Google/Facebook/Pseudo route choice are included in the vocabulary and report.
 
 ## The rule this is built on
 
@@ -29,6 +29,8 @@ One record is a **name** from a fixed list, a **key** from that name's fixed lis
 | `photo.retake` | none | back from the move-and-zoom step to the camera | the page |
 | `photo.save` | `ok`, `failed` | the save answered | the page |
 | `journey.complete` | `under-1m`, `1-3m`, `3-10m`, `10-30m`, `over-30m` | the first saved photo of the visit (the key is how long it took) | the page |
+| `cta.click` | none | the first action pressed on a CTA page in this visit; counted once even if several CTA controls are pressed | the page |
+| `login.method` | `google`, `facebook`, `pseudo` | an SSO provider clicked or a valid name-and-e-mail form submitted on the Who-are-you page | the page |
 | `share.click` | `copy`, `facebook`, `twitter`, `linkedin`, `whatsapp` | a share button pressed | the page |
 | `share.view` | none | the public photo page opened by a person (a link preview by a chat app or crawler is not one) | the server |
 | `download` | none | the photo downloaded from the public photo page | the server |
@@ -46,7 +48,7 @@ One record is a **name** from a fixed list, a **key** from that name's fixed lis
 
 **What the owner must run:** `npm run db:ensure-indexes` (needs `MONGODB_URI` and `MONGODB_DB`; safe to repeat) creates the indexes: `journey_events_at_ttl` (the 30 days), `journey_events_event_name_at` and the unique key of the daily count. The first write on each server instance also creates them (`lib/journey/store.ts`), so the 30 days hold even if the script was not run; running it is still the clean way and shows in its output whether they exist. Nothing is deleted by this change; the 30 days apply to new rows only.
 
-The Analytics view and the counters for messmass read the **daily counts**. The raw rows are for the funnel and the timings; today one thing reads them (the median time to the first saved photo).
+The Analytics view and the counters for messmass read the **daily counts**. The raw rows are for the funnel and timings; the average and median time from the first page load to the first saved photo are computed from `journey.complete` rows retained for 30 days. This measures the selfie flow through the first successful save, not optional share or thank-you pages after saving. The selected date range filters these durations by the UTC day on which the record was received. After SSO, a resumed page load starts a fresh in-memory timer, so a flow that needs login before saving does not include the time before the redirect in its duration. Provider figures count the selected sign-in route, not a verified successful login.
 
 ## Where the page records
 
@@ -76,13 +78,15 @@ Defined in `lib/analytics/journey.ts`; the same numbers feed the CSV export and 
 - **Retakes** = `photo.retake`; per photo taken = retakes over `photo.taken`. Temporary upload starts, successes and failures are counted separately under Camera, photos and saving.
 - **Consent left** = shown minus accepted, for the consent page and for the box on the Who-are-you page separately, never below zero.
 - **Shares** = `share.click`; **photo page views** = `share.view`; **downloads** = `download`.
-- **Median time to the first photo** = the median `ms` of `journey.complete` over the raw rows still kept (30 days); the five buckets cover the whole recording.
+- **Average and median time to the first saved photo** = the average and median `ms` of `journey.complete` over the raw rows still kept (30 days); the five buckets cover the whole recording. This is time to the first successful save, not time through optional post-save pages.
+- **CTA click rate** = visits with an action pressed on a CTA page / visits that reached a CTA page. At most one click is counted per visit.
+- **Sign-in and identity choices** = Google and Facebook provider clicks, and valid Pseudo form submissions. These are selected routes, not SSO success results.
 
 **Limits to know.** Recorded **from the day the recording started**; nothing exists before, and an event with no record shows "not recorded", never zeros. Days are **UTC days**. Opens are recorded once the page has the event, so a page closed before the event answer arrived is not counted. The browser sends the records, so someone can inflate them (a rate limit and the fixed vocabulary bound it): the figures are for the service and the organisers, not a measure of anything paid for. A reload counts as another visit.
 
 ## For messmass
 
-Counters only, never a person (decision 241): `camera_journey_opens`, `camera_journeys_completed`, `camera_permission_denied`, `camera_retakes`, `camera_consents_abandoned`, `camera_shares`, `camera_downloads` (`lib/analytics/counters.ts`; every name carries the `camera_` prefix, docs/ANALYTICS.md). They are whole running totals since the recording started, and an event with no journey record sends none of them (never a zero). The pipeline is still **off, with no trigger**, and nothing is sent to messmass by this change.
+Counters only, never a person (decision 241): the receiver in Messmass and Camera's `camera_` counter builder, sender and event trigger are in place. The global sender switch is **off by default**. When enabled, a vetting decision or saved people-marking triggers a whole-event snapshot; no Journey visit ID, photo, name, e-mail or individual login choice is sent. CTA and login-method event counts are currently shown in Camera Analytics but are not among the Messmass counters. See [ANALYTICS_DATA_DICTIONARY.md](ANALYTICS_DATA_DICTIONARY.md) for the integration boundary and freshness limits.
 
 ## Files
 
