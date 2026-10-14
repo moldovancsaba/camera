@@ -17,7 +17,6 @@
 import { Fragment, type CSSProperties, type ReactNode, useState, useEffect, use, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { Button, Checkbox } from '@mantine/core';
-import { upload as uploadBlob } from '@vercel/blob/client';
 import CameraCapture from '@/components/camera/CameraCapture';
 import AppShellLock from '@/components/capture/AppShellLock';
 import { phasePageLock } from '@/lib/capture/page-lock';
@@ -51,9 +50,7 @@ import { type CustomPage, type FrameMessageSelectionDisplay } from '@/lib/db/sch
 import { canonicalPublicOrigin } from '@/lib/site-hosts';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
-import { blobToDataUrl, type FullFrameCapture } from '@/lib/camera/frame-capture';
-import { ORIGINAL_UPLOAD_ENDPOINT, TEMPORARY_CAPTURE_PREFIX } from '@/lib/submissions/original-image';
-import { captureResumeDraftKey, forgetCaptureResumeDraft, parseCaptureResumeDraft, type CaptureResumeDraft } from '@/lib/capture/resumable-draft';
+import { type FullFrameCapture } from '@/lib/camera/frame-capture';
 import { frameSilhouette } from '@/lib/frame/silhouette';
 import { frameWithSelectionDisplay, pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
 import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
@@ -253,13 +250,8 @@ export default function EventCapturePage({
   // One draw per visit for the random pick of the logo: the same draw in every place, so a user sees the same logo throughout (camera#419).
   const logoDraw = useRef<number | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  // The whole photo at the camera's full size is held for reframing; on confirmation it and the cropped draft are uploaded for the journey. The frame-sized result becomes the submission; both temporary copies stay for event cleanup.
+  // The whole photo at the camera's full size stays in browser memory for reframing; Continue uploads the framed result through POST /api/submissions.
   const [capturedOriginal, setCapturedOriginal] = useState<FullFrameCapture | null>(null);
-  const temporaryCaptureUrl = useRef<string | null>(null);
-  const temporaryCaptureUpload = useRef<Promise<string> | null>(null);
-  const temporaryFramedCaptureUrl = useRef<string | null>(null);
-  const [isUploadingCapture, setIsUploadingCapture] = useState(false);
-  // After the guest confirms the crop, the original and cropped draft are uploaded to event-scoped temporary storage. Keep them through sign-in, page exits, retakes, and final save; event cleanup removes these drafts afterwards.
   // How the photo is taken in this environment (camera#257): the device's own camera on every touch device, a real still or
   // the video frame on a desktop webcam. Known after mount.
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
@@ -307,82 +299,25 @@ export default function EventCapturePage({
   const resumeHandled = useRef(false);
   // Continue on the reframe screen saves the photo (camera#344): true from that press until the save starts, so nothing else is asked in between.
   const [saveRequested, setSaveRequested] = useState(false);
-  // The pages between taking the photo and saving it (issue 535) were gone through: a failed save does not ask for them again, and the next photo of the same user does not either; a restart does.
+  // The pages before the preview were already shown after upload: retrying the stored photo or taking the next photo does not ask again; a restart does.
   const [presubmitDone, setPresubmitDone] = useState(false);
+  const captureSubmissionResumeKey = `camera:capture-submission-resume:${eventId}`;
   const vetted = event?.photoVettingRequired === true;
 
-  const storeTemporaryCapture = useCallback((capture: FullFrameCapture): Promise<string> => {
-    if (temporaryCaptureUpload.current) return temporaryCaptureUpload.current;
-    const uploadId = crypto.randomUUID();
-    const pathname = `${TEMPORARY_CAPTURE_PREFIX}${eventId}/${uploadId}.jpg`;
-    temporaryCaptureUpload.current = uploadBlob(pathname, capture.blob, {
-      access: 'public',
-      contentType: 'image/jpeg',
-      handleUploadUrl: ORIGINAL_UPLOAD_ENDPOINT,
-      clientPayload: JSON.stringify({ eventId }),
-    }).then(({ url }) => {
-      temporaryCaptureUrl.current = url;
-      return url;
-    }).catch((error: unknown) => {
-      temporaryCaptureUpload.current = null;
-      throw error;
-    });
-    return temporaryCaptureUpload.current;
-  }, [eventId]);
-
-  const storeTemporaryFramedCapture = useCallback(async (blob: Blob): Promise<string> => {
-    if (temporaryFramedCaptureUrl.current) return temporaryFramedCaptureUrl.current;
-    const framedId = crypto.randomUUID();
-    const { url } = await uploadBlob(`${TEMPORARY_CAPTURE_PREFIX}${eventId}/${framedId}-framed.jpg`, blob, {
-      access: 'public',
-      contentType: 'image/jpeg',
-      handleUploadUrl: ORIGINAL_UPLOAD_ENDPOINT,
-      clientPayload: JSON.stringify({ eventId }),
-    });
-    temporaryFramedCaptureUrl.current = url;
-    return url;
-  }, [eventId]);
-
   const prepareCaptureForSocialLogin = useCallback(async (): Promise<boolean> => {
-    if (flowPhase !== 'presubmit' || !capturedOriginal || !capturedImage) return false;
-    let originalUrl: string;
-    let framedUrl = temporaryFramedCaptureUrl.current;
+    if (flowPhase !== 'presubmit') return false;
     try {
-      originalUrl = temporaryCaptureUrl.current ?? await storeTemporaryCapture(capturedOriginal);
-      if (!framedUrl) {
-        const framedBlob = await (await fetch(capturedImage)).blob();
-        if (!framedBlob.size) return false;
-        framedUrl = await storeTemporaryFramedCapture(framedBlob);
-      }
-    } catch (error) {
-      console.error('Could not prepare the confirmed photo for sign-in:', error);
+      const saved = JSON.parse(window.sessionStorage.getItem(captureSubmissionResumeKey) || 'null') as { eventId?: unknown; submissionId?: unknown } | null;
+      if (saved?.eventId === eventId && typeof saved.submissionId === 'string' && /^[a-f\d]{24}$/i.test(saved.submissionId)) return true;
+    } catch {
       return false;
     }
-    const draft: CaptureResumeDraft = {
-      version: 1,
-      eventId,
-      originalUrl,
-      framedUrl,
-      capture: {
-        width: capturedOriginal.width,
-        height: capturedOriginal.height,
-        facingMode: capturedOriginal.facingMode,
-        mirrored: capturedOriginal.mirrored,
-        ...(capturedOriginal.method ? { method: capturedOriginal.method } : {}),
-        ...(capturedOriginal.nativeWidth ? { nativeWidth: capturedOriginal.nativeWidth } : {}),
-        ...(capturedOriginal.nativeHeight ? { nativeHeight: capturedOriginal.nativeHeight } : {}),
-      },
-      selectedFrame,
-      choice,
-      galleryTick,
-    };
-    window.sessionStorage.setItem(captureResumeDraftKey(eventId), JSON.stringify(draft));
-    return true;
-  }, [flowPhase, capturedOriginal, capturedImage, storeTemporaryCapture, storeTemporaryFramedCapture, eventId, selectedFrame, choice, galleryTick]);
+    return false;
+  }, [flowPhase, eventId, captureSubmissionResumeKey]);
   
   // With the acceptance on the Who-are-you page (issue 523) the consent page is not a step of its own: its checkboxes are shown there as one (lib/events/acceptance.ts).
   const { pages: journeyPages, acceptPage: acceptanceBox } = acceptanceOnLogin(customPages, event?.acceptanceOnWhoAreYou === true);
-  const { onboardingPages, presubmitPages, thankYouPages, takePhotoPage } = splitCustomPages(journeyPages, { saveThroughWhoAreYou: acceptanceBox !== null });
+  const { onboardingPages, presubmitPages, thankYouPages, takePhotoPage } = splitCustomPages(journeyPages);
   const frameMessagePageBeforePhoto = onboardingPages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
 
   // Get take-photo page config for button texts and messages
@@ -487,25 +422,26 @@ export default function EventCapturePage({
                 consents: [...prev.consents, ...remembered.filter((record) => !prev.consents.some((c) => c.pageId === record.pageId && c.checkboxText === record.checkboxText))],
               }));
               if (resumePhase === 'presubmit') {
-                const draft = parseCaptureResumeDraft(window.sessionStorage.getItem(captureResumeDraftKey(eventId)), eventId);
-                if (!draft) throw new Error('The temporary photo backup is missing');
-                const [originalResponse, framedResponse] = await Promise.all([fetch(draft.originalUrl), fetch(draft.framedUrl)]);
-                if (!originalResponse.ok || !framedResponse.ok) throw new Error('The temporary photo backup is unavailable');
-                const originalBlob = await originalResponse.blob();
-                const framedBlob = await framedResponse.blob();
-                if (!originalBlob.size || !framedBlob.size) throw new Error('The temporary photo backup is empty');
-                setCapturedOriginal({ blob: originalBlob, dataUrl: await blobToDataUrl(originalBlob), ...draft.capture });
-                setCapturedImage(await blobToDataUrl(framedBlob));
-                setSelectedFrame(draft.selectedFrame as Frame | null);
-                setChoice(draft.choice as Choice);
-                setGalleryTick(draft.galleryTick);
-                temporaryCaptureUrl.current = draft.originalUrl;
-                temporaryCaptureUpload.current = Promise.resolve(draft.originalUrl);
-                temporaryFramedCaptureUrl.current = draft.framedUrl;
-                setPresubmitDone(false);
-                setCurrentPageIndex(pageIndex + 1);
-                setFlowPhase('presubmit');
-                journey.record('journey.resume');
+                const saved = JSON.parse(window.sessionStorage.getItem(captureSubmissionResumeKey) || 'null') as { eventId?: unknown; submissionId?: unknown } | null;
+                const submissionId = saved?.eventId === eventId && typeof saved.submissionId === 'string' && /^[a-f\d]{24}$/i.test(saved.submissionId)
+                  ? saved.submissionId
+                  : null;
+                if (submissionId) {
+                  const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
+                  setSavedSubmissionId(submissionId);
+                  setShareUrl(`${origin}/share/${submissionId}`);
+                  const linkResponse = await fetch(`/api/submissions/${submissionId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'link_account' }),
+                  });
+                  if (!linkResponse.ok) console.warn('The signed-in account could not be linked to the saved photo:', await linkResponse.text());
+                  setCurrentPageIndex(pageIndex + 1);
+                  setFlowPhase('presubmit');
+                  journey.record('journey.resume');
+                } else {
+                  throw new Error('The saved photo reference is missing');
+                }
               } else {
                 // Advance to next page (skip who-are-you since we have the data).
                 setCurrentPageIndex(pageIndex + 1);
@@ -541,7 +477,7 @@ export default function EventCapturePage({
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
-  }, [eventId, isLoading, t]); // Resume only after event settings have loaded, so initial event state cannot overwrite the restored capture.
+  }, [eventId, isLoading, t, captureSubmissionResumeKey]); // Resume only after event settings have loaded, so initial event state cannot overwrite the restored capture.
 
   // OAuth / SSO sign-in failed (callback redirected here with ?error=&message=)
   useEffect(() => {
@@ -886,7 +822,6 @@ export default function EventCapturePage({
   }, [capturedImage, compositeImageWithFrame, selectedFrame]);
 
   const handleFrameSelect = (frame: Frame) => {
-    if (flowPhase === 'presubmit' && capturedOriginal) temporaryFramedCaptureUrl.current = null;
     setSelectedFrame(frame);
     setChoice((current) => ({ ...current, layoutId: frame.frameId }));
     lastDrawKey.current = frame.frameId;
@@ -958,7 +893,6 @@ export default function EventCapturePage({
 
   const handleLayoutSelect = (variant: CaptureVariant) => {
     if (!selectionFrame) return;
-    if (flowPhase === 'presubmit' && capturedOriginal) temporaryFramedCaptureUrl.current = null;
     const next = chooseLayout(selectionFrame, choice, layoutIdOf(variant));
     setChoice(next);
     if (flowPhase === 'presubmit' && capturedOriginal) {
@@ -968,7 +902,6 @@ export default function EventCapturePage({
   };
 
   const handleMessageSelect = (variant: CaptureVariant) => {
-    if (flowPhase === 'presubmit' && capturedOriginal) temporaryFramedCaptureUrl.current = null;
     const next = { ...choice, messageIndex: variant.index };
     setChoice(next);
     if (flowPhase === 'presubmit' && capturedOriginal && selectionFrame) {
@@ -1015,56 +948,35 @@ export default function EventCapturePage({
         setSelectedFrame(variantFrame(variant));
       }
     }
-    temporaryCaptureUrl.current = null;
-    temporaryCaptureUpload.current = null;
-    temporaryFramedCaptureUrl.current = null;
+    // A retake must never reuse a previous capture's composite while the new crop is rendering.
+    setCapturedImage(null);
+    setCompositeImage(null);
+    setImageDimensions(null);
     setCapturedOriginal(capture);
     setStep('reframe');
   };
 
-  // TOVÁBB is the guest's confirmation: upload the original and its approved framing now,
-  // show progress, then continue into the next journey page or save the completed photo.
-  const handleReframeDone = async (result: ReframeResult) => {
+  // TOVÁBB is the guest's confirmation: save through the established submissions upload,
+  // then continue only after the server has stored the photo.
+  const handleReframeDone = (result: ReframeResult) => {
     // A required permission that is not ticked cannot be skipped (issue 558); Continue is off meanwhile, this is the same rule for any other way in.
     if (galleryRequired && !galleryTick) return;
-    if (!capturedOriginal) return;
+    // The frame compositor runs asynchronously; clear the previous composite so the upload waits for this confirmed crop.
+    setCompositeImage(null);
     setCapturedImage(result.dataUrl);
-
-    setIsUploadingCapture(true);
-    journey.record('photo.upload', 'started');
-    try {
-      const [originalUrl, framedUrl] = await Promise.all([
-        temporaryCaptureUrl.current ?? storeTemporaryCapture(capturedOriginal),
-        storeTemporaryFramedCapture(result.blob),
-      ]);
-      if (!originalUrl || !framedUrl) throw new Error('The photo upload did not return a saved address');
-      journey.record('photo.upload', 'succeeded');
-
-      // An event can put login or other pages after the photo. They start only after the
-      // temporary photo copies are safely stored, so a page change cannot lose the capture.
-      if (presubmitPages.length > 0 && !presubmitDone) {
-        setFlowPhase('presubmit');
-        setCurrentPageIndex(0);
-      } else {
-        setSaveRequested(true);
-      }
-    } catch (error) {
-      journey.record('photo.upload', 'failed');
-      console.error('Could not upload the confirmed photo:', error);
-      notifyCapture('error', `${t('reframe.uploadFailed')}: ${errorText(language, getErrorMessage(error, language))}`);
-    } finally {
-      setIsUploadingCapture(false);
-    }
+    setSaveRequested(true);
   };
 
-  // The full photo is not kept: once the framed result is on screen it is dropped (it can be tens of megabytes).
+  // Release the camera-sized original when the finished preview is reached; the submitted frame-sized image stays available for preview.
   useEffect(() => {
     if (step === 'preview') setCapturedOriginal(null);
   }, [step]);
 
   const handleReframeRetake = () => {
-    forgetCaptureResumeDraft(window.sessionStorage, eventId);
     setCapturedOriginal(null);
+    setCapturedImage(null);
+    setCompositeImage(null);
+    setImageDimensions(null);
     setGalleryTick(false);
     setStep('capture-photo');
   };
@@ -1087,6 +999,7 @@ export default function EventCapturePage({
 
     clearCaptureNotices();
     setIsSaving(true);
+    journey.record('photo.upload', 'started');
 
     try {
       // Include userInfo and consents in the submission payload
@@ -1164,13 +1077,28 @@ export default function EventCapturePage({
       if (!submissionId) {
         throw new Error(t('flow.noSubmissionId'));
       }
-      // Keep the temporary capture copy with the event for post-event cleanup.
-      forgetCaptureResumeDraft(window.sessionStorage, eventId);
+      journey.record('photo.upload', 'succeeded');
+      // Later journey pages may choose the next photo's frame/message; preserve the composition that was just stored.
+      setCapturedImage(null);
+      setCapturedOriginal(null);
+      try {
+        window.sessionStorage.setItem(captureSubmissionResumeKey, JSON.stringify({ eventId, submissionId }));
+      } catch {
+        // The saved photo remains safe if session storage is unavailable.
+      }
+      // Keep the stored submission available while the guest completes the remaining journey pages.
       setSavedSubmissionId(submissionId);
       journey.saved(true);
       setHasFinalizedSubmissionEmail(false);
       // A photo of a vetted event is saved and waits for approval: no share link yet, the guest gets it by email.
       if ((data.data ?? data).pending === true) {
+        if (presubmitPages.length > 0 && !presubmitDone) {
+          setPendingApproval(true);
+          setFlowPhase('presubmit');
+          setCurrentPageIndex(0);
+          if (pendingSavedMessageIsOwn) notifyCapture('success', pendingSavedMessage);
+          return;
+        }
         if (showApprovalWaitingPage) {
           setPendingApproval(true);
           setStep('preview');
@@ -1188,18 +1116,23 @@ export default function EventCapturePage({
         ? `${successMessage}\n${emailNotice}`
         : successMessage;
       setShareUrl(`${origin}/share/${submissionId}`);
+      if (presubmitPages.length > 0 && !presubmitDone) {
+        setFlowPhase('presubmit');
+        setCurrentPageIndex(0);
+        notifyCapture('success', finalSuccessMessage);
+        return;
+      }
       setStep('preview');
       
       notifyCapture('success', finalSuccessMessage);
     } catch (error: unknown) {
       console.error('Error saving submission:', error);
+      journey.record('photo.upload', 'failed');
       journey.saved(false);
       // The editor's own save-error text keeps its way (its ": Please try again." ending is dropped); the default is the dictionary's "Failed to save photo".
       const saveFailed = errorSaveMessage === t('flow.errorSave') ? t('flow.saveFailedPrefix') : errorSaveMessage.replace(': Please try again.', '');
       notifyCapture('error', `${saveFailed}: ${errorText(language, getErrorMessage(error, language))}`);
-      // The user is still on the reframe screen: forget this picture so that Continue makes and saves it again.
-      setCapturedImage(null);
-      setCompositeImage(null);
+      // Keep the confirmed photo on screen so the user can retry this same upload.
     } finally {
       setIsSaving(false);
     }
@@ -1238,6 +1171,21 @@ export default function EventCapturePage({
       console.warn('Could not persist guest contact on submission:', error);
       return false;
     }
+  };
+
+  const updateSubmissionConsents = async (submissionId: string, consents: CollectedData['consents']) => {
+    if (consents.length === 0) return true;
+    const response = await fetch(`/api/submissions/${submissionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'append_consents', consents }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.warn('Could not persist consent on submission:', response.status, errorData);
+      return false;
+    }
+    return true;
   };
 
   const finalizeSubmissionEmail = useCallback(async (submissionId: string, userInfo?: WhoAreYouPageData | null) => {
@@ -1351,9 +1299,14 @@ export default function EventCapturePage({
       userInfo: data,
     }));
 
-    // The contact of a vetted photo was given before the photo (the server needs it to email the link): nothing to update.
-    if (savedSubmissionId && !vetted) {
+    // The submission already exists because TOVÁBB uploaded it before this page.
+    if (savedSubmissionId) {
       await updateSubmissionContact(savedSubmissionId, data);
+      const consents = [...collectedData.consents, ...declinedAcceptance()];
+      if (!(await updateSubmissionConsents(savedSubmissionId, consents))) {
+        notifyCapture('error', t('flow.serverError', { status: 500 }));
+        return;
+      }
     }
 
     handleNextPage();
@@ -1363,9 +1316,13 @@ export default function EventCapturePage({
    * Handle completion of Accept/CTA pages
    * Stores consent and moves to next page
    */
-  const handleConsentComplete = (page: CustomPage, data: AcceptPageData | CTAPageData) => {
+  const handleConsentComplete = async (page: CustomPage, data: AcceptPageData | CTAPageData) => {
     // A consent page with several checkboxes leaves one record per checkbox: its exact text, its link and the time (camera#330).
     const consents = [...collectedData.consents, ...consentRecords({ pageId: page.pageId, pageType: page.pageType as 'accept' | 'cta', checkboxText: page.config.checkboxText }, data)];
+    if (savedSubmissionId && !(await updateSubmissionConsents(savedSubmissionId, consents))) {
+      notifyCapture('error', t('flow.serverError', { status: 500 }));
+      return;
+    }
     setCollectedData(prev => ({ ...prev, consents }));
     // A sign-in on a later page leaves this page and comes back: what was accepted is kept for it (issue 523).
     rememberConsents(window.sessionStorage, eventId, consents);
@@ -1384,18 +1341,21 @@ export default function EventCapturePage({
     rememberConsents(window.sessionStorage, eventId, consents);
   };
   
-  /** The last page between taking the photo and saving it is done: back to the capture screen, which now saves the photo (its picture was made meanwhile). */
+  /** The post-capture journey pages are done: the photo was already saved on TOVÁBB. */
   const finishPresubmit = () => {
     setPresubmitDone(true);
     setFlowPhase('capture');
-    // A selector placed after Take Photo but before Submit changes the design of this photo. Reopen framing
-    // with the original capture after the intervening pages so the final crop and overlay use that choice.
-    if (capturedOriginal && asksAnySelection && presubmitPages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID)) {
-      setSaveRequested(false);
-      setStep('reframe');
+    try {
+      window.sessionStorage.removeItem(captureSubmissionResumeKey);
+    } catch {
+      // The saved photo remains safe if session storage is unavailable.
+    }
+    if (pendingApproval && !showApprovalWaitingPage) {
+      setFlowPhase('thankyou');
+      setCurrentPageIndex(0);
       return;
     }
-    setSaveRequested(true);
+    setStep('preview');
   };
 
   /**
@@ -1414,7 +1374,7 @@ export default function EventCapturePage({
         enterCaptureStep();
       }
     } else if (flowPhase === 'presubmit') {
-      // Between taking the photo and saving it (issue 535)
+      // Pages before preview; the photo is already saved.
       if (currentPageIndex + 1 < presubmitPages.length) {
         setCurrentPageIndex(currentPageIndex + 1);
       } else {
@@ -2067,8 +2027,8 @@ export default function EventCapturePage({
               buttonSize={eventButtonSize}
               onDone={handleReframeDone}
               onRetake={handleReframeRetake}
-              busy={saveRequested || isProcessing || isSaving || isUploadingCapture}
-              busyLabel={isUploadingCapture ? t('reframe.uploading') : undefined}
+              busy={saveRequested || isProcessing || isSaving}
+              busyLabel={isSaving ? t('reframe.uploading') : undefined}
               continueBlocked={galleryRequired && !galleryTick}
             >
               {asksGallery ? (
@@ -2079,7 +2039,7 @@ export default function EventCapturePage({
                   label={t(galleryRequired ? 'share.publicGalleryConsentRequired' : 'share.publicGalleryConsent')}
                   description={t(galleryRequired ? 'share.publicGalleryConsentHelpRequired' : 'share.publicGalleryConsentHelp')}
                   {...(galleryRequired ? { required: true } : {})}
-                  disabled={saveRequested || isProcessing || isSaving || isUploadingCapture}
+                  disabled={saveRequested || isProcessing || isSaving}
                   data-gallery-consent
                 />
               ) : null}

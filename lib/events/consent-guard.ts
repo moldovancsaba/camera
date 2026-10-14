@@ -7,7 +7,7 @@
  * those too (off until the owner decides, after the match of 2026-10-16).
  *
  * How it is checked. The journey the user got is rebuilt from the event with the same functions the user's page uses (`withDefaultJourneyPages`, `acceptanceOnLogin`, `splitCustomPages`), so the
- * server and the page cannot disagree about which consent pages come before the save. For every consent page before the save the request must carry as many **accepted** records for that page
+ * server and the page cannot disagree about which consent pages come before the upload. For every consent page before the upload the request must carry as many **accepted** records for that page
  * as the page has required checkboxes (or, when the page is shown as the one acceptance sentence on the Who-are-you page and that sentence is required, as many as the page has shown checkboxes: one tick
  * records them all). The count, not the text, is compared, so an editor who corrects a word while a user is on the page does not make that user's save fail. Pure; unit-tested (consent-guard.test.ts).
  */
@@ -78,11 +78,16 @@ export function missingRequiredConsent(
     defaultOrders: event?.defaultPageOrders as Record<string, number> | null | undefined,
   }).filter((page) => page.isActive);
   const { pages: journeyPages, acceptPage } = acceptanceOnLogin(pages, effective.acceptance.shown);
-  const { onboardingPages, presubmitPages } = splitCustomPages(journeyPages);
+  const { onboardingPages } = splitCustomPages(journeyPages);
 
   const accepted = request.consents.filter((record): record is { pageId?: unknown; accepted: true } => !!record && typeof record === 'object' && (record as { accepted?: unknown }).accepted === true);
-  // The page shown as the one sentence on the Who-are-you page left the list of steps, but it is still a consent page before the save.
-  for (const page of [...onboardingPages, ...presubmitPages, ...(acceptPage ? [acceptPage] : [])]) {
+  // A merged acceptance is required before upload only when its Who-are-you page is before the camera.
+  const photoIndex = journeyPages.findIndex((page) => page.pageType === 'take-photo');
+  const acceptanceLoginIndex = acceptPage
+    ? journeyPages.findIndex((page) => page.pageType === 'who-are-you' && page.isActive)
+    : -1;
+  const acceptanceBeforePhoto = acceptPage && acceptanceLoginIndex >= 0 && acceptanceLoginIndex < photoIndex ? [acceptPage] : [];
+  for (const page of [...onboardingPages, ...acceptanceBeforePhoto]) {
     if (page.pageType !== 'accept' || consentPageIsEmpty(page.config ?? {})) continue;
     const items = shownCheckboxes(consentCheckboxes(page.config ?? {}));
     const merged = acceptPage !== null && page.pageId === acceptPage.pageId;
