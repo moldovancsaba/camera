@@ -1863,7 +1863,7 @@ export default function EventCapturePage({
               <section aria-labelledby="capture-message-heading">
                 <h3 id="capture-message-heading" className="mb-3 text-center text-base font-semibold">{t('flow.selectMessage.title')}</h3>
                 {messageChoices.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" data-tour-id="capture-message-grid">
+                  <div className="grid w-full grid-cols-1 gap-3" data-tour-id="capture-message-grid">
                     {messageChoices.map((variant) => (
                       <Button
                         key={variant.index}
@@ -1874,7 +1874,8 @@ export default function EventCapturePage({
                         size={eventButtonSize}
                         radius="xl"
                         fullWidth
-                        className="min-h-16 whitespace-normal px-5 py-4 text-center leading-tight"
+                        className="min-h-16 w-full whitespace-normal px-5 py-4 text-center leading-tight"
+                        classNames={{ label: 'w-full whitespace-normal' }}
                         data-message-choice
                       >
                         {variant.message}

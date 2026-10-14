@@ -2,7 +2,7 @@
 
 ## Unreleased — use the event pill buttons for message choices (2026-10-14)
 
-- **Changed:** message choices on the frame/message selection page now use the event's established rounded pill button design. The selected message uses the filled event button style; other choices use its white, ringed style.
+- **Changed:** message choices on the frame/message selection page now use the event's established rounded pill button design, with one full-width choice per row. The selected message uses the filled event button style; other choices use its white, ringed style.
 - **Verified:** TypeScript check, lint, and production build passed locally. No browser walkthrough was run.
 
 ## Unreleased — move the frame and message selector anywhere in the journey (2026-10-14)
