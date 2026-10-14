@@ -393,102 +393,6 @@ export default function EventCapturePage({
     autoStart: tourEnabled && step === 'preview' && !!shareUrl && showSharePage,
   });
 
-  // Check for SSO resume after authentication
-  useEffect(() => {
-    if (isLoading) return;
-    const urlParams = new URLSearchParams(window.location.search);
-    const isResume = urlParams.get('resume') === 'true';
-    const resumePageIndex = urlParams.get('page');
-    const resumePhase = urlParams.get('phase') === 'presubmit' ? 'presubmit' : 'onboarding';
-    
-    // Only process resume once and only if explicitly signaled
-    if (isResume && resumePageIndex !== null && !resumeHandled.current) {
-      resumeHandled.current = true;
-      setResumePending(true);
-      const pageIndex = parseInt(resumePageIndex, 10);
-      
-      if (!isNaN(pageIndex)) {
-        // Fetch session to get authenticated user data
-        void fetch('/api/auth/session')
-          .then(res => res.json())
-          .then(async sessionData => {
-            if (sessionData.authenticated && sessionData.user) {
-              // Auto-populate userInfo from authenticated session, and what was accepted before the sign-in (the page's own state went with the redirect, lib/capture/consent-memory.ts)
-              const remembered = recallConsents(window.sessionStorage, eventId);
-              setCollectedData(prev => ({
-                ...prev,
-                userInfo: {
-                  name: sessionData.user.name || '',
-                  email: sessionData.user.email || '',
-                },
-                consents: [...prev.consents, ...remembered.filter((record) => !prev.consents.some((c) => c.pageId === record.pageId && c.checkboxText === record.checkboxText))],
-              }));
-              if (resumePhase === 'presubmit') {
-                const saved = JSON.parse(window.sessionStorage.getItem(captureSubmissionResumeKey) || 'null') as { eventId?: unknown; submissionId?: unknown } | null;
-                const submissionId = saved?.eventId === eventId && typeof saved.submissionId === 'string' && /^[a-f\d]{24}$/i.test(saved.submissionId)
-                  ? saved.submissionId
-                  : null;
-                if (submissionId) {
-                  const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
-                  setSavedSubmissionId(submissionId);
-                  setShareUrl(`${origin}/share/${submissionId}`);
-                  const linkResponse = await fetch(`/api/submissions/${submissionId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'link_account' }),
-                  });
-                  if (!linkResponse.ok) console.warn('The signed-in account could not be linked to the saved photo:', await linkResponse.text());
-                  setCurrentPageIndex(pageIndex + 1);
-                  setFlowPhase('presubmit');
-                  journey.record('journey.resume');
-                } else {
-                  throw new Error('The saved photo reference is missing');
-                }
-              } else {
-                // Advance to next page (skip who-are-you since we have the data).
-                const nextPageIndex = pageIndex + 1;
-                if (nextPageIndex < onboardingPages.length) {
-                  setCurrentPageIndex(nextPageIndex);
-                  setFlowPhase('onboarding');
-                } else {
-                  setFlowPhase('capture');
-                }
-              }
-            } else {
-              if (resumePhase === 'presubmit') {
-                setSignInError({ code: 'capture_resume_failed', message: t('login.captureRestoreError') });
-                setFlowPhase('capture');
-                setCurrentPageIndex(0);
-                setStep('capture-photo');
-              } else {
-                setSignInError({ code: 'session_expired', message: t('flow.signin.hint') });
-              }
-            }
-            
-            // Clean URL to prevent re-processing on refresh
-            window.history.replaceState({}, '', window.location.pathname);
-            setResumePending(false);
-          })
-          .catch(err => {
-            console.warn('Failed to fetch session during resume:', err);
-            if (resumePhase === 'presubmit') {
-              setSignInError({ code: 'capture_resume_failed', message: t('login.captureRestoreError') });
-              setFlowPhase('capture');
-              setCurrentPageIndex(0);
-              setStep('capture-photo');
-            }
-            // Clean URL even on error
-            window.history.replaceState({}, '', window.location.pathname);
-            setResumePending(false);
-          });
-      } else {
-        // Invalid page index, just clean URL
-        window.history.replaceState({}, '', window.location.pathname);
-        setResumePending(false);
-      }
-    }
-  }, [eventId, isLoading, t, captureSubmissionResumeKey, onboardingPages.length]); // Resume only after event settings have loaded, so initial event state cannot overwrite the restored capture.
-
   // OAuth / SSO sign-in failed (callback redirected here with ?error=&message=)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -1282,7 +1186,7 @@ export default function EventCapturePage({
 
   // Custom page navigation handlers
 
-  const enterCaptureStep = () => {
+  const enterCaptureStep = useCallback(() => {
     if (customPages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID)) {
       setStep('capture-photo');
       return;
@@ -1296,7 +1200,98 @@ export default function EventCapturePage({
       return;
     }
     setStep(ownLayout && ownLayout.mode !== 'user' ? 'capture-photo' : 'select-frame');
-  };
+  }, [customPages, selectedFrame, frames.length, selectionFrame, choice, ownLayout]);
+
+  // Check for SSO resume after event settings and the capture-step selector are ready. Keep the
+  // loading screen in place until the next configured page or a concrete capture step is chosen.
+  useEffect(() => {
+    if (isLoading) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const isResume = urlParams.get('resume') === 'true';
+    const resumePageIndex = urlParams.get('page');
+    const resumePhase = urlParams.get('phase') === 'presubmit' ? 'presubmit' : 'onboarding';
+
+    if (!isResume || resumePageIndex === null || resumeHandled.current) return;
+    resumeHandled.current = true;
+    setResumePending(true);
+    const pageIndex = parseInt(resumePageIndex, 10);
+
+    const cleanResumeUrl = () => window.history.replaceState({}, '', window.location.pathname);
+    if (!Number.isInteger(pageIndex) || pageIndex < 0) {
+      setSignInError({ code: 'capture_resume_failed', message: t('login.captureRestoreError') });
+      setCurrentPageIndex(0);
+      setFlowPhase(resumePhase);
+      cleanResumeUrl();
+      setResumePending(false);
+      return;
+    }
+
+    void fetch('/api/auth/session')
+      .then((res) => res.json())
+      .then(async (sessionData) => {
+        if (!sessionData.authenticated || !sessionData.user) {
+          setSignInError({ code: 'session_expired', message: t('flow.signin.hint') });
+          setCurrentPageIndex(pageIndex);
+          setFlowPhase(resumePhase);
+          return;
+        }
+
+        const remembered = recallConsents(window.sessionStorage, eventId);
+        setCollectedData((prev) => ({
+          ...prev,
+          userInfo: {
+            name: sessionData.user.name || '',
+            email: sessionData.user.email || '',
+          },
+          consents: [...prev.consents, ...remembered.filter((record) => !prev.consents.some((c) => c.pageId === record.pageId && c.checkboxText === record.checkboxText))],
+        }));
+
+        if (resumePhase === 'presubmit') {
+          const saved = JSON.parse(window.sessionStorage.getItem(captureSubmissionResumeKey) || 'null') as { eventId?: unknown; submissionId?: unknown } | null;
+          const submissionId = saved?.eventId === eventId && typeof saved.submissionId === 'string' && /^[a-f\d]{24}$/i.test(saved.submissionId)
+            ? saved.submissionId
+            : null;
+          if (!submissionId) throw new Error('The saved photo reference is missing');
+
+          const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
+          setSavedSubmissionId(submissionId);
+          setShareUrl(`${origin}/share/${submissionId}`);
+          const linkResponse = await fetch(`/api/submissions/${submissionId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'link_account' }),
+          });
+          if (!linkResponse.ok) console.warn('The signed-in account could not be linked to the saved photo:', await linkResponse.text());
+          setCurrentPageIndex(pageIndex + 1);
+          setFlowPhase('presubmit');
+          journey.record('journey.resume');
+          return;
+        }
+
+        const nextPageIndex = pageIndex + 1;
+        if (nextPageIndex < onboardingPages.length) {
+          setCurrentPageIndex(nextPageIndex);
+          setFlowPhase('onboarding');
+        } else {
+          setCurrentPageIndex(0);
+          setFlowPhase('capture');
+          enterCaptureStep();
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to restore the capture flow after sign-in:', err);
+        setSignInError({
+          code: resumePhase === 'presubmit' ? 'capture_resume_failed' : 'session_expired',
+          message: resumePhase === 'presubmit' ? t('login.captureRestoreError') : t('flow.signin.hint'),
+        });
+        setCurrentPageIndex(pageIndex);
+        setFlowPhase(resumePhase);
+      })
+      .finally(() => {
+        cleanResumeUrl();
+        setResumePending(false);
+      });
+  }, [eventId, isLoading, t, captureSubmissionResumeKey, onboardingPages.length, enterCaptureStep]);
   
   /**
    * Handle completion of Who Are You page
@@ -1536,6 +1531,16 @@ export default function EventCapturePage({
     }
   };
 
+  if (resumePending) {
+    return (
+      <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-3" role="status" aria-live="polite">
+        <div className="text-center">
+          <p className="text-lg">{own('event.loading', event?.loadingText)}</p>
+        </div>
+      </div>
+    );
+  }
+
   // Render custom pages for onboarding or thank-you phases
   if (!isLoading && event && (flowPhase === 'onboarding' || flowPhase === 'presubmit' || flowPhase === 'thankyou')) {
     const phasePages = flowPhase === 'onboarding' ? onboardingPages : flowPhase === 'presubmit' ? presubmitPages : thankYouPages;
@@ -1766,16 +1771,6 @@ export default function EventCapturePage({
             </div>
           ) : null}
           <p className=" text-2xl">{own('event.loading', event?.loadingText)}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (resumePending) {
-    return (
-      <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-3" role="status" aria-live="polite">
-        <div className="text-center">
-          <p className="text-lg">{own('event.loading', event?.loadingText)}</p>
         </div>
       </div>
     );
