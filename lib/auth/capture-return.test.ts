@@ -43,8 +43,8 @@ test('the target survives the cookie and opens the capture page, resuming at the
 });
 
 test('a login names its target by the link it followed; a dashboard login names none', () => {
-  assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?provider=google&captureEvent=${EVENT}&capturePage=2`)), { eventId: EVENT, page: 2 });
-  assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?provider=google&captureEvent=${EVENT}&capturePage=2&capturePhase=presubmit`)), { eventId: EVENT, page: 2, phase: 'presubmit' });
+  assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?provider=google&captureEvent=${EVENT}&capturePage=2`)), { eventId: EVENT, page: 2, provider: 'google' });
+  assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?provider=google&captureEvent=${EVENT}&capturePage=2&capturePhase=presubmit`)), { eventId: EVENT, page: 2, phase: 'presubmit', provider: 'google' });
   assert.deepEqual(captureReturnForLogin(request(`/api/auth/login?captureEvent=${EVENT}&capturePage=2&capturePopup=11111111-1111-4111-8111-111111111111`)), { eventId: EVENT, page: 2, popupId: '11111111-1111-4111-8111-111111111111' });
   assert.equal(captureReturnForLogin(request('/api/auth/login', { referer: `${ORIGIN}/admin/login` })), null);
   assert.equal(captureReturnForLogin(request('/api/auth/login?captureEvent=../admin')), null);
@@ -66,7 +66,7 @@ test('the target is recorded on the redirect to SSO, read back by the callback, 
   const out = NextResponse.redirect(`${ORIGIN}/sso`);
   setCaptureReturnCookie(out, { eventId: EVENT, page: 1 });
   const recorded = out.cookies.get(CAPTURE_RETURN_COOKIE);
-  assert.equal(recorded?.value, `${EVENT}:1`);
+  assert.equal(recorded?.value, `${EVENT}:1::::::`);
 
   const back = request('/api/auth/callback', { cookie: `${CAPTURE_RETURN_COOKIE}=${encodeURIComponent(`${EVENT}:1`)}` });
   assert.deepEqual(readCaptureReturn(back), { eventId: EVENT, page: 1 });

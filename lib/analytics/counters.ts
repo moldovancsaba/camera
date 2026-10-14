@@ -5,8 +5,9 @@
  * **Every name starts with `camera_`** (lower case snake case, `COUNTER_NAME_PATTERN`): messmass already holds variables of other sources (female, male, jersey, approvedImages, ...), and camera's
  * names must never meet them. The key of a definition is the messmass name.
  *
- * Where the numbers come from: the photos (taken, approved, declined, plays, vetting time, consents); the journey recording (seven more, **once the event has any journey record**); and what the
- * vetting person marked: the people in each photo (gender, age, emotion, items, in the words of the event's vocabulary, lib/photo-vetting/vocabulary.ts) and why a photo was declined. A counter
+ * Where the numbers come from: photos, consent, tracked source links and their saved photo submissions; the journey recording (saved/finished flows, time sums and samples, step reach, transitions, CTA,
+ * SSO outcomes and upload outcomes/durations, **once the event has any journey record**); the users identified from saved photos; the current review queue; and what the vetting person marked: the
+ * people in each photo (gender, age, emotion, items, in the words of the event's vocabulary, lib/photo-vetting/vocabulary.ts) and why a photo was declined. A counter
  * that cannot be counted is **never sent as a zero** (a zero would say "nobody" when the truth is "nobody counted"): an event with no journey record sends no journey counter, an event where no photo
  * is marked sends no annotation counter, and an event with no declined photo sends no reason counter. **Nothing waits any more**: the list below is everything the data can give.
  *

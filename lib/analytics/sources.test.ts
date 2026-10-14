@@ -12,7 +12,7 @@ const hit = (slug: string, day: string, device: 'android' | 'iphone' | 'other', 
 test('visits by link, with the phone split, the last day, and a total for QR codes and for plain links', () => {
   const report = buildSourcesReport(links, [hit('scr123', '2026-10-16', 'android', 30), hit('scr123', '2026-10-16', 'iphone', 50), hit('scr123', '2026-10-17', 'iphone', 5), hit('pos456', '2026-10-16', 'other', 4), hit('mail78', '2026-10-17', 'other', 2)], null);
   assert.deepEqual(report.rows.map((r) => [r.placement, r.visits, r.android, r.iphone, r.other, r.lastDay]), [['Giant screen', 85, 30, 55, 0, '2026-10-17'], ['Poster', 4, 0, 0, 4, '2026-10-16'], ['Newsletter', 2, 0, 0, 2, '2026-10-17']]);
-  assert.deepEqual(report.totals, { visits: 91, qr: 89, link: 2, android: 30, iphone: 55, other: 6 });
+  assert.deepEqual(report.totals, { visits: 91, qr: 89, link: 2, android: 30, iphone: 55, other: 6, photoSubmissions: 0, photoConversionRate: 0 });
   assert.deepEqual(report.days, [{ day: '2026-10-16', visits: 84 }, { day: '2026-10-17', visits: 7 }]);
 });
 

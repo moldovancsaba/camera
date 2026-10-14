@@ -12,6 +12,7 @@ const ROWS: JourneyRow[] = [
   row('2026-10-16', 'journey.resume', '', 7),
   row('2026-10-16', 'step.reach', 'welcome', 90), row('2026-10-16', 'step.reach', 'camera', 70), row('2026-10-16', 'step.reach', 'saved', 50), row('2026-10-17', 'step.reach', 'camera', 15),
   row('2026-10-16', 'journey.complete', 'under-1m', 10), row('2026-10-16', 'journey.complete', '1-3m', 30), row('2026-10-16', 'journey.complete', 'over-30m', 2), row('2026-10-17', 'journey.complete', '1-3m', 12),
+  row('2026-10-16', 'journey.flow.complete', 'under-1m', 10), row('2026-10-16', 'journey.flow.complete', '1-3m', 30), row('2026-10-16', 'journey.flow.complete', 'over-30m', 2), row('2026-10-17', 'journey.flow.complete', '1-3m', 12),
   row('2026-10-16', 'camera.permission', 'granted', 8), row('2026-10-16', 'camera.permission', 'denied', 2),
   row('2026-10-16', 'photo.taken', 'system', 80), row('2026-10-16', 'photo.taken', 'still', 5), row('2026-10-16', 'photo.retake', '', 17),
   row('2026-10-16', 'photo.save', 'ok', 60), row('2026-10-16', 'photo.save', 'failed', 3),
@@ -30,6 +31,8 @@ test('the figures of the whole recording: visits, steps, completed and its rate,
   assert.equal(s.steps.find((x) => x.id === 'camera')?.shareOfOpens, 85 / 120);
   assert.equal(s.completed, 54);
   assert.equal(s.completionRate, 54 / 120);
+  assert.equal(s.finished, 54);
+  assert.equal(s.finishRate, 54 / 120);
   assert.deepEqual(s.timeToComplete.map((b) => [b.id, b.count]), [['under-1m', 10], ['1-3m', 42], ['3-10m', 0], ['10-30m', 0], ['over-30m', 2]]);
   assert.deepEqual(s.camera, { granted: 8, denied: 2, unavailable: 0, deniedRate: 0.2 });
   assert.equal(s.photos.taken, 85);
@@ -96,7 +99,7 @@ test('rows with a bad count or an unknown name are ignored when read; the rows o
       { eventId: 'e-2', day: '2026-10-16', name: 'journey.start', key: 'ios', count: 99 },
     ],
     journey_events: [
-      { eventId: 'e-1', name: 'journey.complete', key: '1-3m', ms: 61_000 },
+      { eventId: 'e-1', name: 'journey.flow.complete', key: '1-3m', ms: 61_000 },
       { eventId: 'e-1', name: 'journey.complete', key: '1-3m', ms: 'x' },
       { eventId: 'e-1', name: 'photo.retake', key: '', ms: 5 },
       { eventId: 'e-2', name: 'journey.complete', key: '1-3m', ms: 999_000 },

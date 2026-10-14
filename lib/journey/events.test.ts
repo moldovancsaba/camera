@@ -87,7 +87,7 @@ test('isJourneyKey: a name without keys takes none; a name with keys takes only 
 
 test('the vocabulary: the funnel steps are the ones the page can reach, the server-only names cannot be sent', () => {
   assert.ok(STEP_KEYS.includes('camera') && STEP_KEYS.includes('saved'));
-  assert.deepEqual(JOURNEY_NAMES.filter((name) => JOURNEY_VOCABULARY[name].from === 'server'), ['share.view', 'download']);
+  assert.deepEqual(JOURNEY_NAMES.filter((name) => JOURNEY_VOCABULARY[name].from === 'server'), ['auth.result', 'share.view', 'download']);
 });
 
 test('how long it took is put into the five buckets of the view', () => {
