@@ -341,6 +341,9 @@ export interface CustomPage {
   updatedAt: string;           // ISO 8601 timestamp of last modification
 }
 
+/** Whether guests can choose an event's available frame and/or message in the capture flow. */
+export type FrameMessageSelectionDisplay = 'automatic' | 'show' | 'hide';
+
 /**
  * Event Document Interface
  * Represents a specific event within a partner that uses frames
@@ -376,6 +379,8 @@ export interface Event {
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** How a user gets the layout and the message of the frame (epic 444, lib/frame/selection.ts): each `editor` (with a pick), `random` or `user`. Missing = what the event always did. */
   frameSelection?: { layout: { mode: 'editor' | 'random' | 'user'; pick: string | null }; message: { mode: 'editor' | 'random' | 'user'; pick: string | null } } | null;
+  /** Whether the frame/message choice step follows the frame settings, is forced on for available choices, or is hidden. Missing = automatic. */
+  frameMessageSelectionDisplay?: FrameMessageSelectionDisplay;
   /** Event-specific square tile appearance for frame/layout choices in the guest flow. */
   frameSelectionTiles?: Record<string, { imageUrl?: string; color?: string }>;
   /** Replaced by `frameSelection` (the message-only setting of issue 329, never set on any event); read by the capture page until the selection flow replaces it. */

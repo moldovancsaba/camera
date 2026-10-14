@@ -313,6 +313,7 @@ export const PATCH = withErrorHandler(async (
     tourEnabled,
     acceptanceOnWhoAreYou,
     defaultPageOrders,
+    frameMessageSelectionDisplay,
   } = body;
 
   // Build update object with only provided fields
@@ -405,6 +406,12 @@ export const PATCH = withErrorHandler(async (
     const orders = sanitizeDefaultPageOrders(defaultPageOrders);
     if (orders === null) throw apiBadRequest('defaultPageOrders must be an object of page ids and numbers');
     updateFields.defaultPageOrders = orders;
+  }
+  if (frameMessageSelectionDisplay !== undefined) {
+    if (!['automatic', 'show', 'hide'].includes(frameMessageSelectionDisplay as string)) {
+      throw apiBadRequest('frameMessageSelectionDisplay must be automatic, show or hide');
+    }
+    updateFields.frameMessageSelectionDisplay = frameMessageSelectionDisplay;
   }
   // The language of the user interface (camera#352): a language we have, or empty for the default (English).
   if (uiLanguage !== undefined) {

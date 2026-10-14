@@ -47,7 +47,7 @@ import { errorText } from '@/lib/i18n/errors';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import RestartPage from '@/components/capture/RestartPage';
 import WelcomePage from '@/components/capture/WelcomePage';
-import { type CustomPage } from '@/lib/db/schemas';
+import { type CustomPage, type FrameMessageSelectionDisplay } from '@/lib/db/schemas';
 import { canonicalPublicOrigin } from '@/lib/site-hosts';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
@@ -124,6 +124,8 @@ interface EventData {
   effectiveCameraMode?: CameraMode;
   /** How users get the layout and the message (epic 444): the editor's setting; the page reads it through `generatedFrame.selection`, and for the event's own frames from here. */
   frameSelection?: unknown;
+  /** Pages-editor override for whether the guest gets the frame/message choice step. */
+  frameMessageSelectionDisplay?: FrameMessageSelectionDisplay;
   frameSelectionTiles?: Record<string, { imageUrl?: string; color?: string }>;
   notifications?: {
     submissionResultEmailEnabled?: boolean;
@@ -140,6 +142,23 @@ interface EventFrameAssignment {
   isActive: boolean;
   /** The library item behind the assignment, as the event data carries it (null when the item no longer exists). */
   frameDetails?: { frameId: string; name?: string; imageUrl?: string; width?: number; height?: number; isActive?: boolean; createdAt?: string; hasMessageArea?: boolean } | null;
+}
+
+function frameWithSelectionDisplay(frame: CaptureFrame | null | undefined, display: FrameMessageSelectionDisplay = 'automatic'): CaptureFrame | null {
+  if (!frame) return null;
+  if (display === 'show') {
+    return { ...frame, selection: { layout: { mode: 'user', pick: null }, message: { mode: 'user', pick: null } } };
+  }
+  if (display === 'hide' && frame.selection) {
+    return {
+      ...frame,
+      selection: {
+        layout: frame.selection.layout.mode === 'user' ? { mode: 'random', pick: null } : frame.selection.layout,
+        message: frame.selection.message.mode === 'user' ? { mode: 'random', pick: null } : frame.selection.message,
+      },
+    };
+  }
+  return frame;
 }
 
 interface EventLogo {
@@ -590,14 +609,14 @@ export default function EventCapturePage({
           if (eventFrames.length === 1) {
             setSelectedFrame(eventFrames[0]);
             setStep('capture-photo');
-          } else if (eventFrames.length > 1 && storedFrameSelection(eventData.frameSelection)?.layout.mode !== 'user' && storedFrameSelection(eventData.frameSelection)) {
+          } else if (eventFrames.length > 1 && (eventData.frameMessageSelectionDisplay === 'hide' || (storedFrameSelection(eventData.frameSelection)?.layout.mode !== 'user' && storedFrameSelection(eventData.frameSelection)))) {
             // The editor picks the frame or it is random (epic 444): there is no frame step, the frame is drawn when the camera step opens.
             setStep('capture-photo');
           }
         } else {
           // No frame of its own: the generated frame if there is one, else no frame at all. Under the editor's setting the user is asked for the design and the message first when they choose.
           setGeneratedFrame(eventData.generatedFrame ?? null);
-          setStep(nextStep(eventData.generatedFrame ?? null, NO_CHOICE));
+          setStep(nextStep(frameWithSelectionDisplay(eventData.generatedFrame, eventData.frameMessageSelectionDisplay), NO_CHOICE));
         }
       } catch (error) {
         console.error('Error fetching event data:', error);
@@ -797,25 +816,33 @@ export default function EventCapturePage({
   }, [event?.welcomeEmailEnabled, identifiedEmail, identifiedName, eventId]);
 
   // How users get the layout and the message (epic 444). The generated frame carries the editor's setting; without it the page keeps the random image at every shutter press.
-  const selection = frames.length === 0 ? (generatedFrame?.selection ?? null) : null;
+  const selectionDisplay = event?.frameMessageSelectionDisplay ?? 'automatic';
+  const selectionFrame = useMemo(() => frameWithSelectionDisplay(generatedFrame, selectionDisplay), [generatedFrame, selectionDisplay]);
+  const selection = frames.length === 0 ? (selectionFrame?.selection ?? null) : null;
   // The same setting for an event with several complete frames of its own: only the design applies (a complete frame has no message).
-  const ownLayout = useMemo(() => (frames.length > 1 ? (storedFrameSelection(event?.frameSelection)?.layout ?? null) : null), [event?.frameSelection, frames.length]);
-  const layoutChoices = useMemo(() => (selection && generatedFrame ? layoutsToChoose(generatedFrame) : []), [selection, generatedFrame]);
-  const messageChoices = useMemo(() => (selection && generatedFrame ? messagesToChoose(generatedFrame, choice) : []), [selection, generatedFrame, choice]);
+  const ownLayout = useMemo(() => {
+    if (frames.length <= 1) return null;
+    if (selectionDisplay === 'show') return { mode: 'user' as const, pick: null };
+    const configured = storedFrameSelection(event?.frameSelection)?.layout ?? null;
+    if (selectionDisplay === 'hide') return configured?.mode === 'editor' ? configured : { mode: 'random' as const, pick: null };
+    return configured;
+  }, [event?.frameSelection, frames.length, selectionDisplay]);
+  const layoutChoices = useMemo(() => (selection && selectionFrame ? layoutsToChoose(selectionFrame) : []), [selection, selectionFrame]);
+  const messageChoices = useMemo(() => (selection && selectionFrame ? messagesToChoose(selectionFrame, choice) : []), [selection, selectionFrame, choice]);
   // Whether the page ever asks for a design or a message, for the step list: the message is asked whenever the user chooses it and the event has more than one.
   const asksLayout = layoutChoices.length > 0;
   const asksMessage = Boolean(
-    selection && generatedFrame && selection.message.mode === 'user' &&
+    selection && selectionFrame && selection.message.mode === 'user' &&
     (asksLayout && selection.layout.mode === 'user' && choice.layoutId
       ? messageChoices.length > 0
-      : messagesToChoose(generatedFrame, { layoutId: null, messageIndex: null }).length > 0),
+      : messagesToChoose(selectionFrame, { layoutId: null, messageIndex: null }).length > 0),
   );
 
   // The image or frame of a photo is drawn when the camera step opens, so the live view and the move-and-zoom step show the dark area of the design that photo gets; a retake draws again.
   useEffect(() => {
     if (step !== 'capture-photo') return;
-    if (selection && generatedFrame) {
-      const variant = drawVariant(generatedFrame, choice, lastDrawKey.current);
+    if (selection && selectionFrame) {
+      const variant = drawVariant(selectionFrame, choice, lastDrawKey.current);
       if (variant) {
         lastDrawKey.current = variantKeyOf(variant);
         setSelectedFrame(variantFrame(variant));
@@ -829,11 +856,11 @@ export default function EventCapturePage({
         setStep('select-frame');
       }
     }
-  }, [step, selection, generatedFrame, choice, ownLayout, frames]);
+  }, [step, selection, selectionFrame, choice, ownLayout, frames]);
 
   const handleLayoutSelect = (variant: CaptureVariant) => {
-    if (!generatedFrame) return;
-    const next = chooseLayout(generatedFrame, choice, layoutIdOf(variant));
+    if (!selectionFrame) return;
+    const next = chooseLayout(selectionFrame, choice, layoutIdOf(variant));
     setChoice(next);
   };
 
@@ -846,7 +873,7 @@ export default function EventCapturePage({
   const asksAnySelection = asksFrame || asksLayout || asksMessage;
   const selectionComplete = frames.length > 0
     ? (!asksFrame || selectedFrame !== null)
-    : nextStep(generatedFrame, choice) === 'capture-photo';
+    : nextStep(selectionFrame, choice) === 'capture-photo';
   const progressSteps: Array<{ id: string; label: string; steps: Array<typeof step> }> = [
     ...(asksAnySelection ? [{ id: 'selection', label: t('flow.step.selectFrameMessage'), steps: ['select-frame' as const, 'select-layout' as const, 'select-message' as const] }] : []),
     { id: 'capture', label: t('flow.step.capture'), steps: ['capture-photo'] },
@@ -1171,7 +1198,7 @@ export default function EventCapturePage({
       return;
     }
     if (frames.length === 0) {
-      setStep(nextStep(generatedFrame, choice));
+      setStep(nextStep(selectionFrame, choice));
       return;
     }
     setStep(ownLayout && ownLayout.mode !== 'user' ? 'capture-photo' : 'select-frame');
@@ -1309,7 +1336,7 @@ export default function EventCapturePage({
     setSelectedFrame((current) => (current?.generated ? null : current));
     setChoice(NO_CHOICE);
     setFlowPhase('capture');
-    setStep(frames.length > 1 && !selectedFrame ? (ownLayout && ownLayout.mode !== 'user' ? 'capture-photo' : 'select-frame') : nextStep(generatedFrame, NO_CHOICE));
+    setStep(frames.length > 1 && !selectedFrame ? (ownLayout && ownLayout.mode !== 'user' ? 'capture-photo' : 'select-frame') : nextStep(selectionFrame, NO_CHOICE));
   }
 
   const handleRestartFlow = () => {
