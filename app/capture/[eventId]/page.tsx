@@ -381,7 +381,6 @@ export default function EventCapturePage({
   // English default (the page editor saved the defaults as if they were its own) counts as not set in another language (camera#352).
   const takePhotoConfig = configuredTakePhotoPage?.config;
   const shareNextButtonText = own('flow.next', takePhotoConfig?.shareNextButtonText);
-  const changeButtonText = own('flow.change', takePhotoConfig?.changeButtonText);
   const successMessage = own('flow.success', takePhotoConfig?.successMessage);
   const showSharePage = takePhotoConfig?.showSharePage !== false;
   const skipShareMessage = own('flow.skipShare', takePhotoConfig?.skipShareMessage);
@@ -599,6 +598,7 @@ export default function EventCapturePage({
           },
           generatedFrame: eventData.generatedFrame ?? null,
           frameSelection: eventData.frameSelection ?? null,
+          frameMessageSelectionDisplay: eventData.frameMessageSelectionDisplay ?? 'automatic',
           welcomeEmailEnabled: eventData.welcomeEmailEnabled === true,
           photoVettingRequired: eventData.photoVettingRequired === true,
           effectiveCameraMode: eventData.effectiveCameraMode,
@@ -907,7 +907,7 @@ export default function EventCapturePage({
   const layoutChoices = useMemo(() => (selection && selectionFrame ? layoutsToChoose(selectionFrame) : []), [selection, selectionFrame]);
   const messageChoices = useMemo(() => (selection && selectionFrame ? messagesToChoose(selectionFrame, choice) : []), [selection, selectionFrame, choice]);
   // Whether the page ever asks for a design or a message, for the step list: the message is asked whenever the user chooses it and the event has more than one.
-  const asksLayout = layoutChoices.length > 0;
+  const asksLayout = layoutChoices.length > 0 && selection?.layout.mode === 'user';
   const asksMessage = Boolean(
     selection && selectionFrame && selection.message.mode === 'user' &&
     (asksLayout && selection.layout.mode === 'user' && choice.layoutId
@@ -1986,33 +1986,6 @@ export default function EventCapturePage({
         {/* Step 2: Photo Capture - Fullscreen */}
         {step === 'capture-photo' && (
           <div className="app-safe-area fixed inset-0 z-40 flex flex-col">
-            {/* Change buttons: the frame when there are several of the event's own, the design and the message when the user chooses them */}
-            {(asksLayout || messageChoices.length > 0 || asksFrame) && (
-              <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 items-end">
-                {asksLayout && (
-                  <Button type="button" onClick={() => setStep('select-layout')} size={eventButtonSize} radius="md" variant="light" data-tour-id="capture-change-layout-button">
-                    {t('flow.changeLayout')}
-                  </Button>
-                )}
-                {messageChoices.length > 0 && (
-                  <Button type="button" onClick={() => setStep('select-message')} size={eventButtonSize} radius="md" variant="light" data-tour-id="capture-change-message-button">
-                    {t('flow.changeMessage')}
-                  </Button>
-                )}
-                {asksFrame && (
-                  <Button
-                    type="button"
-                    onClick={() => setStep('select-frame')}
-                    size={eventButtonSize}
-                    radius="md"
-                    variant="light"
-                    data-tour-id="capture-change-frame-button"
-                  >
-                    {changeButtonText}
-                  </Button>
-                )}
-              </div>
-            )}
             <div className="flex-1 flex items-center justify-center p-4 min-h-0">
               {captureMethod === 'system' ? (
                 // Every touch device takes the photo with its own camera: the camera's full still, the same everywhere.
