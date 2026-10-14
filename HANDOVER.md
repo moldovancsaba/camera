@@ -5,6 +5,13 @@
 
 ## Current change
 
+The frame/message selector's Pages setting now controls only whether layout
+choices appear. A guest message choice saved on the Frames page remains visible
+even when layouts are hidden, and includes every available message across those
+layouts. Reorder buttons resolve their target page by its stable page ID. The
+full local release and inventory checks passed; an authenticated browser
+walkthrough remains outstanding.
+
 Capture now uploads the full camera image as soon as the shutter returns it. When
 the guest confirms framing, the crop is uploaded before the next configured page
 opens. Social login stays in the current tab; its return restores the draft photo

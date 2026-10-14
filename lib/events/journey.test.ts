@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { CustomPage } from '@/lib/db/schemas';
-import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, sanitizeDefaultPageOrders, withDefaultJourneyPages } from './default-pages';
+import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, sanitizeDefaultPageOrders, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
 import { documentSettings, effectiveCheckboxes } from './checkbox-settings';
 import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, moveTarget, setSubmitSeparate, type JourneyContext, type JourneyRow } from './journey';
@@ -150,6 +150,22 @@ test('every journey page can move across the camera, while built-in follow-up st
   assert.equal(moveTarget(rows, at(rows, 'cta-1'), 1), null, 'nothing below the last page');
   assert.equal(moveTarget(rows, rows.findIndex((row) => row.kind === 'step'), 1), null, 'a built-in step has no place of its own');
   assert.equal(moveTarget(rows, at(rows, DEFAULT_CONSENT_PAGE_ID), -1), at(rows, 'welcome--1'), 'consent up: above the welcome page');
+});
+
+test('the selector is an independently reorderable page on either side of photo-taking', () => {
+  const rows = effectiveJourney(START, { ...ALL, includeFrameMessageSelectionPage: true }, NOW);
+  const selectorAt = at(rows, DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
+  assert.notEqual(selectorAt, -1);
+  assert.equal(moveTarget(rows, selectorAt, 1), at(rows, 'take-photo-0'));
+
+  const movedAfterPhoto = moveJourneyRow(rows, selectorAt, 1)!;
+  assert.equal(movedAfterPhoto.defaultOrders[DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID], 4);
+  const afterPhotoRows = effectiveJourney(movedAfterPhoto.pages, { ...ALL, defaultOrders: movedAfterPhoto.defaultOrders, includeFrameMessageSelectionPage: true }, NOW);
+  const movedSelectorAt = at(afterPhotoRows, DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
+  assert.equal(moveTarget(afterPhotoRows, movedSelectorAt, -1), at(afterPhotoRows, 'take-photo-0'));
+
+  const movedBack = moveJourneyRow(afterPhotoRows, movedSelectorAt, -1)!;
+  assert.equal(movedBack.defaultOrders[DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID], 3);
 });
 
 test('moving photo-taking before a required page inserts a later Submit step and keeps login before saving', () => {

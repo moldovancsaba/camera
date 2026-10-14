@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — keep message selection independent when frame choices are hidden (2026-10-14)
+
+- **Fixed:** the selector page's frame visibility setting now changes only frame/layout choices. If the Frames page is set to let guests choose a message, the selector still offers every available message when frame choices are hidden; otherwise it keeps the editor's or random message behavior.
+- **Fixed:** journey reorder controls now resolve the selected row by its page ID before moving it, keeping the selector and Take Photo controls attached to the intended rows.
+- **Verified locally:** GDS checks, type-check, lint, all 346 unit-test files, production guards, production build, and inventory check passed. An authenticated browser walkthrough was not run.
+
 ## Unreleased — upload the capture and continue through same-tab login in journey order (2026-10-14)
 
 - **Fixed:** the camera original starts uploading as soon as the shutter finishes. After the guest confirms framing, the crop is also stored temporarily before the next configured page appears.

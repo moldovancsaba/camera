@@ -43,7 +43,15 @@ export type FrameMessageSelectionDisplay = 'automatic' | 'show' | 'hide';
 export function frameWithSelectionDisplay(frame: CaptureFrame | null | undefined, display: FrameMessageSelectionDisplay = 'automatic'): CaptureFrame | null {
   if (!frame) return null;
   if (display === 'show') {
-    return { ...frame, selection: { layout: { mode: 'user', pick: null }, message: { mode: 'user', pick: null } } };
+    return {
+      ...frame,
+      selection: {
+        layout: { mode: 'user', pick: null },
+        // This page setting controls only whether frame/layout choices are visible. Keep the
+        // independent message choice exactly as configured on the Frames page.
+        message: frame.selection?.message ?? { mode: 'random', pick: null },
+      },
+    };
   }
   if (display !== 'hide' || !frame.selection) return frame;
   const layouts = [...new Set(frame.variants.map((variant) => variant.frameId ?? 'generated'))];

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { FrameVariant } from './context';
-import { captureFrameOf, pickVariant, sanitizeFrameVariant, territoriesOf } from './capture';
+import { captureFrameOf, frameWithSelectionDisplay, pickVariant, sanitizeFrameVariant, territoriesOf } from './capture';
+import { messagesToChoose, NO_CHOICE } from './choose';
 
 const HOST = 'teststoreid.public.blob.vercel-storage.com';
 const url = (key: string) => `https://${HOST}/frames/generated/3f2b8c1e/${key}.png`;
@@ -47,6 +48,32 @@ test('the capture view carries only what the page draws with, not the render int
   assert.deepEqual(Object.keys(frame.variants[0]).sort(), ['frameId', 'height', 'imageUrl', 'index', 'layers', 'message', 'width']);
   assert.equal(frame.width, 1920);
   assert.equal(frame.height, 1080);
+});
+
+test('the journey page hides layout choices without overriding the independent message setting', () => {
+  const multipleLayouts = variants.flatMap((item) => [
+    { ...item, frameId: 'blue' },
+    { ...item, frameId: 'pink' },
+  ]);
+  const frame = captureFrameOf({
+    frameDesign: { variants: multipleLayouts },
+    frameSelection: {
+      layout: { mode: 'user', pick: null },
+      message: { mode: 'user', pick: null },
+    },
+  })!;
+
+  const hidden = frameWithSelectionDisplay(frame, 'hide')!;
+  assert.equal(hidden.selection?.layout.mode, 'random');
+  assert.equal(hidden.selection?.message.mode, 'user');
+  assert.deepEqual(messagesToChoose(hidden, NO_CHOICE).map((message) => message.index), [0, 1, 2]);
+
+  const shown = frameWithSelectionDisplay(frame, 'show')!;
+  assert.equal(shown.selection?.layout.mode, 'user');
+  assert.equal(shown.selection?.message.mode, 'user');
+
+  const messageNotConfigured = captureFrameOf({ frameDesign: { variants } })!;
+  assert.equal(frameWithSelectionDisplay(messageNotConfigured, 'show')?.selection?.message.mode, 'random');
 });
 
 test('a shutter press never gets the variant of the press before when another exists', () => {
