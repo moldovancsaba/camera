@@ -446,13 +446,10 @@ export default function EventCapturePage({
                 }
               } else {
                 // Advance to next page (skip who-are-you since we have the data).
-                const nextPageIndex = pageIndex + 1;
-                if (nextPageIndex < onboardingPages.length) {
-                  setCurrentPageIndex(nextPageIndex);
-                  setFlowPhase('onboarding');
-                } else {
-                  setFlowPhase('capture');
-                }
+                // Keep the onboarding phase until the normal end-of-pages transition runs: it also
+                // selects the correct capture step (selector, frame picker, or camera).
+                setCurrentPageIndex(pageIndex + 1);
+                setFlowPhase('onboarding');
               }
             } else {
               if (resumePhase === 'presubmit') {
@@ -1536,6 +1533,16 @@ export default function EventCapturePage({
     }
   };
 
+  if (resumePending) {
+    return (
+      <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-3" role="status" aria-live="polite">
+        <div className="text-center">
+          <p className="text-lg">{own('event.loading', event?.loadingText)}</p>
+        </div>
+      </div>
+    );
+  }
+
   // Render custom pages for onboarding or thank-you phases
   if (!isLoading && event && (flowPhase === 'onboarding' || flowPhase === 'presubmit' || flowPhase === 'thankyou')) {
     const phasePages = flowPhase === 'onboarding' ? onboardingPages : flowPhase === 'presubmit' ? presubmitPages : thankYouPages;
@@ -1766,16 +1773,6 @@ export default function EventCapturePage({
             </div>
           ) : null}
           <p className=" text-2xl">{own('event.loading', event?.loadingText)}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (resumePending) {
-    return (
-      <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-3" role="status" aria-live="polite">
-        <div className="text-center">
-          <p className="text-lg">{own('event.loading', event?.loadingText)}</p>
         </div>
       </div>
     );
