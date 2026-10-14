@@ -17,7 +17,7 @@ export const DEFAULT_CONSENT_PAGE_ID = 'default-consent';
 export const DEFAULT_WELCOME_PAGE_ID = 'default-welcome';
 
 /** The consent and identity page each have one role in the journey. Older saves could persist a generated default and a customised copy side by side; prefer the active custom page and discard the stale duplicate. */
-function dedupeActiveRolePages(pages: readonly CustomPage[]): CustomPage[] {
+export function dedupeActiveRolePages(pages: readonly CustomPage[]): CustomPage[] {
   const roleDefaults: Partial<Record<CustomPage['pageType'], string>> = {
     accept: DEFAULT_CONSENT_PAGE_ID,
     'who-are-you': DEFAULT_IDENTITY_PAGE_ID,

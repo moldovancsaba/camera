@@ -19,6 +19,7 @@ import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, type FrameMessageSelectionDisplay, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
 import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
+import { dedupeActiveRolePages } from '@/lib/events/default-pages';
 import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type CheckboxMode, type EffectiveCheckboxes, type StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 import CheckboxSettingsFields, { type CheckboxModes } from '@/components/admin/CheckboxSettingsFields';
 
@@ -31,7 +32,7 @@ export interface CustomPagesManagerProps {
    * The event's own choices for the settings of the checkboxes (issue 558, lib/events/checkbox-settings.ts), as stored: `acceptanceOnWhoAreYou` (the acceptance sentence on the Who-are-you page, issue 523) and `galleryConsent`
    * (the permission to show a photo in the public gallery, issue 554) are `true`, `false` or `null` (no choice: follow the partner); `consentSettings` holds the rest (the three documents of the default consent page, and "required" of
    * the acceptance sentence and of the gallery permission). `partnerCheckboxes` is what the event would get if it followed its partner, so "Same as the partner" can say what it gives. One value for each kind: the
-   * list at the top and the page editors that show a kind (the Who-are-you page, the consent page) read and write the same one; all are saved with Save Pages.
+   * Accept page editor (including its settings action when the page is merged into Who-are-you) reads and writes the same value; all are saved with Save Pages.
    */
   acceptanceOnWhoAreYou?: boolean | null;
   galleryConsent?: boolean | null;
@@ -425,7 +426,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
     setIsSaving(true);
     try {
       // Ensure [Take Photo] placeholder exists
-      const pagesWithPlaceholder = ensureTakePhotoPlaceholder(pages);
+      const pagesWithPlaceholder = dedupeActiveRolePages(ensureTakePhotoPlaceholder(pages));
       const pagesToSave = pagesWithPlaceholder.map((p) => ({
         ...p,
         order: typeof p.order === 'number' && Number.isFinite(p.order) ? p.order : Number(p.order),
