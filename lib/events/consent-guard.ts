@@ -1,10 +1,9 @@
 /**
- * The server's check that a required consent is there when a photo is saved (issue 558, owner answer 297: "the page is never the only guard").
+ * The server's check for whether a saved photo is missing a required consent (issue 558). Missing consent no longer blocks upload: the photo is kept private and scheduled for deletion after 24 hours.
  *
- * What the server refuses is what an editor **chose** to require (a checkbox marked required on an own consent page, a document, the acceptance sentence or the gallery permission set to
+ * What requires a follow-up is what an editor **chose** to require (a checkbox marked required on an own consent page, a document, the acceptance sentence or the gallery permission set to
  * required at the event or the partner: `EffectiveCheckbox.checked`, lib/events/checkbox-settings.ts). The standard requirement (a default checkbox that is required because it always was) stays
- * enforced by the page only, exactly as before (planning item 43), so a live event changes only when somebody chooses; `ENFORCE_STANDARD_REQUIREMENTS` is the one switch that would make the server refuse
- * those too (off until the owner decides, after the match of 2026-10-16).
+ * enforced by the page only, exactly as before (planning item 43). This pure check returns a reason for retention and privacy handling; it never rejects the photo upload.
  *
  * How it is checked. The journey the user got is rebuilt from the event with the same functions the user's page uses (`withDefaultJourneyPages`, `acceptanceOnLogin`, `splitCustomPages`), so the
  * server and the page cannot disagree about which consent pages come before the upload. For every consent page before the upload the request must carry as many **accepted** records for that page
@@ -20,7 +19,7 @@ import { withDefaultJourneyPages } from './default-pages';
 import { galleryTicked } from './gallery-consent';
 import { splitCustomPages } from '@/lib/capture/split-pages';
 
-/** Off: the standard requirements are checked by the page only, as before. Turning it on would make the server refuse a save that lacks any required consent, standard or chosen. */
+/** Standard page requirements stay with the page; this flag is retained for callers that need to evaluate the full checklist. */
 export const ENFORCE_STANDARD_REQUIREMENTS = false;
 
 export const CONSENT_MISSING_MESSAGE = 'A required consent is missing';
@@ -55,7 +54,7 @@ export function mayRefuse(event: GuardEvent | null | undefined, partner?: Checkb
 }
 
 /**
- * The reason a save must be refused, or null. `consentDefault` is whether the event gets the journey defaults (lib/admin/defaults-rollout.ts `eventGetsDefaults`), which decides whether the default consent
+ * The reason a save is missing required consent, or null. `consentDefault` is whether the event gets the journey defaults (lib/admin/defaults-rollout.ts `eventGetsDefaults`), which decides whether the default consent
  * page exists. `vetted` only places the default login page, which does not matter here.
  */
 export function missingRequiredConsent(

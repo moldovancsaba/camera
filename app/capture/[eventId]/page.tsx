@@ -959,8 +959,6 @@ export default function EventCapturePage({
   // TOVÁBB is the guest's confirmation: save through the established submissions upload,
   // then continue only after the server has stored the photo.
   const handleReframeDone = (result: ReframeResult) => {
-    // A required permission that is not ticked cannot be skipped (issue 558); Continue is off meanwhile, this is the same rule for any other way in.
-    if (galleryRequired && !galleryTick) return;
     // The frame compositor runs asynchronously; clear the previous composite so the upload waits for this confirmed crop.
     setCompositeImage(null);
     setCapturedImage(result.dataUrl);
@@ -2029,7 +2027,6 @@ export default function EventCapturePage({
               onRetake={handleReframeRetake}
               busy={saveRequested || isProcessing || isSaving}
               busyLabel={isSaving ? t('reframe.uploading') : undefined}
-              continueBlocked={galleryRequired && !galleryTick}
             >
               {asksGallery ? (
                 <Checkbox

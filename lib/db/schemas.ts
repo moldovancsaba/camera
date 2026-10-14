@@ -877,6 +877,12 @@ export interface Submission {
   // Empty array if no consent pages in event flow
   // Each consent is immutable record of what user agreed to
   consents: UserConsent[];           // Array of user consent acceptances
+  /** A capture with missing editor-required consent stays private until consent arrives or its 24-hour cleanup runs. */
+  consentStatus?: 'pending' | 'expiring' | 'received' | 'expired';
+  consentExpiresAt?: string;
+  consentExpiredAt?: string;
+  consentPendingReason?: 'gallery' | 'acceptance';
+  consentShareOptIn?: boolean;
   
   // Comprehensive metadata for tracking and analytics
   metadata: {

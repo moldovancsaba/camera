@@ -80,9 +80,9 @@ export const en = {
   'errorPage.tryAgain': 'Try again',
   'errorPage.goHome': 'Go home',
   'errorPage.errorId': 'Error ID: {id}',
-  // The same permission when the event requires it (issue 558): the photo cannot be saved without the tick, so it is no longer "optional".
+  // The permission is required for public display; the upload still proceeds and an unconsented photo is deleted after 24 hours.
   'share.publicGalleryConsentRequired': 'I agree to show my photo on the public campaign wall.',
-  'share.publicGalleryConsentHelpRequired': 'You need to agree to this to save your photo.',
+  'share.publicGalleryConsentHelpRequired': 'Without this consent, your photo stays private and is deleted after 24 hours.',
   'share.title': 'Share Your Photo',
   'share.copy': 'Copy',
   'share.view': 'View your photo (opens share link)',

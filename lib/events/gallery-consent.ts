@@ -10,8 +10,8 @@
  * (`Submission.publicGalleryConsent = { version, grantedAt }`). The server decides from the event's own setting, never from what the page says it asked, so an old page that does not know the setting cannot put
  * a photo of an asking event on the wall.
  *
- * The permission has three states (issue 558, owner answer 297): **off** (does not ask), **optional** (asks; the standard when asking, as it was) and **required** (asks, and the photo cannot be saved without
- * the ticked box, on the page and on the server). Required is always an editor's choice (`consentSettings.gallery.required`, lib/events/checkbox-settings.ts), so the server enforces it. Pure; unit-tested
+ * The permission has three states (issue 558, owner answer 297): **off** (does not ask), **optional** (asks; the standard when asking, as it was) and **required** (asks, and the photo stays private and is
+ * deleted after 24 hours without the tick). Required is always an editor's choice (`consentSettings.gallery.required`, lib/events/checkbox-settings.ts). Pure; unit-tested
  * (gallery-consent.test.ts).
  */
 

@@ -55,7 +55,7 @@ export interface CheckboxSettingsHolder {
 export interface EffectiveCheckbox {
   shown: boolean;
   required: boolean;
-  /** The requirement is an editor's choice (not the standard): the server refuses a save without it. Never true for a checkbox that is not shown or is optional. */
+  /** The requirement is an editor's choice (not the standard): without it, a saved photo stays private and expires after 24 hours. Never true for a checkbox that is not shown or is optional. */
   checked: boolean;
   /** The level that decided: the event, its partner, or the standard. */
   source: 'event' | 'partner' | 'standard';
