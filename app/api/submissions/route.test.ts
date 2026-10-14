@@ -332,16 +332,19 @@ test('a vetted event saves the photo pending: private, no public picture, no mir
   }
 });
 
-test('a vetted event does not save a photo without an email or a login, and stores nothing', async (t) => {
+test('a vetted event stores a capture without a registered user as NO USER', async (t) => {
   const restore = withStoreToken();
   const quiet = silence();
   try {
     const h = mockDeps(t, goodHead, { event: VETTED });
     const { POST } = await importRouteModule('vetted-no-identity');
-    assert.equal((await POST(submissionRequest())).status, 400);
-    assert.equal((await POST(submissionRequest({ userInfo: { name: 'Ann', email: 'not an email' } }))).status, 400);
-    assert.equal(h.puts.length, 0);
-    assert.equal(h.inserted.length, 0);
+    assert.equal((await POST(submissionRequest())).status, 201);
+    assert.equal(h.puts.length, 1);
+    assert.equal(h.inserted.length, 1);
+    const doc = h.inserted[0] as { userName: string; userId: string; metadata: { identityStatus?: string } };
+    assert.equal(doc.userName, 'NO USER');
+    assert.equal(doc.userId, 'anonymous');
+    assert.equal(doc.metadata.identityStatus, 'NO USER');
   } finally {
     quiet();
     restore();

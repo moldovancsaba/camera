@@ -86,13 +86,13 @@ test('the public gallery permission set to required needs the ticked box and the
   assert.equal(ask({ customPages: [PHOTO], consentSettings: { gallery: { required: true } } }, []), null, 'required means nothing when it does not ask');
 });
 
-test('a consent page after the photo, a switched-off page and records that are not records change nothing', () => {
+test('consent after the camera follows upload; pre-camera consent is still required', () => {
   const afterPhoto = { customPages: [PHOTO, page('c', 'accept', 1, { checkboxes: [{ text: 'A', required: true }] })] };
   assert.equal(ask(afterPhoto, []), null, 'after the save');
   const off = { customPages: [page('c', 'accept', -2, { checkboxes: [{ text: 'A', required: true }] }, false), PHOTO] };
   assert.equal(ask(off, []), null);
   const before = { customPages: [page('c', 'accept', -2, { checkboxes: [{ text: 'A', required: true }] }), PHOTO] };
   assert.equal(ask(before, [null, 'x', {}]), CONSENT_MISSING_MESSAGE);
-  assert.equal(ask({ customPages: [PHOTO, page('c', 'accept', 1, { checkboxes: [{ text: 'A', required: true }] }), page('s', 'submit', 2)] }, []), CONSENT_MISSING_MESSAGE, 'between the photo and the save it is before the save');
+  assert.equal(ask({ customPages: [PHOTO, page('c', 'accept', 1, { checkboxes: [{ text: 'A', required: true }] }), page('s', 'submit', 2)] }, []), null, 'the photo uploads before the configured next page');
   assert.equal(ask({ customPages: [page('c', 'accept', -2, { checkboxes: [{ text: 'A', required: true }] }), PHOTO, page('s', 'submit', 2)] }, []), CONSENT_MISSING_MESSAGE, 'before the photo with a Submit page: still before the save');
 });

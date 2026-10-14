@@ -277,9 +277,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     let pendingPhoto: Awaited<ReturnType<typeof storePendingPhoto>> | null = null;
     if (vetted) {
       identity = guestIdentity(validatedUserInfo, session);
-      if (!identity) {
-        throw apiBadRequest('An email or a login is required to save a photo for this event');
-      }
       try {
         pendingPhoto = await storePendingPhoto(imageData, String(vettingEvent?._id ?? 'event'), { put: (pathname, body, options) => blobPut(pathname, body, options) });
       } catch (storeError) {
@@ -292,7 +289,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       submissionId: `submission_${Date.now()}`,
       userId: session?.user?.id || 'anonymous',
       userEmail: session?.user?.email || 'anonymous@event',
-      userName: session?.user?.name || 'Guest',
+      userName: session?.user?.name || session?.user?.email || (session?.user?.id ? 'REGISTERED USER' : 'NO USER'),
       // Frame data (null if no frame assigned to event)
       frameId: frame?.frameId || null,
       frameName: frame?.name || null,
@@ -364,6 +361,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         finalHeight: imageHeight || frame?.height || 1080,
         emailSent: false,
         compositionEngine: vetted ? 'camera_capture_pending' : 'camera_capture',
+        ...(!session?.user?.id ? { identityStatus: 'NO USER' } : { identityStatus: 'REGISTERED' }),
       },
       shareCount: 0,
       downloadCount: 0,

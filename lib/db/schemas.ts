@@ -909,6 +909,7 @@ export interface Submission {
     // Processing details
     processingTimeMs?: number;       // Time taken to process (milliseconds)
     compositionEngine?: string;      // "canvas-api" or other
+    identityStatus?: 'NO USER' | 'REGISTERED'; // Identity present when the capture upload was received
     
     // Email delivery
     emailSent: boolean;              // Whether email was sent

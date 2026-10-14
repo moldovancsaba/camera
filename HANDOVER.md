@@ -5,20 +5,20 @@
 
 ## Current change
 
-The guest photo is uploaded only after they confirm the crop with **TOVÁBB**. The reframe screen shows an upload status, and the flow does not advance until both the original and cropped draft are stored. A failed upload leaves the photo on screen so it can be retried.
+The guest photo is uploaded through the established `/api/submissions` flow when they confirm the crop with **TOVÁBB**. The reframe screen shows upload progress, and the flow advances only after the submission is stored. A failed upload leaves the photo on screen for retry. An unauthenticated record is flagged `NO USER`; a later SSO login links it to the account.
 
 The Pages editor now lets event editors move every journey page, including Take Photo, the frame/message selector, and default consent/login pages. If consent or login moves after photo-taking, the internal save step follows it so the photo is still saved only after those required pages are complete. See the newest entry in `RELEASE_NOTES.md`.
 
 The current unreleased camera change lets the built-in frame/message selector
 move anywhere in the Pages journey. Before Take Photo, it selects the current
-photo; between Take Photo and Submit, it selects the final framing; after save,
+photo; after the upload it remains an ordered journey step; after save,
 it selects the next photo. Its message choices use the event's established pill
 buttons, with the selected choice filled and the others white with the event
 ring. Frame visibility and message selection remain independent. When frame
 choices are hidden, multiple layouts are randomized and a sole layout uses the
 Frames setting. Social sign-in after the photo now uses the same-tab SSO redirect:
 the original and reframed images plus selected frame/message are saved as a
-temporary draft and restored after login. See the 2026-10-14 entries at the top of
+submission reference and resumes without re-uploading the image. See the 2026-10-14 entries at the top of
 `RELEASE_NOTES.md`.
 
 The current unreleased camera change lets event editors choose the frame and

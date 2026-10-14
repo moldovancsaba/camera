@@ -1,10 +1,10 @@
 # RELEASE_NOTES.md
 
-## Unreleased — upload the confirmed photo before advancing (2026-10-14)
+## Unreleased — restore the established photo upload before continuing (2026-10-14)
 
-- **Fixed:** pressing Continue on the photo framing screen now uploads the original and cropped temporary copies, shows an uploading status, and only advances to the next journey page after both uploads succeed. Upload failure keeps the guest on the same screen with the photo intact and a retryable error.
-- **Changed:** the original temporary upload no longer starts at the camera shutter; it starts when the guest confirms the framing.
-- **Verified locally:** TypeScript, lint, production build, production guards, GDS checks, inventory, and documentation links passed. The build reported the existing Google Fonts `@import` ordering warning.
+- **Fixed:** TOVÁBB now sends the confirmed composition through the established `/api/submissions` upload pipeline. The flow shows upload progress and advances only after the submission is stored; failure retains the confirmed photo for retry.
+- **Changed:** all configured pages after Take Photo run after the upload, including login. An unauthenticated submission is explicitly flagged `NO USER`; a same-tab SSO return resumes by submission ID and links it to the account without uploading the image again. Post-upload consent records are attached to the submission.
+- **Verified locally:** TypeScript, lint, GDS boundaries, inventory, and production build passed. The build reports the existing Google Fonts CSS `@import` ordering warning. GitHub Verify will run the unit-test suite.
 
 ## Unreleased — show message choices without frame tiles (2026-10-14)
 
@@ -14,8 +14,8 @@
 
 ## Unreleased — keep social sign-in in the selfie tab (2026-10-14)
 
-- **Fixed:** Google and Facebook now use the existing central SSO in the same tab; no dark popup window opens. Before redirecting from a post-photo login page, the original and reframed photo are saved to the event's temporary image storage and the frame/message choices are kept for the return. After sign-in the guest resumes on the next journey page with the photo intact.
-- **Recovery:** if the temporary backup cannot be prepared, sign-in stays on the page and explains how to retry. If a stored photo cannot be restored after authentication, the guest is told to take it again rather than silently submitting without it.
+- **Fixed:** Google and Facebook use the existing central SSO in the same tab; no dark popup window opens. TOVÁBB has already stored the framed photo through `/api/submissions`; after sign-in, the saved submission ID links the photo to the account and the guest resumes at the next journey page without another upload.
+- **Recovery:** a failed submission upload keeps the confirmed photo on screen for retry. The capture flow no longer relies on a second temporary photo upload for SSO recovery.
 - **Verified locally:** `npm run release:check` passed (346/346 unit-test files, TypeScript, lint, production guards, and production build); `npm run inventory:check` passed. The build reports the existing Google Fonts CSS `@import` ordering warning.
 - **Not yet verified:** an authenticated Google/Facebook SSO round trip or a phone-width live capture; GitHub Verify runs on the pull request.
 

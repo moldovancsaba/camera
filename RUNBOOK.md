@@ -116,7 +116,7 @@ more than intended passed. The real ceiling is a Vercel Firewall rule:
 ## How the photo is taken, and what is kept (camera#257)
 
 It works the same way for every camera (owner decision 2026-10-06): the largest still the camera can take, at the moment
-of the shutter, then the guest zooms and pans anywhere in it. Pressing "Continue" confirms the framing, uploads the original and cropped temporary copies with a visible progress state, and advances only after both uploads succeed. The photo is then submitted after any configured post-photo pages; the separate "Love it" screen is gone (camera#344).
+of the shutter, then the guest zooms and pans anywhere in it. Pressing "Continue" confirms the framing and submits the photo through the established `/api/submissions` upload with visible progress. The flow advances only after that upload succeeds; a failure leaves the confirmed photo in place for retry. Any configured post-photo pages follow the upload, including same-tab SSO. A submission received without an authenticated account is marked `NO USER` for later review. The separate "Love it" screen is gone (camera#344).
 
 - **Every touch device** (iPhone, iPad, Android phones and tablets, any browser): the device's own camera app, through a file
   input with `capture`. The page has one "Take photo" button; the camera app opens on the front camera and the user changes between all
@@ -138,14 +138,9 @@ of the shutter, then the guest zooms and pans anywhere in it. Pressing "Continue
 
 ## Full-frame originals (camera#210, no longer stored since camera#257)
 
-The guest keeps only the frame-sized image as the final submission (owner decision 2026-10-06). Since 2026-10-14, pressing
-Continue after reframing uploads the full camera image and its cropped draft to `capture-drafts/<eventId>/`. Before a social sign-in after the
-photo, the already-uploaded images and selected frame/message are kept in session storage;
-the same-tab SSO return restores them. Drafts remain in the event folder through sign-in, retakes, successful saves, and page
-exits; remove them during the event's post-event storage cleanup. The draft folder is separate from `originals/` and is never attached to the submission.
-Upload starts, successes, and failures are included in the event's Journey analytics when recording is enabled.
-The `capture-drafts/` path is visible in the report-only `npm run blob:orphans -- --list` inventory; the event's unsubmitted and submitted draft copies can be removed there during post-event cleanup. The rest of this section describes older
-submissions and the legacy original upload contract still accepted by the server.
+The guest keeps only the frame-sized image as the final submission (owner decision 2026-10-06). The full camera image stays in browser memory while the guest frames it. When the guest presses Continue, the finished composition is sent through the established `POST /api/submissions` flow; the upload starts there, and the journey advances only after the submission is stored. A failed upload leaves the confirmed image on screen for retry. Captures without a signed-in account are stored with `userName: "NO USER"` and `metadata.identityStatus: "NO USER"`.
+
+After a social sign-in later in the journey, the same-tab return uses the stored submission ID to link the existing submission; it does not upload the photo a second time. Upload start, success, and failure are recorded in Journey analytics when recording is enabled. Older `capture-drafts/` objects from the superseded flow may still appear in the report-only `npm run blob:orphans -- --list` inventory and can be removed during post-event storage cleanup. The rest of this section describes older submissions and the legacy original upload contract still accepted by the server.
 
 - **Where:** legacy full-frame originals are in Vercel Blob, `originals/<eventId>/<random>-<suffix>.jpg` (public store, unguessable
   path, never returned by a public route, never mirrored to imgbb). `submissions.originalImageUrl`

@@ -17,7 +17,7 @@
 import { NextRequest } from 'next/server';
 import { ObjectId, type Db } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
+import { COLLECTIONS, type Submission, type UserConsent } from '@/lib/db/schemas';
 import { sanitizeEmail } from '@/lib/security/sanitize';
 import {
   withErrorHandler,
@@ -32,13 +32,16 @@ import {
 import { dispatchPendingSubmissionEmailForSubmission } from '@/lib/email/submission-result-email';
 import { dispatchArrivedEmail } from '@/lib/email/triggers';
 import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
+import { runAfterResponse } from '@/lib/api/run-after-response';
+import { safeLinkUrl } from '@/lib/events/consent';
 
 interface FinalizeSubmissionBody {
-  action?: 'update_user_info' | 'finalize';
+  action?: 'update_user_info' | 'append_consents' | 'link_account' | 'finalize';
   userInfo?: {
     name?: string;
     email?: string;
   };
+  consents?: unknown;
 }
 
 function readTrimmedString(value: unknown): string | null {
@@ -164,10 +167,23 @@ export const PATCH = withErrorHandler(async (
   const payload = (await request.json().catch(() => ({}))) as FinalizeSubmissionBody;
   const action = payload.action ?? 'update_user_info';
   const shouldFinalize = action === 'finalize';
+  const shouldAppendConsents = action === 'append_consents';
+  const shouldLinkAccount = action === 'link_account';
   const normalizedUserInfo = normalizeUserInfoInput(payload.userInfo);
+  const consents = Array.isArray(payload.consents) ? payload.consents : null;
 
-  if (!shouldFinalize && !normalizedUserInfo) {
+  if (!shouldFinalize && !shouldAppendConsents && !shouldLinkAccount && !normalizedUserInfo) {
     throw apiBadRequest('Invalid request payload');
+  }
+  if (shouldAppendConsents && (!consents || consents.length === 0 || consents.some((item) => {
+    if (!item || typeof item !== 'object') return true;
+    const record = item as Record<string, unknown>;
+    return typeof record.pageId !== 'string' || !record.pageId ||
+      (record.pageType !== 'accept' && record.pageType !== 'cta') ||
+      typeof record.checkboxText !== 'string' || !record.checkboxText ||
+      (record.accepted !== true && !(record.accepted === false && record.required === false));
+  }))) {
+    throw apiBadRequest('Invalid consent records');
   }
 
   // SECURITY (camera#119): this is the public capture finalize, so the fan is not
@@ -186,6 +202,64 @@ export const PATCH = withErrorHandler(async (
 
   if (!submission) {
     throw apiNotFound('Submission not found');
+  }
+
+  if (shouldLinkAccount) {
+    if (!session?.user?.id) throw apiForbidden('Sign-in is required to link this photo');
+    if (submission.userId !== 'anonymous' && submission.userId !== session.user.id) {
+      throw apiForbidden('This photo belongs to another account');
+    }
+    const now = new Date().toISOString();
+    const email = session.user.email || submission.userInfo?.email || '';
+    const name = session.user.name || submission.userInfo?.name || email || 'REGISTERED USER';
+    const userInfo = email ? { name, email, collectedAt: now } : null;
+    await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+      { _id: objectId, userId: 'anonymous' },
+      {
+        $set: {
+          userId: session.user.id,
+          userEmail: email || 'anonymous@event',
+          userName: name,
+          ...(userInfo ? { userInfo } : {}),
+          'metadata.identityStatus': 'REGISTERED',
+          updatedAt: now,
+        },
+      },
+    );
+    if (email) {
+      runAfterResponse(async () => {
+        try {
+          const arrived = await dispatchArrivedEmail(db, { ...submission, userEmail: email, userName: name, userInfo, _id: objectId });
+          if (arrived && Object.keys(arrived.metadataPatch).length > 0) {
+            await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne({ _id: objectId }, { $set: arrived.metadataPatch });
+          }
+        } catch (error) {
+          console.warn('[email] The arrived e-mail could not be sent after account link', error instanceof Error ? error.message : error);
+        }
+      });
+    }
+    return apiSuccess({ submissionId, action, linked: true });
+  }
+
+  if (shouldAppendConsents) {
+    const additions = consents as Array<Record<string, unknown>>;
+    const existing = Array.isArray(submission.consents) ? submission.consents as UserConsent[] : [];
+    const next = additions
+      .map((record) => ({
+        pageId: String(record.pageId),
+        pageType: record.pageType as 'accept' | 'cta',
+        checkboxText: String(record.checkboxText),
+        ...(safeLinkUrl(record.linkUrl) ? { linkUrl: safeLinkUrl(record.linkUrl) } : {}),
+        accepted: record.accepted === true,
+        acceptedAt: typeof record.acceptedAt === 'string' && record.acceptedAt ? record.acceptedAt : new Date().toISOString(),
+        ...(typeof record.shownText === 'string' && record.shownText.trim() ? { shownText: record.shownText.trim().slice(0, 600) } : {}),
+        ...(record.required === false ? { required: false as const } : {}),
+      }))
+      .filter((record) => !existing.some((stored) => stored.pageId === record.pageId && stored.checkboxText === record.checkboxText && stored.accepted === record.accepted));
+    if (next.length > 0) {
+      await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne({ _id: objectId }, { $push: { consents: { $each: next } }, $set: { updatedAt: new Date().toISOString() } });
+    }
+    return apiSuccess({ submissionId, action, appendedConsents: next.length });
   }
 
   const alreadyFinalized = Boolean((submission as Submission).userInfo?.collectedAt);
@@ -212,6 +286,12 @@ export const PATCH = withErrorHandler(async (
         {
           $set: {
             userInfo: userInfoPayload,
+            ...(session?.user?.id ? {
+              userId: session.user.id,
+              userEmail: session.user.email || userInfoPayload.email,
+              userName: session.user.name || userInfoPayload.name,
+              'metadata.identityStatus': 'REGISTERED',
+            } : {}),
           },
           $unset: {
             'metadata.emailSkipReason': '',
