@@ -8,9 +8,9 @@
  *
  * Controls: drag to move, pinch or wheel to zoom, arrow keys to move, plus and minus to zoom, a
  * GDS slider and mode control, Reset, Retake and Continue. This is the one screen between taking the
- * photo and saving it (camera#344): Continue hands the crop over and the page saves the photo, so there
- * is no second "love it" screen. What the page needs to say before the save (a notice, the gallery
- * permission) goes in as children, above the buttons; `busy` keeps the buttons locked while the page saves.
+ * photo and saving it (camera#344): Continue hands the crop over, uploads the confirmed photo, then
+ * lets the page continue or save. What the page needs to say before the save (a notice, the gallery
+ * permission) goes in as children, above the buttons; `busy` keeps the buttons locked during upload/save.
  */
 
 'use client';
@@ -60,11 +60,13 @@ export interface ReframeStepProps {
   /** Layer boxes of the generated event frame, shown as 50% black territories instead of the frame (camera#236). */
   territories?: readonly Territory[];
   buttonSize?: EventButtonSize;
-  onDone: (result: ReframeResult) => void;
+  onDone: (result: ReframeResult) => void | Promise<void>;
   onRetake: () => void;
   labels?: { continue?: string; retake?: string; reset?: string };
-  /** True while the page makes the picture and saves it: the buttons stay locked and Continue shows its spinner. */
+  /** True while the page uploads or saves the picture: the buttons stay locked and Continue shows its spinner. */
   busy?: boolean;
+  /** Visible status while the page uploads the confirmed picture. */
+  busyLabel?: string;
   /** True while something the page must have before the photo can be saved is missing (a required checkbox, issue 558): Continue stays off, Retake still works. */
   continueBlocked?: boolean;
   /** Per-event controls; absent settings preserve the existing behavior. */
@@ -102,6 +104,7 @@ export default function ReframeStep({
   onRetake,
   labels,
   busy = false,
+  busyLabel,
   continueBlocked = false,
   permissions,
   children,
@@ -376,7 +379,7 @@ export default function ReframeStep({
       }
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
       if (!blob) throw new Error('Failed to encode the cropped image');
-      onDone({
+      await onDone({
         blob,
         dataUrl: await blobToDataUrl(blob),
         width: size.width,
@@ -502,6 +505,7 @@ export default function ReframeStep({
             {labels?.continue ?? t('reframe.continue')}
           </Button>
         </div>
+        {busyLabel ? <p className="text-center text-sm" role="status" aria-live="polite">{busyLabel}</p> : null}
       </div>
     </div>
   );

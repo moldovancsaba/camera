@@ -253,11 +253,13 @@ export default function EventCapturePage({
   // One draw per visit for the random pick of the logo: the same draw in every place, so a user sees the same logo throughout (camera#419).
   const logoDraw = useRef<number | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  // The whole photo at the camera's full size is held for reframing and uploaded as a temporary server backup. The frame-sized result becomes the submission; both temporary copies stay for event cleanup.
+  // The whole photo at the camera's full size is held for reframing; on confirmation it and the cropped draft are uploaded for the journey. The frame-sized result becomes the submission; both temporary copies stay for event cleanup.
   const [capturedOriginal, setCapturedOriginal] = useState<FullFrameCapture | null>(null);
   const temporaryCaptureUrl = useRef<string | null>(null);
-  const temporaryCaptureUpload = useRef<Promise<string | null> | null>(null);
-  // A copy of each camera original is uploaded immediately to an event-scoped temporary Blob path. Keep it through sign-in, page exits, retakes, and final save; the event cleanup removes these drafts after the event.
+  const temporaryCaptureUpload = useRef<Promise<string> | null>(null);
+  const temporaryFramedCaptureUrl = useRef<string | null>(null);
+  const [isUploadingCapture, setIsUploadingCapture] = useState(false);
+  // After the guest confirms the crop, the original and cropped draft are uploaded to event-scoped temporary storage. Keep them through sign-in, page exits, retakes, and final save; event cleanup removes these drafts afterwards.
   // How the photo is taken in this environment (camera#257): the device's own camera on every touch device, a real still or
   // the video frame on a desktop webcam. Known after mount.
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
@@ -309,11 +311,10 @@ export default function EventCapturePage({
   const [presubmitDone, setPresubmitDone] = useState(false);
   const vetted = event?.photoVettingRequired === true;
 
-  const storeTemporaryCapture = useCallback((capture: FullFrameCapture): Promise<string | null> => {
+  const storeTemporaryCapture = useCallback((capture: FullFrameCapture): Promise<string> => {
     if (temporaryCaptureUpload.current) return temporaryCaptureUpload.current;
     const uploadId = crypto.randomUUID();
     const pathname = `${TEMPORARY_CAPTURE_PREFIX}${eventId}/${uploadId}.jpg`;
-    journey.record('photo.upload', 'started');
     temporaryCaptureUpload.current = uploadBlob(pathname, capture.blob, {
       access: 'public',
       contentType: 'image/jpeg',
@@ -321,30 +322,42 @@ export default function EventCapturePage({
       clientPayload: JSON.stringify({ eventId }),
     }).then(({ url }) => {
       temporaryCaptureUrl.current = url;
-      journey.record('photo.upload', 'succeeded');
       return url;
     }).catch((error: unknown) => {
-      journey.record('photo.upload', 'failed');
-      console.warn('Temporary photo backup could not be uploaded; the normal save can still continue:', error);
       temporaryCaptureUpload.current = null;
-      return null;
+      throw error;
     });
     return temporaryCaptureUpload.current;
   }, [eventId]);
 
-  const prepareCaptureForSocialLogin = useCallback(async (): Promise<boolean> => {
-    if (flowPhase !== 'presubmit' || !capturedOriginal || !capturedImage) return false;
-    const originalUrl = temporaryCaptureUrl.current ?? await storeTemporaryCapture(capturedOriginal);
-    if (!originalUrl) return false;
+  const storeTemporaryFramedCapture = useCallback(async (blob: Blob): Promise<string> => {
+    if (temporaryFramedCaptureUrl.current) return temporaryFramedCaptureUrl.current;
     const framedId = crypto.randomUUID();
-    const framedBlob = await (await fetch(capturedImage)).blob();
-    if (!framedBlob.size) return false;
-    const { url: framedUrl } = await uploadBlob(`${TEMPORARY_CAPTURE_PREFIX}${eventId}/${framedId}-framed.jpg`, framedBlob, {
+    const { url } = await uploadBlob(`${TEMPORARY_CAPTURE_PREFIX}${eventId}/${framedId}-framed.jpg`, blob, {
       access: 'public',
       contentType: 'image/jpeg',
       handleUploadUrl: ORIGINAL_UPLOAD_ENDPOINT,
       clientPayload: JSON.stringify({ eventId }),
     });
+    temporaryFramedCaptureUrl.current = url;
+    return url;
+  }, [eventId]);
+
+  const prepareCaptureForSocialLogin = useCallback(async (): Promise<boolean> => {
+    if (flowPhase !== 'presubmit' || !capturedOriginal || !capturedImage) return false;
+    let originalUrl: string;
+    let framedUrl = temporaryFramedCaptureUrl.current;
+    try {
+      originalUrl = temporaryCaptureUrl.current ?? await storeTemporaryCapture(capturedOriginal);
+      if (!framedUrl) {
+        const framedBlob = await (await fetch(capturedImage)).blob();
+        if (!framedBlob.size) return false;
+        framedUrl = await storeTemporaryFramedCapture(framedBlob);
+      }
+    } catch (error) {
+      console.error('Could not prepare the confirmed photo for sign-in:', error);
+      return false;
+    }
     const draft: CaptureResumeDraft = {
       version: 1,
       eventId,
@@ -365,7 +378,7 @@ export default function EventCapturePage({
     };
     window.sessionStorage.setItem(captureResumeDraftKey(eventId), JSON.stringify(draft));
     return true;
-  }, [flowPhase, capturedOriginal, capturedImage, storeTemporaryCapture, eventId, selectedFrame, choice, galleryTick]);
+  }, [flowPhase, capturedOriginal, capturedImage, storeTemporaryCapture, storeTemporaryFramedCapture, eventId, selectedFrame, choice, galleryTick]);
   
   // With the acceptance on the Who-are-you page (issue 523) the consent page is not a step of its own: its checkboxes are shown there as one (lib/events/acceptance.ts).
   const { pages: journeyPages, acceptPage: acceptanceBox } = acceptanceOnLogin(customPages, event?.acceptanceOnWhoAreYou === true);
@@ -488,6 +501,7 @@ export default function EventCapturePage({
                 setGalleryTick(draft.galleryTick);
                 temporaryCaptureUrl.current = draft.originalUrl;
                 temporaryCaptureUpload.current = Promise.resolve(draft.originalUrl);
+                temporaryFramedCaptureUrl.current = draft.framedUrl;
                 setPresubmitDone(false);
                 setCurrentPageIndex(pageIndex + 1);
                 setFlowPhase('presubmit');
@@ -872,6 +886,7 @@ export default function EventCapturePage({
   }, [capturedImage, compositeImageWithFrame, selectedFrame]);
 
   const handleFrameSelect = (frame: Frame) => {
+    if (flowPhase === 'presubmit' && capturedOriginal) temporaryFramedCaptureUrl.current = null;
     setSelectedFrame(frame);
     setChoice((current) => ({ ...current, layoutId: frame.frameId }));
     lastDrawKey.current = frame.frameId;
@@ -943,6 +958,7 @@ export default function EventCapturePage({
 
   const handleLayoutSelect = (variant: CaptureVariant) => {
     if (!selectionFrame) return;
+    if (flowPhase === 'presubmit' && capturedOriginal) temporaryFramedCaptureUrl.current = null;
     const next = chooseLayout(selectionFrame, choice, layoutIdOf(variant));
     setChoice(next);
     if (flowPhase === 'presubmit' && capturedOriginal) {
@@ -952,6 +968,7 @@ export default function EventCapturePage({
   };
 
   const handleMessageSelect = (variant: CaptureVariant) => {
+    if (flowPhase === 'presubmit' && capturedOriginal) temporaryFramedCaptureUrl.current = null;
     const next = { ...choice, messageIndex: variant.index };
     setChoice(next);
     if (flowPhase === 'presubmit' && capturedOriginal && selectionFrame) {
@@ -1000,24 +1017,44 @@ export default function EventCapturePage({
     }
     temporaryCaptureUrl.current = null;
     temporaryCaptureUpload.current = null;
-    void storeTemporaryCapture(capture);
+    temporaryFramedCaptureUrl.current = null;
     setCapturedOriginal(capture);
     setStep('reframe');
   };
 
-  // The frame-less crop continues through the composite step, as the old capture did, and the photo is saved as soon as its picture is made (camera#344).
-  const handleReframeDone = (result: ReframeResult) => {
+  // TOVÁBB is the guest's confirmation: upload the original and its approved framing now,
+  // show progress, then continue into the next journey page or save the completed photo.
+  const handleReframeDone = async (result: ReframeResult) => {
     // A required permission that is not ticked cannot be skipped (issue 558); Continue is off meanwhile, this is the same rule for any other way in.
     if (galleryRequired && !galleryTick) return;
+    if (!capturedOriginal) return;
     setCapturedImage(result.dataUrl);
-    // An event whose editor made saving a step of its own (a Submit page after the take-photo page, issue 535) runs the pages between the two first; the picture is made meanwhile and the
-    // photo is saved after the last of them. Without such pages Continue saves at once, as it always did.
-    if (presubmitPages.length > 0 && !presubmitDone) {
-      setFlowPhase('presubmit');
-      setCurrentPageIndex(0);
-      return;
+
+    setIsUploadingCapture(true);
+    journey.record('photo.upload', 'started');
+    try {
+      const [originalUrl, framedUrl] = await Promise.all([
+        temporaryCaptureUrl.current ?? storeTemporaryCapture(capturedOriginal),
+        storeTemporaryFramedCapture(result.blob),
+      ]);
+      if (!originalUrl || !framedUrl) throw new Error('The photo upload did not return a saved address');
+      journey.record('photo.upload', 'succeeded');
+
+      // An event can put login or other pages after the photo. They start only after the
+      // temporary photo copies are safely stored, so a page change cannot lose the capture.
+      if (presubmitPages.length > 0 && !presubmitDone) {
+        setFlowPhase('presubmit');
+        setCurrentPageIndex(0);
+      } else {
+        setSaveRequested(true);
+      }
+    } catch (error) {
+      journey.record('photo.upload', 'failed');
+      console.error('Could not upload the confirmed photo:', error);
+      notifyCapture('error', `${t('reframe.uploadFailed')}: ${errorText(language, getErrorMessage(error, language))}`);
+    } finally {
+      setIsUploadingCapture(false);
     }
-    setSaveRequested(true);
   };
 
   // The full photo is not kept: once the framed result is on screen it is dropped (it can be tens of megabytes).
@@ -2030,7 +2067,8 @@ export default function EventCapturePage({
               buttonSize={eventButtonSize}
               onDone={handleReframeDone}
               onRetake={handleReframeRetake}
-              busy={saveRequested || isProcessing || isSaving}
+              busy={saveRequested || isProcessing || isSaving || isUploadingCapture}
+              busyLabel={isUploadingCapture ? t('reframe.uploading') : undefined}
               continueBlocked={galleryRequired && !galleryTick}
             >
               {asksGallery ? (
@@ -2041,7 +2079,7 @@ export default function EventCapturePage({
                   label={t(galleryRequired ? 'share.publicGalleryConsentRequired' : 'share.publicGalleryConsent')}
                   description={t(galleryRequired ? 'share.publicGalleryConsentHelpRequired' : 'share.publicGalleryConsentHelp')}
                   {...(galleryRequired ? { required: true } : {})}
-                  disabled={saveRequested || isProcessing || isSaving}
+                  disabled={saveRequested || isProcessing || isSaving || isUploadingCapture}
                   data-gallery-consent
                 />
               ) : null}

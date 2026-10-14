@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — upload the confirmed photo before advancing (2026-10-14)
+
+- **Fixed:** pressing Continue on the photo framing screen now uploads the original and cropped temporary copies, shows an uploading status, and only advances to the next journey page after both uploads succeed. Upload failure keeps the guest on the same screen with the photo intact and a retryable error.
+- **Changed:** the original temporary upload no longer starts at the camera shutter; it starts when the guest confirms the framing.
+- **Verified locally:** TypeScript, lint, production build, production guards, GDS checks, inventory, and documentation links passed. The build reported the existing Google Fonts `@import` ordering warning.
+
 ## Unreleased — show message choices without frame tiles (2026-10-14)
 
 - **Changed:** Pages now offers a message-only selector mode that lists every available message and automatically uses an available frame assigned to that message, while keeping frame choices hidden.
@@ -78,7 +84,7 @@
 
 ## Unreleased — back up a captured photo before sign-in (2026-10-13)
 
-- **Changed:** the camera uploads the full-size capture directly to this event's unlisted Vercel Blob draft folder as soon as the shutter finishes, then continues to the next capture step without waiting for the upload. The normal framed submission still uses the existing save route. Drafts stay in the event folder through sign-in, retakes, completed saves, and page exits for post-event cleanup.
+- **Changed:** after the guest confirms the framing with Continue, the camera uploads the full-size capture and cropped draft to the event's temporary image folder before advancing. The normal framed submission still uses the existing save route. Drafts stay in the event folder through sign-in, retakes, completed saves, and page exits for post-event cleanup.
 - **Sign-in:** successful social-login popups signal the original selfie tab and close themselves. The in-memory image remains usable while the temporary server copy provides a backup through sign-in; successful popup returns are also counted in Journey analytics.
 - **Analytics:** Journey analytics and its CSV export count temporary upload starts, successes, and failures when recording is enabled.
 - **Safety:** temporary paths are separate from permanent `originals/` paths, event-scoped and UUID-named. The cleanup endpoint only accepts a URL in this application's matching event draft folder.
