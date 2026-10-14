@@ -297,6 +297,7 @@ export default function EventCapturePage({
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [collectedData, setCollectedData] = useState<CollectedData>({ consents: [] });
   const [flowPhase, setFlowPhase] = useState<'onboarding' | 'presubmit' | 'capture' | 'thankyou'>('onboarding');
+  const nextPhotoRef = useRef<() => void>(() => undefined);
   const [signInError, setSignInError] = useState<{ code: string; message: string } | null>(null);
   // Continue on the reframe screen saves the photo (camera#344): true from that press until the save starts, so nothing else is asked in between.
   const [saveRequested, setSaveRequested] = useState(false);
@@ -324,6 +325,7 @@ export default function EventCapturePage({
   // With the acceptance on the Who-are-you page (issue 523) the consent page is not a step of its own: its checkboxes are shown there as one (lib/events/acceptance.ts).
   const { pages: journeyPages, acceptPage: acceptanceBox } = acceptanceOnLogin(customPages, event?.acceptanceOnWhoAreYou === true);
   const { onboardingPages, presubmitPages, thankYouPages, takePhotoPage } = splitCustomPages(journeyPages, { saveThroughWhoAreYou: acceptanceBox !== null });
+  const frameMessagePageBeforePhoto = onboardingPages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
 
   // Get take-photo page config for button texts and messages
   const configuredTakePhotoPage = takePhotoPage;
@@ -557,6 +559,7 @@ export default function EventCapturePage({
           (eventData.customPages || []).filter((p: CustomPage) => p.isActive),
           eventData.journeyContext?.defaultOrders,
         );
+        const hasOrderedFrameMessagePage = pages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
         if (pages.length > 0) {
           const { onboardingPages: resolvedOnboardingPages } = splitCustomPages(pages);
           setCustomPages([...pages].sort((a, b) => a.order - b.order));
@@ -598,14 +601,14 @@ export default function EventCapturePage({
           if (eventFrames.length === 1) {
             setSelectedFrame(eventFrames[0]);
             setStep('capture-photo');
-          } else if (eventFrames.length > 1 && (eventData.frameMessageSelectionDisplay === 'hide' || (storedFrameSelection(eventData.frameSelection)?.layout.mode !== 'user' && storedFrameSelection(eventData.frameSelection)))) {
+          } else if (eventFrames.length > 1 && (hasOrderedFrameMessagePage || eventData.frameMessageSelectionDisplay === 'hide' || (storedFrameSelection(eventData.frameSelection)?.layout.mode !== 'user' && storedFrameSelection(eventData.frameSelection)))) {
             // The editor picks the frame or it is random (epic 444): there is no frame step, the frame is drawn when the camera step opens.
             setStep('capture-photo');
           }
         } else {
           // No frame of its own: the generated frame if there is one, else no frame at all. Under the editor's setting the user is asked for the design and the message first when they choose.
           setGeneratedFrame(eventData.generatedFrame ?? null);
-          setStep(nextStep(frameWithSelectionDisplay(eventData.generatedFrame, eventData.frameMessageSelectionDisplay), NO_CHOICE));
+          setStep(hasOrderedFrameMessagePage ? 'capture-photo' : nextStep(frameWithSelectionDisplay(eventData.generatedFrame, eventData.frameMessageSelectionDisplay), NO_CHOICE));
         }
       } catch (error) {
         console.error('Error fetching event data:', error);
@@ -787,6 +790,8 @@ export default function EventCapturePage({
 
   const handleFrameSelect = (frame: Frame) => {
     setSelectedFrame(frame);
+    setChoice((current) => ({ ...current, layoutId: frame.frameId }));
+    lastDrawKey.current = frame.frameId;
   };
 
   // The welcome e-mail (epic 463): once the user is identified (a typed name and e-mail, or a sign-in) and the event sends it, the server is told, once for each address on this device. The
@@ -836,8 +841,14 @@ export default function EventCapturePage({
         lastDrawKey.current = variantKeyOf(variant);
         setSelectedFrame(variantFrame(variant));
       }
-    } else if (ownLayout && ownLayout.mode !== 'user') {
-      const own = drawOwnFrame(frames, ownLayout, lastDrawKey.current);
+    } else if (ownLayout && (ownLayout.mode !== 'user' || !frameMessagePageBeforePhoto)) {
+      if (ownLayout.mode === 'user' && choice.layoutId && lastDrawKey.current === choice.layoutId) {
+        return;
+      }
+      // If the ordered selector is after the camera, use a random frame for this capture first;
+      // the guest's choice takes effect at the selector's configured place in the journey.
+      const draw = ownLayout.mode === 'user' ? { mode: 'random' as const, pick: null } : ownLayout;
+      const own = drawOwnFrame(frames, draw, lastDrawKey.current);
       if (own) {
         lastDrawKey.current = own.frameId;
         setSelectedFrame(own);
@@ -845,16 +856,25 @@ export default function EventCapturePage({
         setStep('select-frame');
       }
     }
-  }, [step, selection, selectionFrame, choice, ownLayout, frames]);
+  }, [step, selection, selectionFrame, choice, ownLayout, frames, frameMessagePageBeforePhoto]);
 
   const handleLayoutSelect = (variant: CaptureVariant) => {
     if (!selectionFrame) return;
     const next = chooseLayout(selectionFrame, choice, layoutIdOf(variant));
     setChoice(next);
+    if (flowPhase === 'presubmit' && capturedOriginal) {
+      const selected = drawVariant(selectionFrame, next, lastDrawKey.current);
+      if (selected) setSelectedFrame(variantFrame(selected));
+    }
   };
 
   const handleMessageSelect = (variant: CaptureVariant) => {
-    setChoice((current) => ({ ...current, messageIndex: variant.index }));
+    const next = { ...choice, messageIndex: variant.index };
+    setChoice(next);
+    if (flowPhase === 'presubmit' && capturedOriginal && selectionFrame) {
+      const selected = drawVariant(selectionFrame, next, lastDrawKey.current);
+      if (selected) setSelectedFrame(variantFrame(selected));
+    }
   };
 
   // The steps the user sees in the list at the top: the frame when there are several of the event's own and the user picks, the design and the message when the user chooses them.
@@ -1096,7 +1116,7 @@ export default function EventCapturePage({
     }
   };
 
-  const finalizeSubmissionEmail = async (submissionId: string, userInfo?: WhoAreYouPageData | null) => {
+  const finalizeSubmissionEmail = useCallback(async (submissionId: string, userInfo?: WhoAreYouPageData | null) => {
     if (isFinalizingSubmission || hasFinalizedSubmissionEmail) {
       return false;
     }
@@ -1126,15 +1146,15 @@ export default function EventCapturePage({
     } finally {
       setIsFinalizingSubmission(false);
     }
-  };
+  }, [isFinalizingSubmission, hasFinalizedSubmissionEmail]);
 
-  const finalizeSubmissionForEventEnd = () => {
+  const finalizeSubmissionForEventEnd = useCallback(() => {
     if (!savedSubmissionId || !shareUrl || hasFinalizedSubmissionEmail || isFinalizingSubmission) {
       return;
     }
 
     void finalizeSubmissionEmail(savedSubmissionId, collectedData.userInfo);
-  };
+  }, [savedSubmissionId, shareUrl, hasFinalizedSubmissionEmail, isFinalizingSubmission, collectedData.userInfo, finalizeSubmissionEmail]);
 
   const handleCopyLink = async () => {
     if (!shareUrl) return;
@@ -1244,6 +1264,13 @@ export default function EventCapturePage({
   const finishPresubmit = () => {
     setPresubmitDone(true);
     setFlowPhase('capture');
+    // A selector placed after Take Photo but before Submit changes the design of this photo. Reopen framing
+    // with the original capture after the intervening pages so the final crop and overlay use that choice.
+    if (capturedOriginal && asksAnySelection && presubmitPages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID)) {
+      setSaveRequested(false);
+      setStep('reframe');
+      return;
+    }
     setSaveRequested(true);
   };
 
@@ -1275,9 +1302,14 @@ export default function EventCapturePage({
         // More thank you pages
         setCurrentPageIndex(currentPageIndex + 1);
       } else {
-        // Completed all thank you pages - restart flow
+        // A selector after saving chooses the next photo. Keep that choice and continue with the already-known guest.
         finalizeSubmissionForEventEnd();
-        handleRestartFlow();
+        if (thankYouPages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID)) {
+          nextPhotoRef.current();
+        } else {
+          // A journey without a post-save selector retains its configured restart behavior.
+          handleRestartFlow();
+        }
       }
     }
   };
@@ -1285,8 +1317,8 @@ export default function EventCapturePage({
   // The selector is an ordered journey page, not an extra step appended after the pages editor's flow.
   // If it has no available choices, advance it without showing an empty screen.
   useEffect(() => {
-    if (flowPhase !== 'onboarding' && flowPhase !== 'presubmit') return;
-    const phasePages = flowPhase === 'onboarding' ? onboardingPages : presubmitPages;
+    if (flowPhase !== 'onboarding' && flowPhase !== 'presubmit' && flowPhase !== 'thankyou') return;
+    const phasePages = flowPhase === 'onboarding' ? onboardingPages : flowPhase === 'presubmit' ? presubmitPages : thankYouPages;
     const page = phasePages[currentPageIndex];
     if (page?.pageId !== DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID || asksAnySelection) return;
     if (currentPageIndex + 1 < phasePages.length) {
@@ -1296,12 +1328,15 @@ export default function EventCapturePage({
       if (selectedFrame) setStep('capture-photo');
       else if (frames.length === 0) setStep(nextStep(selectionFrame, choice));
       else setStep(ownLayout && ownLayout.mode !== 'user' ? 'capture-photo' : 'select-frame');
-    } else {
+    } else if (flowPhase === 'presubmit') {
       setPresubmitDone(true);
       setFlowPhase('capture');
       setSaveRequested(true);
+    } else {
+      finalizeSubmissionForEventEnd();
+      nextPhotoRef.current();
     }
-  }, [flowPhase, currentPageIndex, asksAnySelection, onboardingPages, presubmitPages, selectedFrame, frames.length, selectionFrame, choice, ownLayout]);
+  }, [flowPhase, currentPageIndex, asksAnySelection, onboardingPages, presubmitPages, thankYouPages, selectedFrame, frames.length, selectionFrame, choice, ownLayout, finalizeSubmissionForEventEnd]);
   
   /**
    * Navigate to previous page
@@ -1318,7 +1353,7 @@ export default function EventCapturePage({
     } else {
       // No thank you pages: the guest is ready for the next photo, already known (camera#285 owner default)
       finalizeSubmissionForEventEnd();
-      handleNextPhoto();
+      nextPhotoRef.current();
     }
   };
   useEffect(() => {
@@ -1335,6 +1370,9 @@ export default function EventCapturePage({
    * from the first page (handleRestartFlow). The default of the guest journey; an event changes it with its own pages.
    */
   function handleNextPhoto() {
+    const selectorChoosesNextPhoto = asksAnySelection && thankYouPages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
+    const selectorRunsAfterCamera = asksAnySelection && [...presubmitPages, ...thankYouPages].some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
+    const selectorRunsBeforeCamera = asksAnySelection && frameMessagePageBeforePhoto;
     setCapturedImage(null);
     setCapturedOriginal(null);
     setGalleryTick(false);
@@ -1344,14 +1382,24 @@ export default function EventCapturePage({
     setImageDimensions(null);
     setSavedSubmissionId(null);
     setHasFinalizedSubmissionEmail(false);
+    setPresubmitDone(false);
     setIsFinalizingSubmission(false);
     // A chosen frame is kept; a generated variant is picked again at the next shutter press.
     // Every photo asks again for the design and the message when the user chooses them; the image is drawn when the camera step opens.
     setSelectedFrame((current) => (current?.generated ? null : current));
-    setChoice(NO_CHOICE);
+    if (!selectorChoosesNextPhoto) setChoice(NO_CHOICE);
     setFlowPhase('capture');
-    setStep(frames.length > 1 && !selectedFrame ? (ownLayout && ownLayout.mode !== 'user' ? 'capture-photo' : 'select-frame') : nextStep(selectionFrame, NO_CHOICE));
+    setStep(selectorRunsAfterCamera
+      ? 'capture-photo'
+      : selectorRunsBeforeCamera
+        ? (frames.length > 0 ? 'select-frame' : nextStep(selectionFrame, NO_CHOICE))
+        : frames.length > 1 && !selectedFrame
+          ? (ownLayout && ownLayout.mode !== 'user' ? 'capture-photo' : 'select-frame')
+          : nextStep(selectionFrame, NO_CHOICE));
   }
+  useEffect(() => {
+    nextPhotoRef.current = handleNextPhoto;
+  });
 
   const handleRestartFlow = () => {
     // Reset capture state
@@ -1815,19 +1863,23 @@ export default function EventCapturePage({
               <section aria-labelledby="capture-message-heading">
                 <h3 id="capture-message-heading" className="mb-3 text-center text-base font-semibold">{t('flow.selectMessage.title')}</h3>
                 {messageChoices.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" data-tour-id="capture-message-grid">
+                  <div className="grid w-full grid-cols-1 gap-3" data-tour-id="capture-message-grid">
                     {messageChoices.map((variant) => (
-                      <button
+                      <Button
                         key={variant.index}
                         type="button"
                         onClick={() => handleMessageSelect(variant)}
                         aria-pressed={choice.messageIndex === variant.index}
-                        className="rounded-xl border-2 p-4 text-left text-base font-semibold transition-all"
-                        style={{ borderColor: choice.messageIndex === variant.index ? 'var(--mantine-color-blue-6)' : undefined }}
+                        variant={choice.messageIndex === variant.index ? 'filled' : 'light'}
+                        size={eventButtonSize}
+                        radius="xl"
+                        fullWidth
+                        className="min-h-16 w-full whitespace-normal px-5 py-4 text-center leading-tight"
+                        classNames={{ label: 'w-full whitespace-normal' }}
                         data-message-choice
                       >
                         {variant.message}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 ) : (

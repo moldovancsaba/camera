@@ -46,7 +46,7 @@ const REASON: Record<string, string> = {
   [DEFAULT_WELCOME_PAGE_ID]: "The first thing a user sees: the giant screen drawn from this event's default slideshow and a Start button. This page is used until you make your own welcome page.",
   [DEFAULT_CONSENT_PAGE_ID]: 'Every user accepts the terms, the cookies and the privacy policy first (each can be switched off or made optional in the consent page settings above). This page is used until you make your own consent page.',
   [DEFAULT_IDENTITY_PAGE_ID]: 'A photo that is checked before it is shown needs an e-mail or a social login. This page is used until you make your own login page.',
-  [DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID]: 'Guests choose from the frame and message options enabled on the Frames page. Empty choices are skipped. This page must stay before Take Photo.',
+  [DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID]: 'Guests choose from the frame and message options enabled on the Frames page. Empty choices are skipped. Place it anywhere: before Take Photo for the current photo, between Take Photo and Submit to adjust that photo before saving, or after saving to choose for the next photo.',
 };
 
 /**
@@ -121,9 +121,8 @@ function needsSeparateSubmitForPhotoMove(rows: readonly JourneyRow[], index: num
 
 /**
  * The page row that the row at `index` swaps places with when it moves one place `up` (-1) or `down` (+1), or null when it cannot move. The built-in steps are not pages and stay where they are,
- * so the neighbour is the next page row in that direction. Three rules keep the journey sound: the Submit page stays after the take-photo page (they never swap); a default page never ends up
- * after the place where the photo is saved, because the consent and the login of the default journey come before it (a photo that is checked needs an identity first, camera#264): that place is
- * the take-photo page, or the Submit page when the event has one, in which case a default page may move between the two; an own page moves anywhere, as before.
+ * so the neighbour is the next page row in that direction. The Submit page stays after the take-photo page (they never swap); default consent and login stay before the save boundary, while
+ * the frame/message selector and an own page can move anywhere. The selector's position determines whether it changes the current photo or the next one.
  */
 export function moveTarget(rows: readonly JourneyRow[], index: number, direction: -1 | 1): number | null {
   const row = rows[index];
@@ -132,10 +131,11 @@ export function moveTarget(rows: readonly JourneyRow[], index: number, direction
   for (let j = index + direction; j >= 0 && j < rows.length; j += direction) {
     const other = rows[j];
     if (!isPageRow(other)) continue;
-    if ((isTakePhotoRow(row) && other.page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID) || (isTakePhotoRow(other) && row.page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID)) return null;
     if ((isSubmitRow(row) && isTakePhotoRow(other)) || (isTakePhotoRow(row) && isSubmitRow(other))) return null;
     const defaultAndOther = row.kind === 'default' ? other : other.kind === 'default' ? row : null;
-    if (defaultAndOther && (isSubmitRow(defaultAndOther) || (isTakePhotoRow(defaultAndOther) && !hasSubmit))) return null;
+    // Consent and login stay before the photo save boundary. The selector is different: its position decides whether a choice applies to
+    // the current photo (before Submit) or the next one (after saving), so it can cross Take Photo and Submit.
+    if (defaultAndOther && defaultAndOther.page.pageId !== DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID && (isSubmitRow(defaultAndOther) || (isTakePhotoRow(defaultAndOther) && !hasSubmit))) return null;
     return j;
   }
   return null;

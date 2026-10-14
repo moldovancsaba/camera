@@ -118,19 +118,23 @@ export default function FrameMessageSelectionPage({
         <section aria-labelledby="capture-message-heading">
           <h3 id="capture-message-heading" className="mb-3 text-center text-base font-semibold">{messageHeading}</h3>
           {messageChoices.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" data-tour-id="capture-message-grid">
+            <div className="grid w-full grid-cols-1 gap-3" data-tour-id="capture-message-grid">
               {messageChoices.map((variant) => (
-                <button
+                <Button
                   key={variant.index}
                   type="button"
                   onClick={() => onMessageSelect(variant)}
                   aria-pressed={selectedMessageIndex === variant.index}
-                  className="rounded-xl border-2 p-4 text-left text-base font-semibold transition-all"
-                  style={{ borderColor: selectedMessageIndex === variant.index ? `var(--event-button-bg, ${brandColor || 'var(--mantine-color-blue-6)'})` : undefined }}
+                  variant={selectedMessageIndex === variant.index ? 'filled' : 'light'}
+                  size={buttonSize}
+                  radius="xl"
+                  fullWidth
+                  className="min-h-16 w-full whitespace-normal px-5 py-4 text-center leading-tight"
+                  classNames={{ label: 'w-full whitespace-normal' }}
                   data-message-choice
                 >
                   {variant.message}
-                </button>
+                </Button>
               ))}
             </div>
           ) : (
