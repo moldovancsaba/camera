@@ -218,6 +218,11 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
   const rows = journeyContext
     ? effectiveJourney(pagesWithPlaceholder, { ...journeyContext, defaultOrders, acceptanceOnWhoAreYou: acceptanceEnabled })
     : sortedPages.map((page) => ({ kind: 'own' as const, page }));
+  // When the acceptance is attached to the Who-are-you page, the Accept page is intentionally absent from the journey list. Keep its editor reachable as configuration, without presenting it as another guest step.
+  const consentSettingsRow = journeyContext && acceptanceEnabled
+    ? effectiveJourney(pagesWithPlaceholder, { ...journeyContext, defaultOrders, acceptanceOnWhoAreYou: false }).find((row) => row.kind !== 'step' && row.page.pageType === CustomPageType.ACCEPT)
+    : undefined;
+  const consentSettingsPage = consentSettingsRow && consentSettingsRow.kind !== 'step' ? consentSettingsRow.page : undefined;
   // Built-in follow-up behavior is configured in its own settings sections; the journey list is for pages guests can visit and editors can arrange.
   // Keep the full rows above for ordering rules, but render only actual pages.
   const pageRows = rows.flatMap((row, rowIndex) => row.kind === 'step' ? [] : [{ row, rowIndex }]);
@@ -455,17 +460,12 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
         >
           {isSaving ? 'Saving...' : 'Save Pages'}
           </SemanticButton>
+          {consentSettingsPage && !rows.some((row) => row.kind !== 'step' && row.page.pageType === CustomPageType.ACCEPT) ? (
+            <SemanticButton action="custom-pages:edit-accept-settings" type="button" size="xs" variant="secondary" onClick={() => handleCustomise(consentSettingsPage)}>
+              Edit Accept page settings
+            </SemanticButton>
+          ) : null}
         </div>
-
-        <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', display: 'grid', gap: '1rem', padding: '1rem' }} data-consent-settings>
-          <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <h3 style={{ margin: 0 }}>Consent page settings: the checkboxes of this event</h3>
-            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
-              Every kind of checkbox is shown or not, and required or optional, as every market has its own law. “Same as the partner” follows the partner’s default; nothing is copied down. Saved with Save Pages.
-            </p>
-          </div>
-          <CheckboxSettingsFields modes={modes} onChange={changeMode} level="event" followed={partnerCheckboxes} />
-        </section>
 
         <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', display: 'grid', gap: '0.75rem', padding: '1rem' }} data-frame-message-selection-settings>
           <div style={{ display: 'grid', gap: '0.25rem' }}>
@@ -959,11 +959,6 @@ function PageEditModal({
           <>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
-                <CheckboxSettingsFields modes={modes} onChange={onModeChange} level="event" followed={partnerCheckboxes} kinds={['acceptance']} />
-              </div>
-            </section>
-            <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
-              <div style={{ display: 'grid', gap: '1rem' }}>
                 <h4 style={{ margin: 0 }}>Authentication Options</h4>
                 <Check
                   checked={enableSSOLogin}
@@ -1033,7 +1028,15 @@ function PageEditModal({
         {page.pageType === CustomPageType.ACCEPT ? (
           <>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
-              <CheckboxSettingsFields modes={modes} onChange={onModeChange} level="event" followed={partnerCheckboxes} kinds={['acceptance', 'gallery']} />
+              <div style={{ display: 'grid', gap: '1rem' }} data-consent-settings>
+                <div style={{ display: 'grid', gap: '0.25rem' }}>
+                  <h4 style={{ margin: 0 }}>Consent settings for this page</h4>
+                  <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
+                    Choose which checkboxes this page shows and whether they are required. These settings are saved with Save Pages.
+                  </p>
+                </div>
+                <CheckboxSettingsFields modes={modes} onChange={onModeChange} level="event" followed={partnerCheckboxes} />
+              </div>
             </section>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>

@@ -16,6 +16,24 @@ import type { TextOverrides } from '@/lib/i18n/overrides';
 export const DEFAULT_CONSENT_PAGE_ID = 'default-consent';
 export const DEFAULT_WELCOME_PAGE_ID = 'default-welcome';
 
+/** The consent and identity page each have one role in the journey. Older saves could persist a generated default and a customised copy side by side; prefer the active custom page and discard the stale duplicate. */
+function dedupeActiveRolePages(pages: readonly CustomPage[]): CustomPage[] {
+  const roleDefaults: Partial<Record<CustomPage['pageType'], string>> = {
+    accept: DEFAULT_CONSENT_PAGE_ID,
+    'who-are-you': DEFAULT_IDENTITY_PAGE_ID,
+  };
+  let result = [...pages];
+  for (const [pageType, defaultId] of Object.entries(roleDefaults)) {
+    const active = result
+      .filter((page) => page.isActive && page.pageType === pageType)
+      .sort((a, b) => a.order - b.order);
+    if (active.length < 2) continue;
+    const keeper = active.find((page) => page.pageId !== defaultId) ?? active[0];
+    result = result.filter((page) => !active.some((duplicate) => duplicate !== keeper && duplicate.pageId === page.pageId));
+  }
+  return result;
+}
+
 /**
  * The three legal pages every user accepts (owner, 2026-10-07): all required, in the language of the event (camera#352); the links go to the legal
  * pages of the service in that language (they exist in English and Hungarian).
@@ -92,7 +110,7 @@ export function withDefaultJourneyPages(
   pages: readonly CustomPage[] | null | undefined,
   options: { vettingRequired: boolean; consentDefault: boolean; now?: string; language?: UiLanguage; hasWelcomeScreen?: boolean; texts?: TextOverrides | null; defaultOrders?: Record<string, number> | null; documents?: DocumentSettings },
 ): CustomPage[] {
-  const stored = [...(pages ?? [])];
+  const stored = dedupeActiveRolePages(pages ?? []);
   // The default welcome page: only for an event that gets the journey defaults, has the picture drawn from its default slideshow and has no welcome page of its own (a switched off one
   // counts: the editor chose). It goes first, so the consent page follows it.
   const withWelcome =
