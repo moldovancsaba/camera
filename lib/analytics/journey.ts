@@ -17,7 +17,7 @@
 import type { Db } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { SHARE_CHANNELS, STEP_KEYS, TIME_BUCKETS, isJourneyName, type JourneyName } from '@/lib/journey/events';
-import { dayInRange, median } from './time';
+import { average, dayInRange, median } from './time';
 
 export interface JourneyRow {
   /** UTC day, `YYYY-MM-DD`. */
@@ -70,6 +70,14 @@ export interface JourneySummary {
   timeToComplete: JourneyTally[];
   /** The median seconds from opening to the first saved photo over the raw rows still kept (30 days); null when there are none. */
   medianCompleteSeconds: number | null;
+  /** The average seconds from opening the capture page to the first saved photo, over the same raw rows (30 days). */
+  averageCompleteSeconds: number | null;
+  /** A unique visit is counted once after the first CTA action. */
+  ctaClicks: number;
+  ctaClickRate: number | null;
+  /** Provider or pseudo-form selections/submissions; these indicate a chosen route, not a successful SSO login. */
+  loginMethods: Array<JourneyTally & { shareOfChoices: number | null }>;
+  loginMethodChoices: number;
   camera: { granted: number; denied: number; unavailable: number; deniedRate: number | null };
   photos: { taken: number; byMethod: JourneyTally[]; retakes: number; retakesPerPhoto: number | null; uploadStarted: number; uploadSucceeded: number; uploadFailed: number };
   saves: { ok: number; failed: number };
@@ -136,6 +144,19 @@ export function summarizeJourney(rows: readonly JourneyRow[], range: { from?: st
     completionRate: opens > 0 ? completed / opens : null,
     timeToComplete: tallies('journey.complete', TIME_BUCKETS, TIME_LABELS),
     medianCompleteSeconds: median(medianMs.map((ms) => Math.round(ms / 1000))),
+    averageCompleteSeconds: average(medianMs.map((ms) => ms / 1000)),
+    ctaClicks: at('cta.click'),
+    ctaClickRate: at('step.reach', 'cta') > 0 ? at('cta.click') / at('step.reach', 'cta') : null,
+    loginMethods: (() => {
+      const choices = sum('login.method', ['google', 'facebook', 'pseudo']);
+      return (['google', 'facebook', 'pseudo'] as const).map((key) => ({
+        id: key,
+        label: ({ google: 'Google selected', facebook: 'Facebook selected', pseudo: 'Pseudo form submitted' })[key],
+        count: at('login.method', key),
+        shareOfChoices: choices > 0 ? at('login.method', key) / choices : null,
+      }));
+    })(),
+    loginMethodChoices: sum('login.method', ['google', 'facebook', 'pseudo']),
     camera: { granted: cameraGranted, denied: cameraDenied, unavailable: cameraUnavailable, deniedRate: cameraAsked > 0 ? cameraDenied / cameraAsked : null },
     photos: { taken, byMethod: tallies('photo.taken', methods, METHOD_LABELS), retakes, retakesPerPhoto: taken > 0 ? retakes / taken : null, uploadStarted, uploadSucceeded, uploadFailed },
     saves: { ok: at('photo.save', 'ok'), failed: at('photo.save', 'failed') },
@@ -167,12 +188,19 @@ export async function loadJourneyRows(db: Db, eventId: string): Promise<JourneyR
 }
 
 /** The milliseconds from opening to the first saved photo, from the raw rows still kept (30 days). Read only. */
-export async function loadCompleteMs(db: Db, eventId: string): Promise<number[]> {
-  const docs = await db.collection(COLLECTIONS.JOURNEY_EVENTS).find({ eventId, name: 'journey.complete' }, { projection: { ms: 1 } }).toArray();
-  return docs.map((doc) => doc.ms).filter((ms): ms is number => typeof ms === 'number' && Number.isFinite(ms) && ms >= 0);
+export async function loadCompleteMs(db: Db, eventId: string, range: { from?: string | null; to?: string | null } = {}): Promise<number[]> {
+  const docs = await db.collection(COLLECTIONS.JOURNEY_EVENTS).find({ eventId, name: 'journey.complete' }, { projection: { ms: 1, at: 1 } }).toArray();
+  return docs
+    .filter((doc) => {
+      if (!range.from && !range.to) return true;
+      const at = doc.at instanceof Date ? doc.at : typeof doc.at === 'string' ? new Date(doc.at) : null;
+      return at !== null && !Number.isNaN(at.getTime()) && dayInRange(at.toISOString().slice(0, 10), range.from, range.to);
+    })
+    .map((doc) => doc.ms)
+    .filter((ms): ms is number => typeof ms === 'number' && Number.isFinite(ms) && ms >= 0);
 }
 
 export async function loadJourneySummary(db: Db, eventId: string, range: { from?: string | null; to?: string | null } = {}): Promise<JourneySummary> {
-  const [rows, ms] = await Promise.all([loadJourneyRows(db, eventId), loadCompleteMs(db, eventId)]);
+  const [rows, ms] = await Promise.all([loadJourneyRows(db, eventId), loadCompleteMs(db, eventId, range)]);
   return summarizeJourney(rows, range, ms);
 }

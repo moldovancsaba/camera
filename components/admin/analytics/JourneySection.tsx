@@ -57,7 +57,9 @@ function Recorded({ journey }: { journey: JourneySummary }) {
         items={[
           { label: 'Visits', value: formatCount(journey.opens), description: `${plural(journey.resumed, 'return')} from a sign-in not counted as visits` },
           { label: 'Saved a photo', value: formatCount(journey.completed), description: `${formatRate(journey.completionRate)} of the visits` },
-          { label: 'Median time to the first photo', value: formatDuration(journey.medianCompleteSeconds), description: journey.medianCompleteSeconds === null ? 'No saved photo among the last 30 days of records' : 'From opening the page to the first saved photo, last 30 days' },
+          { label: 'Average time to the first photo', value: formatDuration(journey.averageCompleteSeconds), description: journey.averageCompleteSeconds === null ? 'No saved photo among the last 30 days of records' : 'From opening the first page to the first photo saved, last 30 days' },
+          { label: 'Median time to the first photo', value: formatDuration(journey.medianCompleteSeconds), description: 'From opening the first page to the first photo saved, last 30 days' },
+          { label: 'CTA click rate', value: formatRate(journey.ctaClickRate), description: `${formatCount(journey.ctaClicks)} of ${formatCount(journey.steps.find((step) => step.id === 'cta')?.count ?? 0)} visits that reached a CTA page clicked an action` },
           { label: 'Camera denied', value: formatCount(camera.denied), description: `${formatRate(camera.deniedRate)} of the times a desktop camera was asked for` },
           { label: 'Retakes', value: formatCount(photos.retakes), description: photos.retakesPerPhoto === null ? 'No photo taken yet' : `${(Math.round(photos.retakesPerPhoto * 100) / 100).toString()} for each photo taken` },
           { label: 'Consent left', value: formatCount(consent.abandoned), description: `Shown to ${formatCount(consent.shown)} visits, accepted by ${formatCount(consent.accepted)}` },
@@ -65,6 +67,11 @@ function Recorded({ journey }: { journey: JourneySummary }) {
           { label: 'Downloads', value: formatCount(shares.downloads), description: `${plural(shares.views, 'view')} of the public photo page` },
         ]}
       />
+
+      <Panel title="Sign-in and identity choices" description="The choice made on the Who-are-you page. Google and Facebook are clicks that start SSO; Pseudo is a valid submission of the name and e-mail form. These are choices, not confirmation that an SSO sign-in completed.">
+        <Metrics items={journey.loginMethods.map((method) => ({ label: method.id === 'pseudo' ? 'Pseudo form' : method.id[0].toUpperCase() + method.id.slice(1), value: formatRate(method.shareOfChoices), description: `${formatCount(method.count)} of ${formatCount(journey.loginMethodChoices)} recorded choices` }))} />
+        {journey.loginMethodChoices === 0 ? <Note>No sign-in or identity method has been selected during the recorded visits.</Note> : null}
+      </Panel>
 
       <Panel title="Steps reached" description="How many visits reached each step at least once, out of all visits. The steps an event does not have stay at zero; the order is the usual one, an editor can change it.">
         <Bars label="Steps reached" rows={journey.steps} total={journey.opens} />

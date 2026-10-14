@@ -5,6 +5,8 @@
 
 ## Current change
 
+Analytics now includes average and median time from the first capture page to the first saved photo, CTA click-through, selected sign-in/identity method shares, rejection-reason percentages, and returning/new shares among identifiable photo submitters. Exact denominators, collection fields and retention are in `docs/ANALYTICS_DATA_DICTIONARY.md`. Journey remains anonymous; Google/Facebook values are provider-route selections, not confirmed authentication results.
+
 The guest photo is uploaded through the established `/api/submissions` flow when they confirm the crop with **TOVÁBB**. The reframe screen shows upload progress, and the flow advances only after the submission is stored. A failed upload leaves the photo on screen for retry. An unauthenticated record is flagged `NO USER`; a later SSO login links it to the account.
 
 The Pages editor now lets event editors move every journey page, including Take Photo, the frame/message selector, and default consent/login pages. If consent or login moves after photo-taking, the internal save step follows it so the photo is still saved only after those required pages are complete. See the newest entry in `RELEASE_NOTES.md`.

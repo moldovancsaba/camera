@@ -60,6 +60,10 @@ export const JOURNEY_VOCABULARY = {
   'photo.save': { keys: ['ok', 'failed'], from: 'client' },
   /** The first saved photo of the visit; the key is how long it took. */
   'journey.complete': { keys: TIME_BUCKETS, from: 'client' },
+  /** A guest pressed an enabled call-to-action action at least once in this visit. */
+  'cta.click': { keys: null, from: 'client' },
+  /** The sign-in/identity method the guest selected or successfully submitted; this is a choice, not proof of authentication. */
+  'login.method': { keys: ['google', 'facebook', 'pseudo'], from: 'client' },
   'share.click': { keys: SHARE_CHANNELS, from: 'client' },
   /** The public photo page was opened by a person (not a link preview). */
   'share.view': { keys: null, from: 'server' },

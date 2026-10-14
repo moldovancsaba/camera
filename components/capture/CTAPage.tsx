@@ -28,6 +28,7 @@ import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/vi
 import { redirectingText } from '@/lib/events/page-texts';
 import { ctaLayout } from '@/lib/capture/cta-layout';
 import { useT, useUiTexts } from '@/components/i18n/UiLanguageProvider';
+import { journey } from '@/lib/journey/client';
 
 export interface CTAPageConfig {
   title: string;
@@ -92,6 +93,7 @@ export default function CTAPage({
   const opening = redirectingText(config.redirectingText, language, texts);
 
   const handleRedirect = () => {
+    journey.once('cta.click');
     if (urlToVisit) {
       if (hasButton) {
         setIsRedirecting(true);
@@ -108,6 +110,7 @@ export default function CTAPage({
   };
 
   const handleContinue = () => {
+    journey.once('cta.click');
     onNext({
       accepted: true,
       acceptedAt: new Date().toISOString(),

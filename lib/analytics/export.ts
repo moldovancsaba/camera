@@ -66,6 +66,7 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport, jour
   // The reasons chosen from the list, in the words of the event's vocabulary (a photo with several reasons is in each).
   add('decline reasons from the list', 'declined photos with no reason from the list', vetting.rejectedWithoutReasons);
   tallies('decline reasons from the list', vetting.rejectReasons);
+  for (const reason of vetting.rejectReasons) add('decline reason share', reason.label, photos.rejected > 0 ? Math.round((reason.count / photos.rejected) * 1000) / 1000 : null);
 
   const people = report.people.summary;
   const { vocabulary } = report;
@@ -88,6 +89,8 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport, jour
   add('users', 'gave an e-mail', users.typedEmail);
   add('users', 'photos without an e-mail or an account', users.photosWithoutIdentity);
   add('users', 'took more than one photo', users.returning);
+  add('users', 'returning share (2+ photos; 0 to 1)', users.distinct > 0 ? Math.round((users.returning / users.distinct) * 1000) / 1000 : null);
+  add('users', 'new share (one photo in range; 0 to 1)', users.distinct > 0 ? Math.round(((users.distinct - users.returning) / users.distinct) * 1000) / 1000 : null);
   add('users', 'photos per user', users.photosPerUser);
   add('users', 'registered at the Who-are-you step', users.registered);
   add('users', 'registered who took a photo', users.registeredWithPhoto);
@@ -160,7 +163,15 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport, jour
     add('journey', 'completed (saved a photo)', journey.completed);
     add('journey', 'completion rate (0 to 1)', journey.completionRate === null ? null : Math.round(journey.completionRate * 1000) / 1000);
     tallies('journey time to the first saved photo', journey.timeToComplete);
+    add('journey', 'average seconds to the first saved photo (last 30 days)', journey.averageCompleteSeconds);
     add('journey', 'median seconds to the first saved photo (last 30 days)', journey.medianCompleteSeconds);
+    add('journey', 'CTA clicks (unique visits)', journey.ctaClicks);
+    add('journey', 'CTA click rate (0 to 1)', journey.ctaClickRate === null ? null : Math.round(journey.ctaClickRate * 1000) / 1000);
+    add('journey', 'sign-in and identity method choices', journey.loginMethodChoices);
+    for (const method of journey.loginMethods) {
+      add('journey login method', method.label, method.count);
+      add('journey login method share (0 to 1)', method.label, method.shareOfChoices === null ? null : Math.round(method.shareOfChoices * 1000) / 1000);
+    }
     add('journey camera', 'permission granted', journey.camera.granted);
     add('journey camera', 'permission denied', journey.camera.denied);
     add('journey camera', 'camera not available (none, in use or failed)', journey.camera.unavailable);

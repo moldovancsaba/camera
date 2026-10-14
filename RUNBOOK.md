@@ -467,16 +467,18 @@ Every outbound call on the login, logout and partner paths has a fixed deadline 
 
 **The keep-or-drop decision on the messmass login push** (owner's call, issue 178): after a few days of logins, count `messmass.session_push` by `context.outcome`. If `ok` is (almost) never there, the push costs every login up to 3 s for nothing and can be removed; if it is there for the people who use both apps, keep it. The permission calls in `lib/auth/sso-permissions.ts` are not bounded yet.
 
-## Analytics view (issue 521, phase 1)
+## Analytics view and Journey recording (issue 521)
 
-The event menu **Analytics** and the Operations hub **Analytics** show numbers computed from data that already exists (`docs/ANALYTICS.md`: every figure, its definition and its source field, and what is not measured yet). Operating notes:
+The event menu **Analytics** and the Operations hub **Analytics** show the measures documented in `docs/ANALYTICS.md`; `docs/ANALYTICS_DATA_DICTIONARY.md` lists each source, retention, denominator and limitation. Operating notes:
 
-- **Read only.** Opening the page, changing the days or the clock and downloading the CSV (`/api/admin/events/<id>/export/analytics`) only read `submissions`, `email_registrations`, `slideshows`, `short_links` and `short_link_hits`. Nothing is written, nothing is sent to messmass, and nothing about the capture path, the giant screen or the approver's screens is touched.
+- **Read only.** Opening the page, changing the days or the clock and downloading the CSV (`/api/admin/events/<id>/export/analytics`) only read records. Analytics never pushes to messmass.
 - **No cap, one pass.** A report reads the event's photos once with a narrow projection (no row limit). At a match-day size (thousands of photos) it is a few megabytes and well under a second on the database; an event with hundreds of thousands of photos would need an aggregation pipeline instead, and the page would say nothing about it: watch the load time of `/admin/events/<id>/analytics` after a very large event.
 - **Who sees it:** the event's managers and global admins (the Vetting tab's rule); the Operations page (`/admin/analytics`) is for global admins. The Try-on tab (the try-on moderation report) went with the try-on integration, issue 557.
 - **A number looks wrong?** Check the line above the tabs first (what is counted, and what was left out: removed from the event, and photos whose picture is gone), then the clock (Budapest or UTC) and the days; photos an editor added in the gallery are counted apart. A user is counted only when an e-mail or an account tells them apart.
 - **Counters for messmass are prepared and off.** The document `messmass-counters` in `admin_settings` is the switch (off unless `enabled` is the boolean `true`); nothing in camera calls the sync, the Messmass tab of the Analytics only previews, and messmass has no `photo-stats` route yet (`docs/ANALYTICS.md`, "Counters for messmass"). **Do not switch it on by hand**: it would do nothing today, and the first real push is the owner's decision (section 8 of CLAUDE.md: never test data into production messmass).
 - **Time to first decision** needs `photoReview.submittedAt` and a `reviewHistory` entry; photos approved when vetting was switched on for the event have no record and no time (the Vetting tab says how many).
+- **Journey switch and retention.** The Journey recorder uses the global Admin Analytics switch. When it is off, no Journey event is sent. Daily aggregates are retained for reporting; raw timing/event rows expire after 30 days through Mongo's `journey_events_at_ttl` index (`npm run db:ensure-indexes` creates or verifies it). The first server write also attempts index creation. If average/median time is unavailable for a date range older than raw retention, use historical time buckets; do not interpret missing raw duration as zero.
+- **Interpret the requested measures carefully.** CTA rate is unique visits clicking an action divided by visits reaching a CTA page. Provider percentages describe Google/Facebook entry clicks and valid pseudo-form submissions, not completed SSO authentication. Rejection reason percentages can add above 100% because a photo can carry several reasons. Returning/new refers to identifiable photo submitters in the selected date range, not repeat website visits.
 
 ## Scheduled jobs and workers
 
