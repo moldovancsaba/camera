@@ -14,6 +14,7 @@ const PAGE_STEP: Record<string, StepKey> = {
   welcome: 'welcome',
   accept: 'consent',
   'who-are-you': 'who-are-you',
+  'frame-message-selection': 'frame',
   cta: 'cta',
   restart: 'restart',
 };

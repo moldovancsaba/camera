@@ -15,6 +15,7 @@ import type { TextOverrides } from '@/lib/i18n/overrides';
 
 export const DEFAULT_CONSENT_PAGE_ID = 'default-consent';
 export const DEFAULT_WELCOME_PAGE_ID = 'default-welcome';
+export const DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID = 'default-frame-message-selection';
 
 /** Older saves could persist a generated default and its customised copy side by side. Keep intentional multiple custom consent pages, but discard the default when a custom page now owns that role. */
 export function dedupeActiveRolePages(pages: readonly CustomPage[]): CustomPage[] {
@@ -98,6 +99,19 @@ export function defaultWelcomePage(order: number, now: string = new Date().toISO
   } as CustomPage;
 }
 
+/** The built-in selector is a real, reorderable journey page; its content is supplied by the capture flow. */
+export function defaultFrameMessageSelectionPage(order: number, now: string = new Date().toISOString()): CustomPage {
+  return {
+    pageId: DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID,
+    pageType: 'frame-message-selection' as CustomPage['pageType'],
+    order,
+    isActive: true,
+    config: { title: 'Frame and message selection', description: '', buttonText: '' },
+    createdAt: now,
+    updatedAt: now,
+  } as CustomPage;
+}
+
 /** True when an active consent ("accept") page comes before the photo is saved (before the take-photo page, or before the submit page when the event has one, or anywhere if there is no take-photo page). */
 export function hasConsentPageBeforePhoto(pages: readonly CustomPage[]): boolean {
   return pagesBeforeSave(pages).some((page) => page.pageType === 'accept');
@@ -135,7 +149,22 @@ export function withDefaultJourneyPages(
   return withDefaultOrders(withRequiredIdentityPage(withConsent, options.vettingRequired, options.now, options.language, options.texts), options.defaultOrders);
 }
 
-const DEFAULT_PAGE_IDS: readonly string[] = [DEFAULT_WELCOME_PAGE_ID, DEFAULT_CONSENT_PAGE_ID, DEFAULT_IDENTITY_PAGE_ID];
+/** Add the built-in selector as one ordered guest page without affecting consent checks or other default-page consumers. */
+export function withFrameMessageSelectionPage(pages: readonly CustomPage[], defaultOrders?: Record<string, number> | null, now?: string): CustomPage[] {
+  const photo = pages.find((page) => page.pageType === 'take-photo');
+  const prior = photo ? pages.filter((page) => page.pageId !== DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID && page.order < photo.order).sort((a, b) => b.order - a.order)[0] : undefined;
+  const defaultOrder = photo
+    ? prior ? (prior.order + photo.order) / 2 : photo.order - 0.5
+    : (pages.length ? Math.min(...pages.map((page) => page.order)) - 0.5 : 0);
+  const savedOrder = Number.isFinite(defaultOrders?.[DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID])
+    ? defaultOrders![DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID]
+    : defaultOrder;
+  // The frame must be chosen before a shutter press even if stale or hand-edited order data placed it later.
+  const order = photo && savedOrder >= photo.order ? photo.order - 0.001 : savedOrder;
+  return [...pages.filter((page) => page.pageId !== DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID && page.pageType !== 'frame-message-selection'), defaultFrameMessageSelectionPage(order, now)];
+}
+
+const DEFAULT_PAGE_IDS: readonly string[] = [DEFAULT_WELCOME_PAGE_ID, DEFAULT_CONSENT_PAGE_ID, DEFAULT_IDENTITY_PAGE_ID, DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID];
 
 /** The default pages of an event whose editor moved them (`Event.defaultPageOrders`, issue 535): each default page that has a saved place takes it; nothing else changes. */
 function withDefaultOrders(pages: CustomPage[], orders: Record<string, number> | null | undefined): CustomPage[] {

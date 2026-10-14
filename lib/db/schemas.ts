@@ -235,6 +235,7 @@ export enum CustomPageType {
   SUBMIT = 'submit',            // Where the photo is saved when the take-photo page's submit is not part of it: pages before it run between taking and saving (issue 535)
   RESTART = 'restart',          // Restart the full experience from the beginning
   WELCOME = 'welcome',          // Step 0: full-screen picture and a Start button
+  FRAME_MESSAGE_SELECTION = 'frame-message-selection', // Built-in, ordered choice page before the camera
 }
 
 /**
@@ -341,7 +342,7 @@ export interface CustomPage {
   updatedAt: string;           // ISO 8601 timestamp of last modification
 }
 
-/** Whether guests can choose an event's available frame and/or message in the capture flow. */
+/** Whether guests choose both sections, follow their saved settings, or choose the frame automatically while messages remain independently selectable. */
 export type FrameMessageSelectionDisplay = 'automatic' | 'show' | 'hide';
 
 /**
@@ -379,7 +380,7 @@ export interface Event {
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** How a user gets the layout and the message of the frame (epic 444, lib/frame/selection.ts): each `editor` (with a pick), `random` or `user`. Missing = what the event always did. */
   frameSelection?: { layout: { mode: 'editor' | 'random' | 'user'; pick: string | null }; message: { mode: 'editor' | 'random' | 'user'; pick: string | null } } | null;
-  /** Whether the frame/message choice step follows the frame settings, is forced on for available choices, or is hidden. Missing = automatic. */
+  /** Whether the ordered selection page follows Frames settings, offers both choices, or hides frame choices while message choice stays independent. Missing = automatic. */
   frameMessageSelectionDisplay?: FrameMessageSelectionDisplay;
   /** Event-specific square tile appearance for frame/layout choices in the guest flow. */
   frameSelectionTiles?: Record<string, { imageUrl?: string; color?: string }>;

@@ -54,9 +54,11 @@ import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
 import { ORIGINAL_UPLOAD_ENDPOINT, TEMPORARY_CAPTURE_PREFIX } from '@/lib/submissions/original-image';
 import { frameSilhouette } from '@/lib/frame/silhouette';
-import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
+import { frameWithSelectionDisplay, pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
 import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
 import { storedFrameSelection } from '@/lib/frame/selection';
+import FrameMessageSelectionPage from '@/components/capture/FrameMessageSelectionPage';
+import { DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID, withFrameMessageSelectionPage } from '@/lib/events/default-pages';
 import { darkAreaUrl } from '@/lib/frame/dark-area';
 import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
 import { PREVIEW_PANEL_CLASS, PREVIEW_PICTURE_CLASS, PREVIEW_ROW_CLASS } from '@/components/capture/preview-layout';
@@ -95,6 +97,7 @@ interface EventData {
   eventDate: string | null;
   location: string | null;
   customPages: CustomPage[];  // Custom page flow
+  journeyContext?: { defaultOrders?: Record<string, number> };
   loadingText?: string;  // Customizable loading text
   tourEnabled?: boolean; // The guided tour is off unless the event turns it on (camera#356)
   acceptanceOnWhoAreYou?: boolean; // The consent page is one checkbox on the Who-are-you page (issue 523)
@@ -142,23 +145,6 @@ interface EventFrameAssignment {
   isActive: boolean;
   /** The library item behind the assignment, as the event data carries it (null when the item no longer exists). */
   frameDetails?: { frameId: string; name?: string; imageUrl?: string; width?: number; height?: number; isActive?: boolean; createdAt?: string; hasMessageArea?: boolean } | null;
-}
-
-function frameWithSelectionDisplay(frame: CaptureFrame | null | undefined, display: FrameMessageSelectionDisplay = 'automatic'): CaptureFrame | null {
-  if (!frame) return null;
-  if (display === 'show') {
-    return { ...frame, selection: { layout: { mode: 'user', pick: null }, message: { mode: 'user', pick: null } } };
-  }
-  if (display === 'hide' && frame.selection) {
-    return {
-      ...frame,
-      selection: {
-        layout: frame.selection.layout.mode === 'user' ? { mode: 'random', pick: null } : frame.selection.layout,
-        message: frame.selection.message.mode === 'user' ? { mode: 'random', pick: null } : frame.selection.message,
-      },
-    };
-  }
-  return frame;
 }
 
 interface EventLogo {
@@ -567,7 +553,10 @@ export default function EventCapturePage({
         }
         
         // Set up the custom page flow
-        const pages = (eventData.customPages || []).filter((p: CustomPage) => p.isActive);
+        const pages = withFrameMessageSelectionPage(
+          (eventData.customPages || []).filter((p: CustomPage) => p.isActive),
+          eventData.journeyContext?.defaultOrders,
+        );
         if (pages.length > 0) {
           const { onboardingPages: resolvedOnboardingPages } = splitCustomPages(pages);
           setCustomPages([...pages].sort((a, b) => a.order - b.order));
@@ -824,7 +813,7 @@ export default function EventCapturePage({
     if (frames.length <= 1) return null;
     if (selectionDisplay === 'show') return { mode: 'user' as const, pick: null };
     const configured = storedFrameSelection(event?.frameSelection)?.layout ?? null;
-    if (selectionDisplay === 'hide') return configured?.mode === 'editor' ? configured : { mode: 'random' as const, pick: null };
+    if (selectionDisplay === 'hide') return { mode: 'random' as const, pick: null };
     return configured;
   }, [event?.frameSelection, frames.length, selectionDisplay]);
   const layoutChoices = useMemo(() => (selection && selectionFrame ? layoutsToChoose(selectionFrame) : []), [selection, selectionFrame]);
@@ -1193,6 +1182,10 @@ export default function EventCapturePage({
   // Custom page navigation handlers
 
   const enterCaptureStep = () => {
+    if (customPages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID)) {
+      setStep('capture-photo');
+      return;
+    }
     if (selectedFrame) {
       setStep('capture-photo');
       return;
@@ -1288,6 +1281,27 @@ export default function EventCapturePage({
       }
     }
   };
+
+  // The selector is an ordered journey page, not an extra step appended after the pages editor's flow.
+  // If it has no available choices, advance it without showing an empty screen.
+  useEffect(() => {
+    if (flowPhase !== 'onboarding' && flowPhase !== 'presubmit') return;
+    const phasePages = flowPhase === 'onboarding' ? onboardingPages : presubmitPages;
+    const page = phasePages[currentPageIndex];
+    if (page?.pageId !== DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID || asksAnySelection) return;
+    if (currentPageIndex + 1 < phasePages.length) {
+      setCurrentPageIndex(currentPageIndex + 1);
+    } else if (flowPhase === 'onboarding') {
+      setFlowPhase('capture');
+      if (selectedFrame) setStep('capture-photo');
+      else if (frames.length === 0) setStep(nextStep(selectionFrame, choice));
+      else setStep(ownLayout && ownLayout.mode !== 'user' ? 'capture-photo' : 'select-frame');
+    } else {
+      setPresubmitDone(true);
+      setFlowPhase('capture');
+      setSaveRequested(true);
+    }
+  }, [flowPhase, currentPageIndex, asksAnySelection, onboardingPages, presubmitPages, selectedFrame, frames.length, selectionFrame, choice, ownLayout]);
   
   /**
    * Navigate to previous page
@@ -1508,6 +1522,38 @@ export default function EventCapturePage({
               buttonBorderColor: currentPage.config.buttonBorderColor,
             }}
             onNext={handleNextPage}
+          />
+        );
+
+      case 'frame-message-selection':
+        return (
+          <FrameMessageSelectionPage
+            frames={frames}
+            asksFrame={asksFrame}
+            asksLayout={asksLayout}
+            asksMessage={asksMessage}
+            selectedFrameId={selectedFrame?.frameId ?? null}
+            selectedLayoutId={choice.layoutId}
+            selectedMessageIndex={choice.messageIndex}
+            layoutChoices={layoutChoices}
+            messageChoices={messageChoices}
+            tiles={event.frameSelectionTiles}
+            logoUrl={onboardingLogoUrl}
+            brandColor={event.brandColor}
+            layoutName={(id) => event.frames?.find((assignment) => assignment.frameId === id)?.frameDetails?.name || t('flow.selectLayout.title')}
+            title={t('flow.selectFrameMessage.title')}
+            frameHeading={t('flow.selectFrame.title')}
+            layoutHeading={t('flow.selectLayout.title')}
+            messageHeading={t('flow.selectMessage.title')}
+            generatedLayoutName={t('flow.selectLayout.generated')}
+            chooseFrameFirst={t('flow.selectFrameMessage.chooseFrameFirst')}
+            continueText={t('flow.selectFrameMessage.continue')}
+            continueDisabled={!selectionComplete}
+            buttonSize={eventButtonSize}
+            onFrameSelect={handleFrameSelect}
+            onLayoutSelect={handleLayoutSelect}
+            onMessageSelect={handleMessageSelect}
+            onContinue={handleNextPage}
           />
         );
 

@@ -9,7 +9,7 @@ import { CustomPageType, generateId, type CustomPage } from '@/lib/db/schemas';
 import type { UiLanguage } from '@/lib/i18n';
 import type { TextOverrides } from '@/lib/i18n/overrides';
 import type { DocumentSettings } from './checkbox-settings';
-import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, withDefaultJourneyPages } from './default-pages';
+import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, withDefaultJourneyPages, withFrameMessageSelectionPage } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
 import { acceptanceOnLogin } from './acceptance';
 
@@ -29,6 +29,8 @@ export interface JourneyContext {
   documents?: DocumentSettings;
   /** The effective setting: consent is rendered as one checkbox on Who-are-you when that page runs before saving; without Submit, post-camera login delays saving until it completes. */
   acceptanceOnWhoAreYou?: boolean;
+  /** Pages editor only: include the reorderable built-in frame/message selector row. */
+  includeFrameMessageSelectionPage?: boolean;
 }
 
 export type JourneyStepId = 'waiting' | 'share' | 'emails' | 'result';
@@ -38,12 +40,13 @@ export type JourneyRow =
   | { kind: 'default'; page: CustomPage; reason: string }
   | { kind: 'step'; id: JourneyStepId; title: string; description: string; editedIn: string };
 
-const isDefaultPage = (page: CustomPage) => page.pageId === DEFAULT_WELCOME_PAGE_ID || page.pageId === DEFAULT_CONSENT_PAGE_ID || page.pageId === DEFAULT_IDENTITY_PAGE_ID;
+const isDefaultPage = (page: CustomPage) => page.pageId === DEFAULT_WELCOME_PAGE_ID || page.pageId === DEFAULT_CONSENT_PAGE_ID || page.pageId === DEFAULT_IDENTITY_PAGE_ID || page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID;
 
 const REASON: Record<string, string> = {
   [DEFAULT_WELCOME_PAGE_ID]: "The first thing a user sees: the giant screen drawn from this event's default slideshow and a Start button. This page is used until you make your own welcome page.",
   [DEFAULT_CONSENT_PAGE_ID]: 'Every user accepts the terms, the cookies and the privacy policy first (each can be switched off or made optional in the consent page settings above). This page is used until you make your own consent page.',
   [DEFAULT_IDENTITY_PAGE_ID]: 'A photo that is checked before it is shown needs an e-mail or a social login. This page is used until you make your own login page.',
+  [DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID]: 'Guests choose from the frame and message options enabled on the Frames page. Empty choices are skipped. This page must stay before Take Photo.',
 };
 
 /**
@@ -73,8 +76,9 @@ function stepsAfterPhoto(context: JourneyContext, separateSubmit = false, saveAf
  */
 export function effectiveJourney(storedPages: readonly CustomPage[] | null | undefined, context: JourneyContext, now?: string): JourneyRow[] {
   const defaults = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen, texts: context.texts, defaultOrders: context.defaultOrders, documents: context.documents });
+  const orderedDefaults = context.includeFrameMessageSelectionPage ? withFrameMessageSelectionPage(defaults, context.defaultOrders, now) : defaults;
   // Match the guest flow: if consent is merged into the Who-are-you page, it is a part of that parent step, not a standalone journey page.
-  const acceptance = acceptanceOnLogin(defaults, context.acceptanceOnWhoAreYou === true);
+  const acceptance = acceptanceOnLogin(orderedDefaults, context.acceptanceOnWhoAreYou === true);
   const pages = acceptance.pages;
   const rows: JourneyRow[] = [...pages]
     .sort((a, b) => a.order - b.order)
@@ -111,6 +115,7 @@ function needsSeparateSubmitForPhotoMove(rows: readonly JourneyRow[], index: num
   const row = rows[index];
   if (!row || !isPageRow(row) || !isTakePhotoRow(row)) return false;
   const previousPage = rows.slice(0, index).findLast(isPageRow);
+  if (previousPage?.page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID) return false;
   return previousPage?.kind === 'default';
 }
 
@@ -127,6 +132,7 @@ export function moveTarget(rows: readonly JourneyRow[], index: number, direction
   for (let j = index + direction; j >= 0 && j < rows.length; j += direction) {
     const other = rows[j];
     if (!isPageRow(other)) continue;
+    if ((isTakePhotoRow(row) && other.page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID) || (isTakePhotoRow(other) && row.page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID)) return null;
     if ((isSubmitRow(row) && isTakePhotoRow(other)) || (isTakePhotoRow(row) && isSubmitRow(other))) return null;
     const defaultAndOther = row.kind === 'default' ? other : other.kind === 'default' ? row : null;
     if (defaultAndOther && (isSubmitRow(defaultAndOther) || (isTakePhotoRow(defaultAndOther) && !hasSubmit))) return null;

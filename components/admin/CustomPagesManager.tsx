@@ -19,7 +19,7 @@ import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, type FrameMessageSelectionDisplay, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
 import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
-import { dedupeActiveRolePages } from '@/lib/events/default-pages';
+import { DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID, dedupeActiveRolePages } from '@/lib/events/default-pages';
 import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type CheckboxMode, type EffectiveCheckboxes, type StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 import CheckboxSettingsFields, { type CheckboxModes } from '@/components/admin/CheckboxSettingsFields';
 
@@ -217,11 +217,11 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
     ? (partnerCheckboxes?.acceptance.shown ?? acceptanceOnWhoAreYou === true)
     : modes.acceptance !== 'off';
   const rows = journeyContext
-    ? effectiveJourney(pagesWithPlaceholder, { ...journeyContext, defaultOrders, acceptanceOnWhoAreYou: acceptanceEnabled })
+    ? effectiveJourney(pagesWithPlaceholder, { ...journeyContext, defaultOrders, acceptanceOnWhoAreYou: acceptanceEnabled, includeFrameMessageSelectionPage: true })
     : sortedPages.map((page) => ({ kind: 'own' as const, page }));
   // When the acceptance is attached to the Who-are-you page, the Accept page is intentionally absent from the journey list. Keep its editor reachable as configuration, without presenting it as another guest step.
   const consentSettingsRow = journeyContext && acceptanceEnabled
-    ? effectiveJourney(pagesWithPlaceholder, { ...journeyContext, defaultOrders, acceptanceOnWhoAreYou: false }).find((row) => row.kind !== 'step' && row.page.pageType === CustomPageType.ACCEPT)
+    ? effectiveJourney(pagesWithPlaceholder, { ...journeyContext, defaultOrders, acceptanceOnWhoAreYou: false, includeFrameMessageSelectionPage: true }).find((row) => row.kind !== 'step' && row.page.pageType === CustomPageType.ACCEPT)
     : undefined;
   const consentSettingsPage = consentSettingsRow && consentSettingsRow.kind !== 'step' ? consentSettingsRow.page : undefined;
   // Built-in follow-up behavior is configured in its own settings sections; the journey list is for pages guests can visit and editors can arrange.
@@ -353,7 +353,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
     const filtered = pages.filter(p => p.pageId !== pageId);
     if (journeyContext && defaultOrders && Object.keys(defaultOrders).length > 0) {
       // The default pages have saved places: number them together with the own pages that remain, so both keep one order.
-      const numbered = renumberJourney(effectiveJourney(ensureTakePhotoPlaceholder(filtered), { ...journeyContext, defaultOrders }));
+      const numbered = renumberJourney(effectiveJourney(ensureTakePhotoPlaceholder(filtered), { ...journeyContext, defaultOrders, includeFrameMessageSelectionPage: true }));
       setPages(numbered.pages);
       setDefaultOrders(numbered.defaultOrders);
       return;
@@ -468,27 +468,38 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
           ) : null}
         </div>
 
-        <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', display: 'grid', gap: '0.75rem', padding: '1rem' }} data-frame-message-selection-settings>
-          <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <h3 style={{ margin: 0 }}>Frame and message selection</h3>
-            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
-              This is one capture-flow page before the camera. Show it to let guests choose from available options, hide it to use the event&apos;s fixed or random choices, or follow the settings on the Frames page. Empty sections and a page with nothing to choose are skipped automatically.
-            </p>
-          </div>
-          <label style={{ display: 'grid', gap: '0.35rem', maxWidth: '32rem' }}>
-            <span>When to show the selector</span>
-            <select value={selectionDisplay} onChange={(event) => setSelectionDisplay(event.currentTarget.value as FrameMessageSelectionDisplay)}>
-              <option value="automatic">Follow the settings on the Frames page</option>
-              <option value="show">Show guests all available choices</option>
-              <option value="hide">Hide the selector</option>
-            </select>
-          </label>
-        </section>
-
       {/* Page List */}
         <div style={{ display: 'grid', gap: '0.75rem' }}>
         {pageRows.map(({ row, rowIndex }, index) => {
           if (row.kind === 'default') {
+            if (row.page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID) {
+              return (
+                <article key={row.page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }} data-frame-message-selection-settings>
+                  <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
+                    <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
+                    <div style={{ display: 'grid', flex: '1 1 16rem', gap: '0.25rem', minWidth: 0 }}>
+                      <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
+                        <LabelTag tone="info" label="Built in" />
+                        <LabelTag tone="neutral" label="frame-message-selection" />
+                      </div>
+                      <strong style={{ fontSize: '0.875rem' }}>Frame and message selection</strong>
+                      <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>
+                        This is a page in the guest journey. Empty choice sections are skipped. When frame choices are hidden, multiple layouts are randomised (a single layout uses your Frames setting); messages keep their independent setting on the Frames page.
+                      </span>
+                    </div>
+                    <label style={{ display: 'grid', flex: '1 1 16rem', gap: '0.35rem', maxWidth: '24rem' }}>
+                      <span>Show frame choices on this page</span>
+                      <select value={selectionDisplay} onChange={(event) => setSelectionDisplay(event.currentTarget.value as FrameMessageSelectionDisplay)}>
+                        <option value="automatic">Follow the Frames page settings</option>
+                        <option value="show">Let guests choose frame and message when available</option>
+                        <option value="hide">Hide frame choices; follow the Frames page for messages</option>
+                      </select>
+                    </label>
+                  </div>
+                </article>
+              );
+            }
             return (
               <article key={row.page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                 <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
