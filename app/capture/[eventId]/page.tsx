@@ -294,6 +294,7 @@ export default function EventCapturePage({
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [collectedData, setCollectedData] = useState<CollectedData>({ consents: [] });
   const [flowPhase, setFlowPhase] = useState<'onboarding' | 'presubmit' | 'capture' | 'thankyou'>('onboarding');
+  const [resumePending, setResumePending] = useState(false);
   const nextPhotoRef = useRef<() => void>(() => undefined);
   const [signInError, setSignInError] = useState<{ code: string; message: string } | null>(null);
   const resumeHandled = useRef(false);
@@ -403,6 +404,7 @@ export default function EventCapturePage({
     // Only process resume once and only if explicitly signaled
     if (isResume && resumePageIndex !== null && !resumeHandled.current) {
       resumeHandled.current = true;
+      setResumePending(true);
       const pageIndex = parseInt(resumePageIndex, 10);
       
       if (!isNaN(pageIndex)) {
@@ -444,8 +446,13 @@ export default function EventCapturePage({
                 }
               } else {
                 // Advance to next page (skip who-are-you since we have the data).
-                setCurrentPageIndex(pageIndex + 1);
-                setFlowPhase('onboarding');
+                const nextPageIndex = pageIndex + 1;
+                if (nextPageIndex < onboardingPages.length) {
+                  setCurrentPageIndex(nextPageIndex);
+                  setFlowPhase('onboarding');
+                } else {
+                  setFlowPhase('capture');
+                }
               }
             } else {
               if (resumePhase === 'presubmit') {
@@ -460,6 +467,7 @@ export default function EventCapturePage({
             
             // Clean URL to prevent re-processing on refresh
             window.history.replaceState({}, '', window.location.pathname);
+            setResumePending(false);
           })
           .catch(err => {
             console.warn('Failed to fetch session during resume:', err);
@@ -471,13 +479,15 @@ export default function EventCapturePage({
             }
             // Clean URL even on error
             window.history.replaceState({}, '', window.location.pathname);
+            setResumePending(false);
           });
       } else {
         // Invalid page index, just clean URL
         window.history.replaceState({}, '', window.location.pathname);
+        setResumePending(false);
       }
     }
-  }, [eventId, isLoading, t, captureSubmissionResumeKey]); // Resume only after event settings have loaded, so initial event state cannot overwrite the restored capture.
+  }, [eventId, isLoading, t, captureSubmissionResumeKey, onboardingPages.length]); // Resume only after event settings have loaded, so initial event state cannot overwrite the restored capture.
 
   // OAuth / SSO sign-in failed (callback redirected here with ?error=&message=)
   useEffect(() => {
@@ -513,6 +523,7 @@ export default function EventCapturePage({
         // Check if we're resuming from SSO - if so, don't reset flow state
         const urlParams = new URLSearchParams(window.location.search);
         const isResume = urlParams.get('resume') === 'true';
+        setResumePending(isResume && urlParams.has('page'));
         
       // As a guest: a vetted event with no "who are you" page before the photo gets the default one first (camera#264).
       const response = await fetch(`/api/events/${eventId}?audience=guest`);
@@ -1534,6 +1545,7 @@ export default function EventCapturePage({
       // No current page, move to appropriate phase
       if (flowPhase === 'onboarding') {
         setFlowPhase('capture');
+        enterCaptureStep();
       } else if (flowPhase === 'presubmit') {
         finishPresubmit();
       } else {
@@ -1541,7 +1553,13 @@ export default function EventCapturePage({
         finalizeSubmissionForEventEnd();
         handleNextPhoto();
       }
-      return null;
+      return (
+        <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-3" role="status" aria-live="polite">
+          <div className="text-center">
+            <p className="text-lg">{own('event.loading', event?.loadingText)}</p>
+          </div>
+        </div>
+      );
     }
     
     // Render page based on type. The journey pages cannot be pinch-zoomed (the consent page can, it is for reading): lib/capture/page-lock.ts.
@@ -1748,6 +1766,16 @@ export default function EventCapturePage({
             </div>
           ) : null}
           <p className=" text-2xl">{own('event.loading', event?.loadingText)}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (resumePending) {
+    return (
+      <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-3" role="status" aria-live="polite">
+        <div className="text-center">
+          <p className="text-lg">{own('event.loading', event?.loadingText)}</p>
         </div>
       </div>
     );
@@ -2007,7 +2035,11 @@ export default function EventCapturePage({
                   viewControls={captureViews}
                   autoStart
                 />
-              ) : null}
+              ) : (
+                <div className="flex h-full w-full items-center justify-center p-6 text-center" role="status" aria-live="polite">
+                  <p className="text-lg">{own('event.loading', event?.loadingText)}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
