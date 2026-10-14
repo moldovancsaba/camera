@@ -29,6 +29,8 @@ export interface CaptureReturn {
   popupId?: string;
   /** The capture journey phase to resume; absent on older sign-ins. */
   phase?: 'onboarding' | 'presubmit';
+  /** The already-uploaded photo to restore after a post-capture sign-in. */
+  submissionId?: string;
 }
 
 const POPUP_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -42,13 +44,19 @@ export function parseCaptureReturn(eventId: unknown, page?: unknown, popupId?: u
   return { eventId, page: n, ...(validPopupId ? { popupId: validPopupId } : {}), ...(validPhase ? { phase: validPhase } : {}) };
 }
 
-export const encodeCaptureReturn = (r: CaptureReturn): string => `${r.eventId}:${r.page ?? ''}${r.popupId || r.phase ? `:${r.popupId ?? ''}` : ''}${r.phase ? `:${r.phase}` : ''}`;
+export function parseCaptureSubmissionId(value: unknown): string | null {
+  return typeof value === 'string' && /^[a-f\d]{24}$/i.test(value) ? value : null;
+}
+
+export const encodeCaptureReturn = (r: CaptureReturn): string => `${r.eventId}:${r.page ?? ''}${r.popupId || r.phase || r.submissionId ? `:${r.popupId ?? ''}` : ''}${r.phase || r.submissionId ? `:${r.phase ?? ''}` : ''}${r.submissionId ? `:${r.submissionId}` : ''}`;
 
 export function decodeCaptureReturn(value: string | undefined | null): CaptureReturn | null {
   if (!value) return null;
   const [eventId, page] = value.split(':');
-  const [, , popupId, phase] = value.split(':');
-  return parseCaptureReturn(eventId, page, popupId, phase);
+  const [, , popupId, phase, submissionId] = value.split(':');
+  const parsed = parseCaptureReturn(eventId, page, popupId, phase);
+  const validSubmissionId = parseCaptureSubmissionId(submissionId);
+  return parsed ? { ...parsed, ...(validSubmissionId ? { submissionId: validSubmissionId } : {}) } : null;
 }
 
 /** The page to open after the login: the capture page, with the resume signal when the step is known. */
@@ -56,13 +64,16 @@ export function captureReturnPath(r: CaptureReturn): string {
   if (r.page === null) return `/capture/${r.eventId}`;
   const query = new URLSearchParams({ resume: 'true', page: String(r.page) });
   if (r.phase) query.set('phase', r.phase);
+  if (r.submissionId) query.set('submission', r.submissionId);
   return `/capture/${r.eventId}?${query.toString()}`;
 }
 
 /** The login route: the target named by the link the guest followed, or null for a dashboard login. */
 export function captureReturnForLogin(request: NextRequest): CaptureReturn | null {
   const params = request.nextUrl.searchParams;
-  return parseCaptureReturn(params.get('captureEvent'), params.get('capturePage'), params.get('capturePopup'), params.get('capturePhase'));
+  const target = parseCaptureReturn(params.get('captureEvent'), params.get('capturePage'), params.get('capturePopup'), params.get('capturePhase'));
+  const submissionId = parseCaptureSubmissionId(params.get('captureSubmission'));
+  return target ? { ...target, ...(submissionId && target.phase === 'presubmit' ? { submissionId } : {}) } : null;
 }
 
 /** Records the target on the login's redirect to SSO; with no target it removes an older one, so a dashboard login is never sent to a selfie page. */

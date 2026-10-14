@@ -1248,20 +1248,35 @@ export default function EventCapturePage({
 
         if (resumePhase === 'presubmit') {
           const saved = JSON.parse(window.sessionStorage.getItem(captureSubmissionResumeKey) || 'null') as { eventId?: unknown; submissionId?: unknown } | null;
-          const submissionId = saved?.eventId === eventId && typeof saved.submissionId === 'string' && /^[a-f\d]{24}$/i.test(saved.submissionId)
-            ? saved.submissionId
+          const returnedSubmissionId = urlParams.get('submission');
+          const submissionId = typeof returnedSubmissionId === 'string' && /^[a-f\d]{24}$/i.test(returnedSubmissionId)
+            ? returnedSubmissionId
+            : saved?.eventId === eventId && typeof saved.submissionId === 'string' && /^[a-f\d]{24}$/i.test(saved.submissionId)
+              ? saved.submissionId
             : null;
           if (!submissionId) throw new Error('The saved photo reference is missing');
 
-          const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
-          setSavedSubmissionId(submissionId);
-          setShareUrl(`${origin}/share/${submissionId}`);
           const linkResponse = await fetch(`/api/submissions/${submissionId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'link_account' }),
           });
-          if (!linkResponse.ok) console.warn('The signed-in account could not be linked to the saved photo:', await linkResponse.text());
+          if (!linkResponse.ok) throw new Error(`Could not link the saved photo to the signed-in account (${linkResponse.status})`);
+
+          // OAuth reloads the page and clears its in-memory image state. Restore the image belonging
+          // to this exact submission before leaving the post-capture pages, so Preview cannot be blank.
+          const restoreResponse = await fetch(`/api/submissions/${submissionId}`);
+          if (!restoreResponse.ok) throw new Error(`Could not restore the saved photo (${restoreResponse.status})`);
+          const restorePayload = await restoreResponse.json();
+          const restored = restorePayload.data ?? restorePayload;
+          if (restored.submissionId !== submissionId || typeof restored.previewImageUrl !== 'string' || !restored.previewImageUrl) {
+            throw new Error('The saved photo could not be matched to this login');
+          }
+          const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
+          setSavedSubmissionId(submissionId);
+          setCompositeImage(restored.previewImageUrl);
+          setPendingApproval(restored.pending === true);
+          setShareUrl(restored.pending === true ? null : `${origin}/share/${submissionId}`);
           setCurrentPageIndex(pageIndex + 1);
           setFlowPhase('presubmit');
           journey.record('journey.resume');
@@ -1593,6 +1608,7 @@ export default function EventCapturePage({
             eventId={eventId}
             pageIndex={currentPageIndex}
             capturePhase={flowPhase === 'presubmit' ? 'presubmit' : 'onboarding'}
+            captureSubmissionId={flowPhase === 'presubmit' ? savedSubmissionId : null}
             onBeforeSocialLogin={flowPhase === 'presubmit' ? prepareCaptureForSocialLogin : undefined}
             onNext={handleWhoAreYouComplete}
             acceptance={
