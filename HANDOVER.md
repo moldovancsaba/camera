@@ -5,15 +5,10 @@
 
 ## Current change
 
-The current unreleased camera change lets the built-in frame/message selector
-move anywhere in the Pages journey. Before Take Photo, it selects the current
-photo; between Take Photo and Submit, it selects the final framing; after save,
-it selects the next photo. Its message choices use the event's established pill
-buttons, with the selected choice filled and the others white with the event
-ring. Frame visibility and message selection remain independent. When frame
-choices are hidden, multiple layouts are randomized and a sole layout uses the
-Frames setting. See the 2026-10-14 entries at the top of
-`RELEASE_NOTES.md`.
+The current unreleased camera change lets event editors choose the frame and
+message variant in the Welcome page screen composition. That event-specific
+choice redraws the welcome composition and does not change guest capture
+settings. See the 2026-10-14 entry at the top of `RELEASE_NOTES.md`.
 
 The event admin now has separate **Edit** and **Pages of the user journey**
 menu entries. The page list and its save action live at

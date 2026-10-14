@@ -1,11 +1,17 @@
 # RELEASE_NOTES.md
 
+## Unreleased — choose the frame and message in the welcome screen composition (2026-10-14)
+
+- **Changed:** the event's Slideshows > Welcome page screen card now lets an editor choose the frame and compatible message drawn over its photo window. The choice is event-specific and does not change guest capture settings; older events keep the historical default until the editor changes it.
+- **Verified locally:** TypeScript check, lint, production build, GDS checks, production guards, and inventory check passed. No browser walkthrough was run.
+- **GitHub:** Verify passed.
+
 ## Unreleased — give the user journey pages their own event menu item (2026-10-14)
 
 - **Changed:** event navigation now separates **Edit** from **Pages of the user journey**. The journey editor has its own `/admin/events/<id>/pages` page; event details remain at `/admin/events/<id>/edit`. The event overview links directly to both.
 - **Why:** ordering and editing guest-flow pages is a distinct task and should not be buried at the bottom of the event details form.
 - **Verified locally:** `npm run release:check` passed, including 345/345 unit-test files, GDS checks, production guards and the production build; `npm run inventory:check` passed. No authenticated browser walkthrough was run.
-- **GitHub:** Verify is pending.
+- **GitHub:** Verify passed.
 
 ## Unreleased — use the event pill buttons for message choices (2026-10-14)
 

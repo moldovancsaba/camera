@@ -23,6 +23,8 @@ interface State {
   photo: (PhotoView & { usable: boolean }) | null;
   pick: { id: string; name: string; imageUrl: string | null } | null;
   welcomeScreen: { url: string; generatedAt: string } | null;
+  compositionChoices: Array<{ frameId: string | null; frameName: string; messageIndex: number | null; message: string | null; imageUrl: string }>;
+  composition: { frameId: string | null; messageIndex: number | null } | null;
 }
 
 interface Payload<T> {
@@ -42,7 +44,7 @@ const CHOSEN = { ...OPTION, border: '2px solid var(--mantine-color-blue-filled)'
 
 export default function WelcomeScreenCard({ eventId, initial }: { eventId: string; initial?: { url: string; generatedAt: string } | null }) {
   const base = `/api/admin/events/${eventId}/welcome-window`;
-  const [state, setState] = useState<State | null>(initial ? { source: 'selfie', photo: null, pick: null, welcomeScreen: initial } : null);
+  const [state, setState] = useState<State | null>(initial ? { source: 'selfie', photo: null, pick: null, welcomeScreen: initial, compositionChoices: [], composition: null } : null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [photos, setPhotos] = useState<PhotoView[] | null>(null);
@@ -56,7 +58,7 @@ export default function WelcomeScreenCard({ eventId, initial }: { eventId: strin
     load().catch((failure: unknown) => setError(failure instanceof Error ? failure.message : 'The welcome page screen could not be loaded'));
   }, [load]);
 
-  const act = async (body: { source?: 'selfie' | 'photo' | 'standin'; photoId?: string; again?: boolean }) => {
+  const act = async (body: { source?: 'selfie' | 'photo' | 'standin'; photoId?: string; again?: boolean; composition?: { frameId: string | null; messageIndex: number | null } }) => {
     setBusy(true);
     setError(null);
     try {
@@ -80,6 +82,13 @@ export default function WelcomeScreenCard({ eventId, initial }: { eventId: strin
 
   const source = state?.source ?? 'selfie';
   const screen = state?.welcomeScreen ?? null;
+  const compositionChoices = state?.compositionChoices ?? [];
+  const compositionFrames = [...new Map(compositionChoices.map((choice) => [choice.frameId ?? '__generated__', { id: choice.frameId, name: choice.frameName }])).values()];
+  const selectedFrameId = state?.composition?.frameId ?? null;
+  const selectedMessageIndex = state?.composition?.messageIndex ?? null;
+  const compositionMessages = [...new Map(compositionChoices
+    .filter((choice) => choice.frameId === selectedFrameId)
+    .map((choice) => [choice.messageIndex === null ? '__none__' : String(choice.messageIndex), { index: choice.messageIndex, message: choice.message }])).values()];
 
   return (
     <div style={{ borderBottom: '1px solid var(--mantine-color-default-border)', display: 'grid', gap: '1rem', padding: '1rem 1.5rem' }}>
@@ -102,6 +111,47 @@ export default function WelcomeScreenCard({ eventId, initial }: { eventId: strin
       </div>
 
       {error ? <InlineAlert title="That did not work" message={error} severity="error" /> : null}
+
+      {compositionChoices.length > 0 ? (
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <strong>Frame and message in the composition</strong>
+          <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>
+            Choose the frame and message shown on the welcome page screen. Message choices update to match the selected frame.
+          </span>
+          <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 16rem), 1fr))' }}>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Frame
+              <select
+                value={selectedFrameId ?? '__generated__'}
+                disabled={busy}
+                onChange={(event) => {
+                  const frameId = event.target.value === '__generated__' ? null : event.target.value;
+                  const options = compositionChoices.filter((choice) => choice.frameId === frameId);
+                  const messageIndex = options.some((choice) => choice.messageIndex === selectedMessageIndex)
+                    ? selectedMessageIndex
+                    : options[0]?.messageIndex ?? null;
+                  void act({ composition: { frameId, messageIndex } });
+                }}
+              >
+                {compositionFrames.map((frame) => <option key={frame.id ?? '__generated__'} value={frame.id ?? '__generated__'}>{frame.name}</option>)}
+              </select>
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Message
+              <select
+                value={selectedMessageIndex === null ? '__none__' : String(selectedMessageIndex)}
+                disabled={busy || compositionMessages.length < 2}
+                onChange={(event) => {
+                  const messageIndex = event.target.value === '__none__' ? null : Number(event.target.value);
+                  void act({ composition: { frameId: selectedFrameId, messageIndex } });
+                }}
+              >
+                {compositionMessages.map((message) => <option key={message.index ?? '__none__'} value={message.index === null ? '__none__' : String(message.index)}>{message.message || 'No message'}</option>)}
+              </select>
+            </label>
+          </div>
+        </div>
+      ) : null}
 
       <div style={{ display: 'grid', gap: '0.5rem' }}>
         <strong>What shows in the photo window</strong>

@@ -2,7 +2,7 @@
  * What fills the photo window of the welcome page screen of an event (issue 540, docs/WELCOME_SCREEN_PHOTO_PLAN.md, lib/screen/welcome-window.ts).
  *
  * GET  /api/admin/events/[id]/welcome-window   the setting (`source`: `selfie` by default or `standin`), the sample selfie picked for the event and the stored picture (viewer)
- * PUT  /api/admin/events/[id]/welcome-window   `{ source?, photoId?, again? }`: set the source (`selfie`, `photo` with the `photoId` of a photo of the event, `standin`) and/or pick another sample selfie, then draw the picture again (manager); answers like GET
+ * PUT  /api/admin/events/[id]/welcome-window   `{ source?, photoId?, again?, composition? }`: set the photo window, pick another sample selfie, and/or select the frame/message variant, then draw the picture again (manager); answers like GET
  *
  * `[id]` is the Mongo _id of the event, as in the other admin event routes. A page's own `screenImageUrl` is never touched.
  */
@@ -41,8 +41,11 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   const { db, event, id } = await load(request, context, 'manager');
   const parsed = parseWindowRequest(await request.json().catch(() => null));
   if (!parsed.ok) throw apiBadRequest(parsed.reason);
-  const { source, photoId, again } = parsed.value;
+  const { source, photoId, again, composition } = parsed.value;
   if (source === 'photo' && !(await eligiblePhoto(db, event, photoId!))) throw apiBadRequest('This photo cannot be shown: it is not a photo of this event that is approved and visible.');
+  if (composition && !((event.frameDesign as { variants?: Array<{ frameId?: string | null; index?: number | null }> } | undefined)?.variants ?? []).some((variant) => (variant.frameId ?? null) === composition.frameId && (variant.index ?? null) === composition.messageIndex)) {
+    throw apiBadRequest('Choose a frame and message variant that exists for this event.');
+  }
   if (source !== undefined) {
     // The sample selfie is the default and is stored as nothing; the stand-in and a photo of the event are choices.
     const now = generateTimestamp();
@@ -54,6 +57,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
           : { $set: { updatedAt: now }, $unset: { 'welcomeWindow.source': '', 'welcomeWindow.photoId': '' } };
     await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: new ObjectId(id) }, update);
   }
+  if (composition) await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: new ObjectId(id) }, { $set: { welcomeScreenComposition: composition } });
   const current = (await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) })) ?? event;
   const slideshow = await ensureDefaultSlideshow(db, current);
   if (!slideshow.ok) return apiError(slideshow.reason, 503);

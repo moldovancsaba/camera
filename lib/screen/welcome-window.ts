@@ -25,16 +25,25 @@ export function windowSourceOf(event: Document | null | undefined): WindowSource
   return source === 'standin' || source === 'photo' ? source : 'selfie';
 }
 
-/** What a request may set: `source` is a known one (`photo` comes with the `photoId` of a submission), `again` a true or false; nothing else. */
-export function parseWindowRequest(input: unknown): { ok: true; value: { source?: WindowSource; photoId?: string; again?: boolean } } | { ok: false; reason: string } {
+/** What a request may set: a window source, a valid photo id, a new sample pick, and/or a frame/message composition variant. */
+export function parseWindowRequest(input: unknown): { ok: true; value: { source?: WindowSource; photoId?: string; again?: boolean; composition?: { frameId: string | null; messageIndex: number | null } } } | { ok: false; reason: string } {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return { ok: false, reason: 'A body with source and/or again is required.' };
-  const { source, photoId, again, ...rest } = input as Record<string, unknown>;
+  const { source, photoId, again, composition, ...rest } = input as Record<string, unknown>;
   if (Object.keys(rest).length > 0) return { ok: false, reason: `Unknown field: ${Object.keys(rest)[0]}.` };
   if (source !== undefined && !WINDOW_SOURCES.includes(source as WindowSource)) return { ok: false, reason: `source must be one of: ${WINDOW_SOURCES.join(', ')}.` };
   if (again !== undefined && typeof again !== 'boolean') return { ok: false, reason: 'again must be true or false.' };
   if (source === 'photo' && !(typeof photoId === 'string' && ObjectId.isValid(photoId))) return { ok: false, reason: 'source photo needs the photoId of a photo of the event.' };
   if (photoId !== undefined && source !== 'photo') return { ok: false, reason: 'photoId goes with source photo.' };
-  return { ok: true, value: { ...(source !== undefined ? { source: source as WindowSource } : {}), ...(photoId !== undefined ? { photoId: photoId as string } : {}), ...(again !== undefined ? { again } : {}) } };
+  let parsedComposition: { frameId: string | null; messageIndex: number | null } | undefined;
+  if (composition !== undefined) {
+    if (!composition || typeof composition !== 'object' || Array.isArray(composition)) return { ok: false, reason: 'composition must include a frameId and messageIndex.' };
+    const value = composition as Record<string, unknown>;
+    if (Object.keys(value).some((key) => key !== 'frameId' && key !== 'messageIndex')) return { ok: false, reason: 'composition contains an unknown field.' };
+    if (!(value.frameId === null || typeof value.frameId === 'string' && value.frameId.length > 0)) return { ok: false, reason: 'composition.frameId must be a frame id or null.' };
+    if (!(value.messageIndex === null || Number.isInteger(value.messageIndex) && (value.messageIndex as number) >= 0)) return { ok: false, reason: 'composition.messageIndex must be a non-negative index or null.' };
+    parsedComposition = { frameId: value.frameId as string | null, messageIndex: value.messageIndex as number | null };
+  }
+  return { ok: true, value: { ...(source !== undefined ? { source: source as WindowSource } : {}), ...(photoId !== undefined ? { photoId: photoId as string } : {}), ...(again !== undefined ? { again } : {}), ...(parsedComposition ? { composition: parsedComposition } : {}) } };
 }
 
 export interface WindowDeps {
@@ -123,6 +132,9 @@ export interface WindowState {
   pick: { id: string; name: string; imageUrl: string | null } | null;
   /** The stored welcome page screen picture, if any. */
   welcomeScreen: { url: string; generatedAt: string } | null;
+  /** The exact frame/message variants the editor can use in the welcome screen composition. */
+  compositionChoices: Array<{ frameId: string | null; frameName: string; messageIndex: number | null; message: string | null; imageUrl: string }>;
+  composition: { frameId: string | null; messageIndex: number | null } | null;
 }
 
 /** What the event card shows: the setting, the pick (with its name and picture) and the stored picture. */
@@ -133,10 +145,31 @@ export async function windowState(db: Db, event: Document): Promise<WindowState>
   const photoId = text((event.welcomeWindow as { photoId?: unknown } | undefined)?.photoId);
   const photo = photoId ? await eligiblePhoto(db, event, photoId) : null;
   const chosenPhoto = windowSourceOf(event) === 'photo' && photoId ? (photo ? { id: photoId, imageUrl: photo.picture.url, kind: photo.picture.framed ? ('framed' as const) : ('clean' as const), usable: true } : { id: photoId, imageUrl: '', kind: 'framed' as const, usable: false }) : null;
+  const design = event.frameDesign as { variants?: Array<{ frameId?: string | null; index?: number | null; message?: string | null; imageUrl?: string }> } | undefined;
+  const variants = (design?.variants ?? []).filter((variant) => typeof variant.imageUrl === 'string' && variant.imageUrl);
+  const frameIds = [...new Set(variants.map((variant) => variant.frameId ?? null))];
+  const frameDocs = frameIds.some((frameId) => frameId !== null)
+    ? await db.collection(COLLECTIONS.FRAMES).find({ frameId: { $in: frameIds.filter((frameId): frameId is string => frameId !== null) } }).toArray()
+    : [];
+  const frameNames = new Map(frameDocs.map((frame) => [String(frame.frameId), typeof frame.name === 'string' && frame.name ? frame.name : String(frame.frameId)]));
+  const compositionChoices = variants.map((variant) => ({
+    frameId: variant.frameId ?? null,
+    frameName: variant.frameId ? frameNames.get(variant.frameId) ?? variant.frameId : 'Generated frame',
+    messageIndex: Number.isInteger(variant.index) ? variant.index! : null,
+    message: typeof variant.message === 'string' ? variant.message : null,
+    imageUrl: variant.imageUrl!,
+  }));
+  const storedComposition = event.welcomeScreenComposition as { frameId?: unknown; messageIndex?: unknown } | null | undefined;
+  const storedChoice = storedComposition && typeof storedComposition === 'object'
+    ? compositionChoices.find((choice) => choice.frameId === (typeof storedComposition.frameId === 'string' ? storedComposition.frameId : null) && choice.messageIndex === (Number.isInteger(storedComposition.messageIndex) ? storedComposition.messageIndex : null))
+    : undefined;
+  const defaultChoice = compositionChoices.find((choice) => choice.messageIndex === null) ?? compositionChoices[0];
   return {
     source: windowSourceOf(event),
     photo: chosenPhoto,
     pick: doc && doc.isActive !== false ? { id: pickedId, name: text(doc.name) || pickedId, imageUrl: text(doc.imageUrl) || null } : null,
     welcomeScreen: typeof stored?.url === 'string' && stored.url ? { url: stored.url, generatedAt: text(stored.generatedAt) } : null,
+    compositionChoices,
+    composition: storedChoice ? { frameId: storedChoice.frameId, messageIndex: storedChoice.messageIndex } : defaultChoice ? { frameId: defaultChoice.frameId, messageIndex: defaultChoice.messageIndex } : null,
   };
 }
