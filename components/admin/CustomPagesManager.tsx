@@ -740,7 +740,6 @@ function PageEditModal({
   const [shareSocialCaptionTemplate, setShareSocialCaptionTemplate] = useState(
     page.config.shareSocialCaptionTemplate || ''
   );
-  const [changeButtonText, setChangeButtonText] = useState(page.config.changeButtonText || 'Change');
   const [successMessage, setSuccessMessage] = useState(page.config.successMessage || 'Photo saved successfully! You can now share it.');
   const [showSharePage, setShowSharePage] = useState(page.config.showSharePage !== false);
   const [skipShareMessage, setSkipShareMessage] = useState(page.config.skipShareMessage || 'Thank you! Your photo has been saved.');
@@ -819,7 +818,6 @@ function PageEditModal({
           shareViewPhotoButtonText,
           shareSuggestedMessageLabel,
           shareSocialCaptionTemplate: shareSocialCaptionTemplate.trim() || undefined,
-          changeButtonText,
           successMessage,
           showSharePage,
           skipShareMessage,
@@ -1197,12 +1195,6 @@ function PageEditModal({
               placeholder="e.g. Check out my photo from {event}! - use {event} for the event name"
             />
 
-            <Field
-              label="Change Frame Button Text"
-              value={changeButtonText}
-              onChange={setChangeButtonText}
-              placeholder="e.g., Change"
-            />
             <Area
               label="Success Message"
               value={successMessage}

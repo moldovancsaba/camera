@@ -61,8 +61,6 @@ export const hu: Record<MessageKey, string> = {
   'tour.takePhoto.title': 'Készítsd el a fotódat',
   'tour.takePhoto.deviceText': 'Koppints ide a kamerád megnyitásához. Készítsd el a fotót, majd mozgasd és nagyítsd a keretbe.',
   'tour.shutter.text': 'Koppints a zárgombra, ha készen állsz a fotózásra.',
-  'tour.changeFrame.title': 'Keret váltása',
-  'tour.changeFrame.text': 'Nem ez a megfelelő keret? Válassz másikat itt.',
   'tour.copyLink.title': 'Másold ki a linkedet',
   'tour.copyLink.text': 'Másold ki a megosztási linket, hogy bárhová elküldhesd a fotódat.',
   'tour.viewPhoto.title': 'Nézd meg a fotódat',
@@ -254,9 +252,7 @@ export const hu: Record<MessageKey, string> = {
   'welcome.screenAlt': 'Az óriáskijelző az élő fényképekkel és a beolvasható QR-kóddal',
   'flow.step.selectMessage': 'Üzenet',
   'flow.selectMessage.title': 'Válaszd ki az üzeneted',
-  'flow.changeMessage': 'Üzenet váltása',
   'flow.step.selectLayout': 'Dizájn',
   'flow.selectLayout.title': 'Válaszd ki a dizájnt',
   'flow.selectLayout.generated': 'Generált keret',
-  'flow.changeLayout': 'Dizájn váltása',
 };

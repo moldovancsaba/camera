@@ -385,16 +385,7 @@ export default function CapturePage() {
       frameIntrinsicAspect ?? (frameW > 0 && frameH > 0 ? frameW / frameH : 16 / 9);
     return (
       <div className="fixed inset-0 z-40 flex flex-col  ">
-        <div className="absolute right-4 top-4 z-50">
-          <button
-            type="button"
-            onClick={() => setStep('select-frame')}
-            className="rounded-lg  px-3 py-2 text-sm font-medium  shadow-lg"
-          >
-            Change frame
-          </button>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col pt-16 md:flex-row md:pt-4">
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row md:pt-4">
           <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-4">
             <CameraCapture
               onCapture={handleCameraCapture}
