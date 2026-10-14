@@ -11,6 +11,7 @@ import type { TextOverrides } from '@/lib/i18n/overrides';
 import type { DocumentSettings } from './checkbox-settings';
 import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
+import { acceptanceOnLogin } from './acceptance';
 
 /** What the server knows that decides which default pages an event gets (`GET /api/events/<id>`, `journeyContext`). */
 export interface JourneyContext {
@@ -26,6 +27,8 @@ export interface JourneyContext {
   defaultOrders?: Record<string, number> | null;
   /** The settings of the three documents of the default consent page for this event (issue 558, lib/events/checkbox-settings.ts); missing: the standard (all shown, all required). */
   documents?: DocumentSettings;
+  /** The effective setting: the consent page is rendered as one checkbox on Who-are-you, when both pages are present before save. */
+  acceptanceOnWhoAreYou?: boolean;
 }
 
 export type JourneyStepId = 'waiting' | 'share' | 'emails' | 'result';
@@ -69,7 +72,9 @@ function stepsAfterPhoto(context: JourneyContext, separateSubmit = false): Journ
  * An event with no take-photo page has everything before the photo, as the user's page treats it.
  */
 export function effectiveJourney(storedPages: readonly CustomPage[] | null | undefined, context: JourneyContext, now?: string): JourneyRow[] {
-  const pages = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen, texts: context.texts, defaultOrders: context.defaultOrders, documents: context.documents });
+  const defaults = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen, texts: context.texts, defaultOrders: context.defaultOrders, documents: context.documents });
+  // Match the guest flow: if consent is merged into the Who-are-you page, it is a part of that parent step, not a standalone journey page.
+  const pages = acceptanceOnLogin(defaults, context.acceptanceOnWhoAreYou === true).pages;
   const rows: JourneyRow[] = [...pages]
     .sort((a, b) => a.order - b.order)
     .map((page) => (isDefaultPage(page) ? { kind: 'default', page, reason: REASON[page.pageId] } : { kind: 'own', page }));

@@ -209,13 +209,21 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
   // Get pages sorted by order, with [Take Photo] placeholder always first
   const pagesWithPlaceholder = ensureTakePhotoPlaceholder(pages);
   const sortedPages = [...pagesWithPlaceholder].sort((a, b) => a.order - b.order);
-  // The list is the journey as the user goes through it: the own pages, the default pages that are added when the page is read, and the steps that
-  // are not pages. Without the context (an editor that does not know it) it is the own pages only.
-  const rows = journeyContext ? effectiveJourney(pagesWithPlaceholder, { ...journeyContext, defaultOrders }) : sortedPages.map((page) => ({ kind: 'own' as const, page }));
+  // Build the full journey for ordering rules, including defaults and built-in steps. The visible list below shows only standalone pages.
+  const acceptanceEnabled = modes.acceptance === ''
+    ? (partnerCheckboxes?.acceptance.shown ?? acceptanceOnWhoAreYou === true)
+    : modes.acceptance !== 'off';
+  const rows = journeyContext
+    ? effectiveJourney(pagesWithPlaceholder, { ...journeyContext, defaultOrders, acceptanceOnWhoAreYou: acceptanceEnabled })
+    : sortedPages.map((page) => ({ kind: 'own' as const, page }));
+  // Built-in follow-up behavior is configured in its own settings sections; the journey list is for pages guests can visit and editors can arrange.
+  // Keep the full rows above for ordering rules, but render only actual pages.
+  const pageRows = rows.flatMap((row, rowIndex) => row.kind === 'step' ? [] : [{ row, rowIndex }]);
 
-  /** Customise a default page: the event's own page, filled with the default's texts, in the default's place; it is added when the editor saves it. */
+  /** Customise a default page in place. If an own page of that type already exists, promote it to the default's position instead of creating a duplicate. */
   const handleCustomise = (page: CustomPage) => {
-    setEditingPage(customiseDefault(page));
+    const existing = pages.find((candidate) => candidate.isActive && candidate.pageType === page.pageType);
+    setEditingPage(existing ? { ...existing, order: page.order } : customiseDefault(page));
     setShowModal(true);
   };
 
@@ -227,6 +235,15 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
    */
   const handleAddPage = (type: CustomPageType) => {
     if (type === CustomPageType.TAKE_PHOTO) return; // Can't manually add
+
+    // The default Accept and Who-are-you pages already serve these roles. Adding the same page type should customise that step, not create a second copy beside it.
+    if (type === CustomPageType.ACCEPT || type === CustomPageType.WHO_ARE_YOU) {
+      const defaultRow = rows.find((row) => row.kind === 'default' && row.page.pageType === type);
+      if (defaultRow?.kind === 'default') {
+        handleCustomise(defaultRow.page);
+        return;
+      }
+    }
 
     const now = generateTimestamp();
     // Find the highest order to add at the end
@@ -283,7 +300,9 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
    * Open modal to edit existing page
    */
   const handleEditPage = (page: CustomPage) => {
-    setEditingPage(page);
+    // An own Accept or Who-are-you page alongside its generated default is the event's edited version of that step. Keep it in the default's slot when it is saved.
+    const matchingDefault = rows.find((row) => row.kind === 'default' && row.page.pageType === page.pageType);
+    setEditingPage(matchingDefault?.kind === 'default' ? { ...page, order: matchingDefault.page.order } : page);
     setShowModal(true);
   };
 
@@ -412,7 +431,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
             <h2 style={{ margin: 0 }}>Pages of the user journey</h2>
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
               {journeyContext
-                ? 'The journey in the order a user goes through it. A default page is used until you customise it; the steps marked built in are not pages, and the text next to them says where they are edited.'
+                ? 'The pages a user visits, in order. A default page is used until you customise it. Fixed steps such as approval, e-mails and the public photo page are managed in their dedicated settings.'
                 : 'Configure the pages of the user journey for this event'}
             </p>
           </div>
@@ -438,27 +457,12 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
 
       {/* Page List */}
         <div style={{ display: 'grid', gap: '0.75rem' }}>
-        {rows.map((row, index) => {
-          if (row.kind === 'step') {
-            return (
-              <article key={`step-${row.id}`} style={{ border: '1px dashed var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
-                <div style={{ display: 'grid', gap: '0.25rem' }}>
-                  <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
-                    <LabelTag tone="neutral" label="Built in" />
-                  </div>
-                  <strong style={{ fontSize: '0.875rem' }}>{row.title}</strong>
-                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>{row.description}</span>
-                  <span style={{ fontSize: '0.8125rem' }}>Edited in: {row.editedIn}</span>
-                </div>
-              </article>
-            );
-          }
+        {pageRows.map(({ row, rowIndex }, index) => {
           if (row.kind === 'default') {
             return (
               <article key={row.page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                 <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
-                  <MoveButtons canUp={canMove(index, -1)} canDown={canMove(index, 1)} onUp={() => handleMove(index, -1)} onDown={() => handleMove(index, 1)} />
+                  <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
                   {/* The text keeps at least 12rem; on a narrow screen the Customise button wraps under it instead of squeezing the text to one word a line. */}
                   <div style={{ display: 'grid', flex: '1 1 12rem', gap: '0.25rem', minWidth: 0 }}>
                     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -481,7 +485,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
             return (
               <article key={page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                 <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                  <MoveButtons canUp={canMove(index, -1)} canDown={canMove(index, 1)} onUp={() => handleMove(index, -1)} onDown={() => handleMove(index, 1)} />
+                  <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
                   <div style={{ display: 'grid', flex: '1 1 12rem', gap: '0.25rem', minWidth: 0 }}>
                     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
@@ -501,7 +505,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
             >
               {/* Order indicators */}
                 <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
-                  <MoveButtons canUp={canMove(index, -1)} canDown={canMove(index, 1)} onUp={() => handleMove(index, -1)} onDown={() => handleMove(index, 1)} />
+                  <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
 
               {/* Page info */}
                   <div style={{ display: 'grid', flex: 1, gap: '0.25rem' }}>
