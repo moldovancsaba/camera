@@ -17,19 +17,21 @@ export interface SocialLoginButtonsProps {
   /** The capture page the login starts on and its step: the login brings the guest back there (lib/auth/capture-return.ts). */
   captureEventId?: string;
   capturePage?: number;
+  capturePageId?: string;
   capturePhase?: 'onboarding' | 'presubmit';
+  captureSubmissionId?: string | null;
   /** Presubmit sign-in persists the current photo before the same-tab SSO redirect. */
   onBeforeCaptureLogin?: () => Promise<boolean>;
   /** Both buttons are off (the acceptance on the Who-are-you page is not ticked yet). */
   disabled?: boolean;
 }
 
-export default function SocialLoginButtons({ fromLogout, captureEventId, capturePage, capturePhase, onBeforeCaptureLogin, disabled = false }: SocialLoginButtonsProps) {
+export default function SocialLoginButtons({ fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId, onBeforeCaptureLogin, disabled = false }: SocialLoginButtonsProps) {
   const { t } = useT();
   const [preparing, setPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState(false);
-  const googleHref = socialLoginHref('google', { fromLogout, captureEventId, capturePage, capturePhase });
-  const facebookHref = socialLoginHref('facebook', { fromLogout, captureEventId, capturePage, capturePhase });
+  const googleHref = socialLoginHref('google', { fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId: captureSubmissionId ?? undefined });
+  const facebookHref = socialLoginHref('facebook', { fromLogout, captureEventId, capturePage, capturePageId, capturePhase, captureSubmissionId: captureSubmissionId ?? undefined });
 
   const followSso = async (event: MouseEvent<HTMLAnchorElement>) => {
     if (!onBeforeCaptureLogin || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

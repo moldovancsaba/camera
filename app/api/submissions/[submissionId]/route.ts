@@ -155,6 +155,43 @@ export const DELETE = withErrorHandler(async (
   });
 });
 
+/** Load the signed-in guest's already-saved capture so an OAuth round trip can restore its preview. */
+export const GET = withErrorHandler(async (
+  request: NextRequest,
+  context: { params?: Promise<{ submissionId: string }> }
+) => {
+  const submissionId = (await context.params)?.submissionId;
+  if (!submissionId || !ObjectId.isValid(submissionId)) {
+    throw apiBadRequest('Invalid submission ID format');
+  }
+
+  const session = await optionalAuth(request);
+  if (!session?.user?.id) throw apiForbidden('Sign-in is required to restore this photo');
+
+  const db = await connectToDatabase();
+  const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne(
+    { _id: new ObjectId(submissionId) },
+    { projection: { userId: 1, eventId: 1, imageUrl: 1, finalImageUrl: 1, photoReview: 1, reviewStatus: 1 } },
+  );
+  if (!submission) throw apiNotFound('Submission not found');
+
+  const isAdmin = session.appRole === 'admin' || session.appRole === 'superadmin';
+  if (submission.userId !== session.user.id && !isAdmin) {
+    throw apiForbidden('You can only restore your own photo');
+  }
+
+  const pendingImageUrl = readTrimmedString(submission.photoReview?.photoUrl);
+  const previewImageUrl = pendingImageUrl ?? readTrimmedString(submission.finalImageUrl) ?? readTrimmedString(submission.imageUrl);
+  if (!previewImageUrl) throw apiNotFound('The saved photo is not available');
+
+  return apiSuccess({
+    submissionId,
+    eventId: submission.eventId ?? null,
+    previewImageUrl,
+    pending: submission.reviewStatus === 'pending_review' || Boolean(pendingImageUrl),
+  });
+});
+
 export const PATCH = withErrorHandler(async (
   request: NextRequest,
   context: { params?: Promise<{ submissionId: string }> }

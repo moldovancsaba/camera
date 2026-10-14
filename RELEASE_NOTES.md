@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — resume social login by stable journey page ID (2026-10-14)
+
+- **Fixed:** the capture login return now carries the stable ID of the page where sign-in started, alongside the phase and saved submission ID. The flow resolves that page in the current journey order and continues after it, even if pages were reordered while SSO was open. After sign-in, the page links that submission to the account and reloads its saved image through an owner-checked API before continuing, preventing the preview from becoming an empty blue screen.
+- **Unchanged:** the photo uses the established `/api/submissions` upload once, before post-capture pages; sign-in does not upload it again.
+- **Verified locally:** type-check, lint, and production build passed. No browser walkthrough was performed.
+
 ## Unreleased — restore the established photo upload before continuing (2026-10-14)
 
 - **Fixed:** TOVÁBB now sends the confirmed composition through the established `/api/submissions` upload pipeline. The flow shows upload progress and advances only after the submission is stored; failure retains the confirmed photo for retry.

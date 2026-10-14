@@ -316,10 +316,10 @@ Primary path:
 2. the guest adjusts the crop; pressing Continue composites the selected frame and calls `POST /api/submissions`
 3. the established `lib/imgbb/upload.ts` pipeline stores the raster (Blob primary, imgbb best-effort mirror)
 4. the server inserts the Mongo submission document; an unauthenticated capture is marked `userName: 'NO USER'` and `metadata.identityStatus: 'NO USER'`
-5. only after the submission response succeeds does the guest journey continue to its next configured page; same-tab SSO resumes from a small session-storage submission reference
+5. only after the submission response succeeds does the guest journey continue to its next configured page; same-tab SSO carries the stable page ID, phase, and exact submission ID with the return target, resolves the page in the current order, links the record to the account, and reloads its saved image through the owner-checked submission API before the flow can reach Preview
 6. share, gallery, and slideshow flows consume that record
 
-The capture page does not wait for temporary draft storage before the submission upload. Upload progress and failure belong to the established submission request; a failed request leaves the confirmed photo available for retry. Consent and identity pages configured after capture run only after that submission has been stored. If SSO is completed later in the same tab, the session-storage submission reference lets the flow continue without re-uploading the image.
+The capture page does not wait for temporary draft storage before the submission upload. Upload progress and failure belong to the established submission request; a failed request leaves the confirmed photo available for retry. Consent and identity pages configured after capture run only after that submission has been stored. If SSO is completed later in the same tab, the return includes the stable ID of the page where sign-in began, its phase, and the saved submission ID. The page ID is resolved against the current ordered journey; the owner-checked restore endpoint reloads the stored preview image so the flow continues without re-uploading the photo or losing the Preview image.
 
 Important implementation note:
 

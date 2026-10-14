@@ -1208,16 +1208,26 @@ export default function EventCapturePage({
     if (isLoading) return;
     const urlParams = new URLSearchParams(window.location.search);
     const isResume = urlParams.get('resume') === 'true';
-    const resumePageIndex = urlParams.get('page');
-    const resumePhase = urlParams.get('phase') === 'presubmit' ? 'presubmit' : 'onboarding';
+    const resumePageId = urlParams.get('pageId');
+    const rawResumePhase = urlParams.get('phase') === 'presubmit' ? 'presubmit' : 'onboarding';
 
-    if (!isResume || resumePageIndex === null || resumeHandled.current) return;
+    if (!isResume || resumeHandled.current) return;
     resumeHandled.current = true;
     setResumePending(true);
-    const pageIndex = parseInt(resumePageIndex, 10);
+    const numericPageIndex = urlParams.get('page');
+    let pageIndex = numericPageIndex !== null && /^\d{1,2}$/.test(numericPageIndex) ? Number(numericPageIndex) : null;
+    const resumePhase: 'onboarding' | 'presubmit' = rawResumePhase;
+    if (resumePageId) {
+      const phasePages = rawResumePhase === 'presubmit' ? presubmitPages : onboardingPages;
+      const foundIndex = phasePages.findIndex((page) => page.pageId === resumePageId);
+      // A stable page ID is authoritative. If that page was removed while the
+      // guest was at SSO, never resume a different page just because its old
+      // numeric position is now occupied by another step.
+      pageIndex = foundIndex >= 0 ? foundIndex : null;
+    }
 
     const cleanResumeUrl = () => window.history.replaceState({}, '', window.location.pathname);
-    if (!Number.isInteger(pageIndex) || pageIndex < 0) {
+    if (pageIndex === null || !Number.isInteger(pageIndex) || pageIndex < 0) {
       setSignInError({ code: 'capture_resume_failed', message: t('login.captureRestoreError') });
       setCurrentPageIndex(0);
       setFlowPhase(resumePhase);
@@ -1248,20 +1258,35 @@ export default function EventCapturePage({
 
         if (resumePhase === 'presubmit') {
           const saved = JSON.parse(window.sessionStorage.getItem(captureSubmissionResumeKey) || 'null') as { eventId?: unknown; submissionId?: unknown } | null;
-          const submissionId = saved?.eventId === eventId && typeof saved.submissionId === 'string' && /^[a-f\d]{24}$/i.test(saved.submissionId)
-            ? saved.submissionId
+          const returnedSubmissionId = urlParams.get('submission');
+          const submissionId = typeof returnedSubmissionId === 'string' && /^[a-f\d]{24}$/i.test(returnedSubmissionId)
+            ? returnedSubmissionId
+            : saved?.eventId === eventId && typeof saved.submissionId === 'string' && /^[a-f\d]{24}$/i.test(saved.submissionId)
+              ? saved.submissionId
             : null;
           if (!submissionId) throw new Error('The saved photo reference is missing');
 
-          const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
-          setSavedSubmissionId(submissionId);
-          setShareUrl(`${origin}/share/${submissionId}`);
           const linkResponse = await fetch(`/api/submissions/${submissionId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'link_account' }),
           });
-          if (!linkResponse.ok) console.warn('The signed-in account could not be linked to the saved photo:', await linkResponse.text());
+          if (!linkResponse.ok) throw new Error(`Could not link the saved photo to the signed-in account (${linkResponse.status})`);
+
+          // OAuth reloads the page and clears its in-memory image state. Restore the image belonging
+          // to this exact submission before leaving the post-capture pages, so Preview cannot be blank.
+          const restoreResponse = await fetch(`/api/submissions/${submissionId}`);
+          if (!restoreResponse.ok) throw new Error(`Could not restore the saved photo (${restoreResponse.status})`);
+          const restorePayload = await restoreResponse.json();
+          const restored = restorePayload.data ?? restorePayload;
+          if (restored.submissionId !== submissionId || typeof restored.previewImageUrl !== 'string' || !restored.previewImageUrl) {
+            throw new Error('The saved photo could not be matched to this login');
+          }
+          const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
+          setSavedSubmissionId(submissionId);
+          setCompositeImage(restored.previewImageUrl);
+          setPendingApproval(restored.pending === true);
+          setShareUrl(restored.pending === true ? null : `${origin}/share/${submissionId}`);
           setCurrentPageIndex(pageIndex + 1);
           setFlowPhase('presubmit');
           journey.record('journey.resume');
@@ -1291,7 +1316,7 @@ export default function EventCapturePage({
         cleanResumeUrl();
         setResumePending(false);
       });
-  }, [eventId, isLoading, t, captureSubmissionResumeKey, onboardingPages.length, enterCaptureStep]);
+  }, [eventId, isLoading, t, captureSubmissionResumeKey, onboardingPages, presubmitPages, enterCaptureStep]);
   
   /**
    * Handle completion of Who Are You page
@@ -1592,7 +1617,9 @@ export default function EventCapturePage({
             buttonSize={eventButtonSize}
             eventId={eventId}
             pageIndex={currentPageIndex}
+            pageId={currentPage.pageId}
             capturePhase={flowPhase === 'presubmit' ? 'presubmit' : 'onboarding'}
+            captureSubmissionId={flowPhase === 'presubmit' ? savedSubmissionId : null}
             onBeforeSocialLogin={flowPhase === 'presubmit' ? prepareCaptureForSocialLogin : undefined}
             onNext={handleWhoAreYouComplete}
             acceptance={
