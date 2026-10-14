@@ -485,15 +485,16 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
                       </div>
                       <strong style={{ fontSize: '0.875rem' }}>Frame and message selection</strong>
                       <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>
-                        Move this page anywhere in the guest journey. Before Take Photo it sets the current photo; between Take Photo and Submit it sets the design before the final framing; after saving it sets the next photo. Empty choice sections are skipped. Hidden frame choices follow the Frames page settings, while messages keep their independent setting.
+                        Move this page anywhere in the guest journey. Before Take Photo it sets the current photo; between Take Photo and Submit it sets the design before the final framing; after saving it sets the next photo. Message-only mode lists every available message and automatically uses a frame that carries it.
                       </span>
                     </div>
                     <label style={{ display: 'grid', flex: '1 1 16rem', gap: '0.35rem', maxWidth: '24rem' }}>
-                      <span>Show frame choices on this page</span>
+                      <span>Frame and message choices on this page</span>
                       <select value={selectionDisplay} onChange={(event) => setSelectionDisplay(event.currentTarget.value as FrameMessageSelectionDisplay)}>
                         <option value="automatic">Follow the Frames page settings</option>
                         <option value="show">Let guests choose frame and message when available</option>
                         <option value="hide">Hide frame choices; follow the Frames page for messages</option>
+                        <option value="messages-only">Hide frame choices; show all available messages</option>
                       </select>
                     </label>
                   </div>

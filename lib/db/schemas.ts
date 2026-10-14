@@ -342,7 +342,7 @@ export interface CustomPage {
 }
 
 /** Whether guests choose both sections, follow their saved settings, or choose the frame automatically while messages remain independently selectable. */
-export type FrameMessageSelectionDisplay = 'automatic' | 'show' | 'hide';
+export type FrameMessageSelectionDisplay = 'automatic' | 'show' | 'hide' | 'messages-only';
 
 /**
  * Event Document Interface

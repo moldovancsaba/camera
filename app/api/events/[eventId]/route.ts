@@ -413,8 +413,8 @@ export const PATCH = withErrorHandler(async (
     updateFields.defaultPageOrders = orders;
   }
   if (frameMessageSelectionDisplay !== undefined) {
-    if (!['automatic', 'show', 'hide'].includes(frameMessageSelectionDisplay as string)) {
-      throw apiBadRequest('frameMessageSelectionDisplay must be automatic, show or hide');
+    if (!['automatic', 'show', 'hide', 'messages-only'].includes(frameMessageSelectionDisplay as string)) {
+      throw apiBadRequest('frameMessageSelectionDisplay must be automatic, show, hide or messages-only');
     }
     updateFields.frameMessageSelectionDisplay = frameMessageSelectionDisplay;
   }

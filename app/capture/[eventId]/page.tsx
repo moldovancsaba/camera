@@ -684,7 +684,7 @@ export default function EventCapturePage({
           if (eventFrames.length === 1) {
             setSelectedFrame(eventFrames[0]);
             setStep('capture-photo');
-          } else if (eventFrames.length > 1 && (hasOrderedFrameMessagePage || eventData.frameMessageSelectionDisplay === 'hide' || (storedFrameSelection(eventData.frameSelection)?.layout.mode !== 'user' && storedFrameSelection(eventData.frameSelection)))) {
+          } else if (eventFrames.length > 1 && (hasOrderedFrameMessagePage || eventData.frameMessageSelectionDisplay === 'hide' || eventData.frameMessageSelectionDisplay === 'messages-only' || (storedFrameSelection(eventData.frameSelection)?.layout.mode !== 'user' && storedFrameSelection(eventData.frameSelection)))) {
             // The editor picks the frame or it is random (epic 444): there is no frame step, the frame is drawn when the camera step opens.
             setStep('capture-photo');
           }
@@ -901,7 +901,7 @@ export default function EventCapturePage({
     if (frames.length <= 1) return null;
     if (selectionDisplay === 'show') return { mode: 'user' as const, pick: null };
     const configured = storedFrameSelection(event?.frameSelection)?.layout ?? null;
-    if (selectionDisplay === 'hide') return { mode: 'random' as const, pick: null };
+    if (selectionDisplay === 'hide' || selectionDisplay === 'messages-only') return { mode: 'random' as const, pick: null };
     return configured;
   }, [event?.frameSelection, frames.length, selectionDisplay]);
   const layoutChoices = useMemo(() => (selection && selectionFrame ? layoutsToChoose(selectionFrame) : []), [selection, selectionFrame]);
@@ -1890,25 +1890,26 @@ export default function EventCapturePage({
               <section aria-labelledby="capture-frame-heading">
                 <h3 id="capture-frame-heading" className="mb-3 text-center text-base font-semibold">{t('flow.selectFrame.title')}</h3>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" data-tour-id="capture-frame-grid">
-                  {frames.map((frame) => (
-                    <button
-                      key={frame.frameId}
-                      type="button"
-                      onClick={() => handleFrameSelect(frame)}
-                      aria-pressed={selectedFrame?.frameId === frame.frameId}
-                      className="aspect-square overflow-hidden rounded-xl border-2 transition-all"
-                      style={{ backgroundColor: frame.tileStyle?.color || undefined, borderColor: selectedFrame?.frameId === frame.frameId ? 'var(--mantine-color-blue-6)' : undefined }}
-                      data-frame-choice
-                    >
-                      {frame.tileStyle?.imageUrl ? (
-                        <Image src={frame.tileStyle.imageUrl} alt={frame.name} width={600} height={600} unoptimized className="h-full w-full object-cover" />
-                      ) : frame.tileStyle?.color ? (
-                        <span className="flex h-full w-full items-center justify-center p-3 text-center font-semibold">{frame.name}</span>
-                      ) : (
-                        <Image src={frame.imageUrl} alt={frame.name} width={600} height={600} unoptimized className="h-full w-full object-cover" />
-                      )}
-                    </button>
-                  ))}
+                  {frames.map((frame) => {
+                    const tile = event?.frameSelectionTiles?.[frame.frameId] ?? frame.tileStyle;
+                    return (
+                      <button
+                        key={frame.frameId}
+                        type="button"
+                        onClick={() => handleFrameSelect(frame)}
+                        aria-pressed={selectedFrame?.frameId === frame.frameId}
+                        className="aspect-square overflow-hidden rounded-xl border-2 transition-all"
+                        style={{ backgroundColor: tile?.color || undefined, borderColor: selectedFrame?.frameId === frame.frameId ? 'var(--mantine-color-blue-6)' : undefined }}
+                        data-frame-choice
+                      >
+                        {tile?.imageUrl ? (
+                          <Image src={tile.imageUrl} alt={frame.name} width={600} height={600} unoptimized className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center p-3 text-center font-semibold">{frame.name}</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </section>
             ) : null}
@@ -1922,7 +1923,6 @@ export default function EventCapturePage({
                     const layoutName = id === 'generated'
                       ? t('flow.selectLayout.generated')
                       : event?.frames?.find((assignment) => assignment.frameId === id)?.frameDetails?.name || t('flow.selectLayout.title');
-                    const shown = generatedFrame?.variants.find((other) => layoutIdOf(other) === id && other.index === choice.messageIndex) ?? variant;
                     return (
                       <button
                         key={id}
@@ -1936,10 +1936,8 @@ export default function EventCapturePage({
                       >
                         {tile?.imageUrl ? (
                           <Image src={tile.imageUrl} alt="" width={600} height={600} unoptimized className="h-full w-full object-cover" />
-                        ) : tile?.color ? (
-                          <span className="flex h-full w-full items-center justify-center p-3 text-center font-semibold">{layoutName}</span>
                         ) : (
-                          <Image src={shown.imageUrl} alt="" width={600} height={600} unoptimized className="h-full w-full object-cover" />
+                          <span className="flex h-full w-full items-center justify-center p-3 text-center font-semibold">{layoutName}</span>
                         )}
                       </button>
                     );
