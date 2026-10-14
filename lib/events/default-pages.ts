@@ -159,9 +159,7 @@ export function withFrameMessageSelectionPage(pages: readonly CustomPage[], defa
   const savedOrder = Number.isFinite(defaultOrders?.[DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID])
     ? defaultOrders![DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID]
     : defaultOrder;
-  // The frame must be chosen before a shutter press even if stale or hand-edited order data placed it later.
-  const order = photo && savedOrder >= photo.order ? photo.order - 0.001 : savedOrder;
-  return [...pages.filter((page) => page.pageId !== DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID && page.pageType !== 'frame-message-selection'), defaultFrameMessageSelectionPage(order, now)];
+  return [...pages.filter((page) => page.pageId !== DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID && page.pageType !== 'frame-message-selection'), defaultFrameMessageSelectionPage(savedOrder, now)];
 }
 
 const DEFAULT_PAGE_IDS: readonly string[] = [DEFAULT_WELCOME_PAGE_ID, DEFAULT_CONSENT_PAGE_ID, DEFAULT_IDENTITY_PAGE_ID, DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID];

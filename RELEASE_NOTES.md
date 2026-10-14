@@ -5,9 +5,14 @@
 - **Changed:** message choices on the frame/message selection page now use the event's established rounded pill button design. The selected message uses the filled event button style; other choices use its white, ringed style.
 - **Verified:** TypeScript check, lint, and production build passed locally. No browser walkthrough was run.
 
+## Unreleased — move the frame and message selector anywhere in the journey (2026-10-14)
+
+- **Changed:** the built-in selector can move before or after Take Photo and across Submit. Before capture it selects the current photo; after capture and before Submit, the guest's choice is applied in a final framing step; after saving, the choice carries into the next photo. An empty selector is skipped in each part of the journey.
+- **Verified locally:** TypeScript check, lint, production build, and inventory check passed. No browser walkthrough was run.
+
 ## Unreleased — ordered frame and message selection page (2026-10-14)
 
-- **Fixed:** Frame and message selection is now a built-in, reorderable page in the Pages journey, shown before Take Photo by default. Its choices and position are part of the guest flow; an empty page is skipped.
+- **Fixed:** Frame and message selection is a built-in, reorderable page in the Pages journey, shown before Take Photo by default. Its choices and position are part of the guest flow; an empty page is skipped.
 - **Fixed:** Hiding frame choices now randomises among multiple layouts, or uses the one available layout, while preserving user-selected messages. Message choices include every available message across random layouts.
 - **Verified:** Local TypeScript, lint, production build, design-system, and inventory checks passed; GitHub Verify's full release check passed. No browser walkthrough was run.
 

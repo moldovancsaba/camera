@@ -3,7 +3,7 @@
  * (thank you). The photo is taken on the take-photo page; by default saving it is part of that page (Continue on the reframe screen saves). An event whose editor unticked "Submit is part
  * of this page" has a `submit` page after the take-photo page: the pages between the two run after the photo is taken and before it is saved (a login, a CTA), the pages after the
  * submit page run after the save as before. If consent is merged into a Who-are-you page after the camera without a Submit page, save waits until login is complete. A submit page
- * that is not active, or before the take-photo page, does not count. Pure; unit-tested (split-pages.test.ts).
+ * that is not active, or before the take-photo page, does not count. The frame/message selector can also be placed after capture: before Submit it is followed by a final reframe with the chosen design; after saving it sets the next photo's choices. Pure; unit-tested (split-pages.test.ts).
  */
 
 import type { CustomPage } from '@/lib/db/schemas';

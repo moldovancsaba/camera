@@ -485,7 +485,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
                       </div>
                       <strong style={{ fontSize: '0.875rem' }}>Frame and message selection</strong>
                       <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>
-                        This is a page in the guest journey. Empty choice sections are skipped. When frame choices are hidden, multiple layouts are randomised (a single layout uses your Frames setting); messages keep their independent setting on the Frames page.
+                        Move this page anywhere in the guest journey. Before Take Photo it sets the current photo; between Take Photo and Submit it sets the design before the final framing; after saving it sets the next photo. Empty choice sections are skipped. Hidden frame choices follow the Frames page settings, while messages keep their independent setting.
                       </span>
                     </div>
                     <label style={{ display: 'grid', flex: '1 1 16rem', gap: '0.35rem', maxWidth: '24rem' }}>
