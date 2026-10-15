@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — keep CTA copy and actions clear of the artwork (2026-10-15)
+
+- **Changed:** on picture-backed CTA pages, the title and description now appear below the image, followed by the action buttons. The image is no longer darkened to support overlaid copy.
+- **Fixed:** Visit and Continue controls now use the same dimensions. The outlined Continue style remains a visual treatment, not a smaller control.
+- **Verified locally:** type-check, lint, and documentation inventory checks passed. GitHub Verify is the required release gate.
+
 ## Unreleased — title message-only selector correctly (2026-10-15)
 
 - **Fixed:** when frame choices are hidden and messages are shown alone, the guest page now uses the message prompt as its title and removes the duplicate smaller heading. It no longer says to choose a frame the guest cannot see.

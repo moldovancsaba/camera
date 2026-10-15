@@ -891,7 +891,7 @@ function PageEditModal({
                 value={backgroundImageUrl}
                 onChange={setBackgroundImageUrl}
                 level={pictureLevel}
-                helper="The whole picture fits above the actions and keeps its shape (the page colour of the event shows around it). The title and description may appear over the picture; visit and next buttons stay in a separate bar below it. Use artwork without button labels or controls so they do not appear twice. Leave empty for the plain card."
+                helper="The whole picture fits above the title, description and actions, and keeps its shape (the page colour of the event shows around it). The title and description appear below the picture, followed by equal-size visit and next buttons. Keep text and controls out of the artwork. Leave empty for the plain card."
               />
               <Check
                 checked={hideTexts}

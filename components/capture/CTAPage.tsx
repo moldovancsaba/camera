@@ -124,9 +124,17 @@ export default function CTAPage({
 
   if (config.backgroundImageUrl) {
     const layout = ctaLayout({ url: config.checkboxText, hasButton, hideTexts: config.hideTexts, hideButtons: config.hideButtons, pictureLink: config.pictureLink });
-    const shadow = `0 0.1em 0.5em color-mix(in srgb, ${CAMERA_STAGE_BLACK} 55%, transparent)`;
-    // The darkening behind the writing is only there when there is writing.
-    const hasWriting = layout.showTexts;
+    const pictureActionButtonStyle: CSSProperties = {
+      width: 'min(80vw, 36rem)',
+      height: '4.25rem',
+      minHeight: '4.25rem',
+      flex: 'none',
+      boxSizing: 'border-box',
+      padding: '0 1.5rem',
+      fontSize: 'clamp(0.9rem, 2vw, 1.5rem)',
+      letterSpacing: '0.08em',
+      lineHeight: 1.1,
+    };
     const handlePictureTap = () => {
       if (layout.pictureTap === 'visit-and-continue') {
         journey.externalCtaOpened();
@@ -138,13 +146,10 @@ export default function CTAPage({
     };
     return (
       <FullScreenPage marker={{ 'data-cta-picture': '' }}>
-        <div data-cta-picture-layout style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto', flex: '1 1 0', minHeight: 0, width: '100%' }}>
+        <div data-cta-picture-layout style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto auto', flex: '1 1 0', minHeight: 0, width: '100%' }}>
           <div data-cta-picture-art style={{ position: 'relative', gridRow: 1, minHeight: 0, overflow: 'hidden' }}>
-            {/* The grid reserves a separate bottom row for actions, so they cannot overlap the fitted artwork. */}
+            {/* The grid reserves separate rows for copy and actions, so neither can overlap the fitted artwork. */}
             <Image src={config.backgroundImageUrl} alt="" fill unoptimized priority sizes="100vw" style={{ objectFit: 'contain', objectPosition: 'center' }} />
-            {hasWriting ? (
-              <div aria-hidden style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, color-mix(in srgb, ${CAMERA_STAGE_BLACK} 55%, transparent), color-mix(in srgb, ${CAMERA_STAGE_BLACK} 25%, transparent))` }} />
-            ) : null}
             {layout.pictureLink ? (
               <button
                 type="button"
@@ -155,22 +160,25 @@ export default function CTAPage({
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}
               />
             ) : null}
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', padding: '1.5rem', textAlign: 'center', color: CAMERA_STAGE_WHITE, overflowY: 'auto', pointerEvents: 'none' }}>
-              <h1 style={layout.showTexts ? { margin: 0, fontSize: 'clamp(2rem, 7vw, 4.5rem)', fontWeight: 800, lineHeight: 1.05, textTransform: 'uppercase', textShadow: shadow } : VISUALLY_HIDDEN}>{config.title}</h1>
-              {layout.showTexts && config.description ? <p style={{ margin: 0, maxWidth: '40rem', fontSize: 'clamp(1.05rem, 2.6vw, 1.75rem)', fontStyle: 'italic', textShadow: shadow }}>{config.description}</p> : null}
-            </div>
+          </div>
+          <div
+            data-cta-picture-copy
+            style={{ gridRow: 2, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', padding: layout.showTexts ? '0.75rem 1rem' : 0, textAlign: 'center', color: `var(--event-heading, ${CAMERA_STAGE_WHITE})`, overflowY: 'auto' }}
+          >
+            <h1 style={layout.showTexts ? { margin: 0, maxWidth: '100%', fontSize: 'clamp(1.25rem, 4vw, 3rem)', fontWeight: 800, lineHeight: 1.05, textTransform: 'uppercase' } : VISUALLY_HIDDEN}>{config.title}</h1>
+            {layout.showTexts && config.description ? <p style={{ margin: 0, maxWidth: '48rem', fontSize: 'clamp(1rem, 2vw, 1.5rem)', fontStyle: 'italic', lineHeight: 1.25 }}>{config.description}</p> : null}
           </div>
           {(layout.showVisitButton || layout.showContinueButton) ? (
             <div
               data-cta-picture-actions
-              style={{ gridRow: 2, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem max(1rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px))', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}>
+              style={{ gridRow: 3, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem max(1rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px))', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}>
               {layout.showVisitButton ? (
-                <PillButton onClick={handleRedirect} disabled={isRedirecting} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={t('cta.visitAria')} style={{ width: 'min(80vw, 36rem)', flex: 'none' }}>
+                <PillButton onClick={handleRedirect} disabled={isRedirecting} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={t('cta.visitAria')} style={pictureActionButtonStyle}>
                   {isRedirecting ? opening : visitButtonText}
                 </PillButton>
               ) : null}
               {layout.showContinueButton ? (
-                <PillButton variant={urlToVisit ? 'outline' : 'solid'} onClick={handleContinue} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={config.buttonText} style={{ width: 'min(80vw, 36rem)', flex: 'none' }}>
+                <PillButton variant={urlToVisit ? 'outline' : 'solid'} onClick={handleContinue} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={config.buttonText} style={pictureActionButtonStyle}>
                   {config.buttonText}
                 </PillButton>
               ) : null}
