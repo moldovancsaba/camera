@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — keep the chosen frame and message attached to the intended photo (2026-10-15)
+
+- **Fixed:** frame and message choices survive a same-tab SSO return or page reload as event-scoped IDs, with a 30-minute expiry and validation against active options. A message text check prevents a changed or reordered message from silently reusing its old index.
+- **Fixed:** any selector after TOVÁBB now explicitly chooses the next photo. Previously, a selector between Take Photo and the Submit marker could be shown after upload and then its choice was discarded before the next photo.
+- **Documented:** `docs/FRAME_MESSAGE_SELECTION_CONSISTENCY.md` records the current contract and a server-owned photo-attempt recommendation for deterministic retries, callback restoration, and analytics.
+- **Verified locally:** TypeScript, lint, GDS checks, production build, and inventory check passed. Build reports the existing Google Fonts CSS `@import` ordering warning. No local tests or browser walkthrough were run.
+
 ## Unreleased — persist login-page consent before exposing approved photos (2026-10-15)
 
 - **Fixed:** after same-tab SSO returns to the saved selfie, the capture flow now appends the consent the guest ticked on the login page to that exact submission before continuing. Previously it restored the checkbox state in the browser but left the saved photo marked as awaiting consent.

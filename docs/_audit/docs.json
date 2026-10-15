@@ -39,6 +39,7 @@
   {"file": "docs/EXECUTION_ORDER.md", "title": "Execution order (owner answers of 2026-10-10)"},
   {"file": "docs/FRAME_BASE.md", "title": "Frames from the designers' picture (frame base)"},
   {"file": "docs/FRAME_LAYOUT_SELECTION_PLAN.md", "title": "Layout and message selection at an event (client feedback 2026-10-09)"},
+  {"file": "docs/FRAME_MESSAGE_SELECTION_CONSISTENCY.md", "title": "Frame and message selection consistency"},
   {"file": "docs/FRAME_SLOTS_PLAN.md", "title": "Frames in general: twelve optional slots (issue 502, client request 2026-10-09, owner answer 218: full delivery now)"},
   {"file": "docs/GDS_CAMERA_ADOPTION.md", "title": "Camera GDS Adoption"},
   {"file": "docs/GDS_COMPONENT_RULES.md", "title": "Camera GDS Component Rules"},

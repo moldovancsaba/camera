@@ -1,7 +1,7 @@
 /**
  * The pages of the user journey split by where they are in the flow (issue 535): before the photo (onboarding), after the confirmed upload (presubmit), and after an explicit Submit marker
- * (thank you). The photo is saved when the user confirms the reframe. Every configured page after the camera and before Submit is shown after that upload; without a Submit marker, all pages after
- * the camera run after upload. A submit page that is not active, or before the take-photo page, does not count. Pure; unit-tested (split-pages.test.ts).
+ * (thank you). TOVÁBB confirms the reframe and uploads immediately. Therefore every page after Take Photo runs after the upload; a frame/message selector there chooses for the next photo. A Submit row
+ * groups later journey pages but does not delay that upload. A Submit page that is not active, or before the take-photo page, does not count. Pure; unit-tested (split-pages.test.ts).
  */
 
 import type { CustomPage } from '@/lib/db/schemas';

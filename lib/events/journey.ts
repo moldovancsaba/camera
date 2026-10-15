@@ -46,7 +46,7 @@ const REASON: Record<string, string> = {
   [DEFAULT_WELCOME_PAGE_ID]: "The first thing a user sees: the giant screen drawn from this event's default slideshow and a Start button. This page is used until you make your own welcome page.",
   [DEFAULT_CONSENT_PAGE_ID]: 'Every user accepts the terms, the cookies and the privacy policy first (each can be switched off or made optional in the consent page settings above). This page is used until you make your own consent page.',
   [DEFAULT_IDENTITY_PAGE_ID]: 'A photo that is checked before it is shown needs an e-mail or a social login. This page is used until you make your own login page.',
-  [DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID]: 'Guests choose from the frame and message options enabled on the Frames page. Empty choices are skipped. Place it anywhere: before Take Photo for the current photo, between Take Photo and Submit to adjust that photo before saving, or after saving to choose for the next photo.',
+  [DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID]: 'Guests choose from the frame and message options enabled on the Frames page. Empty choices are skipped. Before Take Photo, the choice applies to the photo about to be taken. TOVÁBB uploads the photo immediately; a selector after that point chooses the next photo. Message-only mode lists every available message and uses a frame that carries it.',
 };
 
 /**
