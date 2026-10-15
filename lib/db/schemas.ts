@@ -283,9 +283,10 @@ export interface CustomPage {
     hasButton?: boolean;       // If false, CTA is end page (no continue button, auto-continues after URL visit)
     visitButtonText?: string;  // Label for visit URL button (e.g., "Visit Now")
     redirectingText?: string;  // Text shown while redirecting (e.g., "Redirecting you shortly...")
-    // Picture pages only (backgroundImageUrl is set; camera#491): the picture always fits the page; these three change what is drawn over it
+    // Picture pages only (backgroundImageUrl is set; camera#491): the picture always fits the page; these switches control copy and actions around it
     hideTexts?: boolean;       // Hide the title and the text (a screen reader still gets the title)
     hideButtons?: boolean;     // Hide the visit and continue buttons (only when the picture is the link or this is the last page)
+    hideVisitButton?: boolean; // Hide only the external URL button; Continue stays available
     pictureLink?: boolean;     // The whole picture is a link to the URL
     // For 'take-photo' type only
     captureButtonText?: string;  // Label for main capture/save button (e.g., "LOVE IT")

@@ -1810,6 +1810,7 @@ export default function EventCapturePage({
               backgroundImageUrl: currentPage.config.backgroundImageUrl,
               hideTexts: currentPage.config.hideTexts,
               hideButtons: currentPage.config.hideButtons,
+              hideVisitButton: currentPage.config.hideVisitButton,
               pictureLink: currentPage.config.pictureLink,
               buttonColor: currentPage.config.buttonColor,
               buttonTextColor: currentPage.config.buttonTextColor,

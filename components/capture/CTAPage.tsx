@@ -40,9 +40,13 @@ export interface CTAPageConfig {
   redirectingText?: string;
   /** A picture fitted into its own screen area, above the page's actions (camera#310, camera#491). */
   backgroundImageUrl?: string;
-  /** Hide the title and the text (a screen reader still gets the title), the buttons, and make the whole picture a link (camera#491, lib/capture/cta-layout.ts). */
+  /** Hide the title and description while keeping the title available to screen readers. */
   hideTexts?: boolean;
+  /** Hide the URL and Continue controls together when another action keeps the page usable. */
   hideButtons?: boolean;
+  /** Hide only the URL button; available only when the picture is linked and Continue is on. */
+  hideVisitButton?: boolean;
+  /** Make the whole picture a link to the configured URL (camera#491, lib/capture/cta-layout.ts). */
   pictureLink?: boolean;
   /** Colours of the round buttons on a page with a picture (hex). */
   buttonColor?: string;
@@ -123,7 +127,7 @@ export default function CTAPage({
   };
 
   if (config.backgroundImageUrl) {
-    const layout = ctaLayout({ url: config.checkboxText, hasButton, hideTexts: config.hideTexts, hideButtons: config.hideButtons, pictureLink: config.pictureLink });
+    const layout = ctaLayout({ url: config.checkboxText, hasButton, hideTexts: config.hideTexts, hideButtons: config.hideButtons, hideVisitButton: config.hideVisitButton, pictureLink: config.pictureLink });
     const pictureActionButtonStyle: CSSProperties = {
       width: 'min(80vw, 36rem)',
       height: '4.25rem',

@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — keep Next while the CTA picture links out (2026-10-15)
+
+- **Added:** CTA picture settings can hide only the URL visit button while keeping Continue visible. Tapping the linked picture opens the destination in a new tab; Continue advances the configured journey.
+- **Preserved:** the existing option to hide both buttons and use the linked picture to open the destination and continue.
+- **Checks:** type-check, lint, GDS checks, inventory, production guards, and production build passed. Unit tests were not run locally; GitHub Verify is the required release gate.
+
 ## Unreleased — make the capture prompt and loading text clear (2026-10-15)
 
 - **Capture prompt:** removed the branded colour wash over the full camera stage. The prompt now sits in a readable event-coloured card with a clear camera action, on both the live-camera and device-camera paths. Default instructions distinguish starting a live camera from opening the device camera.
