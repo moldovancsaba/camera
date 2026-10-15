@@ -32,7 +32,6 @@ import {
 import { dispatchPendingSubmissionEmailForSubmission } from '@/lib/email/submission-result-email';
 import { dispatchArrivedEmail } from '@/lib/email/triggers';
 import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
-import { sendApprovedLinkAfterConsent } from '@/lib/photo-vetting/review';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { safeLinkUrl } from '@/lib/events/consent';
 
@@ -315,6 +314,7 @@ export const PATCH = withErrorHandler(async (
         // Approval can happen while this required login-page checkbox is still awaiting its record. Once this
         // PATCH makes the photo public, send the link now instead of leaving an approved photo unreachable.
         runAfterResponse(async () => {
+          const { sendApprovedLinkAfterConsent } = await import('@/lib/photo-vetting/review');
           await sendApprovedLinkAfterConsent(db, objectId);
         });
       }
