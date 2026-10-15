@@ -41,6 +41,8 @@ export interface PhotoFacts {
   eventKey: string | null;
   /** Every event reference of the photo (the UUID and the ids it was filed under). */
   eventKeys: string[];
+  /** Validated tracked-link slug attached by the submission route; never raw query text. */
+  sourceSlug?: string | null;
   createdAt: string | null;
   source: PhotoSource;
   /** Left out of every count and named as such: removed from the event by an admin, or the picture is gone. */
@@ -120,6 +122,7 @@ export const PHOTO_PROJECTION = {
   'metadata.deviceInfo': 1,
   'metadata.device': 1,
   'metadata.adminGalleryUpload': 1,
+  'metadata.sourceLinkSlug': 1,
   'metadata.arrivedEmailSentAt': 1,
   'metadata.emailSent': 1,
   'metadata.emailFailedAt': 1,
@@ -239,6 +242,7 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
     id: String(doc._id ?? ''),
     eventKey: eventId ?? [...refs][0] ?? null,
     eventKeys: [...refs],
+    sourceSlug: typeof metadata.sourceLinkSlug === 'string' && /^[a-z0-9-]{1,32}$/.test(metadata.sourceLinkSlug) ? metadata.sourceLinkSlug : null,
     createdAt,
     source,
     excluded: doc.isArchived === true ? 'archived' : mediaHealth.broken === true ? 'broken' : null,

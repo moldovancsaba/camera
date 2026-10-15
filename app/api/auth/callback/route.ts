@@ -29,6 +29,24 @@ import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 import { pushSsoSessionToMessmass } from '@/lib/messmassClient';
 import { clearCaptureReturn, captureReturnPath, readCaptureReturn } from '@/lib/auth/capture-return';
 import { capturePopupResponse } from '@/lib/auth/capture-popup';
+import { connectToDatabase } from '@/lib/db/mongodb';
+import { recordServerJourney } from '@/lib/journey/store';
+import { runAfterResponse } from '@/lib/api/run-after-response';
+
+type AuthOutcome = 'success' | 'cancelled' | 'provider_error' | 'callback_error' | 'session_expired';
+
+function recordCaptureAuthResult(request: NextRequest, outcome: AuthOutcome): void {
+  const capture = readCaptureReturn(request);
+  if (!capture?.provider) return;
+  runAfterResponse(async () => {
+    try {
+      const db = await connectToDatabase();
+      await recordServerJourney(db, capture.eventId, 'auth.result', `${capture.provider}_${outcome}`);
+    } catch {
+      // Authentication analytics is optional and must never affect sign-in.
+    }
+  });
+}
 
 /**
  * WHAT: Best-effort -- also log this user into messmass, so one SSO login
@@ -60,6 +78,14 @@ function redirectOAuthFailure(
   options?: { clearPendingSession?: boolean }
 ): NextResponse {
   const capture = readCaptureReturn(request);
+  const outcome: AuthOutcome = errorCode === 'session_expired'
+    ? 'session_expired'
+    : errorCode === 'access_denied'
+      ? 'cancelled'
+      : errorCode === 'auth_failed' || errorCode === 'invalid_request'
+        ? 'callback_error'
+        : 'provider_error';
+  recordCaptureAuthResult(request, outcome);
 
   let res: NextResponse;
   if (capture) {
@@ -218,6 +244,7 @@ export async function GET(request: NextRequest) {
     const capture = readCaptureReturn(request);
 
     if (capture) {
+      recordCaptureAuthResult(request, 'success');
       console.log('✓ Resuming capture flow:', capture.eventId, 'page:', capture.page);
 
       const response = capture.popupId

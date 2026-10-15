@@ -51,7 +51,7 @@ test('the journey rows are in the file only for an event that has a record, and 
   const rows = analyticsRows(report, undefined, journey);
   const value = (section: string, item: string) => rows.find((row) => row[0] === section && row[1] === item)?.[2];
   assert.equal(value('journey', 'opens'), 10);
-  assert.equal(value('journey', 'completed (saved a photo)'), 5);
+  assert.equal(value('journey', 'visits with a saved photo'), 5);
   assert.equal(value('journey', 'recording since (UTC day)'), '2026-10-16');
   assert.equal(value('journey steps reached', 'Camera'), 8);
   assert.equal(value('journey shares by channel', 'Copy the link'), 3);

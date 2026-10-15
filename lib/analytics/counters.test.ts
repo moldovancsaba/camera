@@ -29,13 +29,14 @@ const quiet = <T>(run: () => T): { result: T; lines: string[] } => {
 };
 
 const PHOTO_NAMES = ['camera_images_taken', 'camera_images_approved', 'camera_images_rejected', 'camera_images_shown_on_slideshow', 'camera_consents_accepted'];
-const JOURNEY_NAMES = ['camera_journey_opens', 'camera_journeys_completed', 'camera_permission_denied', 'camera_retakes', 'camera_consents_abandoned', 'camera_shares', 'camera_downloads'];
+const REVIEW_QUEUE_NAMES = ['camera_review_queue_under_15m', 'camera_review_queue_15m_1h', 'camera_review_queue_1_6h', 'camera_review_queue_6_24h', 'camera_review_queue_over_24h'];
+const JOURNEY_NAMES = ['camera_journey_opens', 'camera_journeys_completed', 'camera_journeys_finished', 'camera_permission_denied', 'camera_retakes', 'camera_consents_abandoned', 'camera_shares', 'camera_downloads'];
 const ANNOTATION_NAMES = ['camera_images_annotated', 'camera_images_with_people', 'camera_images_no_people', 'camera_images_one_person', 'camera_images_group', 'camera_people_total', 'camera_people_with_merch'];
 
 test('the fixed counters by their messmass names: the photos, the journey recording, what the vetting person marked, and the reasons', () => {
   assert.deepEqual(COMPUTABLE_COUNTERS.map((c) => [c.key, c.kind]), [
-    ['camera_images_taken', 'total'], ['camera_images_approved', 'total'], ['camera_images_rejected', 'total'], ['camera_images_shown_on_slideshow', 'total'], ['camera_images_decided', 'total'], ['camera_vetting_seconds_total', 'total'], ['camera_consents_accepted', 'total'],
-    ['camera_journey_opens', 'total'], ['camera_journeys_completed', 'total'], ['camera_permission_denied', 'total'], ['camera_retakes', 'total'], ['camera_consents_abandoned', 'total'], ['camera_shares', 'total'], ['camera_downloads', 'total'],
+    ['camera_images_taken', 'total'], ['camera_images_approved', 'total'], ['camera_images_rejected', 'total'], ['camera_images_shown_on_slideshow', 'total'], ['camera_images_decided', 'total'], ['camera_vetting_seconds_total', 'total'], ['camera_consents_accepted', 'total'], ['camera_source_visits', 'total'], ['camera_source_photo_submissions', 'total'],
+    ['camera_journey_opens', 'total'], ['camera_journeys_completed', 'total'], ['camera_journeys_finished', 'total'], ['camera_permission_denied', 'total'], ['camera_retakes', 'total'], ['camera_consents_abandoned', 'total'], ['camera_shares', 'total'], ['camera_downloads', 'total'],
     ['camera_images_annotated', 'total'], ['camera_images_with_people', 'total'], ['camera_images_no_people', 'total'], ['camera_images_one_person', 'total'], ['camera_images_group', 'total'], ['camera_people_total', 'total'], ['camera_people_with_merch', 'total'],
     ['camera_images_rejected_no_reason', 'total'],
   ]);
@@ -98,8 +99,8 @@ test('vetting time with no decided photo behind it is not in the set (not sent a
   assert.equal('camera_images_decided' in set.totals || 'camera_vetting_seconds_total' in set.totals, false);
   assert.equal(set.totals.camera_images_taken, 1);
   const empty = buildCounters(report([]));
-  assert.deepEqual(empty.totals, { camera_images_taken: 0, camera_images_approved: 0, camera_images_rejected: 0, camera_images_shown_on_slideshow: 0, camera_consents_accepted: 0 });
-  assert.deepEqual(Object.keys(empty.labels), PHOTO_NAMES);
+  assert.deepEqual(empty.totals, { camera_images_taken: 0, camera_images_approved: 0, camera_images_rejected: 0, camera_images_shown_on_slideshow: 0, camera_consents_accepted: 0, camera_review_queue_under_15m: 0, camera_review_queue_15m_1h: 0, camera_review_queue_1_6h: 0, camera_review_queue_6_24h: 0, camera_review_queue_over_24h: 0 });
+  assert.deepEqual(Object.keys(empty.labels), [...PHOTO_NAMES, ...REVIEW_QUEUE_NAMES]);
   assert.equal(hasCounters(empty), true);
   assert.equal(hasCounters(NO_COUNTERS), false);
   assert.equal(hasCounters(null), false);
@@ -144,10 +145,10 @@ const journey = (rows: Array<[string, string, number]>) => summarizeJourney(rows
 
 test('the journey counters are totals of the recording, only for an event that has a record: none of them is sent as a zero before that', () => {
   const withJourney = buildCounters(report([photo()]), journey([['journey.start', 'ios', 40], ['journey.start', 'android', 10], ['journey.complete', '1-3m', 30], ['camera.permission', 'denied', 3], ['photo.retake', '', 9], ['consent.shown', 'page', 20], ['consent.accept', 'page', 12], ['share.click', 'copy', 5], ['share.click', 'whatsapp', 2], ['download', '', 4]]));
-  assert.deepEqual(withJourney.totals, { camera_images_taken: 1, camera_images_approved: 0, camera_images_rejected: 0, camera_images_shown_on_slideshow: 0, camera_consents_accepted: 0, camera_journey_opens: 50, camera_journeys_completed: 30, camera_permission_denied: 3, camera_retakes: 9, camera_consents_abandoned: 8, camera_shares: 7, camera_downloads: 4 });
+  for (const [name, value] of Object.entries({ camera_images_taken: 1, camera_images_approved: 0, camera_images_rejected: 0, camera_images_shown_on_slideshow: 0, camera_consents_accepted: 0, camera_journey_opens: 50, camera_journeys_completed: 30, camera_journeys_finished: 0, camera_permission_denied: 3, camera_retakes: 9, camera_consents_abandoned: 8, camera_shares: 7, camera_downloads: 4, camera_journey_completed_duration_ms_total: 0, camera_journey_completed_duration_samples: 0, camera_journey_cta_page_visits: 0, camera_journey_cta_clicks: 0, camera_journey_cta_external: 0, camera_journey_cta_continue: 0, camera_journey_cta_returns: 0, camera_journey_step_reach_welcome: 0, camera_journey_auth_google_success: 0, camera_journey_auth_facebook_success: 0, camera_users_identifiable: 1, camera_users_returning: 0, camera_users_new: 1 })) assert.equal(withJourney.totals[name], value, name);
 
   const without = buildCounters(report([photo()]), journey([]));
-  assert.deepEqual(Object.keys(without.totals), PHOTO_NAMES, 'no record of the journey: no journey counter, not even a zero');
+  assert.deepEqual(Object.keys(without.totals), [...PHOTO_NAMES, ...REVIEW_QUEUE_NAMES], 'no record of the journey: no journey counter, not even a zero');
   assert.deepEqual(buildCounters(report([photo()])).totals, without.totals);
   assert.deepEqual(buildCounters(report([photo()]), null).totals, without.totals);
 });
@@ -297,10 +298,11 @@ test('the preview rows list every fixed counter, then each family with a row for
   const keys = rows.map((r) => r.key);
   assert.ok(keys.indexOf('camera_images_annotated') < keys.indexOf('camera_gender_female'));
   assert.ok(keys.indexOf('camera_merch_scarf') < keys.indexOf('camera_rejected_nudity'));
-  assert.equal(keys[keys.length - 1], 'camera_images_rejected_no_reason');
+  assert.ok(keys.indexOf('camera_images_rejected_no_reason') < keys.indexOf(REVIEW_QUEUE_NAMES[0]));
+  assert.deepEqual(keys.slice(-REVIEW_QUEUE_NAMES.length), [...REVIEW_QUEUE_NAMES].sort());
   assert.equal(rows.find((r) => r.key === 'camera_rejected_nudity')?.label, 'Camera: rejected, Nudity or sexual content');
   assert.equal(rows.find((r) => r.key === 'camera_gender_female')?.value, 1);
   const bare = counterRows(NO_COUNTERS).map((r) => r.key);
   for (const placeholder of ['camera_gender_<option>', 'camera_age_<option>', 'camera_emotion_<option>', 'camera_merch_<option>', 'camera_rejected_<option>']) assert.ok(bare.includes(placeholder), placeholder);
-  assert.equal(counterRows(buildCounters(report([photo()]))).length, bare.length, 'the same rows when the event has nothing marked');
+  assert.equal(counterRows(buildCounters(report([photo()]))).length, bare.length + REVIEW_QUEUE_NAMES.length, 'the current review queue has its own rows');
 });

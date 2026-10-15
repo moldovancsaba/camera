@@ -189,6 +189,10 @@ export function VettingSection({ report }: { report: EventReport }) {
         {vetting.decidedAgain > 0 ? <Note>{plural(vetting.decidedAgain, 'photo')} {vetting.decidedAgain === 1 ? 'was' : 'were'} decided again after the first decision; only the first counts for the time.</Note> : null}
       </Panel>
 
+      <Panel title="Current review queue age" description="How long photos still waiting for a first decision have been in the queue, measured now. The 24-hour band is an operational alert, not a promise or legal deadline.">
+        <Bars label="Photos waiting by age" rows={photos.waitingAgeBuckets} total={photos.waiting} empty="No photos are waiting for review." />
+      </Panel>
+
       <Panel title="Who decided" description="Every approval and decline by the person who made it, and the time of the photos that person decided first.">
         <Table
           caption="Decisions by person"
@@ -284,9 +288,11 @@ export function SourcesSection({ sources, eventId }: { sources: SourcesReport; e
           { label: 'Visits', value: formatCount(sources.totals.visits), description: 'People sent on through a link; one person who scans twice counts twice' },
           { label: 'Through QR codes', value: formatCount(sources.totals.qr), description: `${formatCount(sources.totals.iphone)} iPhone, ${formatCount(sources.totals.android)} Android, ${formatCount(sources.totals.other)} other (all links)` },
           { label: 'Through links', value: formatCount(sources.totals.link), description: "Including the event's own short address" },
+          { label: 'Attributed photo submissions', value: formatCount(sources.totals.photoSubmissions), description: 'Saved user photos whose source slug matched a tracked event link' },
+          { label: 'Link-to-photo rate', value: formatRate(sources.totals.photoConversionRate), description: 'Attributed photo submissions divided by recorded link visits' },
         ]}
       />
-      <Panel title="Visits by link" description="The tracked links of the event: the giant screen, a poster, an e-mail. Days are UTC days. A photo cannot be tied to the link that brought the user: the redirect does not pass it on.">
+      <Panel title="Visits and photo submissions by link" description="Tracked link visits and the saved user photos attributed through each short link. Days are UTC days; attribution is based on a validated link slug carried through the capture flow.">
         <Table
           caption="Visits by link"
           rows={sources.rows}
@@ -296,6 +302,8 @@ export function SourcesSection({ sources, eventId }: { sources: SourcesReport; e
             { key: 'placement', header: 'Where', rowHeader: true, render: (row) => (row.active ? row.placement : `${row.placement} (switched off)`) },
             { key: 'kind', header: 'Kind', render: (row) => (row.kind === 'qr' ? 'QR code' : 'Link') },
             { key: 'visits', header: 'Visits', numeric: true, render: (row) => formatCount(row.visits) },
+            { key: 'submissions', header: 'Photo submissions', numeric: true, render: (row) => formatCount(row.photoSubmissions) },
+            { key: 'conversion', header: 'Visit-to-photo rate', numeric: true, render: (row) => formatRate(row.photoConversionRate) },
             { key: 'iphone', header: 'iPhone', numeric: true, render: (row) => formatCount(row.iphone) },
             { key: 'android', header: 'Android', numeric: true, render: (row) => formatCount(row.android) },
             { key: 'other', header: 'Other', numeric: true, render: (row) => formatCount(row.other) },

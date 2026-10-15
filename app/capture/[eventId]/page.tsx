@@ -238,6 +238,7 @@ export default function EventCapturePage({
   const uiTexts = useUiTexts();
   
   const [event, setEvent] = useState<EventData | null>(null);
+  const [sourceLinkSlug, setSourceLinkSlug] = useState<string | null>(null);
   const [loadingLogoUrl, setLoadingLogoUrl] = useState<string | null>(null);
   const [onboardingLogoUrl, setOnboardingLogoUrl] = useState<string | null>(null);
   const [frames, setFrames] = useState<Frame[]>([]);
@@ -304,6 +305,15 @@ export default function EventCapturePage({
   const [saveRequested, setSaveRequested] = useState(false);
   // The pages before the preview were already shown after upload: retrying the stored photo or taking the next photo does not ask again; a restart does.
   const [presubmitDone, setPresubmitDone] = useState(false);
+
+  useEffect(() => {
+    try {
+      const source = new URLSearchParams(window.location.search).get('source');
+      if (source && /^[a-z0-9-]{1,32}$/.test(source)) setSourceLinkSlug(source);
+    } catch {
+      // Attribution is optional and must never affect capture.
+    }
+  }, []);
   const captureSubmissionResumeKey = `camera:capture-submission-resume:${eventId}`;
   const vetted = event?.photoVettingRequired === true;
 
@@ -979,7 +989,7 @@ export default function EventCapturePage({
 
     clearCaptureNotices();
     setIsSaving(true);
-    journey.record('photo.upload', 'started');
+    journey.uploadStarted(captureMethod ?? 'system');
 
     try {
       // Include userInfo and consents in the submission payload
@@ -998,6 +1008,7 @@ export default function EventCapturePage({
         publicGalleryConsentVersion?: 1;
         // The message and image of the generated default frame this photo used (camera#236).
         frameVariant?: { index: number | null; message: string | null; imageUrl: string };
+        sourceSlug?: string;
       } = {
         imageData: compositeImage,
         frameId: selectedFrame?.generated ? null : selectedFrame?.frameId || null,  // Optional frame
@@ -1007,6 +1018,7 @@ export default function EventCapturePage({
         partnerName: event.partnerName,
         imageWidth: imageDimensions?.width || selectedFrame?.width || 1920,
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
+        ...(sourceLinkSlug ? { sourceSlug: sourceLinkSlug } : {}),
         // The terms the user accepted cover showing the photo on the event's pledge wall (camera#344), unless the event asks for the user's own permission (issue 554): then only a ticked box makes the photo eligible,
         // and the version of the sentence goes with it; the server decides from the event's own setting too.
         shareOptIn: asksGallery ? galleryTick : true,
@@ -1057,7 +1069,7 @@ export default function EventCapturePage({
       if (!submissionId) {
         throw new Error(t('flow.noSubmissionId'));
       }
-      journey.record('photo.upload', 'succeeded');
+      journey.uploadFinished(captureMethod ?? 'system', true);
       // Later journey pages may choose the next photo's frame/message; preserve the composition that was just stored.
       setCapturedImage(null);
       setCapturedOriginal(null);
@@ -1107,7 +1119,7 @@ export default function EventCapturePage({
       notifyCapture('success', finalSuccessMessage);
     } catch (error: unknown) {
       console.error('Error saving submission:', error);
-      journey.record('photo.upload', 'failed');
+      journey.uploadFinished(captureMethod ?? 'system', false);
       journey.saved(false);
       // The editor's own save-error text keeps its way (its ": Please try again." ending is dropped); the default is the dictionary's "Failed to save photo".
       const saveFailed = errorSaveMessage === t('flow.errorSave') ? t('flow.saveFailedPrefix') : errorSaveMessage.replace(': Please try again.', '');
@@ -1455,6 +1467,15 @@ export default function EventCapturePage({
     setCollectedData((prev) => ({ ...prev, consents }));
     rememberConsents(window.sessionStorage, eventId, consents);
   };
+
+  const finishJourney = useCallback(() => {
+    journey.finish();
+    try {
+      window.sessionStorage.removeItem(`camera-journey-start:${eventId}`);
+    } catch {
+      // Journey timing is optional and never affects the guest flow.
+    }
+  }, [eventId]);
   
   /** The post-capture journey pages are done: the photo was already saved on TOVÁBB. */
   const finishPresubmit = () => {
@@ -1502,6 +1523,7 @@ export default function EventCapturePage({
         setCurrentPageIndex(currentPageIndex + 1);
       } else {
         // A selector after saving chooses the next photo. Keep that choice and continue with the already-known guest.
+        finishJourney();
         finalizeSubmissionForEventEnd();
         if (thankYouPages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID)) {
           nextPhotoRef.current();
@@ -1532,10 +1554,11 @@ export default function EventCapturePage({
       setFlowPhase('capture');
       setSaveRequested(true);
     } else {
+      finishJourney();
       finalizeSubmissionForEventEnd();
       nextPhotoRef.current();
     }
-  }, [flowPhase, currentPageIndex, asksAnySelection, onboardingPages, presubmitPages, thankYouPages, selectedFrame, frames.length, selectionFrame, choice, ownLayout, finalizeSubmissionForEventEnd]);
+  }, [flowPhase, currentPageIndex, asksAnySelection, onboardingPages, presubmitPages, thankYouPages, selectedFrame, frames.length, selectionFrame, choice, ownLayout, finishJourney, finalizeSubmissionForEventEnd]);
   
   /**
    * Navigate to previous page
@@ -1551,6 +1574,7 @@ export default function EventCapturePage({
       setCurrentPageIndex(0);
     } else {
       // No thank you pages: the guest is ready for the next photo, already known (camera#285 owner default)
+      finishJourney();
       finalizeSubmissionForEventEnd();
       nextPhotoRef.current();
     }
@@ -1606,6 +1630,7 @@ export default function EventCapturePage({
   });
 
   const handleRestartFlow = () => {
+    if (savedSubmissionId) finishJourney();
     // Reset capture state
     setCapturedImage(null);
     setCapturedOriginal(null);
@@ -1672,6 +1697,7 @@ export default function EventCapturePage({
         finishPresubmit();
       } else {
         // The last page of the journey is done: ready for the next photo, not back at the login (owner default)
+        finishJourney();
         finalizeSubmissionForEventEnd();
         handleNextPhoto();
       }
@@ -1712,6 +1738,7 @@ export default function EventCapturePage({
             pageId={currentPage.pageId}
             capturePhase={flowPhase === 'presubmit' ? 'presubmit' : 'onboarding'}
             captureSubmissionId={flowPhase === 'presubmit' ? savedSubmissionId : null}
+            captureSourceSlug={sourceLinkSlug}
             onBeforeSocialLogin={flowPhase === 'presubmit' ? prepareCaptureForSocialLogin : undefined}
             onNext={handleWhoAreYouComplete}
             acceptance={

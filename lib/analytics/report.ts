@@ -107,6 +107,8 @@ export interface EventReport {
     approvalRate: number | null;
     /** The age in seconds of the photo that has waited longest, now. */
     oldestWaitingSeconds: number | null;
+    /** Pending-photo age bands as of report time, for the review queue service level. */
+    waitingAgeBuckets: Tally[];
   };
   vetting: {
     /** Photos with at least one recorded decision, and the decisions (a photo can be decided again). */
@@ -419,6 +421,13 @@ export function buildEventReport(input: ReportInput, options: ReportOptions): Ev
       notVetted: userPhotos.length - approved - rejected - waitingPhotos.length,
       approvalRate: approved + rejected > 0 ? approved / (approved + rejected) : null,
       oldestWaitingSeconds: waitingAges.length > 0 ? Math.max(...waitingAges) : null,
+      waitingAgeBuckets: [
+        { id: 'under-15m', label: 'Under 15 minutes', count: waitingAges.filter((seconds) => seconds < 15 * 60).length },
+        { id: '15m-1h', label: '15 minutes to 1 hour', count: waitingAges.filter((seconds) => seconds >= 15 * 60 && seconds < 60 * 60).length },
+        { id: '1-6h', label: '1 to 6 hours', count: waitingAges.filter((seconds) => seconds >= 60 * 60 && seconds < 6 * 60 * 60).length },
+        { id: '6-24h', label: '6 to 24 hours', count: waitingAges.filter((seconds) => seconds >= 6 * 60 * 60 && seconds < 24 * 60 * 60).length },
+        { id: 'over-24h', label: 'Over 24 hours', count: waitingAges.filter((seconds) => seconds >= 24 * 60 * 60).length },
+      ],
     },
     vetting: {
       decidedPhotos: decided.length,

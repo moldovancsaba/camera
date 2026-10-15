@@ -5,8 +5,9 @@
  * **Every name starts with `camera_`** (lower case snake case, `COUNTER_NAME_PATTERN`): messmass already holds variables of other sources (female, male, jersey, approvedImages, ...), and camera's
  * names must never meet them. The key of a definition is the messmass name.
  *
- * Where the numbers come from: the photos (taken, approved, declined, plays, vetting time, consents); the journey recording (seven more, **once the event has any journey record**); and what the
- * vetting person marked: the people in each photo (gender, age, emotion, items, in the words of the event's vocabulary, lib/photo-vetting/vocabulary.ts) and why a photo was declined. A counter
+ * Where the numbers come from: photos, consent, tracked source links and their saved photo submissions; the journey recording (saved/finished flows, time sums and samples, step reach, transitions, CTA,
+ * SSO outcomes and upload outcomes/durations, **once the event has any journey record**); the users identified from saved photos; the current review queue; and what the vetting person marked: the
+ * people in each photo (gender, age, emotion, items, in the words of the event's vocabulary, lib/photo-vetting/vocabulary.ts) and why a photo was declined. A counter
  * that cannot be counted is **never sent as a zero** (a zero would say "nobody" when the truth is "nobody counted"): an event with no journey record sends no journey counter, an event where no photo
  * is marked sends no annotation counter, and an event with no declined photo sends no reason counter. **Nothing waits any more**: the list below is everything the data can give.
  *
@@ -18,6 +19,7 @@
 import { isRecorded, type JourneySummary } from './journey';
 import { cleanCounterPayload, type CounterPayload } from './counters-contract';
 import type { EventReport } from './report';
+import type { SourcesReport } from './sources';
 import { counterKey, optionLabel, optionsOf, type ResolvedVocabulary, type VocabGroup } from '@/lib/photo-vetting/vocabulary';
 
 export type CounterKind = 'total' | 'average';
@@ -47,9 +49,12 @@ export const COMPUTABLE_COUNTERS: readonly CounterDefinition[] = [
   total('camera_images_decided', 'photos', 'Camera: images decided', 'Photos that have a first decision (approved or declined). With the next counter it gives the average vetting time in messmass: seconds divided by images. Not sent until a photo was decided.'),
   total('camera_vetting_seconds_total', 'photos', 'Camera: vetting time, all photos (seconds)', 'The seconds from each photo being handed in to its first decision, added up over the photos that have one. A total, so partner and organisation reports can add events together.'),
   total('camera_consents_accepted', 'photos', 'Camera: consents accepted', 'Photos whose user accepted at least one consent (the consent is stored on the photo; only acceptances exist).'),
+  total('camera_source_visits', 'photos', 'Camera: tracked source visits', 'Counted visits through event short links and the event short address.'),
+  total('camera_source_photo_submissions', 'photos', 'Camera: attributed source photo submissions', 'Saved user photos matched to a validated tracked source slug.'),
   // From the journey recording: counted from the day the recording started, and not sent at all for an event that has no journey record (never a zero).
   total('camera_journey_opens', 'journey', 'Camera: journey opens', 'Visits to the capture page (a page load with the event; a return from a sign-in is not another visit), since the recording started. Not a count of different people.'),
-  total('camera_journeys_completed', 'journey', 'Camera: journeys completed', 'Visits that saved a photo (the first photo of the visit), since the recording started.'),
+  total('camera_journeys_completed', 'journey', 'Camera: journeys with a saved photo', 'Visits that saved at least one photo, since the recording started.'),
+  total('camera_journeys_finished', 'journey', 'Camera: journeys finished', 'Visits that reached the final configured page after the photo was saved, since this measure was introduced.'),
   total('camera_permission_denied', 'journey', 'Camera: camera permission denied', 'Times a user said no when the live camera of a desktop asked for permission. A phone takes the photo with its own camera app and asks nothing on the page.'),
   total('camera_retakes', 'journey', 'Camera: retakes', 'Times a user went back from the move-and-zoom step to take the photo again.'),
   total('camera_consents_abandoned', 'journey', 'Camera: consents abandoned', 'Visits that were shown the consent and did not accept it (shown minus accepted, for the consent page and for the box on the Who-are-you page).'),
@@ -134,7 +139,7 @@ const optionCounterLabel = (vocabulary: ResolvedVocabulary, group: VocabGroup, k
  * total. A summary of an event with no journey record (`isRecorded` false) adds nothing: the journey counters are left out, not sent as zeros. The vocabulary (the report's own when none is
  * given) decides which options get a counter. The set is run through the contract of counters-contract.ts last, so a name that does not match the pattern is dropped and logged.
  */
-export function buildCounters(report: EventReport, journey?: JourneySummary | null, vocabulary: ResolvedVocabulary = report.vocabulary): CounterSet {
+export function buildCounters(report: EventReport, journey?: JourneySummary | null, vocabulary: ResolvedVocabulary = report.vocabulary, sources?: SourcesReport | null): CounterSet {
   const totals: Record<string, number> = {};
   const averages: Record<string, number> = {};
   const labels: Record<string, string> = {};
@@ -149,20 +154,55 @@ export function buildCounters(report: EventReport, journey?: JourneySummary | nu
     totals[counterKey(group, key)] = whole(value);
     labels[counterKey(group, key)] = optionCounterLabel(vocabulary, group, key);
   };
+  const putDynamicTotal = (key: string, label: string, value: number) => {
+    totals[key] = whole(value);
+    labels[key] = label;
+  };
 
   put('camera_images_taken', report.photos.taken);
   put('camera_images_approved', report.photos.approved);
   put('camera_images_rejected', report.photos.rejected);
   put('camera_images_shown_on_slideshow', report.screens.plays);
   put('camera_consents_accepted', report.consents.photosWithConsent);
+  if (sources) {
+    put('camera_source_visits', sources.totals.visits);
+    put('camera_source_photo_submissions', sources.totals.photoSubmissions);
+    for (const row of sources.rows) {
+      const slug = row.slug.replace(/[^a-z0-9]/g, '_').slice(0, 32);
+      if (!slug) continue;
+      putDynamicTotal(`camera_source_${slug}_visits`, `Camera: visits from ${row.placement}`.slice(0, 80), row.visits);
+      putDynamicTotal(`camera_source_${slug}_photos`, `Camera: photo submissions from ${row.placement}`.slice(0, 80), row.photoSubmissions);
+    }
+  }
   if (isRecorded(journey)) {
     put('camera_journey_opens', journey.opens);
     put('camera_journeys_completed', journey.completed);
+    put('camera_journeys_finished', journey.finished);
     put('camera_permission_denied', journey.camera.denied);
     put('camera_retakes', journey.photos.retakes);
     put('camera_consents_abandoned', journey.consent.abandoned);
     put('camera_shares', journey.shares.clicks);
     put('camera_downloads', journey.shares.downloads);
+    putDynamicTotal('camera_journey_completed_duration_ms_total', 'Camera: completed journey duration total (milliseconds)', journey.completedDurationTotalMs);
+    putDynamicTotal('camera_journey_completed_duration_samples', 'Camera: completed journey duration samples', journey.averageCompleteSamples);
+    putDynamicTotal('camera_journey_cta_page_visits', 'Camera: visits reaching a CTA page', journey.steps.find((step) => step.id === 'cta')?.count ?? 0);
+    putDynamicTotal('camera_journey_cta_clicks', 'Camera: visits clicking a CTA action', journey.ctaClicks);
+    putDynamicTotal('camera_journey_cta_external', 'Camera: external CTA actions', journey.ctaActions.find((row) => row.id === 'external')?.count ?? 0);
+    putDynamicTotal('camera_journey_cta_continue', 'Camera: internal CTA Continue actions', journey.ctaActions.find((row) => row.id === 'continue')?.count ?? 0);
+    putDynamicTotal('camera_journey_cta_returns', 'Camera: returns to capture after external CTA', journey.ctaReturns);
+    for (const step of journey.steps) putDynamicTotal(`camera_journey_step_reach_${step.id.replaceAll('-', '_')}`, `Camera: journey visits reaching ${step.label}`, step.count);
+    for (const transition of journey.transitions) putDynamicTotal(`camera_journey_transition_${transition.from.replaceAll('-', '_')}_to_${transition.to.replaceAll('-', '_')}`, `Camera: journey transition ${transition.label}`, transition.count);
+    for (const outcome of journey.authentication) putDynamicTotal(`camera_journey_auth_${outcome.id}`, `Camera: SSO callback ${outcome.label}`, outcome.count);
+    for (const upload of journey.photos.uploadsByDeviceMethod) {
+      const group = upload.id.replaceAll('-', '_');
+      putDynamicTotal(`camera_upload_${group}_started`, `Camera: uploads started, ${upload.label}`, upload.started);
+      putDynamicTotal(`camera_upload_${group}_succeeded`, `Camera: uploads succeeded, ${upload.label}`, upload.succeeded);
+      putDynamicTotal(`camera_upload_${group}_failed`, `Camera: uploads failed, ${upload.label}`, upload.failed);
+      for (const duration of upload.durations) putDynamicTotal(`camera_upload_${group}_duration_${duration.id.replaceAll('-', '_')}`, `Camera: upload duration ${duration.label}, ${upload.label}`, duration.count);
+    }
+    putDynamicTotal('camera_users_identifiable', 'Camera: identifiable users with a photo', report.users.distinct);
+    putDynamicTotal('camera_users_returning', 'Camera: users with two or more photos in this event', report.users.returning);
+    putDynamicTotal('camera_users_new', 'Camera: users with one photo in this event', Math.max(0, report.users.distinct - report.users.returning));
   }
   if (report.vetting.timeToFirstDecision.count > 0) {
     put('camera_images_decided', report.vetting.timeToFirstDecision.count);
@@ -189,6 +229,7 @@ export function buildCounters(report: EventReport, journey?: JourneySummary | nu
     for (const key of keysFor(vocabulary, 'reject_reason', byReason)) putOption('reject_reason', key, byReason[key] ?? 0);
     put('camera_images_rejected_no_reason', report.vetting.rejectedWithoutReasons);
   }
+  for (const bucket of report.photos.waitingAgeBuckets) putDynamicTotal(`camera_review_queue_${bucket.id.replaceAll('-', '_')}`, `Camera: current review queue ${bucket.label.toLowerCase()}`, bucket.count);
   return cleanCounterPayload({ totals, averages, labels });
 }
 
@@ -254,5 +295,9 @@ export function counterRows(set: CounterSet): CounterRow[] {
   addFamilies(PERSON_GROUPS);
   addFamilies(['reject_reason']);
   addFixed('reasons');
+  const fixedNames = new Set(rows.map((row) => row.key));
+  for (const key of Object.keys(set.totals).filter((name) => name.startsWith('camera_journey_') || name.startsWith('camera_upload_') || name.startsWith('camera_users_') || name.startsWith('camera_review_queue_') || name.startsWith('camera_source_')).sort()) {
+    if (!fixedNames.has(key)) rows.push({ key, label: set.labels[key] ?? key, kind: 'total', source: key.startsWith('camera_users_') || key.startsWith('camera_review_queue_') || key.startsWith('camera_source_') ? 'photos' : 'journey', definition: 'Event-level aggregate count; no guest identity or photo is sent.', value: set.totals[key] });
+  }
   return rows;
 }

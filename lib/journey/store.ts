@@ -16,7 +16,7 @@ import { ObjectId, type Db } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { ensureJourneyIndexes } from '@/lib/db/ensure-indexes';
 import { logWarn } from '@/lib/observability/logger';
-import { NO_KEY, type JourneyBatch, type JourneyEvent, type JourneyName } from './events';
+import { NO_KEY, isJourneyKey, type JourneyBatch, type JourneyEvent, type JourneyName } from './events';
 import { journeyRecordingEnabled } from './setting';
 
 /** The session id the server gives to the records it makes itself (the share page opened, the photo downloaded): there is no visit behind them. */
@@ -80,7 +80,12 @@ export async function recordJourneyBatch(db: Db, write: JourneyWrite, now: Date 
   if (write.events.length === 0) return;
   await ensureIndexesOnce(db, now.getTime());
   const day = dayOf(now);
-  const daily = rollupOf(write.events).map((row) => ({ updateOne: { filter: { eventId: write.eventId, day, name: row.name, key: row.key }, update: { $inc: { count: row.count } }, upsert: true } }));
+  const durationTotals = new Map<string, number>();
+  for (const event of write.events) if (event.name === 'journey.flow.complete') durationTotals.set(`${event.name}\u0000${event.key}`, (durationTotals.get(`${event.name}\u0000${event.key}`) ?? 0) + event.ms);
+  const daily = rollupOf(write.events).map((row) => {
+    const durationTotalMs = durationTotals.get(`${row.name}\u0000${row.key}`);
+    return { updateOne: { filter: { eventId: write.eventId, day, name: row.name, key: row.key }, update: { $inc: { count: row.count, ...(durationTotalMs !== undefined ? { durationTotalMs, durationSamples: row.count } : {}) } }, upsert: true } };
+  });
   const rows = write.events.map((event) => ({ eventId: write.eventId, session: write.session, name: event.name, key: event.key, ms: event.ms, at: now }));
   const outcomes = await Promise.allSettled([
     db.collection(COLLECTIONS.JOURNEY_DAILY).bulkWrite(daily, { ordered: false }),
@@ -132,7 +137,11 @@ export async function storeJourneyBatch(db: Db, batch: JourneyBatch, device: str
   if (!(await journeyRecordingEnabled(db, now.getTime()))) return 'disabled';
   const eventId = await resolveJourneyEvent(db, batch.event, now.getTime());
   if (!eventId) return 'unknown_event';
-  const events = batch.events.map((event) => (event.name === 'journey.start' ? { ...event, key: device } : event));
+  const events = batch.events.map((event) => {
+    if (event.name === 'journey.start') return { ...event, key: device };
+    if (event.name === 'photo.upload.attempt' || event.name === 'photo.upload.result' || event.name === 'photo.upload.duration') return { ...event, key: `${device}_${event.key}` };
+    return event;
+  });
   await recordJourneyBatch(db, { eventId, session: batch.session, events }, now);
   return 'written';
 }
@@ -140,12 +149,14 @@ export async function storeJourneyBatch(db: Db, batch: JourneyBatch, device: str
 /**
  * Records one event the server itself sees (the public photo page opened by a person, the photo downloaded) against the event of the photo, unless the recording is switched off. For use inside `runAfterResponse`. Never throws.
  */
-export async function recordServerJourney(db: Db, eventIdentifier: string | null | undefined, name: JourneyName, now: Date = new Date()): Promise<void> {
+export async function recordServerJourney(db: Db, eventIdentifier: string | null | undefined, name: JourneyName, keyOrNow: string | Date = NO_KEY, nowArg: Date = new Date()): Promise<void> {
   try {
-    if (!eventIdentifier || !(await journeyRecordingEnabled(db, now.getTime()))) return;
+    const key = keyOrNow instanceof Date ? NO_KEY : keyOrNow;
+    const now = keyOrNow instanceof Date ? keyOrNow : nowArg;
+    if (!eventIdentifier || !(await journeyRecordingEnabled(db, now.getTime())) || !isJourneyKey(name, key)) return;
     const eventId = await resolveJourneyEvent(db, eventIdentifier, now.getTime());
     if (!eventId) return;
-    await recordJourneyBatch(db, { eventId, session: SERVER_VISIT, events: [{ name, key: NO_KEY, ms: 0 }] }, now);
+    await recordJourneyBatch(db, { eventId, session: SERVER_VISIT, events: [{ name, key, ms: 0 }] }, now);
   } catch {
     // a record the server makes for itself must never affect the page or the download
   }

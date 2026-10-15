@@ -58,7 +58,7 @@ export default async function AllEventsAnalyticsPage({ searchParams }: { searchP
       beforeToolbar={<EventPicker basePath="/admin/analytics" />}
       dbError={dbError}
     >
-      {analytics ? <AnalyticsView basePath="/admin/analytics" query={query} defaultTimeZone={FALLBACK_ZONE} report={analytics.report} table={analytics.table} /> : null}
+      {analytics ? <AnalyticsView basePath="/admin/analytics" query={query} defaultTimeZone={FALLBACK_ZONE} report={analytics.report} table={analytics.table} crossEventReturning={analytics.crossEventReturning} /> : null}
     </AdminListPageShell>
   );
 }

@@ -22,6 +22,9 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { JOURNEY_MAX_BYTES, parseJourneyBatch } from '@/lib/journey/events';
 import { storeJourneyBatch } from '@/lib/journey/store';
 import { logWarn } from '@/lib/observability/logger';
+import { COLLECTIONS } from '@/lib/db/schemas';
+import { requestCounterSync, syncedEventOf } from '@/lib/analytics/counters-trigger';
+import { resolveJourneyEvent } from '@/lib/journey/store';
 
 export const runtime = 'nodejs';
 
@@ -49,7 +52,14 @@ export async function POST(request: NextRequest) {
 
   runAfterResponse(async () => {
     try {
-      await storeJourneyBatch(await connectToDatabase(), batch, device);
+      const db = await connectToDatabase();
+      const outcome = await storeJourneyBatch(db, batch, device);
+      if (outcome !== 'written') return;
+      const eventId = await resolveJourneyEvent(db, batch.event);
+      if (!eventId) return;
+      const event = await db.collection(COLLECTIONS.EVENTS).findOne({ eventId }, { projection: { _id: 1, eventId: 1, messmassEventId: 1, partnerId: 1 } });
+      const synced = syncedEventOf(event);
+      if (synced) await requestCounterSync(db, synced);
     } catch (error) {
       logWarn('journey.beacon_failed', 'A journey beacon could not be stored', { error: error instanceof Error ? error.message : String(error) });
     }
