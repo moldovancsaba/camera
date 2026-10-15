@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — title message-only selector correctly (2026-10-15)
+
+- **Fixed:** when frame choices are hidden and messages are shown alone, the guest page now uses the message prompt as its title and removes the duplicate smaller heading. It no longer says to choose a frame the guest cannot see.
+- **Verified locally:** GitHub Verify will run on the pull request.
+
 ## Unreleased — enlarge the Who-are-you consent checkbox (2026-10-15)
 
 - **Changed:** the consent checkbox on Who-are-you now uses a larger control, 16px text, and a 44px minimum-height label row, making it easier to see and tap on phones. The whole sentence toggles consent when tapped; its legal links remain independently tappable. Consent wording and required/optional behavior are unchanged.

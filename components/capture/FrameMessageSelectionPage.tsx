@@ -45,15 +45,17 @@ export interface FrameMessageSelectionPageProps {
   compact?: boolean;
 }
 
-/** The single guest page for any enabled frame and message choices. */
+/** The single guest page for enabled frame and message choices; a message-only page titles itself with its message prompt. */
 export default function FrameMessageSelectionPage({
   frames, asksFrame, asksLayout, asksMessage, selectedFrameId, selectedLayoutId, selectedMessageIndex,
   layoutChoices, messageChoices, tiles = {}, layoutName, title, logoUrl, brandColor, frameHeading, layoutHeading, messageHeading,
   generatedLayoutName, chooseFrameFirst, continueText, continueDisabled, onFrameSelect, onLayoutSelect,
   onMessageSelect, onContinue, buttonSize, compact = false,
 }: FrameMessageSelectionPageProps) {
+  const messageOnly = asksMessage && !asksFrame && !asksLayout;
+
   return (
-    <CaptureStageShell title={title} logoUrl={logoUrl}>
+    <CaptureStageShell title={messageOnly ? messageHeading : title} logoUrl={logoUrl}>
     <div className={`mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 ${compact ? 'p-4' : 'p-4 sm:p-6'}`}>
       {asksFrame ? (
         <section aria-labelledby="capture-frame-heading">
@@ -113,8 +115,8 @@ export default function FrameMessageSelectionPage({
         </section>
       ) : null}
       {asksMessage ? (
-        <section aria-labelledby="capture-message-heading">
-          <h3 id="capture-message-heading" className="mb-3 text-center text-base font-semibold">{messageHeading}</h3>
+        <section aria-labelledby={messageOnly ? undefined : 'capture-message-heading'} aria-label={messageOnly ? messageHeading : undefined}>
+          {messageOnly ? null : <h3 id="capture-message-heading" className="mb-3 text-center text-base font-semibold">{messageHeading}</h3>}
           {messageChoices.length > 0 ? (
             <div className="grid w-full grid-cols-1 gap-3" data-tour-id="capture-message-grid">
               {messageChoices.map((variant) => (

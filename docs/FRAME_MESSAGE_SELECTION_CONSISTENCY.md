@@ -7,6 +7,7 @@
 - The selected variant used to compose the photo is still sent with the upload and recorded on the submission. Result, gallery, email, and review views must use that saved submission image/variant, not a new random draw from the event’s current settings.
 - TOVÁBB is the upload boundary. A selector before Take Photo selects the photo about to be taken. A selector after TOVÁBB selects the next photo, whether the row appears before or after the Pages editor’s Submit marker. Restarting, or moving to another photo without a post-upload selector, clears the remembered selection.
 - A message-only selector offers every currently available message. The selected message determines a compatible frame; if the event has one compatible frame it is used directly, and if it has multiple compatible frames the event’s configured selection behavior applies.
+- When messages are the only visible selector, the page title is the localized message prompt (“Choose your message” / “Válaszd ki az üzeneted”) and the duplicate smaller subsection heading is omitted. The hidden frame selector is not mentioned in the guest-facing title.
 
 ## Recommendation for a rock-solid contract
 

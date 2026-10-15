@@ -5,6 +5,8 @@
 
 ## Current change
 
+When the built-in selector shows messages only, it now titles the page “Choose your message” / “Válaszd ki az üzeneted” and removes the duplicate subsection heading. The hidden frame selector is no longer mentioned.
+
 The legal acceptance checkbox on Who-are-you is now a larger control with 16px text and a 44px minimum-height label row. The whole sentence toggles consent when tapped; its legal links remain independently tappable.
 
 Picture-backed CTA pages use an explicit grid row for the image and a separate row for visit and Continue actions, with safe-area spacing. The actions cannot overlap the fitted image. The CTA editor tells designers to keep button labels and controls out of the artwork to avoid duplicate-looking buttons. See `docs/JOURNEY_IMAGES.md` and the newest entry in `RELEASE_NOTES.md`.
