@@ -168,7 +168,7 @@ export default function WhoAreYouPage({
       {acceptance ? (
         <Box p="xs" style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }} data-acceptance>
           <Checkbox
-            size="xs"
+            size="lg"
             checked={accepted}
             onChange={(event) => {
               setAccepted(event.currentTarget.checked);
@@ -176,7 +176,7 @@ export default function WhoAreYouPage({
             }}
             {...(acceptanceRequired ? { 'aria-required': true } : {})}
             label={
-              <span style={{ fontSize: '0.75rem', lineHeight: 1.35 }}>
+              <span style={{ fontSize: '1rem', lineHeight: 1.5 }}>
                 {acceptance.sentence.map((part, index) =>
                   part.linkUrl ? (
                     // A link opens its page in a new tab, so the user does not lose the flow; a tap on it does not tick the box.
@@ -190,6 +190,10 @@ export default function WhoAreYouPage({
                 {acceptanceRequired ? null : <span style={{ marginLeft: 6, opacity: 0.75 }}>{t('accept.optional')}</span>}
               </span>
             }
+            styles={{
+              body: { minHeight: 44, alignItems: 'center' },
+              label: { minHeight: 44, display: 'flex', alignItems: 'center' },
+            }}
           />
         </Box>
       ) : null}
