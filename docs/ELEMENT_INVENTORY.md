@@ -696,7 +696,7 @@ Risks:
 | mdl-032 | Event.shortUrlSlug, Event.greatestHitsSlug | link | no | none | looked up directly by GET /api/events/[eventId] (buildEventLookupQuery, route.ts:101-114) and the go short-link route | none |
 | mdl-033 | Event.uiLanguage | setting | no (planned: plan items 104-106, camera#353: a partner defa… | none today | normalizeUiLanguage(event.uiLanguage) = the value if known else 'en' (lib/i18n/index.ts:20). Used at: app/capture/[eventId]/layout.tsx:58,132; app/share/[id]/p… | none |
 | mdl-034 | Event.tourEnabled | toggle | no | none | event.tourEnabled === true (app/capture/[eventId]/page.tsx:356, 470) | none |
-| mdl-035 | Event.loadingText | text | no | none | own('event.loading', event.loadingText) = textOr (app/capture/[eventId]/page.tsx:1341; lib/i18n/index.ts:42) | none |
+| mdl-035 | Event.loadingText | text | no | none | legacy value is surfaced as event-owned `capture.loading` by `loadEventTexts`; the layout resolves the long loading screen through event → partner → global → dictionary wording (lib/i18n/overrides.ts; app/capture/[eventId]/layout.tsx) | none |
 | mdl-036 | Event.logoUrl | picture | no (Partner.logoUrl is not copied) | none | shown only when event.showLogo && event.logoUrl, in the header and the processing overlay of the capture page (app/capture/[eventId]/page.tsx:1404,1698); also… | none |
 | mdl-037 | Event.showLogo | toggle | no | none | gate for Event.logoUrl on the capture page (page.tsx:1404,1698) | none |
 | mdl-038 | Event.emailFooterImageUrl | picture | no (the library has no default for new events for images, l… | none | loadEventTheme passes it to resolveEventTheme, which keeps it if allowedImage() accepts the host (lib/theme/load.ts:34; lib/theme/event-theme.ts:173); drawn by… | none |

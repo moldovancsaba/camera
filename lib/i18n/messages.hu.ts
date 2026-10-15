@@ -5,6 +5,7 @@
 import type { MessageKey } from '@/lib/i18n/messages.en';
 
 export const hu: Record<MessageKey, string> = {
+  'capture.loading': 'Töltődünk…',
   'event.loading': 'Esemény betöltése...',
   'event.notFound.title': 'Az esemény nem található',
   'event.notFound.text': 'Ezt az eseményt nem sikerült betölteni.',
