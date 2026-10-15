@@ -23,7 +23,7 @@ last, and goes to the address in the **same tab** on the last page. When nothing
 link (before, a page with no address but a known photo id linked to "?submissionId=…").
 
 Hand over to the designers: a portrait-safe picture (guests are on phones; the picture is fitted above the action bar), dark enough at its middle for
-white title or text, no text and no button drawn in it.
+white title or text. Do not draw button labels or controls into the picture: the app renders those once, in the separate bar below the artwork.
 
 ## Email footer picture
 

@@ -891,13 +891,13 @@ function PageEditModal({
                 value={backgroundImageUrl}
                 onChange={setBackgroundImageUrl}
                 level={pictureLevel}
-                helper="The whole picture fits the screen and keeps its shape (the page colour of the event shows around it); the title, the text and the buttons are written over it (white, with a soft dark veil) unless you hide them below. Leave empty for the plain card."
+                helper="The whole picture fits above the actions and keeps its shape (the page colour of the event shows around it). The title and description may appear over the picture; visit and next buttons stay in a separate bar below it. Use artwork without button labels or controls so they do not appear twice. Leave empty for the plain card."
               />
               <Check
                 checked={hideTexts}
                 onChange={setHideTexts}
                 label="Hide the title and the text"
-                helper="Only the picture and the buttons show. A screen reader still reads the title."
+                helper="Only the picture shows above the buttons below. A screen reader still reads the title."
               />
               <Check
                 checked={pictureLink}
