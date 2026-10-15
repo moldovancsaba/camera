@@ -5,7 +5,7 @@
 - **Fixed:** after same-tab SSO returns to the saved selfie, the capture flow now appends the consent the guest ticked on the login page to that exact submission before continuing. Previously it restored the checkbox state in the browser but left the saved photo marked as awaiting consent.
 - **Fixed:** approval no longer sends a public share link while required consent is pending. For new photos approved first, the link email is sent after the consent record is saved. The admin gallery opens the stored image directly for authorized admins while consent is still pending.
 - **Existing event photos:** the owner confirms all photos in the affected event received consent. Their stored records still need a narrowly scoped, auditable recovery before their existing links can open; no consent evidence is fabricated by this code change.
-- **Verified locally:** type-check, lint, production build, and inventory check passed. The build reports the existing Google Fonts CSS `@import` ordering warning. Unit tests and GitHub Verify remain for the pull request.
+- **Verified:** local `npm run release:check` passed (347/347 unit-test files, type-check, lint, production guards, and production build), `npm run inventory:check` passed, and GitHub Verify passed. The build reports the existing Google Fonts CSS `@import` ordering warning.
 
 ## Unreleased — complete the capture analytics audit and requested measures (2026-10-14)
 
