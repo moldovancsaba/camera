@@ -14,6 +14,8 @@ export interface CtaLayoutConfig {
   hasButton: boolean;
   hideTexts?: boolean;
   hideButtons?: boolean;
+  /** Hide only the external URL action while keeping the Continue action available. */
+  hideVisitButton?: boolean;
   pictureLink?: boolean;
 }
 
@@ -30,10 +32,12 @@ export interface CtaLayout {
 
 export function ctaLayout(config: CtaLayoutConfig): CtaLayout {
   const pictureLink = config.pictureLink === true && config.url.trim() !== '';
-  const hideButtons = config.hideButtons === true && (pictureLink || !config.hasButton);
+  const hideVisitButton = config.hideVisitButton === true && pictureLink;
+  // Preserve the older hide-both control, while letting an explicit visit-only choice keep Continue visible.
+  const hideButtons = config.hideButtons === true && !hideVisitButton && (pictureLink || !config.hasButton);
   return {
     showTexts: config.hideTexts !== true,
-    showVisitButton: config.url.trim() !== '' && !hideButtons,
+    showVisitButton: config.url.trim() !== '' && !hideButtons && !hideVisitButton,
     showContinueButton: config.hasButton && !hideButtons,
     pictureLink,
     pictureTap: hideButtons && config.hasButton ? 'visit-and-continue' : 'visit',

@@ -719,7 +719,8 @@ function PageEditModal({
   const [hasButton, setHasButton] = useState(page.config.hasButton !== false);
   // Picture pages only (camera#491)
   const [hideTexts, setHideTexts] = useState(page.config.hideTexts === true);
-  const [hideButtons, setHideButtons] = useState(page.config.hideButtons === true);
+  const [hideButtons, setHideButtons] = useState(page.config.hideButtons === true && page.config.hideVisitButton !== true);
+  const [hideVisitButton, setHideVisitButton] = useState(page.config.hideVisitButton === true);
   const [pictureLink, setPictureLink] = useState(page.config.pictureLink === true);
   const [visitButtonText, setVisitButtonText] = useState(page.config.visitButtonText || 'Visit Now');
   // Empty = the default text, shown as the placeholder (camera#337)
@@ -856,6 +857,7 @@ function PageEditModal({
           backgroundImageUrl: backgroundImageUrl.trim() || undefined,
           hideTexts: hideTexts || undefined,
           hideButtons: hideButtons || undefined,
+          hideVisitButton: hideVisitButton || undefined,
           pictureLink: pictureLink || undefined,
           buttonColor: buttonColor.trim() || undefined,
           buttonTextColor: buttonTextColor.trim() || undefined,
@@ -903,13 +905,26 @@ function PageEditModal({
                 checked={pictureLink}
                 onChange={setPictureLink}
                 label="The whole picture is a link to the URL"
-                helper="A tap on the picture goes to the URL above. With the buttons hidden and Show Continue Button on, it opens the URL in a new tab and goes on to the next page; on the last page it goes to the URL in the same tab."
+                helper="A tap on the picture opens the URL above. Keep Continue on if guests should also be able to move to the next page."
+              />
+              <Check
+                checked={hideVisitButton}
+                disabled={!pictureLink || !checkboxText.trim() || !hasButton}
+                onChange={(value) => {
+                  setHideVisitButton(value);
+                  if (value) setHideButtons(false);
+                }}
+                label="Hide the URL button and keep Continue"
+                helper="Turn on the whole-picture link, enter a URL, and keep Show Continue Button on. The URL button is hidden; tapping the picture opens the URL and Continue advances the journey."
               />
               <Check
                 checked={hideButtons}
-                onChange={setHideButtons}
-                label="Hide the buttons"
-                helper="Works when the picture is a link, or when this is the last page (Show Continue Button off). Otherwise the buttons stay, so nobody gets stuck on the page."
+                onChange={(value) => {
+                  setHideButtons(value);
+                  if (value) setHideVisitButton(false);
+                }}
+                label="Hide both buttons"
+                helper="Hides the URL and Continue buttons when the picture is a link, or on the last page. The whole linked picture can still open the URL."
               />
               <Field label="Button colour" value={buttonColor} onChange={setButtonColor} placeholder="#RRGGBB" />
               <Field label="Button label colour" value={buttonTextColor} onChange={setButtonTextColor} placeholder="#RRGGBB" />
@@ -1134,7 +1149,10 @@ function PageEditModal({
             />
             <Check
               checked={hasButton}
-              onChange={setHasButton}
+              onChange={(value) => {
+                setHasButton(value);
+                if (!value) setHideVisitButton(false);
+              }}
               label="Show Continue Button"
               helper="If unchecked, this will be the final page in the flow."
             />

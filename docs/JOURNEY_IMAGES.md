@@ -15,12 +15,14 @@ buttons have the same width and height; the outline is a colour treatment only. 
 page keeps the plain address either way. Settings of the page: `lib/db/schemas.ts` (`CustomPage.config`), component `components/capture/CTAPage.tsx`,
 the round buttons `components/capture/PillButton.tsx` (shared with the welcome step).
 
-Three optional switches on a picture page (camera#491; `lib/capture/cta-layout.ts` decides, `ctaLayout`): **`hideTexts`** hides the title and the text (the title stays for a screen
-reader, visually hidden), **`pictureLink`** makes the **whole picture a link** to the page's address (a full-page button, `aria-label` = the visit button text), and **`hideButtons`**
-hides the visit and continue buttons. The buttons only go when something else leads on: the picture is the link, or the page is the last one (continue button off), so a page is
-never a dead end by accident (the editor says so). A tap on a picture whose buttons are hidden opens the address in a **new tab and goes on to the next page** when the page is not the
-last, and goes to the address in the **same tab** on the last page. The artwork is never darkened for page copy, since the copy stays below it. A page with no address has no visit button and no
-link (before, a page with no address but a known photo id linked to "?submissionId=…").
+Four optional switches on a picture page (camera#491, #689; `lib/capture/cta-layout.ts` decides, `ctaLayout`): **`hideTexts`** hides the title and the text (the title stays for a screen
+reader, visually hidden), **`pictureLink`** makes the **whole picture a link** to the page's address (a full-page button, `aria-label` = the visit button text), **`hideVisitButton`** hides only the
+URL button while keeping Continue available, and **`hideButtons`** hides both the visit and continue buttons. For the “linked picture plus Next” layout, turn on **The whole picture is a link to the URL**
+and **Hide the URL button and keep Continue**, while keeping **Show Continue Button** on: tapping the picture opens the URL in a new tab, and tapping Continue advances to the next page. The editor
+keeps the two hide controls mutually exclusive and only enables this setting when a linked picture, URL and Continue action are configured. Hiding both buttons only takes effect when the picture
+is a link, or the page is the last one (continue button off), so a page is never a dead end by accident. A tap on a picture whose buttons are both hidden opens the address in a **new tab and goes on
+to the next page** when the page is not the last, and goes to the address in the **same tab** on the last page. The artwork is never darkened for page copy, since the copy stays below it. A page with
+no address has no visit button and no link (before, a page with no address but a known photo id linked to "?submissionId=…").
 
 Hand over to the designers: a portrait-safe picture (guests are on phones; the picture is fitted above the copy and action rows). Keep copy and button
 labels out of the picture: the app renders the page title and description below the artwork, followed by the matching-size controls.
