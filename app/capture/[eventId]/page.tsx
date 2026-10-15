@@ -346,7 +346,14 @@ export default function EventCapturePage({
     showWaitingPage: showApprovalWaitingPage,
   } = approvalTexts(takePhotoConfig, language, uiTexts);
   const cameraPromptTitle = own('camera.ready.title', takePhotoConfig?.cameraPromptTitle);
-  const cameraPromptDescription = own('camera.prompt.desktop', takePhotoConfig?.cameraPromptDescription);
+  const storedCameraPromptDescription = takePhotoConfig?.cameraPromptDescription?.trim();
+  const cameraPromptDescription =
+    storedCameraPromptDescription === 'Click to start your camera and take a photo' ||
+    storedCameraPromptDescription === 'Opens your camera and takes the photo at the best quality. You can move and zoom it afterwards.' ||
+    storedCameraPromptDescription === 'Kattints a kamera indításához és a fotó elkészítéséhez' ||
+    storedCameraPromptDescription === 'Megnyitja a kamerádat, és a lehető legjobb minőségben készíti el a fotót. Utána mozgathatod és nagyíthatod.'
+      ? t('camera.prompt.desktop')
+      : own('camera.prompt.desktop', takePhotoConfig?.cameraPromptDescription);
   const errorFrameMessage = own('flow.errorFrame', takePhotoConfig?.errorFrameMessage);
   const errorSaveMessage = own('flow.errorSave', takePhotoConfig?.errorSaveMessage);
   const linkCopiedMessage = own('flow.linkCopied', takePhotoConfig?.linkCopiedMessage);
@@ -868,11 +875,28 @@ export default function EventCapturePage({
   const selectionComplete = frames.length > 0
     ? (!asksFrame || selectedFrame !== null)
     : nextStep(selectionFrame, choice) === 'capture-photo';
-  const progressSteps: Array<{ id: string; label: string; steps: Array<typeof step> }> = [
-    ...(asksAnySelection ? [{ id: 'selection', label: t('flow.step.selectFrameMessage'), steps: ['select-frame' as const, 'select-layout' as const, 'select-message' as const] }] : []),
-    { id: 'capture', label: t('flow.step.capture'), steps: ['capture-photo'] },
-    { id: 'save', label: t('flow.step.save'), steps: ['reframe', 'preview'] },
-  ];
+  const selectorRunsAfterCamera = asksAnySelection && [...presubmitPages, ...thankYouPages]
+    .some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
+  const selectionProgressStep = { id: 'selection', label: t('flow.step.selectFrameMessage'), steps: ['select-frame' as const, 'select-layout' as const, 'select-message' as const] };
+  const captureProgressStep = { id: 'capture', label: t('flow.step.capture'), steps: ['capture-photo' as const] };
+  const saveProgressStep = { id: 'save', label: t('flow.step.save'), steps: ['reframe' as const, 'preview' as const] };
+  // The selector is a movable journey page. Keep the compact progress indicator in the same order as the configured flow:
+  // before Take Photo it comes first; after Take Photo the photo is uploaded before the selector runs for the next photo.
+  const progressSteps: Array<{ id: string; label: string; steps: Array<typeof step> }> = asksAnySelection
+    ? selectorRunsAfterCamera
+      ? [captureProgressStep, saveProgressStep, selectionProgressStep]
+      : [selectionProgressStep, captureProgressStep, saveProgressStep]
+    : [captureProgressStep, saveProgressStep];
+  const currentJourneyPages = flowPhase === 'onboarding'
+    ? onboardingPages
+    : flowPhase === 'presubmit'
+      ? presubmitPages
+      : flowPhase === 'thankyou'
+        ? thankYouPages
+        : [];
+  const activeProgressStep = currentJourneyPages[currentPageIndex]?.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID
+    ? 'select-frame'
+    : step;
 
   // Territories of the generated frame for the live view, taken from its first image (the layers are the same in all of them).
   // Under the editor's setting the design is drawn before the camera step opens, so the territories are those of that design.
@@ -1987,12 +2011,12 @@ export default function EventCapturePage({
                   {position > 0 && <div className="w-4 h-0.5  "></div>}
                   <div className="flex flex-col items-center">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                      entry.steps.includes(step) ? ' ' : '   '
+                      entry.steps.includes(activeProgressStep) ? ' ' : '   '
                     }`}>
                       {position + 1}
                     </div>
                     <p className={`text-[10px] font-medium text-center mt-1 ${
-                      entry.steps.includes(step) ? ' ' : ' '
+                      entry.steps.includes(activeProgressStep) ? ' ' : ' '
                     }`}>
                       {entry.label}
                     </p>
@@ -2120,6 +2144,7 @@ export default function EventCapturePage({
                 <SystemCameraCapture
                   onCapture={handleCameraCapture}
                   promptTitle={cameraPromptTitle}
+                  promptDescription={cameraPromptDescription}
                   captureButtonColor={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
                   buttonSize={eventButtonSize}
                 />
@@ -2140,7 +2165,7 @@ export default function EventCapturePage({
                   buttonSize={eventButtonSize}
                   stillCapture={captureMethod === 'still'}
                   viewControls={captureViews}
-                  autoStart
+                  autoStart={false}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center p-6 text-center" role="status" aria-live="polite">
