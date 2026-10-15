@@ -69,7 +69,6 @@ interface EventRecord {
   description?: string;
   eventDate?: string;
   location?: string;
-  loadingText?: string;
   isActive?: boolean;
   logoUrl?: string;
   emailFooterImageUrl?: string | null;
@@ -254,7 +253,6 @@ export default function EditEventPage({
       description: formData.get('description') as string,
       eventDate: formData.get('eventDate') as string,
       location: formData.get('location') as string,
-      loadingText: formData.get('loadingText') as string,
       isActive: formData.get('isActive') === 'on',
       logoUrl,
       emailFooterImageUrl: emailFooterImageUrl.trim() || null,
@@ -423,12 +421,9 @@ export default function EditEventPage({
               onChange={(value) => setButtonSize((value as EventButtonSize) || DEFAULT_EVENT_BUTTON_SIZE)}
             />
 
-            <TextInput
-              name="loadingText"
-              label="Loading text"
-              defaultValue={event?.loadingText || 'Loading event...'}
-              description="Text shown while the event is loading."
-            />
+            <Text size="sm">
+              Edit the loading message under <Link href={`/admin/events/${mongoId}/texts`}>Texts</Link> by searching for “event.loading”.
+            </Text>
 
             {logoPreview ? (
               <Stack gap="sm">

@@ -13,11 +13,12 @@ import {
   type CheckboxMode,
 } from './checkbox-settings';
 
-test('the standard of every kind is what the journey always did: the three documents shown and required, the acceptance sentence and the gallery permission not shown', () => {
+test('the standard is the three legal documents required, marketing shown optional, acceptance off and gallery permission not shown', () => {
   const standard = effectiveCheckboxes(null, null);
   assert.deepEqual(standard, STANDARD_CHECKBOXES);
   for (const kind of ['terms', 'cookies', 'privacy'] as const) assert.deepEqual(standard[kind], { shown: true, required: true, checked: false, source: 'standard' });
   assert.equal(standard.acceptance.shown, false);
+  assert.deepEqual(standard.marketing, { shown: true, required: false, checked: false, source: 'standard' });
   assert.equal(standard.gallery.shown, false);
   assert.equal(standard.gallery.required, false, 'asking was always optional');
   assert.equal(chosenDocuments(standard), undefined, 'nothing chosen: no settings are sent along');
@@ -80,14 +81,15 @@ test('a request for consentSettings is refused when it names an unknown kind or 
   assert.deepEqual(parseCheckboxSettings({}), { ok: true, value: null });
   assert.deepEqual(parseCheckboxSettings({ terms: {} }), { ok: true, value: null });
   assert.deepEqual(parseCheckboxSettings({ terms: { shown: false }, gallery: { required: true } }), { ok: true, value: { terms: { shown: false }, gallery: { required: true } } });
+  assert.deepEqual(parseCheckboxSettings({ marketing: { shown: false } }), { ok: true, value: { marketing: { shown: false } } });
   for (const bad of ['text', 1, [], { newsletter: { shown: true } }, { terms: 'on' }, { terms: { shown: 'yes' } }, { terms: { visible: true } }, { gallery: { shown: true } }, { acceptance: { shown: true } }, { privacy: [] }]) {
     assert.equal(parseCheckboxSettings(bad).ok, false, JSON.stringify(bad));
   }
 });
 
 test('every mode of every kind is stored and read back as the same mode', () => {
-  const modes: CheckboxMode[] = ['', 'required', 'optional', 'off'];
   for (const kind of CHECKBOX_KINDS) {
+    const modes: CheckboxMode[] = kind === 'marketing' ? ['', 'optional', 'off'] : ['', 'required', 'optional', 'off'];
     for (const mode of modes) {
       const stored = settingsToStore({ [kind]: mode });
       const holder = { galleryConsent: stored.galleryConsent, acceptanceOnWhoAreYou: stored.acceptanceOnWhoAreYou, consentSettings: stored.consentSettings };
@@ -98,6 +100,8 @@ test('every mode of every kind is stored and read back as the same mode', () => 
   // “Ask” of the public gallery permission is stored the way it was before, as galleryConsent true and nothing else.
   assert.deepEqual(settingsToStore({ gallery: 'optional' }), { galleryConsent: true, acceptanceOnWhoAreYou: null, consentSettings: null });
   assert.deepEqual(settingsToStore({ gallery: 'off' }), { galleryConsent: false, acceptanceOnWhoAreYou: null, consentSettings: null });
+  assert.deepEqual(settingsToStore({ marketing: 'optional' }), { galleryConsent: null, acceptanceOnWhoAreYou: null, consentSettings: { marketing: { shown: true } } });
+  assert.deepEqual(settingsToStore({ marketing: 'off' }), { galleryConsent: null, acceptanceOnWhoAreYou: null, consentSettings: { marketing: { shown: false } } });
   assert.deepEqual(settingsToStore({}), { galleryConsent: null, acceptanceOnWhoAreYou: null, consentSettings: null });
 });
 

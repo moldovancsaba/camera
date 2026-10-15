@@ -7,8 +7,8 @@
  *
  * How it is checked. The journey the user got is rebuilt from the event with the same functions the user's page uses (`withDefaultJourneyPages`, `acceptanceOnLogin`, `splitCustomPages`), so the
  * server and the page cannot disagree about which consent pages come before the upload. For every consent page before the upload the request must carry as many **accepted** records for that page
- * as the page has required checkboxes (or, when the page is shown as the one acceptance sentence on the Who-are-you page and that sentence is required, as many as the page has shown checkboxes: one tick
- * records them all). The count, not the text, is compared, so an editor who corrects a word while a user is on the page does not make that user's save fail. Pure; unit-tested (consent-guard.test.ts).
+ * as the page has required checkboxes (or, when the page is shown as the one acceptance sentence on the Who-are-you page and that sentence is required, as many as its legal checkboxes: one tick
+ * records them all). The separate optional marketing choice is never part of this count. The count, not the text, is compared, so an editor who corrects a word while a user is on the page does not make that user's save fail. Pure; unit-tested (consent-guard.test.ts).
  */
 
 import type { CustomPage } from '@/lib/db/schemas';
@@ -79,7 +79,7 @@ export function missingRequiredConsent(
   const { pages: journeyPages, acceptPage } = acceptanceOnLogin(pages, effective.acceptance.shown);
   const { onboardingPages } = splitCustomPages(journeyPages);
 
-  const accepted = request.consents.filter((record): record is { pageId?: unknown; accepted: true } => !!record && typeof record === 'object' && (record as { accepted?: unknown }).accepted === true);
+  const accepted = request.consents.filter((record): record is { pageId?: unknown; accepted: true; kind?: unknown } => !!record && typeof record === 'object' && (record as { accepted?: unknown }).accepted === true && (record as { kind?: unknown }).kind !== 'marketing');
   // A merged acceptance is required before upload only when its Who-are-you page is before the camera.
   const photoIndex = journeyPages.findIndex((page) => page.pageType === 'take-photo');
   const acceptanceLoginIndex = acceptPage
@@ -92,7 +92,7 @@ export function missingRequiredConsent(
     const merged = acceptPage !== null && page.pageId === acceptPage.pageId;
     const required = merged
       ? effective.acceptance.checked || (enforceStandard && effective.acceptance.required)
-        ? items.length
+        ? items.filter((item) => item.kind !== 'marketing').length
         : 0
       : items.filter((item) => (enforceStandard ? item.required !== false : item.required === true)).length;
     if (required > 0 && accepted.filter((record) => record.pageId === page.pageId).length < required) return CONSENT_MISSING_MESSAGE;

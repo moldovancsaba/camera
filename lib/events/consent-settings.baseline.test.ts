@@ -77,11 +77,18 @@ test('the checkboxes of a consent page, and the records they leave, are the same
 test('the default consent page and the whole default journey are the same as before when nobody chose anything: with no settings, and with the settings an event that chose nothing gets', () => {
   const nothingChosen = effectiveCheckboxes({}, {});
   assert.equal(chosenDocuments(nothingChosen), undefined, 'an event that chose nothing is handed no settings at all');
+  const legacyItems = (items: ReturnType<typeof defaultConsentCheckboxes>) => items.filter((item) => item.kind !== 'marketing').map((item) => {
+    const legacy = { ...item };
+    delete legacy.kind;
+    return legacy;
+  });
+  const legacyPage = (page: ReturnType<typeof defaultConsentPage>) => ({ ...page, config: { ...page.config, checkboxes: legacyItems(page.config.checkboxes ?? []) } });
+  const legacyJourney = (pages: ReturnType<typeof withDefaultJourneyPages>) => pages.map((page) => page.pageId === 'default-consent' ? legacyPage(page as ReturnType<typeof defaultConsentPage>) : page);
   for (const language of ['en', 'hu'] as const) {
-    same(defaultConsentCheckboxes(language), oldDefaults.defaultConsentCheckboxes(language), `checkboxes ${language}`);
-    same(defaultConsentCheckboxes(language, undefined, documentSettings(nothingChosen)), oldDefaults.defaultConsentCheckboxes(language), `checkboxes ${language} with the standard settings written out`);
-    same(defaultConsentPage(-2, NOW, language), oldDefaults.defaultConsentPage(-2, NOW, language), `page ${language}`);
-    same(defaultConsentPage(-2, NOW, language, undefined, documentSettings(nothingChosen)), oldDefaults.defaultConsentPage(-2, NOW, language), `page ${language} with the standard settings written out`);
+    same(legacyItems(defaultConsentCheckboxes(language)), oldDefaults.defaultConsentCheckboxes(language), `legal checkboxes ${language}`);
+    same(legacyItems(defaultConsentCheckboxes(language, undefined, documentSettings(nothingChosen))), oldDefaults.defaultConsentCheckboxes(language), `legal checkboxes ${language} with the standard settings written out`);
+    same(legacyPage(defaultConsentPage(-2, NOW, language)), oldDefaults.defaultConsentPage(-2, NOW, language), `legal page ${language}`);
+    same(legacyPage(defaultConsentPage(-2, NOW, language, undefined, documentSettings(nothingChosen))), oldDefaults.defaultConsentPage(-2, NOW, language), `legal page ${language} with the standard settings written out`);
   }
   let compared = 0;
   for (const [name, pages] of Object.entries(PAGE_SETS)) {
@@ -99,8 +106,8 @@ test('the default consent page and the whole default journey are the same as bef
                 continue;
               }
               const before = oldDefaults.withDefaultJourneyPages(pages, options);
-              same(withDefaultJourneyPages(pages, options), before, `${name} ${JSON.stringify(options)}`);
-              same(withDefaultJourneyPages(pages, { ...options, documents: documentSettings(nothingChosen) }), before, `${name} with the standard settings written out`);
+              same(legacyJourney(withDefaultJourneyPages(pages, options)), before, `${name} ${JSON.stringify(options)}`);
+              same(legacyJourney(withDefaultJourneyPages(pages, { ...options, documents: documentSettings(nothingChosen) })), before, `${name} with the standard settings written out`);
               compared += 1;
             }
           }
@@ -122,7 +129,7 @@ test('the acceptance on the Who-are-you page merges the same page and makes the 
   const lists = [sanitizeCheckboxes(threeBoxes), sanitizeCheckboxes(threeBoxes.slice(0, 2)), sanitizeCheckboxes([{ text: 'A' }, { text: 'B', linkUrl: 'https://example.com/b' }]), []];
   for (const language of ['en', 'hu'] as const) {
     for (const list of lists) same(acceptanceSentence(list, language), oldAcceptance.acceptanceSentence(list, language), `sentence ${language} ${list.length}`);
-    same(acceptanceSentence(defaultConsentCheckboxes(language), language), oldAcceptance.acceptanceSentence(oldDefaults.defaultConsentCheckboxes(language), language), 'the usual three documents');
+    same(acceptanceSentence(defaultConsentCheckboxes(language).filter((item) => item.kind !== 'marketing'), language), oldAcceptance.acceptanceSentence(oldDefaults.defaultConsentCheckboxes(language), language), 'the legal documents, excluding the independent marketing choice');
   }
 });
 

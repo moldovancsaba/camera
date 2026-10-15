@@ -2,7 +2,7 @@
  * The global wordings of the dictionary (issue 353, lib/i18n/overrides.ts): what an admin wrote above the code dictionary, for every partner and event.
  *
  * GET /api/admin/dictionary   { texts } the wordings written at this level (global admin)
- * PUT /api/admin/dictionary   { texts: { en: { key: text }, hu: { ... } } } replaces them; an empty text takes a wording away (global admin)
+ * PUT /api/admin/dictionary   { texts: { en: { key: text }, hu: { ... } } } replaces them; a missing key inherits and an empty string hides the text (global admin)
  */
 
 import { NextRequest } from 'next/server';

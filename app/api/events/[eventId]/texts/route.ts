@@ -2,7 +2,7 @@
  * The wordings of an event (issue 353, lib/i18n/overrides.ts): what an editor wrote for this event, above the partner's and the global wordings.
  *
  * GET /api/events/<mongo id>/texts   { language, texts, inherited } the event's own wordings, its language, and what it takes from above: the global and the partner's (viewer)
- * PUT /api/events/<mongo id>/texts   { texts } replaces the event's wordings; an empty text takes one away (manager)
+ * PUT /api/events/<mongo id>/texts   { texts } replaces the event's wordings; a missing key inherits and an empty string hides the text (manager). Saving migrates the old loadingText field.
  */
 
 import { NextRequest } from 'next/server';
