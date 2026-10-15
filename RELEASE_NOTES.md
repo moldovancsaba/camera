@@ -2,7 +2,7 @@
 
 ## Unreleased — enlarge the Who-are-you consent checkbox (2026-10-15)
 
-- **Changed:** the consent checkbox on Who-are-you now uses a larger control and a 44px minimum-height label row, making it easier to see and tap on phones. Consent wording, links, and required/optional behavior are unchanged.
+- **Changed:** the consent checkbox on Who-are-you now uses a larger control, 16px text, and a 44px minimum-height label row, making it easier to see and tap on phones. The whole sentence toggles consent when tapped; its legal links remain independently tappable. Consent wording and required/optional behavior are unchanged.
 - **Verified locally:** type-check, lint, and inventory checks passed. GitHub Verify will run on the pull request.
 
 ## Unreleased — keep CTA actions below the picture (2026-10-15)

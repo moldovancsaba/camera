@@ -176,7 +176,7 @@ export default function WhoAreYouPage({
             }}
             {...(acceptanceRequired ? { 'aria-required': true } : {})}
             label={
-              <span style={{ fontSize: '0.75rem', lineHeight: 1.35 }}>
+              <span style={{ fontSize: '1rem', lineHeight: 1.5 }}>
                 {acceptance.sentence.map((part, index) =>
                   part.linkUrl ? (
                     // A link opens its page in a new tab, so the user does not lose the flow; a tap on it does not tick the box.
