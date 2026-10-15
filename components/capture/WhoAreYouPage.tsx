@@ -201,16 +201,20 @@ export default function WhoAreYouPage({
       {marketingOptIn ? (
         <Box p="xs" style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }} data-marketing-opt-in>
           <Checkbox
-            size="xs"
+            size="lg"
             checked={marketingOptIn.checked}
             onChange={(event) => marketingOptIn.onChange(event.currentTarget.checked)}
             label={(
-              <span style={{ fontSize: '0.75rem', lineHeight: 1.35 }}>
+              <span style={{ fontSize: '0.875rem', lineHeight: 1.5 }}>
                 {marketingOptIn.text}
                 <span style={{ marginLeft: 6, opacity: 0.75 }}>{t('accept.optional')}</span>
               </span>
             )}
             aria-label={marketingOptIn.text}
+            styles={{
+              body: { minHeight: 44, alignItems: 'center' },
+              label: { minHeight: 44, display: 'flex', alignItems: 'center' },
+            }}
           />
         </Box>
       ) : null}

@@ -5,6 +5,8 @@
 
 ## Current change
 
+The capture start prompt no longer places a brand-colour wash over the entire camera stage. It uses a readable event-coloured card for both the live-camera and device-camera routes, with distinct default instructions. The marketing opt-in checkbox matches the required-consent control size and uses 14px text. In Partner/Event Texts, `capture.loading` is grouped beside Photo position and Event; searching for loading explains how it differs from `event.loading` and `reframe.uploading`. See the newest entry in `RELEASE_NOTES.md` and `docs/CAPTURE_MESSAGES.md`.
+
 Picture-backed CTA pages now place the title and description below the artwork and above the actions. The visit and continue buttons have matching dimensions; the outlined appearance of the second button no longer makes it smaller.
 
 When the built-in selector shows messages only, it now titles the page “Choose your message” / “Válaszd ki az üzeneted” and removes the duplicate subsection heading. The hidden frame selector is no longer mentioned.

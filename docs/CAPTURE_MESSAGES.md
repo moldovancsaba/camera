@@ -2,7 +2,7 @@
 
 ## Separate loading messages
 
-The long, full-screen loading state uses `capture.loading`. Edit it at **Partner → Texts** or **Event → Texts**, search for `capture.loading`, and select the language. Existing custom values from the old event `loadingText` field are shown under this key. Saving Event Texts migrates and clears that old field. An empty value hides the text.
+The long, full-screen loading state uses `capture.loading`. Edit it at **Partner → Texts** or **Event → Texts** by searching for `capture.loading`; the row is grouped under **Full-screen capture loading**, next to the Photo position and Event groups. If you search for `loading`, the editor explains the three separate loading messages: `capture.loading` (the full-screen page-loading text), `event.loading` (event-specific loading), and `reframe.uploading` (photo-upload progress). Existing custom values from the old event `loadingText` field are shown under `capture.loading`. Saving Event Texts migrates and clears that old field. An empty value hides the text.
 
 `event.loading` is a separate message for event-flow loading states. It remains editable at the same Texts pages under its own key and keeps its own event → partner → global → dictionary wording. Changing either key does not change the other. The route-level fallback runs before an event's language is available and has no visible copy.
 

@@ -98,6 +98,11 @@ export default function TextLevelEditor({ own, inherited, initialLanguage = 'en'
           Discard the changes
         </SemanticButton>
       </GdsInline>
+      {query && ['loading', 'töltőd', 'capture', 'upload'].some((term) => query.includes(term)) ? (
+        <MetadataText>
+          These are separate messages: capture.loading is the full-screen page-loading text, event.loading is event-specific, and reframe.uploading is photo-upload progress. Edit capture.loading in “Full-screen capture loading”.
+        </MetadataText>
+      ) : null}
       <MetadataText>
         {written} text{written === 1 ? '' : 's'} written at this level in {UI_LANGUAGE_LABELS[language]}. Missing text follows the level above; use “Hide this text” to save an empty value. Nothing is copied down.
       </MetadataText>

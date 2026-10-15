@@ -77,12 +77,16 @@ export default function SystemCameraCapture({
   };
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6 text-center" data-capture-method="system">
-      <h2 className="text-xl font-semibold">{promptTitle}</h2>
-      <p className="max-w-md text-sm">{promptDescription}</p>
-      <input ref={input} type="file" accept="image/*" capture="user" hidden data-system-camera="user" onChange={onPick} aria-hidden="true" tabIndex={-1} />
-      <div className="flex w-full max-w-xs flex-col gap-2">
-        <Button type="button" size={buttonSize} radius="md" loading={busy} color={captureButtonColor} onClick={() => input.current?.click()} aria-label={t('camera.takePhoto')} data-tour-id="capture-take-photo">
+    <div className="flex h-full w-full items-center justify-center p-4 text-center md:p-8" data-capture-method="system">
+      <div className="w-full max-w-lg rounded-2xl border p-6 shadow-xl md:p-8" style={{ background: 'var(--event-card-bg, var(--app-shell-bg-start))', color: 'var(--event-card-text, var(--event-heading, var(--app-shell-fg)))', borderColor: 'var(--event-card-border, var(--mantine-color-default-border))' }}>
+        <svg className="mx-auto mb-4 h-12 w-12 md:h-14 md:w-14" fill="none" stroke="var(--event-button-bg, currentColor)" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <h2 className="mb-2 text-xl font-semibold md:text-2xl">{promptTitle}</h2>
+        <p className="mx-auto mb-6 max-w-md text-sm md:text-base">{promptDescription}</p>
+        <input ref={input} type="file" accept="image/*" capture="user" hidden data-system-camera="user" onChange={onPick} aria-hidden="true" tabIndex={-1} />
+        <Button type="button" size={buttonSize} radius="xl" loading={busy} color={captureButtonColor} onClick={() => input.current?.click()} aria-label={t('camera.takePhoto')} data-tour-id="capture-take-photo">
           {t('camera.takePhoto')}
         </Button>
       </div>

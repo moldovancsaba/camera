@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — make the capture prompt and loading text clear (2026-10-15)
+
+- **Capture prompt:** removed the branded colour wash over the full camera stage. The prompt now sits in a readable event-coloured card with a clear camera action, on both the live-camera and device-camera paths. Default instructions distinguish starting a live camera from opening the device camera.
+- **Marketing opt-in:** its checkbox is now the same large size as required consent, with 14px text between the 16px consent sentence and smaller supporting copy. The label remains a tap target.
+- **Loading text editor:** the full-screen `capture.loading` row is grouped beside the other loading-related rows and is explicitly distinguished from `event.loading` and `reframe.uploading` when an admin searches for loading text.
+- **Verification:** not run in this update.
+
 ## Unreleased — keep CTA copy and actions clear of the artwork (2026-10-15)
 
 - **Changed:** on picture-backed CTA pages, the title and description now appear below the image, followed by the action buttons. The image is no longer darkened to support overlaid copy.
