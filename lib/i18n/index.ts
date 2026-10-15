@@ -33,7 +33,8 @@ export type MessageValues = Record<string, string | number>;
  * the event in this language (lib/i18n/overrides.ts); a key they do not have uses the code dictionary.
  */
 export function translate(language: UiLanguage, key: MessageKey, values?: MessageValues, overrides?: TextOverrides | null): string {
-  const text = overrides?.[key] ?? DICTIONARIES[language][key] ?? en[key];
+  const hasOverride = overrides !== null && overrides !== undefined && Object.prototype.hasOwnProperty.call(overrides, key);
+  const text = hasOverride ? overrides[key] ?? '' : DICTIONARIES[language][key] ?? en[key];
   return values ? text.replace(/\{(\w+)\}/g, (marker, name: string) => (name in values ? String(values[name]) : marker)) : text;
 }
 

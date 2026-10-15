@@ -443,7 +443,7 @@ A from-scratch spotlight/backdrop product tour (no vendored GDS or third-party e
 
 Everything an event shows is one of five bricks (Words, Picture, Look, Link, Switch) chosen **at the place of use**, with the default coming from above (docs/BUILDING_BRICKS.md). One rule for
 every level (global, partner, event): **an event follows its partner and the partner follows the global level each time it is read; nothing is copied down; what a level sets is its own and is
-never overridden by a later change above.** Implemented for the logo slots (`lib/slots/*`), the text levels (`lib/i18n/overrides.ts`: the code dictionary, the Dictionary, a partner's Texts, an
+never overridden by a later change above.** For text levels, a missing key inherits while an explicit empty string hides that text. Implemented for the logo slots (`lib/slots/*`), the text levels (`lib/i18n/overrides.ts`: the code dictionary, the Dictionary, a partner's Texts, an
 event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`), the partner's default language (`eventLanguage`) and the legal part of the e-mails (`lib/email/legal*.ts`).
 
 ## 15. Frames, layouts and messages at an event

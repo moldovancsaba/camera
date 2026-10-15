@@ -166,6 +166,7 @@ export const cameraAdminVocabularyPacks = [
     // The text editors of the three levels (issue 353): save what was written, take a wording away, discard the unsaved changes.
     save: { defaultMessage: 'Save the texts', icon: GdsIcons.Save, feedback: savedFeedback },
     clear: { defaultMessage: 'Use the one from above', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    hide: { defaultMessage: 'Hide this text', icon: GdsIcons.Cancel, feedback: openedFeedback },
     discard: { defaultMessage: 'Discard the changes', icon: GdsIcons.Cancel, feedback: openedFeedback },
   }),
   createGdsVocabularyPack('annotation-words', {

@@ -15,7 +15,7 @@ import { UI_LANGUAGES, isUiLanguage, normalizeUiLanguage, type UiLanguage } from
 
 export const TEXT_MAX = 500;
 
-/** Wordings written at one level for one language: only the keys the editor changed. */
+/** Wordings written at one level for one language: only the keys the editor changed. An empty string explicitly hides a text at this level. */
 export type TextOverrides = Partial<Record<MessageKey, string>>;
 /** Wordings written at one level, per language. */
 export type TextsByLanguage = Partial<Record<UiLanguage, TextOverrides>>;
@@ -31,7 +31,7 @@ export function markersOf(text: string): string[] {
 export type ParsedTexts = { ok: true; value: TextsByLanguage } | { ok: false; error: string };
 
 /**
- * The wordings from a request: `{ en: { 'camera.takePhoto': 'Snap!' }, hu: { ... } }`. An empty text means "no wording at this level" and is left out. Refused with the reason:
+ * The wordings from a request: `{ en: { 'camera.takePhoto': 'Snap!' }, hu: { ... } }`. A missing key means "use the level above"; an empty string explicitly hides it. Refused with the reason:
  * an unknown language or key, something that is not text, a text over the limit, one with `<` or `>`, or one that does not keep the `{name}` markers of the dictionary text.
  */
 export function parseTexts(input: unknown): ParsedTexts {
@@ -46,7 +46,10 @@ export function parseTexts(input: unknown): ParsedTexts {
       if (!KEYS.has(key)) return { ok: false, error: `Unknown text: ${key}.` };
       if (typeof value !== 'string') return { ok: false, error: `The text ${key} must be text.` };
       const text = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
-      if (!text) continue;
+      if (!text) {
+        texts[key as MessageKey] = '';
+        continue;
+      }
       if (text.length > TEXT_MAX) return { ok: false, error: `The text ${key} is longer than ${TEXT_MAX} characters.` };
       if (/[<>]/.test(text)) return { ok: false, error: `The text ${key} must be plain text: no < or >.` };
       const wanted = markersOf(en[key as MessageKey]);

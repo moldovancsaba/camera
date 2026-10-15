@@ -12,7 +12,7 @@ Every default text of the user journey is a key of the dictionary (`lib/i18n/mes
 4. **the global wording** (`admin_settings`, `settingId: 'dictionary'`), written on the Dictionary page: it applies to every partner and event;
 5. **the code dictionary** (English, or Hungarian for an event in Hungarian).
 
-A level stores **only what an editor wrote**, per language (`{ en: { key: text }, hu: { ... } }`); where it wrote nothing it looks at the level above each time. A new partner or event therefore starts with nothing stored and shows what its parent shows, and a wording written at a level is its own and never changed by a later change above. An empty text means "no wording at this level" and is not stored.
+A level stores **only what an editor wrote**, per language (`{ en: { key: text }, hu: { ... } }`); where it wrote nothing it looks at the level above each time. A new partner or event therefore starts with nothing stored and shows what its parent shows, and a wording written at a level is its own and never changed by a later change above. A missing key means "use the one from above". An empty string is an explicit hide, allowing an editor to suppress a dictionary label such as “(optional)” without changing the dictionary for other events.
 
 ## What a wording may be
 
@@ -30,7 +30,7 @@ The language of an event is its own, else its partner's, else English (docs/UI_L
 | Partner | `/admin/partners/<id>/texts` | the partner menu, **Texts** | partner managers write, viewers read |
 | Event | `/admin/events/<id>/texts` | the event menu, **Texts** | event managers write, viewers read |
 
-One component for the three (`components/admin/kit/TextLevelEditor.tsx`): a language switch, a search, every key in its group (`lib/i18n/catalog.ts`), with **what is used now** (the nearest wording above, else the dictionary) and where it comes from, an input for this level's own wording, and "Use the one from above" to take a wording away. **Save the texts** stores the draft; **Discard the changes** drops it.
+One component for the three (`components/admin/kit/TextLevelEditor.tsx`): a language switch, a search, every key in its group (`lib/i18n/catalog.ts`), with **what is used now** (the nearest wording above, else the dictionary) and where it comes from, an input for this level's own wording, and "Use the one from above" to take a wording away. **Hide this text** saves an explicit empty value at this level; **Save the texts** stores the draft; **Discard the changes** drops it. Clearing a written wording and saving it also hides it; use "Use the one from above" to restore inheritance.
 
 | Route | |
 |---|---|

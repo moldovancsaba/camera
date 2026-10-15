@@ -8,6 +8,11 @@
 - **Wording:** the Hungarian Dictionary default is the client's sentence: “Nyitott vagyok klub és szurkolói fotó marketing kommunikációra.”
 - **Verified locally:** `npm run release:check` passed, including 347/347 unit-test files, GDS checks, type-check, lint, production guards and build. The build reports the existing Google Fonts CSS `@import` ordering warning.
 
+## Unreleased — allow an admin text to be intentionally hidden (2026-10-15)
+
+- **Changed:** the Dictionary, Partner Texts and Event Texts editors now offer **Hide this text**. An explicitly saved empty string suppresses that text in the guest UI; **Use the one from above** restores normal inheritance. This makes labels such as “(nem kötelező)” optional without changing the default for other events.
+- **Verified locally:** TypeScript, lint, GDS checks, inventory checks, and production build passed. GitHub Verify passed after updating existing expectations. The build reports the existing Google Fonts CSS `@import` ordering warning.
+
 ## Unreleased — keep the chosen frame and message attached to the intended photo (2026-10-15)
 
 - **Fixed:** frame and message choices survive a same-tab SSO return or page reload as event-scoped IDs, with a 30-minute expiry and validation against active options. A message text check prevents a changed or reordered message from silently reusing its old index.
