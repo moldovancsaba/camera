@@ -79,6 +79,8 @@ When required acceptance is attached to the post-upload Who-are-you page, tickin
 - `/slideshow-layout/[layoutId]` — public multi-cell slideshow layout
 - `/landing/[slug]` — public landing pages
 
+The event capture layout resolves the localized `event.loading` message before it renders the client flow, using event → partner → global → dictionary wording. The old `Event.loadingText` is a fallback only when no text level defines that key; the early App Router boundary displays a spinner without a second sentence.
+
 ### Admin routes
 
 - `/admin/login` — the single SSO sign-in entry point (client component;

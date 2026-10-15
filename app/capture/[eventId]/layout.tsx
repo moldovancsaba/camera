@@ -9,6 +9,7 @@ import EventThemeScope from '@/components/theme/EventThemeScope';
 import UiLanguageProvider from '@/components/i18n/UiLanguageProvider';
 import { normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
 import { loadEventTexts, type TextOverrides } from '@/lib/i18n/overrides';
+import { captureLoadingText } from '@/lib/i18n/capture-loading';
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -132,9 +133,11 @@ export default async function CaptureEventLayout({
   const theme = await loadEventTheme(db, event);
   // ... and in the language of the event (camera#352), with the wordings an admin wrote for the partner or the event (issue 353; none written: the code dictionary).
   const { overrides, language } = await loadEventTexts(db, event).catch(() => ({ overrides: {}, language: normalizeUiLanguage(event.uiLanguage) }));
+  // Resolve the single loading message before the client renders: event/partner wording wins, with old event.loadingText retained only as a fallback.
+  const captureOverrides = { ...overrides, 'event.loading': captureLoadingText(language, typeof event.loadingText === 'string' ? event.loadingText : undefined, overrides) };
   return (
     <EventThemeScope theme={theme}>
-      <UiLanguageProvider language={language} texts={overrides}>{children}</UiLanguageProvider>
+      <UiLanguageProvider language={language} texts={captureOverrides}>{children}</UiLanguageProvider>
     </EventThemeScope>
   );
 }
