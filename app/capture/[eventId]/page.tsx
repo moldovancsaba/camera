@@ -166,6 +166,7 @@ interface CollectedData {
     pageId: string;
     pageType: 'accept' | 'cta';
     checkboxText: string;
+    kind?: 'terms' | 'cookies' | 'privacy' | 'marketing';
     linkUrl?: string;
     accepted: boolean;
     acceptedAt: string;
@@ -935,11 +936,19 @@ export default function EventCapturePage({
    * acceptance is required (the page did not let the user pass without it), was ticked, or is not on the Who-are-you page.
    */
   const declinedAcceptance = () => {
-    if (!acceptanceBox || event?.effectiveAcceptanceRequired !== false) return [];
-    if (collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.accepted)) return [];
-    const items = shownCheckboxes(consentCheckboxes(acceptanceBox.config));
-    const shownText = sentenceText(acceptanceSentence(items, language, uiTexts));
-    return consentRecords({ pageId: acceptanceBox.pageId, pageType: 'accept' }, { accepted: true, acceptedAt: new Date().toISOString(), unticked: items, shownText });
+    if (!acceptanceBox) return [];
+    const pageItems = shownCheckboxes(consentCheckboxes(acceptanceBox.config));
+    const legalItems = pageItems.filter((item) => item.kind !== 'marketing');
+    const records: CollectedData['consents'] = [];
+    if (event?.effectiveAcceptanceRequired === false && legalItems.length > 0 && !collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.kind !== 'marketing' && record.accepted)) {
+      const shownText = sentenceText(acceptanceSentence(legalItems, language, uiTexts));
+      records.push(...consentRecords({ pageId: acceptanceBox.pageId, pageType: 'accept' }, { accepted: true, acceptedAt: new Date().toISOString(), unticked: legalItems, shownText }));
+    }
+    const marketingItem = pageItems.find((item) => item.kind === 'marketing');
+    if (marketingItem && !collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.kind === 'marketing')) {
+      records.push(...consentRecords({ pageId: acceptanceBox.pageId, pageType: 'accept' }, { accepted: true, acceptedAt: new Date().toISOString(), unticked: [{ ...marketingItem, required: false }] }));
+    }
+    return records;
   };
 
   const moveToThankYouRef = useRef<() => void>(() => undefined);
@@ -1406,10 +1415,22 @@ export default function EventCapturePage({
    * or taken away. They are recorded when the box is ticked, not when the page is left, because a sign-in leaves the page and brings the user back to it.
    */
   const handleAcceptanceChange = (page: CustomPage, checked: boolean, shownText: string) => {
-    const items = shownCheckboxes(consentCheckboxes(page.config));
-    const others = collectedData.consents.filter((record) => record.pageId !== page.pageId);
+    const items = shownCheckboxes(consentCheckboxes(page.config)).filter((item) => item.kind !== 'marketing');
+    const others = collectedData.consents.filter((record) => record.pageId !== page.pageId || record.kind === 'marketing');
     const consents = checked ? [...others, ...consentRecords({ pageId: page.pageId, pageType: 'accept', checkboxText: page.config.checkboxText }, { accepted: true, acceptedAt: new Date().toISOString(), items, shownText })] : others;
     setCollectedData(prev => ({ ...prev, consents }));
+    rememberConsents(window.sessionStorage, eventId, consents);
+  };
+
+  const handleMarketingOptInChange = (page: CustomPage, item: ReturnType<typeof consentCheckboxes>[number], checked: boolean) => {
+    const others = collectedData.consents.filter((record) => record.pageId !== page.pageId || record.kind !== 'marketing');
+    const consents = [...others, ...consentRecords({ pageId: page.pageId, pageType: 'accept' }, {
+      accepted: checked,
+      acceptedAt: new Date().toISOString(),
+      items: checked ? [{ ...item, required: false }] : [],
+      unticked: checked ? [] : [{ ...item, required: false }],
+    })];
+    setCollectedData((prev) => ({ ...prev, consents }));
     rememberConsents(window.sessionStorage, eventId, consents);
   };
   
@@ -1674,12 +1695,27 @@ export default function EventCapturePage({
             acceptance={
               acceptanceBox
                 ? (() => {
-                    const sentence = acceptanceSentence(shownCheckboxes(consentCheckboxes(acceptanceBox.config)), language, uiTexts);
+                    const items = shownCheckboxes(consentCheckboxes(acceptanceBox.config)).filter((item) => item.kind !== 'marketing');
+                    if (items.length === 0) return undefined;
+                    const sentence = acceptanceSentence(items, language, uiTexts);
                     return {
                       sentence,
                       required: event.effectiveAcceptanceRequired !== false,
-                      checked: collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId),
+                      checked: collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.kind !== 'marketing' && record.accepted),
                       onChange: (checked: boolean) => handleAcceptanceChange(acceptanceBox, checked, sentenceText(sentence)),
+                    };
+                  })()
+                : undefined
+            }
+            marketingOptIn={
+              acceptanceBox
+                ? (() => {
+                    const item = shownCheckboxes(consentCheckboxes(acceptanceBox.config)).find((checkbox) => checkbox.kind === 'marketing');
+                    if (!item) return undefined;
+                    return {
+                      text: item.text,
+                      checked: collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.kind === 'marketing' && record.accepted),
+                      onChange: (checked: boolean) => handleMarketingOptInChange(acceptanceBox, item, checked),
                     };
                   })()
                 : undefined

@@ -9,11 +9,11 @@ import WhoAreYouPage from './WhoAreYouPage';
 
 const noop = () => undefined;
 const config = { title: 'Ki vagy te?', description: 'Jelentkezz be.', nameLabel: 'A neved', emailLabel: 'Az e-mail-címed', buttonText: 'Tovább', enableSSOLogin: true, enablePseudoReg: true };
-const render = (acceptance?: Parameters<typeof WhoAreYouPage>[0]['acceptance'], capturePhase?: 'onboarding' | 'presubmit') =>
+const render = (acceptance?: Parameters<typeof WhoAreYouPage>[0]['acceptance'], capturePhase?: 'onboarding' | 'presubmit', marketingOptIn?: Parameters<typeof WhoAreYouPage>[0]['marketingOptIn']) =>
   renderToStaticMarkup(
     <MantineProvider>
       <UiLanguageProvider language="hu">
-        <WhoAreYouPage config={config} acceptance={acceptance} onNext={noop} eventId="e1" pageIndex={0} capturePhase={capturePhase} />
+        <WhoAreYouPage config={config} acceptance={acceptance} marketingOptIn={marketingOptIn} onNext={noop} eventId="e1" pageIndex={0} capturePhase={capturePhase} />
       </UiLanguageProvider>
     </MantineProvider>,
   );
@@ -65,4 +65,15 @@ test('an acceptance the event made optional (issue 558) is marked, and the page 
   assert.ok(!/<input[^>]*disabled/.test(html) && !/<button[^>]*disabled/.test(html));
   assert.ok(!/aria-required/.test(html), 'it says it is not required');
   assert.match(render({ sentence, checked: false, onChange: noop }), /aria-required/, 'a required one still says so');
+});
+
+test('marketing opt-in is a separate optional checkbox below legal acceptance and never locks login', () => {
+  const marketing = { text: 'Nyitott vagyok klub és szurkolói fotó marketing kommunikációra.', checked: false, onChange: noop };
+  const html = render({ sentence, checked: true, onChange: noop }, undefined, marketing);
+  assert.equal((html.match(/type="checkbox"/g) ?? []).length, 2);
+  assert.ok(html.indexOf('data-acceptance') < html.indexOf('data-marketing-opt-in'));
+  assert.ok(html.indexOf('data-marketing-opt-in') < html.indexOf('data-brand-signin'));
+  assert.match(html, /Nyitott vagyok klub és szurkolói fotó marketing kommunikációra\./);
+  assert.equal((html.match(/aria-required/g) ?? []).length, 1, 'only the legal acceptance is mandatory');
+  assert.ok(!html.includes('aria-disabled="true"'), 'leaving marketing unticked does not block sign-in');
 });

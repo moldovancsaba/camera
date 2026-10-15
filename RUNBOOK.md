@@ -136,6 +136,10 @@ of the shutter, then the guest zooms and pans anywhere in it. Pressing "Continue
 - **If a phone's photo cannot be opened** (a format the browser cannot decode) the guest sees "We could not open the photo.
   Please take it again." and stays on the camera step.
 
+## Marketing opt-in consent
+
+The optional marketing checkbox is controlled with the other consent settings at the partner level and the event's Pages of the user journey editor. It offers only **Shown, optional** or **Not shown**; there is no required mode. By default, the default consent page includes the opt-in. When the consent page is merged into Who-are-you, the marketing checkbox appears separately below the legal acceptance. Leaving it unticked never blocks login or Continue. Check the submission's `consents` array for a `kind: "marketing"` record: `accepted: true` is opt-in, while `accepted: false` with `required: false` is a shown, declined opt-in. The record keeps the exact wording and answer time; the default Hungarian wording is `Nyitott vagyok klub és szurkolói fotó marketing kommunikációra.`
+
 ## Full-frame originals (camera#210, no longer stored since camera#257)
 
 The guest keeps only the frame-sized image as the final submission (owner decision 2026-10-06). The full camera image stays in browser memory while the guest frames it. When the guest presses Continue, the finished composition is sent through the established `POST /api/submissions` flow; the upload starts there, and the journey advances only after the submission is stored. A failed upload leaves the confirmed image on screen for retry. Captures without a signed-in account are stored with `userName: "NO USER"` and `metadata.identityStatus: "NO USER"`.

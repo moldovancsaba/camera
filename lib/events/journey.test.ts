@@ -271,7 +271,7 @@ test('the journey the editor builds and the pages the user gets agree when the d
   const forUser = withDefaultJourneyPages(own, { vettingRequired: false, consentDefault: true, language: 'en', now: NOW, documents }).find((p) => p.pageId === DEFAULT_CONSENT_PAGE_ID);
   assert.ok(row && row.kind === 'default' && forUser);
   assert.deepEqual(row.page.config, forUser.config);
-  assert.deepEqual((row.page.config as { checkboxes: unknown[] }).checkboxes.length, 2);
+  assert.deepEqual((row.page.config as { checkboxes: unknown[] }).checkboxes.length, 3, 'the two shown legal documents and optional marketing choice');
   const standard = effectiveJourney(own, { ...ALL, vettingRequired: false }, NOW).find((r) => r.kind === 'default' && r.page.pageId === DEFAULT_CONSENT_PAGE_ID);
-  assert.equal((standard?.kind === 'default' ? (standard.page.config as { checkboxes: unknown[] }).checkboxes.length : 0), 3);
+  assert.equal((standard?.kind === 'default' ? (standard.page.config as { checkboxes: unknown[] }).checkboxes.length : 0), 4);
 });

@@ -535,6 +535,10 @@ test('a record that says it was not ticked is refused unless it says it was opti
   const saved = await run('consent-optional', undefined, null, { consents: [THREE[0], optional, tickedOptional] });
   assert.equal(saved.status, 201);
   assert.deepEqual(saved.inserted[0].consents, [THREE[0], optional, tickedOptional]);
+  const marketing = { ...optional, kind: 'marketing', checkboxText: 'Nyitott vagyok klub és szurkolói fotó marketing kommunikációra.' };
+  const marketingSaved = await run('consent-marketing-optional', undefined, null, { consents: [{ ...marketing, accepted: true }, marketing] });
+  assert.equal(marketingSaved.status, 201, 'both an opted-in and opted-out marketing choice are non-blocking');
+  assert.deepEqual(marketingSaved.inserted[0].consents, [{ ...marketing, accepted: true }, marketing], 'the marketing kind and each explicit answer are retained');
   const claimsRequired = await run('consent-false-required', undefined, null, { consents: [{ ...optional, required: true }] });
   assert.equal(claimsRequired.status, 400, 'only an optional box can be recorded as not ticked');
 });

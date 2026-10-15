@@ -718,6 +718,8 @@ export interface UserConsent {
   pageId: string;              // Reference to customPage that generated this consent
   pageType: 'accept' | 'cta';  // Type of page (for categorization)
   checkboxText: string;        // Exact text user agreed to (immutable record)
+  /** Purpose of a built-in consent checkbox, when known. */
+  kind?: 'terms' | 'cookies' | 'privacy' | 'marketing';
   linkUrl?: string;            // The https address the checkbox linked to, when it had one (camera#330)
   /** True when the box was ticked. False only for an optional checkbox that was shown and left unticked (issue 558); every record made before that is true. */
   accepted: boolean;

@@ -58,10 +58,18 @@ export interface WhoAreYouAcceptance {
   onChange: (checked: boolean) => void;
 }
 
+/** The marketing choice stays independent of the required legal acceptance and never locks login. */
+export interface WhoAreYouMarketingOptIn {
+  text: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
 export interface WhoAreYouPageProps {
   config: WhoAreYouPageConfig;
   /** Present when the event shows its acceptance here instead of on a page of its own. */
   acceptance?: WhoAreYouAcceptance;
+  marketingOptIn?: WhoAreYouMarketingOptIn;
   onNext: (data: WhoAreYouPageData) => void;
   onBack?: () => void;
   logoUrl?: string | null;
@@ -80,6 +88,7 @@ export interface WhoAreYouPageProps {
 export default function WhoAreYouPage({
   config,
   acceptance,
+  marketingOptIn,
   onNext,
   onBack,
   logoUrl,
@@ -179,6 +188,23 @@ export default function WhoAreYouPage({
                 {acceptanceRequired ? null : <span style={{ marginLeft: 6, opacity: 0.75 }}>{t('accept.optional')}</span>}
               </span>
             }
+          />
+        </Box>
+      ) : null}
+
+      {marketingOptIn ? (
+        <Box p="xs" style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }} data-marketing-opt-in>
+          <Checkbox
+            size="xs"
+            checked={marketingOptIn.checked}
+            onChange={(event) => marketingOptIn.onChange(event.currentTarget.checked)}
+            label={(
+              <span style={{ fontSize: '0.75rem', lineHeight: 1.35 }}>
+                {marketingOptIn.text}
+                <span style={{ marginLeft: 6, opacity: 0.75 }}>{t('accept.optional')}</span>
+              </span>
+            )}
+            aria-label={marketingOptIn.text}
           />
         </Box>
       ) : null}
