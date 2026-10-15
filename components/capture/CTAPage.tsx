@@ -38,7 +38,7 @@ export interface CTAPageConfig {
   hasButton?: boolean;
   visitButtonText?: string;
   redirectingText?: string;
-  /** A picture that fits the screen behind the page's own title, text and buttons (camera#310, camera#491). */
+  /** A picture fitted into its own screen area, above the page's actions (camera#310, camera#491). */
   backgroundImageUrl?: string;
   /** Hide the title and the text (a screen reader still gets the title), the buttons, and make the whole picture a link (camera#491, lib/capture/cta-layout.ts). */
   hideTexts?: boolean;
@@ -126,7 +126,7 @@ export default function CTAPage({
     const layout = ctaLayout({ url: config.checkboxText, hasButton, hideTexts: config.hideTexts, hideButtons: config.hideButtons, pictureLink: config.pictureLink });
     const shadow = `0 0.1em 0.5em color-mix(in srgb, ${CAMERA_STAGE_BLACK} 55%, transparent)`;
     // The darkening behind the writing is only there when there is writing.
-    const hasWriting = layout.showTexts || layout.showVisitButton || layout.showContinueButton;
+    const hasWriting = layout.showTexts;
     const handlePictureTap = () => {
       if (layout.pictureTap === 'visit-and-continue') {
         journey.externalCtaOpened();
@@ -138,39 +138,43 @@ export default function CTAPage({
     };
     return (
       <FullScreenPage marker={{ 'data-cta-picture': '' }}>
-        {/* The whole picture is visible, whatever the screen: it fits the page and keeps its shape (the page colour of the event shows around it). */}
-        <Image src={config.backgroundImageUrl} alt="" fill unoptimized priority sizes="100vw" style={{ objectFit: 'contain', objectPosition: 'center' }} />
-        {hasWriting ? (
-          <div aria-hidden style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, color-mix(in srgb, ${CAMERA_STAGE_BLACK} 55%, transparent), color-mix(in srgb, ${CAMERA_STAGE_BLACK} 25%, transparent))` }} />
-        ) : null}
-        {layout.pictureLink ? (
-          <button
-            type="button"
-            data-cta-picture-link
-            onClick={handlePictureTap}
-            disabled={isRedirecting}
-            aria-label={visitButtonText || config.title}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}
-          />
-        ) : null}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', padding: '1.5rem', textAlign: 'center', color: CAMERA_STAGE_WHITE, overflowY: 'auto', pointerEvents: 'none' }}>
-          <h1 style={layout.showTexts ? { margin: 0, fontSize: 'clamp(2rem, 7vw, 4.5rem)', fontWeight: 800, lineHeight: 1.05, textTransform: 'uppercase', textShadow: shadow } : VISUALLY_HIDDEN}>{config.title}</h1>
-          {layout.showTexts && config.description ? <p style={{ margin: 0, maxWidth: '40rem', fontSize: 'clamp(1.05rem, 2.6vw, 1.75rem)', fontStyle: 'italic', textShadow: shadow }}>{config.description}</p> : null}
-          {layout.showVisitButton ? (
-            <div style={{ pointerEvents: 'auto' }}>
-              <PillButton onClick={handleRedirect} disabled={isRedirecting} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={t('cta.visitAria')}>
+        <div data-cta-picture-art style={{ position: 'relative', flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
+          {/* Keep the artwork inside its own screen area; the action bar below it never covers the CTA image. */}
+          <Image src={config.backgroundImageUrl} alt="" fill unoptimized priority sizes="100vw" style={{ objectFit: 'contain', objectPosition: 'center' }} />
+          {hasWriting ? (
+            <div aria-hidden style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, color-mix(in srgb, ${CAMERA_STAGE_BLACK} 55%, transparent), color-mix(in srgb, ${CAMERA_STAGE_BLACK} 25%, transparent))` }} />
+          ) : null}
+          {layout.pictureLink ? (
+            <button
+              type="button"
+              data-cta-picture-link
+              onClick={handlePictureTap}
+              disabled={isRedirecting}
+              aria-label={visitButtonText || config.title}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}
+            />
+          ) : null}
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', padding: '1.5rem', textAlign: 'center', color: CAMERA_STAGE_WHITE, overflowY: 'auto', pointerEvents: 'none' }}>
+            <h1 style={layout.showTexts ? { margin: 0, fontSize: 'clamp(2rem, 7vw, 4.5rem)', fontWeight: 800, lineHeight: 1.05, textTransform: 'uppercase', textShadow: shadow } : VISUALLY_HIDDEN}>{config.title}</h1>
+            {layout.showTexts && config.description ? <p style={{ margin: 0, maxWidth: '40rem', fontSize: 'clamp(1.05rem, 2.6vw, 1.75rem)', fontStyle: 'italic', textShadow: shadow }}>{config.description}</p> : null}
+          </div>
+        </div>
+        {(layout.showVisitButton || layout.showContinueButton) ? (
+          <div
+            data-cta-picture-actions
+            style={{ position: 'relative', zIndex: 1, flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem max(1rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px))', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}>
+            {layout.showVisitButton ? (
+              <PillButton onClick={handleRedirect} disabled={isRedirecting} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={t('cta.visitAria')} style={{ width: 'min(80vw, 36rem)', flex: 'none' }}>
                 {isRedirecting ? opening : visitButtonText}
               </PillButton>
-            </div>
-          ) : null}
-          {layout.showContinueButton ? (
-            <div style={{ pointerEvents: 'auto' }}>
-              <PillButton variant={urlToVisit ? 'outline' : 'solid'} onClick={handleContinue} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={config.buttonText}>
+            ) : null}
+            {layout.showContinueButton ? (
+              <PillButton variant={urlToVisit ? 'outline' : 'solid'} onClick={handleContinue} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={config.buttonText} style={{ width: 'min(80vw, 36rem)', flex: 'none' }}>
                 {config.buttonText}
               </PillButton>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        ) : null}
       </FullScreenPage>
     );
   }
