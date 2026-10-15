@@ -39,6 +39,7 @@ import { consentCheckboxes, consentRecords, shownCheckboxes } from '@/lib/events
 import { acceptanceOnLogin, acceptanceSentence, sentenceText } from '@/lib/events/acceptance';
 import { welcomeScreenImage, welcomeScreenOf } from '@/lib/events/welcome-screen-url';
 import { forgetConsents, recallConsents, rememberConsents } from '@/lib/capture/consent-memory';
+import { forgetCaptureSelection, recallCaptureSelection, rememberCaptureSelection } from '@/lib/capture/selection-memory';
 import { appendSubmissionConsents } from '@/lib/capture/submit-consents';
 import { approvalTexts } from '@/lib/events/page-texts';
 import { useT, useUiTexts } from '@/components/i18n/UiLanguageProvider';
@@ -533,6 +534,8 @@ export default function EventCapturePage({
 
         // Get frames assigned to this event
         // A text-free frame with a message area carries the event's messages (camera#366); it is not a frame the guest picks.
+        const rememberedChoice = recallCaptureSelection(window.sessionStorage, eventId);
+        const display = (eventData.frameMessageSelectionDisplay ?? 'automatic') as FrameMessageSelectionDisplay;
         const activeFrameAssignments: EventFrameAssignment[] = (eventData.frames || []).filter((frame: EventFrameAssignment) => frame.isActive && frame.frameDetails?.hasMessageArea !== true);
         const frameIds = activeFrameAssignments.map((frame: EventFrameAssignment) => frame.frameId);
 
@@ -545,6 +548,18 @@ export default function EventCapturePage({
             .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
             .map((details) => ({ frameId: details.frameId, name: details.name ?? '', imageUrl: details.imageUrl as string, width: details.width ?? 0, height: details.height ?? 0, tileStyle: eventData.frameSelectionTiles?.[details.frameId] }));
           setFrames(eventFrames);
+
+          const configuredLayout = storedFrameSelection(eventData.frameSelection)?.layout;
+          const frameIsGuestSelectable = eventFrames.length > 1 && (display === 'show' ||
+            (display !== 'hide' && display !== 'messages-only' && configuredLayout?.mode === 'user'));
+          const restoredFrame = frameIsGuestSelectable && rememberedChoice?.choice.layoutId
+            ? eventFrames.find((frame) => frame.frameId === rememberedChoice.choice.layoutId) ?? null
+            : null;
+          const restoredChoice = restoredFrame ? { layoutId: restoredFrame.frameId, messageIndex: null } : NO_CHOICE;
+          setChoice(restoredChoice);
+          if (restoredFrame) rememberCaptureSelection(window.sessionStorage, eventId, restoredChoice);
+          else forgetCaptureSelection(window.sessionStorage, eventId);
+          if (restoredFrame) setSelectedFrame(restoredFrame);
           
           // Auto-select if only one frame
           if (eventFrames.length === 1) {
@@ -557,6 +572,27 @@ export default function EventCapturePage({
         } else {
           // No frame of its own: the generated frame if there is one, else no frame at all. Under the editor's setting the user is asked for the design and the message first when they choose.
           setGeneratedFrame(eventData.generatedFrame ?? null);
+          const selectableFrame = frameWithSelectionDisplay(eventData.generatedFrame, display);
+          if (selectableFrame && rememberedChoice) {
+            const allowedLayouts = layoutsToChoose(selectableFrame);
+            const layoutId = allowedLayouts.some((variant) => layoutIdOf(variant) === rememberedChoice.choice.layoutId)
+              ? rememberedChoice.choice.layoutId
+              : null;
+            const allowedMessages = messagesToChoose(selectableFrame, { layoutId, messageIndex: null });
+            const messageIndex = allowedMessages.some((variant) => variant.index === rememberedChoice.choice.messageIndex && variant.message === rememberedChoice.messageText)
+              ? rememberedChoice.choice.messageIndex
+              : null;
+            const restoredChoice = { layoutId, messageIndex };
+            setChoice(restoredChoice);
+            const messageText = messageIndex === null
+              ? null
+              : selectableFrame.variants.find((variant) => variant.index === messageIndex)?.message ?? null;
+            if (layoutId || messageIndex !== null) rememberCaptureSelection(window.sessionStorage, eventId, restoredChoice, messageText);
+            else forgetCaptureSelection(window.sessionStorage, eventId);
+          } else {
+            setChoice(NO_CHOICE);
+            forgetCaptureSelection(window.sessionStorage, eventId);
+          }
           setStep(hasOrderedFrameMessagePage ? 'capture-photo' : nextStep(frameWithSelectionDisplay(eventData.generatedFrame, eventData.frameMessageSelectionDisplay), NO_CHOICE));
         }
       } catch (error) {
@@ -739,7 +775,9 @@ export default function EventCapturePage({
 
   const handleFrameSelect = (frame: Frame) => {
     setSelectedFrame(frame);
-    setChoice((current) => ({ ...current, layoutId: frame.frameId }));
+    const next = { ...choice, layoutId: frame.frameId };
+    setChoice(next);
+    rememberCaptureSelection(window.sessionStorage, eventId, next);
     lastDrawKey.current = frame.frameId;
   };
 
@@ -811,19 +849,16 @@ export default function EventCapturePage({
     if (!selectionFrame) return;
     const next = chooseLayout(selectionFrame, choice, layoutIdOf(variant));
     setChoice(next);
-    if (flowPhase === 'presubmit' && capturedOriginal) {
-      const selected = drawVariant(selectionFrame, next, lastDrawKey.current);
-      if (selected) setSelectedFrame(variantFrame(selected));
-    }
+    const messageText = next.messageIndex === null
+      ? null
+      : selectionFrame.variants.find((candidate) => candidate.index === next.messageIndex)?.message ?? null;
+    rememberCaptureSelection(window.sessionStorage, eventId, next, messageText);
   };
 
   const handleMessageSelect = (variant: CaptureVariant) => {
     const next = { ...choice, messageIndex: variant.index };
     setChoice(next);
-    if (flowPhase === 'presubmit' && capturedOriginal && selectionFrame) {
-      const selected = drawVariant(selectionFrame, next, lastDrawKey.current);
-      if (selected) setSelectedFrame(variantFrame(selected));
-    }
+    rememberCaptureSelection(window.sessionStorage, eventId, next, variant.message);
   };
 
   // The steps the user sees in the list at the top: the frame when there are several of the event's own and the user picks, the design and the message when the user chooses them.
@@ -1491,7 +1526,9 @@ export default function EventCapturePage({
    * from the first page (handleRestartFlow). The default of the guest journey; an event changes it with its own pages.
    */
   function handleNextPhoto() {
-    const selectorChoosesNextPhoto = asksAnySelection && thankYouPages.some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
+    // TOVÁBB already uploaded the photo. A selector anywhere after that point chooses the next photo,
+    // including pages between Take Photo and a later Submit/preview marker.
+    const selectorChoosesNextPhoto = asksAnySelection && [...presubmitPages, ...thankYouPages].some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
     const selectorRunsAfterCamera = asksAnySelection && [...presubmitPages, ...thankYouPages].some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
     const selectorRunsBeforeCamera = asksAnySelection && frameMessagePageBeforePhoto;
     setCapturedImage(null);
@@ -1508,7 +1545,10 @@ export default function EventCapturePage({
     // A chosen frame is kept; a generated variant is picked again at the next shutter press.
     // Every photo asks again for the design and the message when the user chooses them; the image is drawn when the camera step opens.
     setSelectedFrame((current) => (current?.generated ? null : current));
-    if (!selectorChoosesNextPhoto) setChoice(NO_CHOICE);
+    if (!selectorChoosesNextPhoto) {
+      setChoice(NO_CHOICE);
+      forgetCaptureSelection(window.sessionStorage, eventId);
+    }
     setFlowPhase('capture');
     setStep(selectorRunsAfterCamera
       ? 'capture-photo'
@@ -1551,6 +1591,7 @@ export default function EventCapturePage({
     setCollectedData({ consents: [] });
     setPresubmitDone(false);
     forgetConsents(window.sessionStorage, eventId);
+    forgetCaptureSelection(window.sessionStorage, eventId);
     
     // ALWAYS restart from the very beginning
     if (hasAnyOnboardingPages) {
