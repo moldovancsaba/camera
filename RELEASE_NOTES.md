@@ -7,8 +7,9 @@
 
 ## Unreleased — keep CTA actions below the picture (2026-10-15)
 
-- **Changed:** picture-backed CTA pages put visit and Continue actions in a centered bar below the image, with safe-area spacing. The buttons no longer overlay the image.
-- **Verified locally:** CTA layout and current analytics changes were reviewed together; GitHub Verify will run for this PR.
+- **Changed:** picture-backed CTA pages use an explicit grid with a flexible image row and a separate safe-area-aware action row. Visit and Continue buttons cannot be positioned over the artwork by flex sizing.
+- **Clarified:** the CTA editor and designer guide now say that button labels belong outside the uploaded artwork; the page renders the controls below it.
+- **Verified locally:** source and layout constraints reviewed; GitHub Verify will run for this PR.
 
 ## Unreleased — separate capture and event loading messages (2026-10-15)
 
