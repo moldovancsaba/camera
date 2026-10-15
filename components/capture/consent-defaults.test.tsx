@@ -40,9 +40,9 @@ const accept = (language: 'en' | 'hu', config: Parameters<typeof AcceptPage>[0][
     </MantineProvider>,
   );
 
-test('the default consent page (three documents) is drawn as before, in English and Hungarian', () => {
+test('the default consent page shows legal documents and an independent optional marketing choice in English and Hungarian', () => {
   for (const language of ['en', 'hu'] as const) {
-    expectGolden(`accept-default-${language}`, accept(language, { title: 'Before we start', description: 'Please accept all of the following to continue.', checkboxText: '', buttonText: 'Continue', checkboxes: defaultConsentCheckboxes(language).map((item) => ({ ...item })) }));
+    expectGolden(`accept-default-${language}`, accept(language, { title: 'Before we start', description: language === 'en' ? 'Please review the choices below before continuing.' : 'Kérjük, folytatás előtt nézd át az alábbi választásokat.', checkboxText: '', buttonText: 'Continue', checkboxes: defaultConsentCheckboxes(language).map((item) => ({ ...item })) }));
   }
 });
 

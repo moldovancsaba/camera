@@ -482,7 +482,7 @@ export interface Event {
   customPages: CustomPage[];         // Array of custom pages (ordered by order field)
   
   // Customization
-  loadingText?: string;              // Text shown while event is loading (e.g., "Loading event...")
+  loadingText?: string;              // Legacy; loadEventTexts exposes a custom value as event.texts['event.loading'] and clears it on save.
   logoUrl?: string;                  // Optional event logo URL (imgbb.com) - displayed on capture pages
   /** A picture drawn under the card of every guest email of this event (the club's footer strip); https, a host the pages may load images from (camera#310). */
   emailFooterImageUrl?: string | null;
@@ -720,6 +720,8 @@ export interface UserConsent {
   pageId: string;              // Reference to customPage that generated this consent
   pageType: 'accept' | 'cta';  // Type of page (for categorization)
   checkboxText: string;        // Exact text user agreed to (immutable record)
+  /** Purpose of a built-in consent checkbox, when known. */
+  kind?: 'terms' | 'cookies' | 'privacy' | 'marketing';
   linkUrl?: string;            // The https address the checkbox linked to, when it had one (camera#330)
   /** True when the box was ticked. False only for an optional checkbox that was shown and left unticked (issue 558); every record made before that is true. */
   accepted: boolean;

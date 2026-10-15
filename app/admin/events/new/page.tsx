@@ -165,7 +165,6 @@ export default function NewEventPage() {
       description: formData.get('description') as string,
       eventDate: formData.get('eventDate') as string,
       location: formData.get('location') as string,
-      loadingText: formData.get('loadingText') as string,
       shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
       isActive: formData.get('isActive') === 'on',
       logoUrl,
@@ -281,12 +280,7 @@ export default function NewEventPage() {
               onChange={(value) => setButtonSize((value as EventButtonSize) || DEFAULT_EVENT_BUTTON_SIZE)}
             />
 
-            <TextInput
-              name="loadingText"
-              label="Loading text"
-              defaultValue="Loading event..."
-              description="Text shown while the event is loading."
-            />
+            <Text size="sm">After creating the event, edit its loading message under Texts by searching for “event.loading”.</Text>
 
             {logoPreview ? (
               <MediaCard

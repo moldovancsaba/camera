@@ -10,13 +10,14 @@ const page = (pageType: string, order: number, isActive = true, pageId = `${page
 const sequence = (pages: CustomPage[]) => [...pages].sort((a, b) => a.order - b.order).map((p) => p.pageId);
 const OPTIONS = { now: '2026-10-08T10:00:00.000Z' };
 
-test('the default consent page has the three required checkboxes with their legal pages, in English', () => {
+test('the default consent page has three required legal checkboxes and one independent optional marketing opt-in, in English', () => {
   const consent = defaultConsentPage(0, OPTIONS.now);
   assert.equal(consent.pageType, 'accept');
   const list = (consent.config as { checkboxes: Array<{ text: string; linkUrl: string }> }).checkboxes;
-  assert.deepEqual(list.map((c) => c.linkUrl), ['https://seyuselfies.com/en/legal/terms', 'https://seyuselfies.com/en/legal/cookies', 'https://seyuselfies.com/en/policies']);
-  assert.deepEqual(list.map((c) => c.text), ['I accept the Terms and conditions', 'I accept cookies', 'I have read the Privacy policy']);
-  assert.equal(DEFAULT_CONSENT_CHECKBOXES.length, 3);
+  assert.deepEqual(list.filter((c) => c.linkUrl).map((c) => c.linkUrl), ['https://seyuselfies.com/en/legal/terms', 'https://seyuselfies.com/en/legal/cookies', 'https://seyuselfies.com/en/policies']);
+  assert.deepEqual(list.map((c) => c.text), ['I accept the Terms and conditions', 'I accept cookies', 'I have read the Privacy policy', 'I am open to marketing communications about the club and fan photos.']);
+  assert.deepEqual(list[3], { text: 'I am open to marketing communications about the club and fan photos.', required: false, kind: 'marketing' });
+  assert.equal(DEFAULT_CONSENT_CHECKBOXES.length, 4);
   list[0].text = 'changed';
   assert.equal(DEFAULT_CONSENT_CHECKBOXES[0].text, 'I accept the Terms and conditions', 'each page gets its own copy');
 });
@@ -79,7 +80,7 @@ test('in Hungarian the default consent and login pages are Hungarian, with the H
   assert.deepEqual(consent(english).config.checkboxes, DEFAULT_CONSENT_CHECKBOXES.map((box) => ({ ...box })));
   assert.equal(consent(hungarian).config.title, 'Mielőtt elkezdjük');
   assert.equal(consent(hungarian).config.buttonText, 'Tovább');
-  assert.deepEqual((consent(hungarian).config.checkboxes ?? []).map((box) => box.linkUrl), ['https://seyuselfies.com/hu/legal/terms', 'https://seyuselfies.com/hu/legal/cookies', 'https://seyuselfies.com/hu/policies']);
+  assert.deepEqual((consent(hungarian).config.checkboxes ?? []).filter((box) => box.linkUrl).map((box) => box.linkUrl), ['https://seyuselfies.com/hu/legal/terms', 'https://seyuselfies.com/hu/legal/cookies', 'https://seyuselfies.com/hu/policies']);
   assert.equal(login(english).config.title, 'Who are you?');
   assert.equal(login(hungarian).config.title, 'Ki vagy te?');
   assert.equal(login(hungarian).config.nameLabel, 'A neved');
@@ -117,13 +118,14 @@ test('the default consent page follows the settings of its three documents: one 
   const docs = documentSettings(effectiveCheckboxes({ consentSettings: { terms: { shown: true, required: true }, cookies: { shown: false }, privacy: { shown: true, required: false } } }, null));
   const list = (defaultConsentPage(0, OPTIONS.now, 'en', undefined, docs).config as { checkboxes: Array<Record<string, unknown>> }).checkboxes;
   assert.deepEqual(list, [
-    { text: 'I accept the Terms and conditions', linkUrl: 'https://seyuselfies.com/en/legal/terms', required: true },
-    { text: 'I have read the Privacy policy', linkUrl: 'https://seyuselfies.com/en/policies', required: false },
+    { text: 'I accept the Terms and conditions', linkUrl: 'https://seyuselfies.com/en/legal/terms', required: true, kind: 'terms' },
+    { text: 'I have read the Privacy policy', linkUrl: 'https://seyuselfies.com/en/policies', required: false, kind: 'privacy' },
+    { text: 'I am open to marketing communications about the club and fan photos.', required: false, kind: 'marketing' },
   ]);
 });
 
-test('with all three documents switched off there is nothing to accept: no default consent page is added, and an own one is still kept', () => {
-  const docs = documentSettings(effectiveCheckboxes({ consentSettings: { terms: { shown: false }, cookies: { shown: false }, privacy: { shown: false } } }, null));
+test('with every consent switched off there is nothing to accept: no default consent page is added, and an own one is still kept', () => {
+  const docs = documentSettings(effectiveCheckboxes({ consentSettings: { terms: { shown: false }, cookies: { shown: false }, privacy: { shown: false }, marketing: { shown: false } } }, null));
   const own = [page('take-photo', 0)];
   assert.deepEqual(sequence(withDefaultJourneyPages(own, { vettingRequired: true, consentDefault: true, documents: docs, ...OPTIONS })), [DEFAULT_IDENTITY_PAGE_ID, 'take-photo-0']);
   const withOwn = [page('accept', -1), page('take-photo', 0)];

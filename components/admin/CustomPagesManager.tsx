@@ -757,7 +757,7 @@ function PageEditModal({
   const [showApprovalWaitingPage, setShowApprovalWaitingPage] = useState(page.config.showApprovalWaitingPage !== false);
   // Camera prompt text
   const [cameraPromptTitle, setCameraPromptTitle] = useState(page.config.cameraPromptTitle || 'Ready to capture?');
-  const [cameraPromptDescription, setCameraPromptDescription] = useState(page.config.cameraPromptDescription || 'Click to start your camera and take a photo');
+  const [cameraPromptDescription, setCameraPromptDescription] = useState(page.config.cameraPromptDescription || 'Start the camera and take your photo to continue.');
   // Error and notification messages for take-photo
   const [errorFrameMessage, setErrorFrameMessage] = useState(page.config.errorFrameMessage || 'Failed to apply frame. Please try again.');
   const [errorSaveMessage, setErrorSaveMessage] = useState(page.config.errorSaveMessage || 'Failed to save photo: Please try again.');
@@ -1259,8 +1259,8 @@ function PageEditModal({
               value={cameraPromptDescription}
               onChange={setCameraPromptDescription}
               rows={2}
-              helper="Instructional text shown below the title."
-              placeholder="e.g., Click to start your camera and take a photo"
+              helper="Shown below the title on desktop and mobile before the camera starts. Leave blank to use the event language."
+              placeholder="e.g., Start the camera and take your photo to continue."
             />
 
             <DividerLabel>Error and notification messages</DividerLabel>

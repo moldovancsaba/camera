@@ -21,15 +21,15 @@ function setup(t: TestContext, session: typeof ADMIN) {
 const url = 'http://localhost/api/admin/dictionary';
 const put = (body: unknown) => new NextRequest(url, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
-test('a global admin writes the global wordings and reads them back; an empty text takes one away', async (t) => {
+test('a global admin writes the global wordings and reads them back; an empty text hides that wording', async (t) => {
   const { data } = setup(t, ADMIN);
   const { GET, PUT } = await importRoute('write');
   const saved = await PUT(put({ texts: { en: { 'welcome.button': 'Kick off', 'camera.takePhoto': '' } } }));
   assert.equal(saved.status, 200);
-  assert.deepEqual(((await saved.json()) as { data: unknown }).data, { texts: { en: { 'welcome.button': 'Kick off' } } });
+  assert.deepEqual(((await saved.json()) as { data: unknown }).data, { texts: { en: { 'welcome.button': 'Kick off', 'camera.takePhoto': '' } } });
   assert.equal(data.admin_settings.length, 1);
   const read = (await (await GET(new NextRequest(url))).json()) as { data: { texts: unknown } };
-  assert.deepEqual(read.data.texts, { en: { 'welcome.button': 'Kick off' } });
+  assert.deepEqual(read.data.texts, { en: { 'welcome.button': 'Kick off', 'camera.takePhoto': '' } });
 });
 
 test('what the rules refuse is refused with the reason and nothing is stored: markup, an unknown key, a changed marker, no body', async (t) => {

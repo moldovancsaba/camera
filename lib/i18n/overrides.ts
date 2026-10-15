@@ -11,11 +11,12 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { en, type MessageKey } from '@/lib/i18n/messages.en';
+import { hu } from '@/lib/i18n/messages.hu';
 import { UI_LANGUAGES, isUiLanguage, normalizeUiLanguage, type UiLanguage } from '@/lib/i18n';
 
 export const TEXT_MAX = 500;
 
-/** Wordings written at one level for one language: only the keys the editor changed. */
+/** Wordings written at one level for one language: only the keys the editor changed. An empty string explicitly hides a text at this level. */
 export type TextOverrides = Partial<Record<MessageKey, string>>;
 /** Wordings written at one level, per language. */
 export type TextsByLanguage = Partial<Record<UiLanguage, TextOverrides>>;
@@ -31,7 +32,7 @@ export function markersOf(text: string): string[] {
 export type ParsedTexts = { ok: true; value: TextsByLanguage } | { ok: false; error: string };
 
 /**
- * The wordings from a request: `{ en: { 'camera.takePhoto': 'Snap!' }, hu: { ... } }`. An empty text means "no wording at this level" and is left out. Refused with the reason:
+ * The wordings from a request: `{ en: { 'camera.takePhoto': 'Snap!' }, hu: { ... } }`. A missing key means "use the level above"; an empty string explicitly hides it. Refused with the reason:
  * an unknown language or key, something that is not text, a text over the limit, one with `<` or `>`, or one that does not keep the `{name}` markers of the dictionary text.
  */
 export function parseTexts(input: unknown): ParsedTexts {
@@ -46,7 +47,10 @@ export function parseTexts(input: unknown): ParsedTexts {
       if (!KEYS.has(key)) return { ok: false, error: `Unknown text: ${key}.` };
       if (typeof value !== 'string') return { ok: false, error: `The text ${key} must be text.` };
       const text = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
-      if (!text) continue;
+      if (!text) {
+        texts[key as MessageKey] = '';
+        continue;
+      }
       if (text.length > TEXT_MAX) return { ok: false, error: `The text ${key} is longer than ${TEXT_MAX} characters.` };
       if (/[<>]/.test(text)) return { ok: false, error: `The text ${key} must be plain text: no < or >.` };
       const wanted = markersOf(en[key as MessageKey]);
@@ -110,7 +114,8 @@ export async function savePartnerTexts(db: Db, partnerId: string, texts: TextsBy
 }
 
 export async function saveEventTexts(db: Db, eventId: string, texts: TextsByLanguage, now: string): Promise<boolean> {
-  const result = await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId }, { $set: { texts, updatedAt: now } });
+  // Saving the text-level editor migrates the old single-language loading field into `texts.event.loading`.
+  const result = await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId }, { $set: { texts, updatedAt: now }, $unset: { loadingText: '' } });
   return result.matchedCount > 0;
 }
 
@@ -144,6 +149,18 @@ export interface EventTexts {
 export async function loadEventTexts(db: Db, event: Document, partner?: Document | null): Promise<EventTexts> {
   const partnerDoc = partner === undefined ? (typeof event.partnerId === 'string' && event.partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null) : partner;
   const language = eventLanguage(event, partnerDoc);
-  const levels = { global: await getGlobalTexts(db), partner: storedTexts(partnerDoc?.texts), event: storedTexts(event.texts) };
+  const eventTexts = storedTexts(event.texts);
+  // `loadingText` predates the text levels. Keep a custom legacy value editable in Event → Texts and
+  // make every loading state use the same event → partner → global → dictionary resolution.
+  const legacyLoadingText = typeof event.loadingText === 'string' ? event.loadingText.trim() : '';
+  if (
+    legacyLoadingText &&
+    legacyLoadingText !== en['event.loading'] &&
+    legacyLoadingText !== hu['event.loading'] &&
+    !Object.prototype.hasOwnProperty.call(eventTexts[language] ?? {}, 'event.loading')
+  ) {
+    eventTexts[language] = { ...(eventTexts[language] ?? {}), 'event.loading': legacyLoadingText };
+  }
+  const levels = { global: await getGlobalTexts(db), partner: storedTexts(partnerDoc?.texts), event: eventTexts };
   return { language, overrides: overridesFor(language, levels.global, levels.partner, levels.event), levels, partner: partnerDoc ?? null };
 }

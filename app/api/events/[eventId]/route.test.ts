@@ -614,13 +614,13 @@ type GuestEvent = { data: { event: Record<string, unknown> & { customPages: Arra
 test('PATCH: consentSettings is an object of known kinds with true/false parts (or null to take it away), refused otherwise, and left alone when absent (issue 558)', async (t) => {
   const h = mockDeps(t, { event: {}, session: ADMIN });
   const { PATCH } = await importRouteModule('patch-consent-settings');
-  assert.equal((await PATCH(patchRequest({ consentSettings: { terms: { shown: true, required: true }, gallery: { required: true } } }), params)).status, 200);
-  assert.deepEqual(h.updates[0].consentSettings, { terms: { shown: true, required: true }, gallery: { required: true } });
+  assert.equal((await PATCH(patchRequest({ consentSettings: { terms: { shown: true, required: true }, marketing: { shown: false }, gallery: { required: true } } }), params)).status, 200);
+  assert.deepEqual(h.updates[0].consentSettings, { terms: { shown: true, required: true }, marketing: { shown: false }, gallery: { required: true } });
   assert.equal((await PATCH(patchRequest({ consentSettings: null }), params)).status, 200);
   assert.equal(h.updates[1].consentSettings, null);
   assert.equal((await PATCH(patchRequest({ consentSettings: {} }), params)).status, 200);
   assert.equal(h.updates[2].consentSettings, null, 'an empty object is no choice at all');
-  for (const bad of ['yes', 1, [], { newsletter: { shown: true } }, { terms: { shown: 'no' } }, { terms: { visible: true } }, { gallery: { shown: true } }]) assert.equal((await PATCH(patchRequest({ consentSettings: bad }), params)).status, 400, JSON.stringify(bad));
+  for (const bad of ['yes', 1, [], { newsletter: { shown: true } }, { terms: { shown: 'no' } }, { terms: { visible: true } }, { marketing: { required: true } }, { gallery: { shown: true } }]) assert.equal((await PATCH(patchRequest({ consentSettings: bad }), params)).status, 400, JSON.stringify(bad));
   assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
   assert.equal('consentSettings' in h.updates[3], false);
   assert.equal(h.updates.length, 4, 'a refused value writes nothing');
@@ -635,12 +635,12 @@ test('PATCH: a consent page saves the "shown" and "required" of each checkbox it
   assert.deepEqual(saved, [{ text: 'A', linkUrl: 'https://example.com/a' }, { text: 'B', required: false }, { text: 'C', shown: false, required: true }, { text: 'D' }]);
 });
 
-test('GET as a guest: an event that chose nothing is sent what it always was, with the default consent page of three required documents and no extra field on its pages', async (t) => {
+test('GET as a guest: an event that chose nothing gets the default legal documents and a separate optional marketing choice', async (t) => {
   mockDeps(t, { event: { journeyDefaults: true, customPages: [takePhotoPage] } });
   const { GET } = await importRouteModule('get-guest-standard-consent');
   const body = (await (await GET(getRequest('?audience=guest'), params)).json()) as GuestEvent;
   const consent = body.data.event.customPages.find((p) => p.pageId === 'default-consent');
-  assert.deepEqual(consent?.config.checkboxes?.map((c) => Object.keys(c)), [['text', 'linkUrl'], ['text', 'linkUrl'], ['text', 'linkUrl']]);
+  assert.deepEqual(consent?.config.checkboxes?.map((c) => Object.keys(c)), [['text', 'linkUrl', 'kind'], ['text', 'linkUrl', 'kind'], ['text', 'linkUrl', 'kind'], ['text', 'required', 'kind']]);
   assert.equal(body.data.event.acceptanceOnWhoAreYou, false);
   assert.equal(body.data.event.effectiveGalleryConsent, false);
   assert.equal(body.data.event.effectiveGalleryRequired, false);
@@ -655,8 +655,9 @@ test('GET as a guest: the documents of the default consent page follow the partn
   const body = (await (await GET(getRequest('?audience=guest'), params)).json()) as GuestEvent;
   const consent = body.data.event.customPages.find((p) => p.pageId === 'default-consent');
   assert.deepEqual(consent?.config.checkboxes, [
-    { text: 'I accept the Terms and conditions', linkUrl: 'https://seyuselfies.com/en/legal/terms' },
-    { text: 'I have read the Privacy policy', linkUrl: 'https://seyuselfies.com/en/policies', required: true },
+    { text: 'I accept the Terms and conditions', linkUrl: 'https://seyuselfies.com/en/legal/terms', kind: 'terms' },
+    { text: 'I have read the Privacy policy', linkUrl: 'https://seyuselfies.com/en/policies', kind: 'privacy', required: true },
+    { text: 'I am open to marketing communications about the club and fan photos.', required: false, kind: 'marketing' },
   ]);
   assert.equal(body.data.event.acceptanceOnWhoAreYou, true, 'the partner’s default, as the effective value');
   assert.equal(body.data.event.effectiveGalleryConsent, true);

@@ -49,13 +49,15 @@ export interface SentencePart {
 }
 
 /**
- * The one sentence, as parts (text, or a link). The usual three legal pages of an event (the terms, the cookies, the privacy policy, in that order: `defaultConsentCheckboxes`)
- * make the sentence of the dictionary (`consent.combined`: the terms are accepted, the privacy notice and the cookie notice are taken note of), each name a link to its page; a
- * consent page with any other list of checkboxes gets its own texts one after the other, each with its link, so nothing the user is asked to accept is left out.
+ * The one sentence, as parts (text, or a link). The legal pages make the sentence of the dictionary (`consent.combined`) or, for another consent list, their
+ * legal texts appear one after another with links. The optional marketing choice is always rendered separately.
  */
 export function acceptanceSentence(items: readonly ConsentCheckbox[], language: UiLanguage, texts?: TextOverrides | null): SentencePart[] {
-  if (items.length === 3 && items.every((item) => item.linkUrl)) {
-    const [terms, cookies, privacy] = items;
+  // Marketing opt-in is never folded into the required legal sentence; it is rendered as its own optional checkbox.
+  const legalItems = items.filter((item) => item.kind !== 'marketing');
+  if (legalItems.length === 0) return [];
+  if (legalItems.length === 3 && legalItems.every((item) => item.linkUrl)) {
+    const [terms, cookies, privacy] = legalItems;
     const link = { terms: terms.linkUrl, privacy: privacy.linkUrl, cookies: cookies.linkUrl } as const;
     const parts: SentencePart[] = [];
     for (const piece of translate(language, 'consent.combined', undefined, texts).split(/(\{terms\}|\{privacy\}|\{cookies\})/)) {
@@ -66,7 +68,7 @@ export function acceptanceSentence(items: readonly ConsentCheckbox[], language: 
     return parts;
   }
   const parts: SentencePart[] = [];
-  items.forEach((item, index) => {
+  legalItems.forEach((item, index) => {
     if (index > 0) parts.push({ text: ', ' });
     parts.push(item.linkUrl ? { text: item.text, linkUrl: item.linkUrl } : { text: item.text });
   });

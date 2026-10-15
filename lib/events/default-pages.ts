@@ -37,24 +37,26 @@ export function dedupeActiveRolePages(pages: readonly CustomPage[]): CustomPage[
 }
 
 /**
- * The three legal pages every user accepts (owner, 2026-10-07): all required, in the language of the event (camera#352); the links go to the legal
+ * The legal pages every user accepts plus the independent optional marketing opt-in, in the language of the event (camera#352); the legal links go to the
  * pages of the service in that language (they exist in English and Hungarian).
  *
  * `documents` are the settings of the three checkboxes for this event (issue 558, lib/events/checkbox-settings.ts): a document that is switched off is left out; an optional one carries
- * `required: false`; one an editor chose to require carries `required: true` (the server then checks it too). Without `documents`, or with the standard, the list is exactly what it always was.
+ * `required: false`; one an editor chose to require carries `required: true` (the server then checks it too). Marketing is shown by default, always optional, and has its own show/hide setting.
  */
 export function defaultConsentCheckboxes(language: UiLanguage = 'en', texts?: TextOverrides | null, documents?: DocumentSettings): readonly ConsentCheckbox[] {
-  const all: Array<ConsentCheckbox & { kind: (typeof DOCUMENT_KINDS)[number] }> = [
+  const all: Array<ConsentCheckbox & { kind: (typeof DOCUMENT_KINDS)[number] | 'marketing' }> = [
     { kind: 'terms', text: translate(language, 'consent.terms', undefined, texts), linkUrl: `https://seyuselfies.com/${language}/legal/terms` },
     { kind: 'cookies', text: translate(language, 'consent.cookies', undefined, texts), linkUrl: `https://seyuselfies.com/${language}/legal/cookies` },
     { kind: 'privacy', text: translate(language, 'consent.privacy', undefined, texts), linkUrl: `https://seyuselfies.com/${language}/policies` },
+    { kind: 'marketing', text: translate(language, 'consent.marketing', undefined, texts), required: false },
   ];
   return all
-    .filter((item) => documents?.[item.kind].shown !== false)
+    .filter((item) => item.kind === 'marketing' ? documents?.marketing?.shown !== false : documents?.[item.kind].shown !== false)
     .map(({ kind, ...item }) => {
+      if (kind === 'marketing') return { ...item, kind, required: false };
       const setting = documents?.[kind];
-      if (!setting) return item;
-      return setting.checked ? { ...item, required: true } : setting.required ? item : { ...item, required: false };
+      if (!setting) return { ...item, kind };
+      return setting.checked ? { ...item, kind, required: true } : setting.required ? { ...item, kind } : { ...item, kind, required: false };
     });
 }
 
@@ -134,8 +136,8 @@ export function withDefaultJourneyPages(
       : stored;
   const own = withWelcome;
   let withConsent = own;
-  // With every one of the three documents switched off (issue 558) there is nothing to accept and the default page is not added.
-  if (options.consentDefault && !hasConsentPageBeforePhoto(own) && (!options.documents || DOCUMENT_KINDS.some((kind) => options.documents?.[kind].shown !== false))) {
+  // With every consent choice switched off there is nothing to review and the default page is not added.
+  if (options.consentDefault && !hasConsentPageBeforePhoto(own) && (!options.documents || DOCUMENT_KINDS.some((kind) => options.documents?.[kind].shown !== false) || options.documents.marketing?.shown !== false)) {
     const sorted = [...own].sort((a, b) => a.order - b.order);
     let leading = 0;
     while (sorted[leading]?.pageType === 'welcome') leading += 1;

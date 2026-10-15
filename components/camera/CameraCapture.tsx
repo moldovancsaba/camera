@@ -1057,6 +1057,7 @@ export default function CameraCapture({
                 className="absolute inset-0 flex items-center justify-center p-3 md:p-4 w-full h-full cursor-pointer transition-all z-30"
                 style={{
                   background: capturePromptBackground(captureButtonColor),
+                  color: `var(--event-button-text, ${CAMERA_STAGE_WHITE})`,
                 }}
               >
                 <div className=" text-center max-w-xs md:max-w-md">
