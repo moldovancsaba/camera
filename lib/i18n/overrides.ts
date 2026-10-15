@@ -150,16 +150,17 @@ export async function loadEventTexts(db: Db, event: Document, partner?: Document
   const partnerDoc = partner === undefined ? (typeof event.partnerId === 'string' && event.partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null) : partner;
   const language = eventLanguage(event, partnerDoc);
   const eventTexts = storedTexts(event.texts);
-  // `loadingText` predates the text levels. Keep a custom legacy value editable in Event → Texts and
-  // make every loading state use the same event → partner → global → dictionary resolution.
+  // `loadingText` predates text levels and belongs to the long capture-loading screen, not event.loading.
   const legacyLoadingText = typeof event.loadingText === 'string' ? event.loadingText.trim() : '';
   if (
     legacyLoadingText &&
+    legacyLoadingText !== en['capture.loading'] &&
+    legacyLoadingText !== hu['capture.loading'] &&
     legacyLoadingText !== en['event.loading'] &&
     legacyLoadingText !== hu['event.loading'] &&
-    !Object.prototype.hasOwnProperty.call(eventTexts[language] ?? {}, 'event.loading')
+    !Object.prototype.hasOwnProperty.call(eventTexts[language] ?? {}, 'capture.loading')
   ) {
-    eventTexts[language] = { ...(eventTexts[language] ?? {}), 'event.loading': legacyLoadingText };
+    eventTexts[language] = { ...(eventTexts[language] ?? {}), 'capture.loading': legacyLoadingText };
   }
   const levels = { global: await getGlobalTexts(db), partner: storedTexts(partnerDoc?.texts), event: eventTexts };
   return { language, overrides: overridesFor(language, levels.global, levels.partner, levels.event), levels, partner: partnerDoc ?? null };

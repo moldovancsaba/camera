@@ -280,7 +280,7 @@ export default function NewEventPage() {
               onChange={(value) => setButtonSize((value as EventButtonSize) || DEFAULT_EVENT_BUTTON_SIZE)}
             />
 
-            <Text size="sm">After creating the event, edit its loading message under Texts by searching for “event.loading”.</Text>
+            <Text size="sm">After creating the event, edit its full-screen loading message under Texts by searching for “capture.loading”.</Text>
 
             {logoPreview ? (
               <MediaCard

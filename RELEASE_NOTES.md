@@ -1,9 +1,9 @@
 # RELEASE_NOTES.md
 
-## Unreleased — use one editable capture loading message (2026-10-15)
+## Unreleased — separate capture and event loading messages (2026-10-15)
 
-- **Fixed:** the capture route's visible loading states now use the same `event.loading` wording. The route-level fallback no longer flashes separate bilingual loading copy.
-- **Moved:** edit the message at **Event → Texts**, searching for `event.loading`. Existing custom `Event.loadingText` values appear there as the event's own wording and are migrated when Event Texts is saved.
+- **Fixed:** the long, full-screen loading message (`capture.loading`) is separate from event-flow loading copy (`event.loading`), so each can be edited independently.
+- **Moved:** edit `capture.loading` at **Partner → Texts** or **Event → Texts**. Existing custom `Event.loadingText` values appear there as the event's own wording and are migrated when Event Texts is saved.
 - **Changed:** removed the legacy loading-text fields from event create/edit forms; those forms link to the correct Texts page.
 - **Verified locally:** TypeScript, lint, GDS checks, production guards, build, and inventory checks passed. GitHub Verify will run the unit-test suite for this update.
 

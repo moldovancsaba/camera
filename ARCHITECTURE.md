@@ -79,7 +79,7 @@ When required acceptance is attached to the post-upload Who-are-you page, tickin
 - `/slideshow-layout/[layoutId]` — public multi-cell slideshow layout
 - `/landing/[slug]` — public landing pages
 
-The event capture layout resolves the localized `event.loading` message before it renders the client flow, using event → partner → global → dictionary wording. The old `Event.loadingText` is a fallback only when no text level defines that key; the early App Router boundary displays a spinner without a second sentence.
+The event capture layout resolves the localized `capture.loading` message for the long full-screen loading state before it renders the client flow, using event → partner → global → dictionary wording. The old `Event.loadingText` migrates to this key. `event.loading` remains a separate message for event-flow loading states; the early App Router boundary displays a spinner without a second sentence.
 
 ### Admin routes
 
@@ -448,7 +448,7 @@ every level (global, partner, event): **an event follows its partner and the par
 never overridden by a later change above.** For text levels, a missing key inherits while an explicit empty string hides that text. Implemented for the logo slots (`lib/slots/*`), the text levels (`lib/i18n/overrides.ts`: the code dictionary, the Dictionary, a partner's Texts, an
 event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`), the partner's default language (`eventLanguage`) and the legal part of the e-mails (`lib/email/legal*.ts`).
 
-The capture loading label is `event.loading` at the same text levels. The legacy `Event.loadingText` is surfaced as the event's own wording until Event → Texts is saved, then removed; all capture loading states read the same resolved key. The route-level loading boundary stays text-free because it runs before an event's language is known.
+The long capture loading label is `capture.loading` at the same text levels. The legacy `Event.loadingText` is surfaced as the event's own wording until Event → Texts is saved, then removed. `event.loading` remains independently editable for event-flow loading states. The route-level loading boundary stays text-free because it runs before an event's language is known.
 
 ## 15. Frames, layouts and messages at an event
 

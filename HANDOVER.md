@@ -5,7 +5,7 @@
 
 ## Current change
 
-The capture flow now has one visible loading message: `event.loading`. Edit it at **Event → Texts** by searching for `event.loading`; any custom value from the old `Event.loadingText` field appears there as the event's own text and is removed from the legacy field when Texts are next saved. The event editor points to the Texts page, and the route fallback has no visible copy. See `docs/CAPTURE_MESSAGES.md`, `docs/TEXT_LEVELS.md`, and the newest entry in `RELEASE_NOTES.md`.
+The long, full-screen capture loading message is `capture.loading`; edit it under **Partner → Texts** or **Event → Texts** by searching for `capture.loading`. The distinct `event.loading` key remains available for event-flow loading states. A custom value from the old `Event.loadingText` field appears under `capture.loading` until Texts are next saved. See `docs/CAPTURE_MESSAGES.md`, `docs/TEXT_LEVELS.md`, and the newest entry in `RELEASE_NOTES.md`.
 
 Marketing opt-in is a distinct checkbox kind with show/hide settings at partner and event level. It is always optional, defaults to shown on the generated consent page, and appears below legal acceptance as a separate checkbox when acceptance is merged into Who-are-you. Its checked and declined answers are saved as `kind: marketing` consent records; neither login nor photo submission is gated by it. Client Hungarian wording is the default `consent.marketing` text. See the newest entry in `RELEASE_NOTES.md` and the consent section in `docs/JOURNEY_DEFAULT_PAGES.md`.
 
