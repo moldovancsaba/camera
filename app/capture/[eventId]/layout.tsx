@@ -133,8 +133,8 @@ export default async function CaptureEventLayout({
   const theme = await loadEventTheme(db, event);
   // ... and in the language of the event (camera#352), with the wordings an admin wrote for the partner or the event (issue 353; none written: the code dictionary).
   const { overrides, language } = await loadEventTexts(db, event).catch(() => ({ overrides: {}, language: normalizeUiLanguage(event.uiLanguage) }));
-  // Resolve the single loading message before the client renders: event/partner wording wins, with old event.loadingText retained only as a fallback.
-  const captureOverrides = { ...overrides, 'event.loading': captureLoadingText(language, typeof event.loadingText === 'string' ? event.loadingText : undefined, overrides) };
+  // Resolve the long capture-loading screen before the client renders. event.loading remains a separate text.
+  const captureOverrides = { ...overrides, 'capture.loading': captureLoadingText(language, typeof event.loadingText === 'string' ? event.loadingText : undefined, overrides) };
   return (
     <EventThemeScope theme={theme}>
       <UiLanguageProvider language={language} texts={captureOverrides}>{children}</UiLanguageProvider>

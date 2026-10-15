@@ -422,7 +422,7 @@ export default function EditEventPage({
             />
 
             <Text size="sm">
-              Edit the loading message under <Link href={`/admin/events/${mongoId}/texts`}>Texts</Link> by searching for “event.loading”.
+              Edit the full-screen loading message under <Link href={`/admin/events/${mongoId}/texts`}>Texts</Link> by searching for “capture.loading”.
             </Text>
 
             {logoPreview ? (

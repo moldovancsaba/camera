@@ -1904,7 +1904,7 @@ export default function EventCapturePage({
               />
             </div>
           ) : null}
-          <p className=" text-2xl">{t('event.loading')}</p>
+          <p className=" text-2xl">{t('capture.loading')}</p>
         </div>
       </div>
     );

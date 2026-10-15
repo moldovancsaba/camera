@@ -4,6 +4,7 @@
  * when the text is used.
  */
 export const en = {
+  'capture.loading': 'Loading…',
   'event.loading': 'Loading event...',
   'event.notFound.title': 'Event Not Found',
   'event.notFound.text': 'This event could not be loaded.',
