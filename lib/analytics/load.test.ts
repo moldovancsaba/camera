@@ -65,7 +65,7 @@ test('all events: the totals and one row per event', async () => {
   const { db } = seed();
   const all = await loadAllEventsAnalytics(db, { timeZone: 'UTC' });
   assert.equal(all.report.photos.taken, 4);
-  assert.deepEqual(all.table.map((r) => [r.id, r.name, r.taken]), [['m2', 'Ferencváros', 2], ['m1', 'Vasas', 2]]);
+  assert.deepEqual(all.table.map((r) => [r.id, r.name, r.taken]), [['m1', 'Vasas', 3], ['m2', 'Ferencváros', 2]]);
 });
 
 test('an event document is read defensively', () => {

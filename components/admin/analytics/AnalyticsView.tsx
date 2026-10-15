@@ -67,9 +67,9 @@ export default function AnalyticsView({ basePath, query, defaultTimeZone, report
 
       <Note>
         {scope.counted === 0
-          ? 'No photo is filed under this event in this period.'
+          ? 'No active photo is filed under this event in this period.'
           : `Counting ${formatCount(scope.counted)} photos (${formatCount(report.photos.taken)} taken by users, ${formatCount(scope.addedByEditors)} added by editors), from ${formatDateTime(scope.firstPhotoAt, report.options.timeZone)} to ${formatDateTime(scope.lastPhotoAt, report.options.timeZone)}.`}
-        {scope.removed + scope.brokenPictures > 0 ? ` Left out: ${formatCount(scope.removed)} removed from the event and ${formatCount(scope.brokenPictures)} whose picture is gone.` : ''} Times are on the clock of {REPORT_TIME_ZONES.find((zone) => zone.id === report.options.timeZone)?.label ?? report.options.timeZone}. Try-on results are not photos of this report.
+        {scope.removed + scope.brokenPictures + scope.deletedAutomaticallyNoLogin + scope.deletedAutomaticallyOther + scope.deletedManually > 0 ? ` Outcomes also include ${formatCount(scope.deletedAutomaticallyNoLogin)} automatically deleted without a user, ${formatCount(scope.deletedAutomaticallyOther)} automatically deleted with a registered identity, and ${formatCount(scope.deletedManually)} manually deleted; ${formatCount(scope.brokenPictures)} more have a missing picture.` : ''} Times are on the clock of {REPORT_TIME_ZONES.find((zone) => zone.id === report.options.timeZone)?.label ?? report.options.timeZone}. Try-on results are not photos of this report.
       </Note>
 
       <nav aria-label="Analytics sections" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>

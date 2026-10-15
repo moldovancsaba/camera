@@ -308,13 +308,13 @@ test('the table of events: one row per event, the busiest first, with the same c
   const photos = [
     fact({ eventKey: 'ev-1', review: 'approved', decisions: [decision('approve', 'ann', '2026-10-16T18:02:00.000Z')] }),
     fact({ eventKey: 'ev-1' }),
-    fact({ eventKey: 'ev-2', plays: 4 }),
-    fact({ eventKey: 'ev-2', plays: 4 }),
-    fact({ eventKey: 'ev-2' }),
-    fact({ eventKey: 'ev-3', excluded: 'archived' }),
+    fact({ eventKey: 'ev-2', eventKeys: ['ev-2'], plays: 4 }),
+    fact({ eventKey: 'ev-2', eventKeys: ['ev-2'], plays: 4 }),
+    fact({ eventKey: 'ev-2', eventKeys: ['ev-2'] }),
+    fact({ eventKey: 'ev-3', eventKeys: ['ev-3'], excluded: 'archived' }),
   ];
   const rows = buildEventsTable(photos, [{ key: 'ev-1', id: 'm1', name: 'Vasas' }, { key: 'ev-2', name: 'Ferencváros' }], BUDAPEST);
-  assert.deepEqual(rows.map((r) => [r.id, r.name, r.taken, r.approved, r.waiting, r.plays, r.users, r.avgDecisionSeconds]), [[null, 'Ferencváros', 3, 0, 3, 8, 3, null], ['m1', 'Vasas', 2, 1, 1, 0, 2, 120]]);
+  assert.deepEqual(rows.map((r) => [r.id, r.name, r.taken, r.approved, r.rejected, r.deletedAutomaticallyNoLogin, r.deletedAutomaticallyOther, r.deletedManually, r.waiting, r.plays, r.users, r.avgDecisionSeconds]), [[null, 'Ferencváros', 3, 0, 0, 0, 0, 0, 3, 8, 3, null], ['m1', 'Vasas', 2, 1, 0, 0, 0, 0, 1, 0, 2, 120], [null, 'ev-3', 0, 0, 0, 0, 0, 1, 0, 0, 0, null]]);
 });
 
 test('what the data cannot give yet is listed, each with the reason and what it waits for; the journey is measured now and no longer listed', () => {

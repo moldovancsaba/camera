@@ -21,6 +21,18 @@ export function OverviewSection({ report, sources, table }: { report: EventRepor
   const hours = report.activity.hours;
   return (
     <>
+      <Panel title="Photo outcomes" description="Full counts of photos approved, declined, and removed. Automatic removals are identified from captures marked NO USER; manually removed photos stay in these figures after deletion.">
+        <Metrics
+          items={[
+            { label: 'Approved', value: formatCount(report.outcomes.approved), description: 'All approved photos, including deleted photos' },
+            { label: 'Rejected', value: formatCount(report.outcomes.rejected), description: 'All rejected photos, including deleted photos' },
+            { label: 'Deleted automatically (NO USER)', value: formatCount(report.scope.deletedAutomaticallyNoLogin), description: 'Automatically deleted after the 24-hour period without a registered user' },
+            { label: 'Deleted automatically (other)', value: formatCount(report.scope.deletedAutomaticallyOther), description: 'Automatic deletions where a registered identity was recorded' },
+            { label: 'Deleted manually', value: formatCount(report.scope.deletedManually), description: 'Archived, removed from this event, or permanently deleted by a person' },
+          ]}
+        />
+      </Panel>
+
       <Metrics
         items={[
           { label: 'Users', value: formatCount(users.distinct), description: `${formatShare(users.returning, users.distinct)} returned with 2+ photos; ${formatShare(users.distinct - users.returning, users.distinct)} had one photo in this range. ${plural(users.photosWithoutIdentity, 'photo')} without an e-mail or an account cannot be classified.` },
@@ -46,6 +58,9 @@ export function OverviewSection({ report, sources, table }: { report: EventRepor
               { key: 'taken', header: 'Photos', numeric: true, render: (row) => formatCount(row.taken) },
               { key: 'approved', header: 'Approved', numeric: true, render: (row) => formatCount(row.approved) },
               { key: 'rejected', header: 'Declined', numeric: true, render: (row) => formatCount(row.rejected) },
+              { key: 'autoNoUser', header: 'Auto-deleted (NO USER)', numeric: true, render: (row) => formatCount(row.deletedAutomaticallyNoLogin) },
+              { key: 'autoOther', header: 'Auto-deleted (other)', numeric: true, render: (row) => formatCount(row.deletedAutomaticallyOther) },
+              { key: 'manual', header: 'Manually deleted', numeric: true, render: (row) => formatCount(row.deletedManually) },
               { key: 'waiting', header: 'Waiting', numeric: true, render: (row) => formatCount(row.waiting) },
               { key: 'users', header: 'Users', numeric: true, render: (row) => formatCount(row.users) },
               { key: 'plays', header: 'Plays', numeric: true, render: (row) => formatCount(row.plays) },
@@ -161,7 +176,7 @@ export function VettingSection({ report }: { report: EventReport }) {
         items={[
           { label: 'Waiting now', value: formatCount(photos.waiting), description: photos.oldestWaitingSeconds !== null ? `The oldest has waited ${formatDuration(photos.oldestWaitingSeconds)}` : 'Nothing is waiting' },
           { label: 'Approved', value: formatCount(photos.approved), description: `${formatRate(photos.approvalRate)} of the decided photos` },
-          { label: 'Declined', value: formatCount(photos.rejected), description: `${formatCount(vetting.reasons.rejectionsWithReason)} with a reason written` },
+          { label: 'Declined', value: formatCount(report.outcomes.rejected), description: `${formatCount(photos.rejected)} still active; deleted rejections remain included in the total` },
           { label: 'Not vetted', value: formatCount(photos.notVetted), description: 'Taken before vetting or at an event without it' },
           { label: 'Average time to first decision', value: formatDuration(time.avgSeconds), description: time.count > 0 ? `Median ${formatDuration(time.medianSeconds)}, longest ${formatDuration(time.maxSeconds)}` : 'No photo has been decided yet' },
           { label: 'Decisions', value: formatCount(vetting.decisions), description: `${formatCount(vetting.approvals)} approvals, ${formatCount(vetting.rejections)} declines on ${plural(vetting.decidedPhotos, 'photo')}` },

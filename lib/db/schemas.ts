@@ -46,6 +46,8 @@ export const COLLECTIONS = {
   /** The QR texts of the default slideshow (issue 326, lib/library/qr-texts.ts): the short lines next to the QR code on the stage, a library of global items with an active flag; one is picked at random, once, when an event's default slideshow is made. */
   QR_TEXTS: 'qr_texts',
   SUBMISSIONS: 'submissions',
+  /** Minimal event-level tombstones for photos permanently deleted by a user or administrator; contain no photo, user, consent, or e-mail data. */
+  PHOTO_DELETION_ANALYTICS: 'photo_deletion_analytics',
   /** Who registered at an event (epic 463, lib/email/triggers.ts): one row for each event and e-mail address, with whether the welcome e-mail went. */
   EMAIL_REGISTRATIONS: 'email_registrations',
   /** The follow-up e-mail of an event, one row for each event and e-mail address (epic 463, lib/email/follow-up.ts): the claim that keeps it to one, and whether it went. The `_id` is a hash of the event and the address, so the row holds no address. */
