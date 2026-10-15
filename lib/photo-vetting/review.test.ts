@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId, type Db } from 'mongodb';
 import sharp from 'sharp';
-import { approvePhoto, rejectPhoto, returnPhotoToVetting, resolveFrameImageUrl, type ReviewActor, type ReviewDeps } from './review';
+import { approvePhoto, rejectPhoto, returnPhotoToVetting, resolveFrameImageUrl, sendApprovedLinkAfterConsent, type ReviewActor, type ReviewDeps } from './review';
 import { recordApprovalCopies, type ApprovalCopiesInput, type ImageCopyDeps } from '@/lib/storage/image-copies';
 import type { ImageCopy } from '@/lib/db/schemas';
 import { fakeDb as libraryFakeDb } from '@/lib/library/fake-db';
@@ -64,6 +64,7 @@ function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; 
       findOne: async (filter: Doc) => {
         if (name === 'frames') return options.frames?.find((f) => f.frameId === filter.frameId) ?? null;
         if (name === 'events') return options.event === undefined ? { _id: new ObjectId(), eventId: 'event-uuid', name: 'Derby' } : options.event;
+        if (name === 'submissions') return submission;
         return null;
       },
       updateOne: async (filter: Doc, update: Doc) => {
@@ -129,6 +130,33 @@ test('approval makes the picture from the photo and the recorded frame image, pu
   assert.equal((submission.photoReview as Doc).photoUrl, PHOTO_URL, 'the private unframed photo is kept and still named (issue 509)');
   assert.equal(calls.copies.length, 1, 'the copies are recorded after the answer');
   assert.ok(updates[0].filter.reviewStatus, 'the update is conditional on the status');
+});
+
+test('approval keeps the share link private and sends no email while the login-page consent is pending', async () => {
+  const { photo, frame } = await fixtures();
+  const submission = pendingSubmission({ consentStatus: 'pending', consentPendingReason: 'acceptance' });
+  const { db } = fakeDb(submission);
+  const { deps: d, calls } = deps(photo, frame);
+
+  const result = await approvePhoto(db, submission as never, ACTOR, d);
+
+  assert.deepEqual(result, { ok: true, email: 'skipped' });
+  assert.equal(submission.reviewStatus, 'approved');
+  assert.equal(calls.approvedMails.length, 0);
+});
+
+test('recording consent after approval sends the pending share link once it is public', async () => {
+  const { photo, frame } = await fixtures();
+  const submission = pendingSubmission({ reviewStatus: 'approved', consentStatus: 'received', imageUrl: 'https://store.test/submission-1.jpg' });
+  const { db } = fakeDb(submission);
+  const { deps: d, calls } = deps(photo, frame);
+
+  assert.equal(await sendApprovedLinkAfterConsent(db, submission._id as ObjectId, d), 'sent');
+  assert.equal(calls.approvedMails.length, 1);
+  assert.match(String(calls.approvedMails[0]), /\/share\/tok123$/);
+  assert.equal((submission.metadata as Doc).emailSentAfterSave, true);
+  assert.equal(await sendApprovedLinkAfterConsent(db, submission._id as ObjectId, d), 'skipped');
+  assert.equal(calls.approvedMails.length, 1, 'a recorded successful email is not sent twice');
 });
 
 test('returning a public approved photo hides it and emails the guest the review link', async () => {

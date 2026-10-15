@@ -174,7 +174,8 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   const event = await resolveEventForSubmission(db, submission).catch(() => null);
 
   let email: 'sent' | 'skipped' | 'failed' = 'skipped';
-  if (submission.shareToken && (reopeningExistingImage || submission.metadata?.emailSentAfterSave !== true)) {
+  const consentStillPending = submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired';
+  if (submission.shareToken && !consentStillPending && isPubliclyVisible(visibilityInputOf(submission)) && (reopeningExistingImage || submission.metadata?.emailSentAfterSave !== true)) {
     const shareUrl = approvedShareUrl(submission.shareToken);
     try {
       const result = await deps.sendApproved(submission, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
@@ -205,6 +206,29 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   }
 
   return { ok: true, email };
+}
+
+/** Send the approved share link when a guest records consent after moderation has already approved the photo. */
+export async function sendApprovedLinkAfterConsent(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
+  const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+  if (!submission || submission.reviewStatus !== 'approved' || submission.consentStatus !== 'received' || !isPubliclyVisible(visibilityInputOf(submission)) || !submission.shareToken || !submission.imageUrl || submission.metadata?.emailSentAfterSave === true) {
+    return 'skipped';
+  }
+
+  const event = await resolveEventForSubmission(db, submission).catch(() => null);
+  const shareUrl = approvedShareUrl(submission.shareToken);
+  try {
+    const result = await deps.sendApproved(submission, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
+    const patch = buildEmailMetadataPatch(result, shareUrl);
+    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+      { _id: submissionId, reviewStatus: 'approved', consentStatus: 'received' },
+      { $set: patch.metadataPatch },
+    );
+    return patch.sent ? 'sent' : patch.shouldRetry ? 'failed' : 'skipped';
+  } catch (error) {
+    logWarn('photo_vetting.approval_email_failed', 'The approval email could not be sent after consent was recorded', { submissionId: String(submissionId), error: errorMessage(error) });
+    return 'failed';
+  }
 }
 
 /**

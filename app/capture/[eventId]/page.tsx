@@ -39,6 +39,7 @@ import { consentCheckboxes, consentRecords, shownCheckboxes } from '@/lib/events
 import { acceptanceOnLogin, acceptanceSentence, sentenceText } from '@/lib/events/acceptance';
 import { welcomeScreenImage, welcomeScreenOf } from '@/lib/events/welcome-screen-url';
 import { forgetConsents, recallConsents, rememberConsents } from '@/lib/capture/consent-memory';
+import { appendSubmissionConsents } from '@/lib/capture/submit-consents';
 import { approvalTexts } from '@/lib/events/page-texts';
 import { useT, useUiTexts } from '@/components/i18n/UiLanguageProvider';
 import { translate, type MessageKey, type MessageValues, type UiLanguage } from '@/lib/i18n';
@@ -1272,6 +1273,13 @@ export default function EventCapturePage({
             body: JSON.stringify({ action: 'link_account' }),
           });
           if (!linkResponse.ok) throw new Error(`Could not link the saved photo to the signed-in account (${linkResponse.status})`);
+
+          // The login page can carry required consent after the photo has already uploaded. SSO reloads
+          // this page, so the checkbox records live in sessionStorage; persist them before moving past
+          // login or the approved photo remains private and its emailed share link returns not found.
+          if (!(await appendSubmissionConsents(fetch, submissionId, remembered))) {
+            throw new Error('Could not save the consent given on the login page');
+          }
 
           // OAuth reloads the page and clears its in-memory image state. Restore the image belonging
           // to this exact submission before leaving the post-capture pages, so Preview cannot be blank.

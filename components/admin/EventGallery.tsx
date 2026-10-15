@@ -29,6 +29,7 @@ interface SubmissionRecord {
   imageUrl?: string;
   finalImageUrl?: string;
   previewImageUrl?: string | null;
+  consentStatus?: string;
   userName?: string;
   userInfo?: {
     name?: string | null;
@@ -544,6 +545,11 @@ export default function EventGallery({
       >
         {submissions.map((submission) => {
           const submissionId = submissionIdOf(submission);
+          const awaitingConsent = submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired';
+          const imageUrl = submission.previewImageUrl || submission.imageUrl || submission.finalImageUrl;
+          // Consent-pending photos intentionally have no public share page. Admins still need to inspect
+          // their visible gallery thumbnail while the guest finishes the login-page consent step.
+          const viewHref = awaitingConsent ? imageUrl : `/share/${submission._id}`;
           const selected = selectedSet.has(submissionId);
           const singleConfirm = removeState.singleConfirmId === submissionId;
           const busy = removeState.busyIds.includes(submissionId);
@@ -567,9 +573,9 @@ export default function EventGallery({
           // ListingCard caps actions at 4: View + Download + Back to vetting + Remove; during confirmation the last two are replaced by Confirm + Cancel.
           // fullWidth is intentionally omitted — ListingCard wraps each action in a shrink-to-fit span.
           const actions: ReactNode[] = [
-            <Link key="view" href={`/share/${submission._id}`} style={{ textDecoration: 'none' }}>
+            <a key="view" href={viewHref} target={awaitingConsent ? '_blank' : undefined} rel={awaitingConsent ? 'noopener noreferrer' : undefined} style={{ textDecoration: 'none' }}>
               <SemanticButton action="event-gallery:view-submission" size="xs" variant="secondary">View</SemanticButton>
-            </Link>,
+            </a>,
             <a
               key="download"
               href={submission.imageUrl || submission.finalImageUrl || undefined}
@@ -653,8 +659,10 @@ export default function EventGallery({
                       style={{ position: 'absolute', zIndex: 1, insetBlockStart: 8, insetInlineStart: 8 }}
                     />
                   ) : null}
-                  <Link
-                    href={`/share/${submission._id}`}
+                  <a
+                    href={viewHref}
+                    target={awaitingConsent ? '_blank' : undefined}
+                    rel={awaitingConsent ? 'noopener noreferrer' : undefined}
                     onClick={(event) => {
                       // With Shift or Ctrl/Cmd held, or in Select mode, a click on the picture selects it instead of opening it.
                       if (canManage && (selectMode || event.shiftKey || event.metaKey || event.ctrlKey)) {
@@ -671,7 +679,7 @@ export default function EventGallery({
                       unoptimized
                       style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
                     />
-                  </Link>
+                  </a>
                 </div>
               }
               metadata={metadata}

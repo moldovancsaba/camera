@@ -65,6 +65,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
             imageUrl: submission.imageUrl,
             finalImageUrl: submission.finalImageUrl,
             previewImageUrl: submission.previewImageUrl,
+            consentStatus: submission.consentStatus,
             userName: submission.userName,
             userInfo: submission.userInfo ? { name: submission.userInfo.name, email: submission.userInfo.email } : null,
             createdAt: submission.createdAt,
