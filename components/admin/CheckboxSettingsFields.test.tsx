@@ -5,7 +5,7 @@ import { effectiveCheckboxes } from '@/lib/events/checkbox-settings';
 import CheckboxSettingsFields, { describeEffective, type CheckboxModes } from './CheckboxSettingsFields';
 
 const noop = () => undefined;
-const NONE: CheckboxModes = { terms: '', cookies: '', privacy: '', acceptance: '', gallery: '' };
+const NONE: CheckboxModes = { terms: '', cookies: '', privacy: '', marketing: '', acceptance: '', gallery: '' };
 const render = (props: Partial<Parameters<typeof CheckboxSettingsFields>[0]> = {}) => renderToStaticMarkup(<CheckboxSettingsFields modes={NONE} onChange={noop} level="event" {...props} />);
 const rows = (html: string) => [...html.matchAll(/data-checkbox-setting="(\w+)"/g)].map((m) => m[1]);
 const options = (html: string, kind: string) => {
@@ -13,11 +13,14 @@ const options = (html: string, kind: string) => {
   return [...row.matchAll(/<option value="(\w*)"[^>]*>([^<]*)<\/option>/g)].map((m) => [m[1], m[2]]);
 };
 
-test('every kind of checkbox has a row with the choices shown and required, shown and optional, not shown, and the first choice that follows the partner', () => {
+test('legal kinds have required and optional choices, while marketing can only be optional; each follows the partner', () => {
   const html = render();
-  assert.deepEqual(rows(html), ['terms', 'cookies', 'privacy', 'acceptance', 'gallery']);
+  assert.deepEqual(rows(html), ['terms', 'cookies', 'privacy', 'marketing', 'acceptance', 'gallery']);
   for (const kind of ['terms', 'cookies', 'privacy', 'acceptance', 'gallery']) assert.deepEqual(options(html, kind).map(([value]) => value), ['', 'required', 'optional', 'off'], kind);
+  assert.deepEqual(options(html, 'marketing').map(([value]) => value), ['', 'optional', 'off']);
+  assert.ok(!options(html, 'marketing').some(([value]) => value === 'required'), 'marketing can never be made mandatory');
   assert.deepEqual(options(html, 'terms'), [['', 'Same as the partner (shown, required)'], ['required', 'Shown, required'], ['optional', 'Shown, optional'], ['off', 'Not shown']]);
+  assert.deepEqual(options(html, 'marketing'), [['', 'Same as the partner (shown, optional)'], ['optional', 'Shown, optional'], ['off', 'Not shown']]);
   assert.match(html, /data-gallery-consent-setting/, 'the gallery permission keeps its marker');
   assert.match(html, /checked by the server too/, 'it says that required is checked by the server');
   assert.equal((html.match(/checked by the server too/g) ?? []).length, 1, 'once, not on every row');

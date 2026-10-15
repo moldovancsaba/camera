@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — separate optional marketing consent (2026-10-15)
+
+- **Added:** a partner/event setting to show or hide a separate marketing opt-in. It is always optional and defaults to shown on the default consent page.
+- **Changed:** when legal acceptance is on Who-are-you, marketing appears as its own checkbox directly below it. Its answer is not included in the mandatory legal sentence and never blocks sign-in or Continue.
+- **Recorded:** checked and unchecked answers are stored as distinct consent records with `kind: marketing`, exact text, timestamp, and `required: false`; the required-consent guard ignores marketing.
+- **Wording:** the Hungarian Dictionary default is the client's sentence: “Nyitott vagyok klub és szurkolói fotó marketing kommunikációra.”
+- **Verified locally:** `npm run release:check` passed, including 347/347 unit-test files, GDS checks, type-check, lint, production guards and build. The build reports the existing Google Fonts CSS `@import` ordering warning.
+
 ## Unreleased — keep the chosen frame and message attached to the intended photo (2026-10-15)
 
 - **Fixed:** frame and message choices survive a same-tab SSO return or page reload as event-scoped IDs, with a 30-minute expiry and validation against active options. A message text check prevents a changed or reordered message from silently reusing its old index.

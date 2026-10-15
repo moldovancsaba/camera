@@ -1,13 +1,14 @@
 /**
  * The settings of every checkbox a user can meet (issue 558, owner answer 297: "all types of checkboxes have to have an on/off toggle and a required checkbox on the settings as every market has its own
  * law"). Each kind of checkbox has two settings, **shown or not** and **required or optional**, chosen where the brick model puts every choice: the **partner** has a default, an **event** follows it
- * or chooses for itself ("Same as the partner"), and nothing is copied down. The standard of each kind is what the journey always did, so no event changes until somebody chooses.
+ * or chooses for itself ("Same as the partner"), and nothing is copied down. The three legal documents retain their existing defaults; the independent optional marketing choice is shown by default.
  *
  * | kind        | the checkbox                                                   | standard (today)                | off means                                      | optional means                          |
  * |-------------|----------------------------------------------------------------|---------------------------------|------------------------------------------------|-----------------------------------------|
  * | terms       | "I accept the Terms and conditions" of the default consent page | shown, required                 | not shown, no record                           | shown, may stay unticked, a record either way |
  * | cookies     | "I accept cookies" of the default consent page                  | shown, required                 | not shown, no record                           | as above                                |
  * | privacy     | "I have read the Privacy policy" of the default consent page    | shown, required                 | not shown, no record                           | as above                                |
+ * | marketing   | optional club and fan-photo marketing opt-in                     | shown, optional                 | not shown, no record                           | always optional, never blocks           |
  * | acceptance  | the one sentence on the Who-are-you page                        | not shown (a page of its own)   | the consent page is a page of its own          | the page works without ticking it       |
  * | gallery     | permission to show the photo on the public campaign wall        | not shown (does not ask)        | not asked, the terms cover it                  | shown, not ticked, may stay unticked    |
  *
@@ -15,16 +16,16 @@
  *
  * **Where a setting is stored.** The two kinds that had a setting before keep it where it was, so nothing is migrated: `galleryConsent` (true asks, false does not, null follows the partner) is the
  * "shown" of the gallery permission and `acceptanceOnWhoAreYou` is the "shown" of the acceptance sentence. Everything else is in one object, `consentSettings`:
- * `{ terms | cookies | privacy: { shown?, required? }, acceptance: { required? }, gallery: { required? } }`. The first level that made a choice for a kind decides both of its settings; a part it did not
+ * `{ terms | cookies | privacy: { shown?, required? }, marketing: { shown? }, acceptance: { required? }, gallery: { required? } }`. The first level that made a choice for a kind decides its settings; a part it did not
  * set takes the standard, never the partner's (so an event that chose "ask" does not become "required" because its partner did).
  *
- * **What the server checks.** A requirement the standard gives (required, as today) is enforced by the page only, as it always was (planning item 43), so nothing changes before somebody chooses.
+ * **What the server checks.** A legal requirement the standard gives (required, as today) is enforced by the page only, as it always was (planning item 43).
  * A requirement an editor **chose** (`required: true` stored at the event or the partner, or on a checkbox of an own page) is checked by the server too: a save that lacks it is refused, because the page
  * must never be the only guard. `checked` in the result says which it is. Pure; unit-tested (checkbox-settings.test.ts).
  */
 
 export const DOCUMENT_KINDS = ['terms', 'cookies', 'privacy'] as const;
-export const CHECKBOX_KINDS = [...DOCUMENT_KINDS, 'acceptance', 'gallery'] as const;
+export const CHECKBOX_KINDS = [...DOCUMENT_KINDS, 'marketing', 'acceptance', 'gallery'] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export type CheckboxKind = (typeof CHECKBOX_KINDS)[number];
 
@@ -41,6 +42,8 @@ export interface StoredCheckboxSettings {
   terms?: StoredDocumentChoice;
   cookies?: StoredDocumentChoice;
   privacy?: StoredDocumentChoice;
+  /** Marketing is always optional; only whether the independent opt-in is shown can be configured. */
+  marketing?: { shown?: boolean };
   acceptance?: { required?: boolean };
   gallery?: { required?: boolean };
 }
@@ -68,6 +71,7 @@ export const STANDARD_CHECKBOXES: Readonly<EffectiveCheckboxes> = {
   terms: { shown: true, required: true, checked: false, source: 'standard' },
   cookies: { shown: true, required: true, checked: false, source: 'standard' },
   privacy: { shown: true, required: true, checked: false, source: 'standard' },
+  marketing: { shown: true, required: false, checked: false, source: 'standard' },
   acceptance: { shown: false, required: true, checked: false, source: 'standard' },
   gallery: { shown: false, required: false, checked: false, source: 'standard' },
 };
@@ -84,6 +88,8 @@ export function storedCheckboxSettings(value: unknown): StoredCheckboxSettings {
     const picked: StoredDocumentChoice = { ...(isBoolean(choice.shown) ? { shown: choice.shown } : {}), ...(isBoolean(choice.required) ? { required: choice.required } : {}) };
     if (Object.keys(picked).length > 0) out[kind] = picked;
   }
+  const marketing = asObject(source.marketing);
+  if (isBoolean(marketing.shown)) out.marketing = { shown: marketing.shown };
   for (const kind of ['acceptance', 'gallery'] as const) {
     const choice = asObject(source[kind]);
     if (isBoolean(choice.required)) out[kind] = { required: choice.required };
@@ -105,7 +111,7 @@ export function parseCheckboxSettings(input: unknown): ParsedCheckboxSettings {
     if (!(CHECKBOX_KINDS as readonly string[]).includes(key)) return { ok: false, error: `consentSettings has an unknown checkbox: ${key}` };
     const choice = source[key];
     if (!choice || typeof choice !== 'object' || Array.isArray(choice)) return { ok: false, error: `consentSettings.${key} must be an object` };
-    const allowed = (DOCUMENT_KINDS as readonly string[]).includes(key) ? ['shown', 'required'] : ['required'];
+    const allowed = (DOCUMENT_KINDS as readonly string[]).includes(key) ? ['shown', 'required'] : key === 'marketing' ? ['shown'] : ['required'];
     for (const [part, value] of Object.entries(choice as Record<string, unknown>)) {
       if (!allowed.includes(part)) return { ok: false, error: `consentSettings.${key} has an unknown setting: ${part}` };
       if (!isBoolean(value)) return { ok: false, error: `consentSettings.${key}.${part} must be true or false` };
@@ -120,6 +126,7 @@ function choiceOf(holder: CheckboxSettingsHolder | null | undefined, kind: Check
   if (!holder) return false;
   if (kind === 'gallery') return isBoolean(holder.galleryConsent);
   if (kind === 'acceptance') return isBoolean(holder.acceptanceOnWhoAreYou);
+  if (kind === 'marketing') return storedCheckboxSettings(holder.consentSettings).marketing !== undefined;
   const choice = storedCheckboxSettings(holder.consentSettings)[kind];
   return choice !== undefined;
 }
@@ -127,6 +134,9 @@ function choiceOf(holder: CheckboxSettingsHolder | null | undefined, kind: Check
 /** What one level says for a kind, read as that level's own choice (a part it did not set takes the standard). */
 function readLevel(holder: CheckboxSettingsHolder, kind: CheckboxKind, source: 'event' | 'partner'): EffectiveCheckbox {
   const stored = storedCheckboxSettings(holder.consentSettings);
+  if (kind === 'marketing') {
+    return { shown: stored.marketing?.shown !== false, required: false, checked: false, source };
+  }
   if (kind === 'gallery') {
     const shown = holder.galleryConsent === true;
     const required = shown && stored.gallery?.required === true;
@@ -161,6 +171,7 @@ export function modeOf(holder: CheckboxSettingsHolder | null | undefined, kind: 
   if (!holder || !choiceOf(holder, kind)) return '';
   const level = readLevel(holder, kind, 'event');
   if (!level.shown) return 'off';
+  if (kind === 'marketing') return 'optional';
   return level.required ? 'required' : 'optional';
 }
 
@@ -178,6 +189,9 @@ export function settingsToStore(modes: Partial<Record<CheckboxKind, CheckboxMode
   }
   const acceptance = modes.acceptance ?? '';
   const gallery = modes.gallery ?? '';
+  const marketing = modes.marketing ?? '';
+  if (marketing === 'optional') stored.marketing = { shown: true };
+  if (marketing === 'off') stored.marketing = { shown: false };
   if (acceptance === 'optional') stored.acceptance = { required: false };
   if (acceptance === 'required') stored.acceptance = { required: true };
   if (gallery === 'required') stored.gallery = { required: true };
@@ -188,17 +202,17 @@ export function settingsToStore(modes: Partial<Record<CheckboxKind, CheckboxMode
   };
 }
 
-/** The three documents of the default consent page as they are for an event: the input of `defaultConsentPage` (lib/events/default-pages.ts). */
-export type DocumentSettings = Record<DocumentKind, EffectiveCheckbox>;
+/** The legal documents and independent marketing choice of the default consent page for an event. */
+export type DocumentSettings = Record<DocumentKind, EffectiveCheckbox> & { marketing?: EffectiveCheckbox };
 
 export function documentSettings(effective: EffectiveCheckboxes): DocumentSettings {
-  return { terms: effective.terms, cookies: effective.cookies, privacy: effective.privacy };
+  return { terms: effective.terms, cookies: effective.cookies, privacy: effective.privacy, marketing: effective.marketing };
 }
 
 /**
- * The settings of the three documents when somebody chose anything for them, else undefined. An event that chose nothing (and whose partner chose nothing) is sent no settings at all, so its
+ * The settings of the legal documents and marketing choice when somebody chose anything for them, else undefined. An event that chose nothing (and whose partner chose nothing) is sent no settings at all, so its
  * pages and its journey context are exactly what they were before the settings existed.
  */
 export function chosenDocuments(effective: EffectiveCheckboxes): DocumentSettings | undefined {
-  return DOCUMENT_KINDS.every((kind) => effective[kind].source === 'standard') ? undefined : documentSettings(effective);
+  return CHECKBOX_KINDS.filter((kind) => kind === 'terms' || kind === 'cookies' || kind === 'privacy' || kind === 'marketing').every((kind) => effective[kind].source === 'standard') ? undefined : documentSettings(effective);
 }

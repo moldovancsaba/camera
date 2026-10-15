@@ -257,6 +257,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           pageId: String(consent.pageId),
           pageType: consent.pageType,
           checkboxText: String(consent.checkboxText),
+          ...(consent.kind === 'terms' || consent.kind === 'cookies' || consent.kind === 'privacy' || consent.kind === 'marketing' ? { kind: consent.kind } : {}),
           ...(safeLinkUrl(consent.linkUrl) ? { linkUrl: safeLinkUrl(consent.linkUrl) } : {}),
           ...(typeof consent.shownText === 'string' && consent.shownText.trim() ? { shownText: consent.shownText.trim().slice(0, 600) } : {}),
           accepted: consent.accepted === true,

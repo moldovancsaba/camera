@@ -286,6 +286,7 @@ export const PATCH = withErrorHandler(async (
         pageId: String(record.pageId),
         pageType: record.pageType as 'accept' | 'cta',
         checkboxText: String(record.checkboxText),
+        ...(record.kind === 'terms' || record.kind === 'cookies' || record.kind === 'privacy' || record.kind === 'marketing' ? { kind: record.kind as UserConsent['kind'] } : {}),
         ...(safeLinkUrl(record.linkUrl) ? { linkUrl: safeLinkUrl(record.linkUrl) } : {}),
         accepted: record.accepted === true,
         acceptedAt: typeof record.acceptedAt === 'string' && record.acceptedAt ? record.acceptedAt : new Date().toISOString(),

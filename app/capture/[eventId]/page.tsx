@@ -166,6 +166,7 @@ interface CollectedData {
     pageId: string;
     pageType: 'accept' | 'cta';
     checkboxText: string;
+    kind?: 'terms' | 'cookies' | 'privacy' | 'marketing';
     linkUrl?: string;
     accepted: boolean;
     acceptedAt: string;
@@ -345,7 +346,14 @@ export default function EventCapturePage({
     showWaitingPage: showApprovalWaitingPage,
   } = approvalTexts(takePhotoConfig, language, uiTexts);
   const cameraPromptTitle = own('camera.ready.title', takePhotoConfig?.cameraPromptTitle);
-  const cameraPromptDescription = own('camera.prompt.desktop', takePhotoConfig?.cameraPromptDescription);
+  const storedCameraPromptDescription = takePhotoConfig?.cameraPromptDescription?.trim();
+  const cameraPromptDescription =
+    storedCameraPromptDescription === 'Click to start your camera and take a photo' ||
+    storedCameraPromptDescription === 'Opens your camera and takes the photo at the best quality. You can move and zoom it afterwards.' ||
+    storedCameraPromptDescription === 'Kattints a kamera indításához és a fotó elkészítéséhez' ||
+    storedCameraPromptDescription === 'Megnyitja a kamerádat, és a lehető legjobb minőségben készíti el a fotót. Utána mozgathatod és nagyíthatod.'
+      ? t('camera.prompt.desktop')
+      : own('camera.prompt.desktop', takePhotoConfig?.cameraPromptDescription);
   const errorFrameMessage = own('flow.errorFrame', takePhotoConfig?.errorFrameMessage);
   const errorSaveMessage = own('flow.errorSave', takePhotoConfig?.errorSaveMessage);
   const linkCopiedMessage = own('flow.linkCopied', takePhotoConfig?.linkCopiedMessage);
@@ -867,11 +875,28 @@ export default function EventCapturePage({
   const selectionComplete = frames.length > 0
     ? (!asksFrame || selectedFrame !== null)
     : nextStep(selectionFrame, choice) === 'capture-photo';
-  const progressSteps: Array<{ id: string; label: string; steps: Array<typeof step> }> = [
-    ...(asksAnySelection ? [{ id: 'selection', label: t('flow.step.selectFrameMessage'), steps: ['select-frame' as const, 'select-layout' as const, 'select-message' as const] }] : []),
-    { id: 'capture', label: t('flow.step.capture'), steps: ['capture-photo'] },
-    { id: 'save', label: t('flow.step.save'), steps: ['reframe', 'preview'] },
-  ];
+  const selectorRunsAfterCamera = asksAnySelection && [...presubmitPages, ...thankYouPages]
+    .some((page) => page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID);
+  const selectionProgressStep = { id: 'selection', label: t('flow.step.selectFrameMessage'), steps: ['select-frame' as const, 'select-layout' as const, 'select-message' as const] };
+  const captureProgressStep = { id: 'capture', label: t('flow.step.capture'), steps: ['capture-photo' as const] };
+  const saveProgressStep = { id: 'save', label: t('flow.step.save'), steps: ['reframe' as const, 'preview' as const] };
+  // The selector is a movable journey page. Keep the compact progress indicator in the same order as the configured flow:
+  // before Take Photo it comes first; after Take Photo the photo is uploaded before the selector runs for the next photo.
+  const progressSteps: Array<{ id: string; label: string; steps: Array<typeof step> }> = asksAnySelection
+    ? selectorRunsAfterCamera
+      ? [captureProgressStep, saveProgressStep, selectionProgressStep]
+      : [selectionProgressStep, captureProgressStep, saveProgressStep]
+    : [captureProgressStep, saveProgressStep];
+  const currentJourneyPages = flowPhase === 'onboarding'
+    ? onboardingPages
+    : flowPhase === 'presubmit'
+      ? presubmitPages
+      : flowPhase === 'thankyou'
+        ? thankYouPages
+        : [];
+  const activeProgressStep = currentJourneyPages[currentPageIndex]?.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID
+    ? 'select-frame'
+    : step;
 
   // Territories of the generated frame for the live view, taken from its first image (the layers are the same in all of them).
   // Under the editor's setting the design is drawn before the camera step opens, so the territories are those of that design.
@@ -935,11 +960,19 @@ export default function EventCapturePage({
    * acceptance is required (the page did not let the user pass without it), was ticked, or is not on the Who-are-you page.
    */
   const declinedAcceptance = () => {
-    if (!acceptanceBox || event?.effectiveAcceptanceRequired !== false) return [];
-    if (collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.accepted)) return [];
-    const items = shownCheckboxes(consentCheckboxes(acceptanceBox.config));
-    const shownText = sentenceText(acceptanceSentence(items, language, uiTexts));
-    return consentRecords({ pageId: acceptanceBox.pageId, pageType: 'accept' }, { accepted: true, acceptedAt: new Date().toISOString(), unticked: items, shownText });
+    if (!acceptanceBox) return [];
+    const pageItems = shownCheckboxes(consentCheckboxes(acceptanceBox.config));
+    const legalItems = pageItems.filter((item) => item.kind !== 'marketing');
+    const records: CollectedData['consents'] = [];
+    if (event?.effectiveAcceptanceRequired === false && legalItems.length > 0 && !collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.kind !== 'marketing' && record.accepted)) {
+      const shownText = sentenceText(acceptanceSentence(legalItems, language, uiTexts));
+      records.push(...consentRecords({ pageId: acceptanceBox.pageId, pageType: 'accept' }, { accepted: true, acceptedAt: new Date().toISOString(), unticked: legalItems, shownText }));
+    }
+    const marketingItem = pageItems.find((item) => item.kind === 'marketing');
+    if (marketingItem && !collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.kind === 'marketing')) {
+      records.push(...consentRecords({ pageId: acceptanceBox.pageId, pageType: 'accept' }, { accepted: true, acceptedAt: new Date().toISOString(), unticked: [{ ...marketingItem, required: false }] }));
+    }
+    return records;
   };
 
   const moveToThankYouRef = useRef<() => void>(() => undefined);
@@ -1406,10 +1439,22 @@ export default function EventCapturePage({
    * or taken away. They are recorded when the box is ticked, not when the page is left, because a sign-in leaves the page and brings the user back to it.
    */
   const handleAcceptanceChange = (page: CustomPage, checked: boolean, shownText: string) => {
-    const items = shownCheckboxes(consentCheckboxes(page.config));
-    const others = collectedData.consents.filter((record) => record.pageId !== page.pageId);
+    const items = shownCheckboxes(consentCheckboxes(page.config)).filter((item) => item.kind !== 'marketing');
+    const others = collectedData.consents.filter((record) => record.pageId !== page.pageId || record.kind === 'marketing');
     const consents = checked ? [...others, ...consentRecords({ pageId: page.pageId, pageType: 'accept', checkboxText: page.config.checkboxText }, { accepted: true, acceptedAt: new Date().toISOString(), items, shownText })] : others;
     setCollectedData(prev => ({ ...prev, consents }));
+    rememberConsents(window.sessionStorage, eventId, consents);
+  };
+
+  const handleMarketingOptInChange = (page: CustomPage, item: ReturnType<typeof consentCheckboxes>[number], checked: boolean) => {
+    const others = collectedData.consents.filter((record) => record.pageId !== page.pageId || record.kind !== 'marketing');
+    const consents = [...others, ...consentRecords({ pageId: page.pageId, pageType: 'accept' }, {
+      accepted: checked,
+      acceptedAt: new Date().toISOString(),
+      items: checked ? [{ ...item, required: false }] : [],
+      unticked: checked ? [] : [{ ...item, required: false }],
+    })];
+    setCollectedData((prev) => ({ ...prev, consents }));
     rememberConsents(window.sessionStorage, eventId, consents);
   };
   
@@ -1674,12 +1719,27 @@ export default function EventCapturePage({
             acceptance={
               acceptanceBox
                 ? (() => {
-                    const sentence = acceptanceSentence(shownCheckboxes(consentCheckboxes(acceptanceBox.config)), language, uiTexts);
+                    const items = shownCheckboxes(consentCheckboxes(acceptanceBox.config)).filter((item) => item.kind !== 'marketing');
+                    if (items.length === 0) return undefined;
+                    const sentence = acceptanceSentence(items, language, uiTexts);
                     return {
                       sentence,
                       required: event.effectiveAcceptanceRequired !== false,
-                      checked: collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId),
+                      checked: collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.kind !== 'marketing' && record.accepted),
                       onChange: (checked: boolean) => handleAcceptanceChange(acceptanceBox, checked, sentenceText(sentence)),
+                    };
+                  })()
+                : undefined
+            }
+            marketingOptIn={
+              acceptanceBox
+                ? (() => {
+                    const item = shownCheckboxes(consentCheckboxes(acceptanceBox.config)).find((checkbox) => checkbox.kind === 'marketing');
+                    if (!item) return undefined;
+                    return {
+                      text: item.text,
+                      checked: collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId && record.kind === 'marketing' && record.accepted),
+                      onChange: (checked: boolean) => handleMarketingOptInChange(acceptanceBox, item, checked),
                     };
                   })()
                 : undefined
@@ -1951,12 +2011,12 @@ export default function EventCapturePage({
                   {position > 0 && <div className="w-4 h-0.5  "></div>}
                   <div className="flex flex-col items-center">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                      entry.steps.includes(step) ? ' ' : '   '
+                      entry.steps.includes(activeProgressStep) ? ' ' : '   '
                     }`}>
                       {position + 1}
                     </div>
                     <p className={`text-[10px] font-medium text-center mt-1 ${
-                      entry.steps.includes(step) ? ' ' : ' '
+                      entry.steps.includes(activeProgressStep) ? ' ' : ' '
                     }`}>
                       {entry.label}
                     </p>
@@ -2084,6 +2144,7 @@ export default function EventCapturePage({
                 <SystemCameraCapture
                   onCapture={handleCameraCapture}
                   promptTitle={cameraPromptTitle}
+                  promptDescription={cameraPromptDescription}
                   captureButtonColor={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
                   buttonSize={eventButtonSize}
                 />
@@ -2104,7 +2165,7 @@ export default function EventCapturePage({
                   buttonSize={eventButtonSize}
                   stillCapture={captureMethod === 'still'}
                   viewControls={captureViews}
-                  autoStart
+                  autoStart={false}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center p-6 text-center" role="status" aria-live="polite">

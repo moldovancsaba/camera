@@ -8,6 +8,8 @@
  */
 
 export interface ConsentCheckbox {
+  /** The default consent purpose, retained in the consent record when known. */
+  kind?: 'terms' | 'cookies' | 'privacy' | 'marketing';
   text: string;
   /** An https address; opens in a new tab so the user does not lose the flow. */
   linkUrl?: string;
@@ -46,6 +48,7 @@ export function sanitizeCheckboxes(value: unknown): ConsentCheckbox[] {
     const linkUrl = safeLinkUrl(item.linkUrl);
     out.push({
       text,
+      ...(item.kind === 'terms' || item.kind === 'cookies' || item.kind === 'privacy' || item.kind === 'marketing' ? { kind: item.kind } : {}),
       ...(linkUrl ? { linkUrl } : {}),
       ...(item.shown === false ? { shown: false } : {}),
       ...(typeof item.required === 'boolean' ? { required: item.required } : {}),
@@ -114,6 +117,8 @@ export interface ConsentRecord {
   shownText?: string;
   /** Only ever `false`: the checkbox was optional when it was shown (issue 558). A record without it was a required checkbox, as every record was before. */
   required?: false;
+  /** Purpose of a default consent checkbox; distinguishes marketing opt-in from combined legal acceptance. */
+  kind?: 'terms' | 'cookies' | 'privacy' | 'marketing';
 }
 
 /**
@@ -129,6 +134,7 @@ export function consentRecords(
     pageId: page.pageId,
     pageType: page.pageType,
     checkboxText: item.text,
+    ...(item.kind ? { kind: item.kind } : {}),
     ...(item.linkUrl ? { linkUrl: item.linkUrl } : {}),
     accepted,
     acceptedAt: data.acceptedAt,
