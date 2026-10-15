@@ -8,8 +8,8 @@ import { hu } from './messages.hu';
 
 /** What the editor calls each group of keys (the key's first part). A key whose group is not listed is a mistake the test catches. */
 export const TEXT_GROUPS: Record<string, string> = {
-  capture: 'Capture loading',
   welcome: 'Welcome page',
+  capture: 'Capture loading',
   consent: 'Consent page',
   accept: 'Accept page',
   login: 'Login page',
