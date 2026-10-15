@@ -314,7 +314,7 @@ test('the table of events: one row per event, the busiest first, with the same c
     fact({ eventKey: 'ev-3', excluded: 'archived' }),
   ];
   const rows = buildEventsTable(photos, [{ key: 'ev-1', id: 'm1', name: 'Vasas' }, { key: 'ev-2', name: 'Ferencváros' }], BUDAPEST);
-  assert.deepEqual(rows.map((r) => [r.id, r.name, r.taken, r.approved, r.waiting, r.plays, r.users, r.avgDecisionSeconds]), [[null, 'Ferencváros', 3, 0, 3, 8, 3, null], ['m1', 'Vasas', 2, 1, 1, 0, 2, 120]]);
+  assert.deepEqual(rows.map((r) => [r.id, r.name, r.taken, r.approved, r.rejected, r.deletedAutomaticallyNoLogin, r.deletedAutomaticallyOther, r.deletedManually, r.waiting, r.plays, r.users, r.avgDecisionSeconds]), [[null, 'Ferencváros', 3, 0, 0, 0, 0, 0, 3, 8, 3, null], ['m1', 'Vasas', 2, 1, 0, 0, 0, 0, 1, 0, 2, 120]]);
 });
 
 test('what the data cannot give yet is listed, each with the reason and what it waits for; the journey is measured now and no longer listed', () => {
