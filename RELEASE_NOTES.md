@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — use one editable capture loading message (2026-10-15)
+
+- **Fixed:** the capture route's visible loading states now use the same `event.loading` wording. The route-level fallback no longer flashes separate bilingual loading copy.
+- **Moved:** edit the message at **Event → Texts**, searching for `event.loading`. Existing custom `Event.loadingText` values appear there as the event's own wording and are migrated when Event Texts is saved.
+- **Changed:** removed the legacy loading-text fields from event create/edit forms; those forms link to the correct Texts page.
+- **Verified locally:** TypeScript, lint, GDS checks, production guards, build, and inventory checks passed. GitHub Verify will run the unit-test suite for this update.
+
 ## Unreleased — separate optional marketing consent (2026-10-15)
 
 - **Added:** a partner/event setting to show or hide a separate marketing opt-in. It is always optional and defaults to shown on the default consent page.
@@ -7,6 +14,11 @@
 - **Recorded:** checked and unchecked answers are stored as distinct consent records with `kind: marketing`, exact text, timestamp, and `required: false`; the required-consent guard ignores marketing.
 - **Wording:** the Hungarian Dictionary default is the client's sentence: “Nyitott vagyok klub és szurkolói fotó marketing kommunikációra.”
 - **Verified locally:** `npm run release:check` passed, including 347/347 unit-test files, GDS checks, type-check, lint, production guards and build. The build reports the existing Google Fonts CSS `@import` ordering warning.
+
+## Unreleased — allow an admin text to be intentionally hidden (2026-10-15)
+
+- **Changed:** the Dictionary, Partner Texts and Event Texts editors now offer **Hide this text**. An explicitly saved empty string suppresses that text in the guest UI; **Use the one from above** restores normal inheritance. This makes labels such as “(nem kötelező)” optional without changing the default for other events.
+- **Verified locally:** TypeScript, lint, GDS checks, inventory checks, and production build passed. GitHub Verify passed after updating existing expectations. The build reports the existing Google Fonts CSS `@import` ordering warning.
 
 ## Unreleased — keep the chosen frame and message attached to the intended photo (2026-10-15)
 

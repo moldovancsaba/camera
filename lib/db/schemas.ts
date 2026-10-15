@@ -480,7 +480,7 @@ export interface Event {
   customPages: CustomPage[];         // Array of custom pages (ordered by order field)
   
   // Customization
-  loadingText?: string;              // Text shown while event is loading (e.g., "Loading event...")
+  loadingText?: string;              // Legacy; loadEventTexts exposes a custom value as event.texts['event.loading'] and clears it on save.
   logoUrl?: string;                  // Optional event logo URL (imgbb.com) - displayed on capture pages
   /** A picture drawn under the card of every guest email of this event (the club's footer strip); https, a host the pages may load images from (camera#310). */
   emailFooterImageUrl?: string | null;

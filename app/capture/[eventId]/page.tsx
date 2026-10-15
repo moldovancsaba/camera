@@ -98,7 +98,6 @@ interface EventData {
   location: string | null;
   customPages: CustomPage[];  // Custom page flow
   journeyContext?: { defaultOrders?: Record<string, number> };
-  loadingText?: string;  // Customizable loading text
   tourEnabled?: boolean; // The guided tour is off unless the event turns it on (camera#356)
   acceptanceOnWhoAreYou?: boolean; // The consent page is one checkbox on the Who-are-you page (issue 523)
   logoUrl?: string;  // Optional event logo URL
@@ -459,7 +458,6 @@ export default function EventCapturePage({
           eventDate: eventData.eventDate || null,
           location: eventData.location || null,
           customPages: eventData.customPages || [],
-          loadingText: eventData.loadingText,
           tourEnabled: eventData.tourEnabled === true,
           acceptanceOnWhoAreYou: eventData.acceptanceOnWhoAreYou === true,
           // The picture drawn from the default slideshow: a welcome page without a picture of its own shows it (it was never copied here before, so such a page showed no giant screen).
@@ -1654,7 +1652,7 @@ export default function EventCapturePage({
     return (
       <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-3" role="status" aria-live="polite">
         <div className="text-center">
-          <p className="text-lg">{own('event.loading', event?.loadingText)}</p>
+          <p className="text-lg">{t('event.loading')}</p>
         </div>
       </div>
     );
@@ -1680,7 +1678,7 @@ export default function EventCapturePage({
       return (
         <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-3" role="status" aria-live="polite">
           <div className="text-center">
-            <p className="text-lg">{own('event.loading', event?.loadingText)}</p>
+            <p className="text-lg">{t('event.loading')}</p>
           </div>
         </div>
       );
@@ -1906,7 +1904,7 @@ export default function EventCapturePage({
               />
             </div>
           ) : null}
-          <p className=" text-2xl">{own('event.loading', event?.loadingText)}</p>
+          <p className=" text-2xl">{t('event.loading')}</p>
         </div>
       </div>
     );
@@ -2169,7 +2167,7 @@ export default function EventCapturePage({
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center p-6 text-center" role="status" aria-live="polite">
-                  <p className="text-lg">{own('event.loading', event?.loadingText)}</p>
+                  <p className="text-lg">{t('event.loading')}</p>
                 </div>
               )}
             </div>

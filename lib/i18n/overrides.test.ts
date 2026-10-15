@@ -7,9 +7,9 @@ import { TEXT_MAX, eventLanguage, getGlobalTexts, loadEventTexts, markersOf, mer
 
 const NOW = '2026-10-09T12:00:00.000Z';
 
-test('a wording is plain text for a key and a language of the dictionary; an empty text means no wording at this level', () => {
+test('a wording is plain text for a key and a language of the dictionary; an empty text explicitly hides it', () => {
   const ok = parseTexts({ en: { 'welcome.button': '  Kick   off  ', 'camera.takePhoto': '' }, hu: { 'welcome.button': 'Indulás' } });
-  assert.deepEqual(ok, { ok: true, value: { en: { 'welcome.button': 'Kick off' }, hu: { 'welcome.button': 'Indulás' } } });
+  assert.deepEqual(ok, { ok: true, value: { en: { 'welcome.button': 'Kick off', 'camera.takePhoto': '' }, hu: { 'welcome.button': 'Indulás' } } });
   assert.deepEqual(parseTexts(null), { ok: true, value: {} });
   assert.deepEqual(parseTexts({ en: {} }), { ok: true, value: {} }, 'a language with nothing written is left out');
 });

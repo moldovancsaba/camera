@@ -3,7 +3,7 @@
 /**
  * The text editor of one level (issue 353, docs/BUILDING_BRICKS.md step 6): the same screen for the global Dictionary, a partner's texts and an event's texts. It lists every default
  * text of the user journey in a language with what is used now (the wording from above: the dictionary, the global wording, the partner's) and an input for this level's own
- * wording. An empty input means "use the one from above" (nothing is copied down), a wording is plain text and keeps its {markers}. The page saves (`onSave`); the editor only
+ * wording. A missing key means "use the one from above" (nothing is copied down); an explicit empty value hides the text. A wording is plain text and keeps its {markers}. The page saves (`onSave`); the editor only
  * edits a draft. Built on GDS parts, no style props of its own.
  */
 
@@ -35,7 +35,7 @@ export interface TextLevelEditorProps {
 
 const clean = (texts: TextsByLanguage): TextsByLanguage =>
   Object.fromEntries(
-    UI_LANGUAGES.map((language) => [language, Object.fromEntries(Object.entries(texts[language] ?? {}).filter(([, text]) => text.trim()))] as const).filter(([, map]) => Object.keys(map).length > 0)
+    UI_LANGUAGES.map((language) => [language, Object.fromEntries(Object.entries(texts[language] ?? {}).map(([key, text]) => [key, text.trim() ? text : '']))] as const).filter(([, map]) => Object.keys(map).length > 0)
   );
 
 export default function TextLevelEditor({ own, inherited, initialLanguage = 'en', busy, error, saved, onSave }: TextLevelEditorProps) {
@@ -45,16 +45,24 @@ export default function TextLevelEditor({ own, inherited, initialLanguage = 'en'
   const groups = useMemo(() => groupedCatalog(), []);
 
   const dirty = JSON.stringify(clean(draft)) !== JSON.stringify(clean(own));
-  const written = Object.values(draft[language] ?? {}).filter((text) => text.trim()).length;
+  const written = Object.keys(draft[language] ?? {}).length;
   const query = search.trim().toLowerCase();
 
   const set = (key: string, text: string) => setDraft((current) => ({ ...current, [language]: { ...(current[language] ?? {}), [key]: text } as TextOverrides }));
+  const unset = (key: string) => setDraft((current) => {
+    const languageTexts = { ...(current[language] ?? {}) } as TextOverrides;
+    delete languageTexts[key as keyof TextOverrides];
+    const next = { ...current };
+    if (Object.keys(languageTexts).length > 0) next[language] = languageTexts;
+    else delete next[language];
+    return next;
+  });
 
   /** What is used for this key where this level wrote nothing: the nearest level above that has a wording, else the dictionary. */
   const fromAbove = (key: string, dictionary: string): { text: string; source: string } => {
     for (const level of [...inherited].reverse()) {
-      const text = (level.texts[language] as Record<string, string> | undefined)?.[key];
-      if (text) return { text, source: level.label };
+      const texts = level.texts[language] as Record<string, string> | undefined;
+      if (texts && Object.prototype.hasOwnProperty.call(texts, key)) return { text: texts[key] ?? '', source: level.label };
     }
     return { text: dictionary, source: 'the dictionary' };
   };
@@ -91,7 +99,7 @@ export default function TextLevelEditor({ own, inherited, initialLanguage = 'en'
         </SemanticButton>
       </GdsInline>
       <MetadataText>
-        {written} text{written === 1 ? '' : 's'} written at this level in {UI_LANGUAGE_LABELS[language]}. Leave an input empty to use the one from above; nothing is copied down.
+        {written} text{written === 1 ? '' : 's'} written at this level in {UI_LANGUAGE_LABELS[language]}. Missing text follows the level above; use “Hide this text” to save an empty value. Nothing is copied down.
       </MetadataText>
 
       {groups.map((group) => {
@@ -101,30 +109,38 @@ export default function TextLevelEditor({ own, inherited, initialLanguage = 'en'
           <SectionPanel key={group.group} title={group.label} description={`${entries.length} text${entries.length === 1 ? '' : 's'}`}>
             <GdsStack gap="md">
               {entries.map((entry) => {
-                const value = (draft[language] as Record<string, string> | undefined)?.[entry.key] ?? '';
+                const languageDraft = draft[language] as Record<string, string> | undefined;
+                const hasOwn = Boolean(languageDraft && Object.prototype.hasOwnProperty.call(languageDraft, entry.key));
+                const value = languageDraft?.[entry.key] ?? '';
                 const above = fromAbove(entry.key, entry[language]);
                 const wrong = problem(entry.key, entry.en, value);
                 return (
                   <GdsStack key={entry.key} gap="xs">
                     <GdsInline gap="sm" align="center">
                       <strong>{entry.key}</strong>
-                      {value.trim() ? <LabelTag tone="success" label="Own" /> : <LabelTag tone="neutral" label={`From ${above.source}`} />}
+                      {hasOwn ? <LabelTag tone={value ? 'success' : 'neutral'} label={value ? 'Own' : 'Hidden'} /> : <LabelTag tone="neutral" label={`From ${above.source}`} />}
                     </GdsInline>
                     <AdminTextInput
                       name={`text-${entry.key}`}
-                      label={`Used now: ${above.text}`}
+                      label={hasOwn && !value ? 'This text is hidden at this level' : `Used now: ${above.text || `hidden in ${above.source}`}`}
                       value={value}
                       onChange={(next) => set(entry.key, next)}
-                      placeholder={above.text}
+                      placeholder={hasOwn && !value ? '' : above.text}
                       error={wrong ?? undefined}
                     />
-                    {value.trim() ? (
+                    {hasOwn ? (
                       <div>
-                        <SemanticButton action="texts:clear" variant="secondary" size="xs" disabled={busy} onClick={() => set(entry.key, '')}>
+                        <SemanticButton action="texts:clear" variant="secondary" size="xs" disabled={busy} onClick={() => unset(entry.key)}>
                           Use the one from above
                         </SemanticButton>
                       </div>
-                    ) : null}
+                    ) : (
+                      <div>
+                        <SemanticButton action="texts:hide" variant="secondary" size="xs" disabled={busy} onClick={() => set(entry.key, '')}>
+                          Hide this text
+                        </SemanticButton>
+                      </div>
+                    )}
                   </GdsStack>
                 );
               })}

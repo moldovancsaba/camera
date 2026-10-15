@@ -2,7 +2,7 @@
  * The wordings of a partner (issue 353, lib/i18n/overrides.ts): what an admin wrote for all events of the partner, above the global wording.
  *
  * GET /api/partners/<mongo id>/texts   { texts, inherited } the partner's own wordings, and what it takes from above (the global wordings) (viewer)
- * PUT /api/partners/<mongo id>/texts   { texts } replaces the partner's wordings; an empty text takes one away (manager)
+ * PUT /api/partners/<mongo id>/texts   { texts } replaces the partner's wordings; a missing key inherits and an empty string hides the text (manager)
  */
 
 import { NextRequest } from 'next/server';
