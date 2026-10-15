@@ -168,7 +168,7 @@ export default function WhoAreYouPage({
       {acceptance ? (
         <Box p="xs" style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }} data-acceptance>
           <Checkbox
-            size="xs"
+            size="lg"
             checked={accepted}
             onChange={(event) => {
               setAccepted(event.currentTarget.checked);
@@ -190,6 +190,10 @@ export default function WhoAreYouPage({
                 {acceptanceRequired ? null : <span style={{ marginLeft: 6, opacity: 0.75 }}>{t('accept.optional')}</span>}
               </span>
             }
+            styles={{
+              body: { minHeight: 44, alignItems: 'center' },
+              label: { minHeight: 44, display: 'flex', alignItems: 'center' },
+            }}
           />
         </Box>
       ) : null}

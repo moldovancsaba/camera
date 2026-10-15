@@ -5,6 +5,8 @@
 
 ## Current change
 
+The legal acceptance checkbox on Who-are-you is now a larger control with a 44px minimum-height label row, improving visibility and touch use. Its text, links, and consent behavior stay the same.
+
 Picture-backed CTA pages keep their visit and Continue actions in a centered, safe-area-aware bar below the fitted image. The artwork and copy occupy the flexible area above; action buttons no longer overlay the image. See `docs/JOURNEY_IMAGES.md` and the newest entry in `RELEASE_NOTES.md`.
 
 The long, full-screen capture loading message is `capture.loading`; edit it under **Partner → Texts** or **Event → Texts** by searching for `capture.loading`. The distinct `event.loading` key remains available for event-flow loading states. A custom value from the old `Event.loadingText` field appears under `capture.loading` until Texts are next saved. See `docs/CAPTURE_MESSAGES.md`, `docs/TEXT_LEVELS.md`, and the newest entry in `RELEASE_NOTES.md`.

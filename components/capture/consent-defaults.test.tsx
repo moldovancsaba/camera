@@ -1,7 +1,7 @@
 /**
- * The guest pages that carry a consent checkbox, rendered with a configuration that makes no use of the checkbox settings (issue 558, owner answer 297): their markup must be byte-for-byte
- * what the pages drew before the settings existed. The expected markup in `__golden__/` was written from the pages as they were before the settings (`node --import tsx components/capture/consent-defaults.test.tsx --update-golden` writes it again);
- * a later change that moves a single character of the default fails here, so "nothing changes until somebody chooses" is checked by the pages themselves.
+ * The guest pages that carry a consent checkbox, rendered with a configuration that makes no use of the checkbox settings (issue 558, owner answer 297): their markup is kept against the
+ * expected HTML in `__golden__/`. The Who-are-you consent control is intentionally larger for visibility and touch use; all other defaults remain unchanged. The golden files can be rewritten with
+ * `node --import tsx components/capture/consent-defaults.test.tsx --update-golden`.
  */
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';

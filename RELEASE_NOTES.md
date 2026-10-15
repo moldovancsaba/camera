@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — enlarge the Who-are-you consent checkbox (2026-10-15)
+
+- **Changed:** the consent checkbox on Who-are-you now uses a larger control and a 44px minimum-height label row, making it easier to see and tap on phones. Consent wording, links, and required/optional behavior are unchanged.
+- **Verified locally:** type-check, lint, and inventory checks passed. GitHub Verify will run on the pull request.
+
 ## Unreleased — keep CTA actions below the picture (2026-10-15)
 
 - **Changed:** picture-backed CTA pages put visit and Continue actions in a centered bar below the image, with safe-area spacing. The buttons no longer overlay the image.
