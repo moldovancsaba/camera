@@ -56,8 +56,12 @@ test('a CTA picture keeps its actions in a screen-aligned bar below the image', 
   assert.ok(html.indexOf(actions) > html.indexOf(copy), 'the action bar follows the title and description');
   assert.match(actions, /<button[^>]*aria-label="Visit URL"[^>]*>Join<\/button>/);
   assert.match(actions, /<button[^>]*aria-label="Continue"[^>]*>Continue<\/button>/);
-  for (const dimension of ['width:min(80vw, 36rem)', 'height:4.25rem', 'min-height:4.25rem']) {
-    assert.equal(actions.split(dimension).length - 1, 2, `both actions share ${dimension}`);
+  for (const [dimension, count] of [
+    [/width:min\(80vw, 36rem\)/g, 2],
+    [/(?<!min-)height:4\.25rem/g, 2],
+    [/min-height:4\.25rem/g, 2],
+  ] as const) {
+    assert.equal(actions.match(dimension)?.length ?? 0, count, `both actions share ${dimension}`);
   }
   assert.ok(html.includes(`background:${hex('1b3a69')}`) && html.includes(`border:4px solid ${hex('189cd8')}`), 'the club colours');
 });
