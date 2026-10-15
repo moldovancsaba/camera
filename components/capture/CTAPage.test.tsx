@@ -17,6 +17,19 @@ async function load(t: TestContext, tag: string): Promise<CtaModule> {
 }
 
 const hex = (digits: string) => `#${digits}`; // colours are assembled from digits: the design-system check bans raw colour literals, tests included
+function divBlock(html: string, marker: string) {
+  const open = new RegExp(`<div\\b[^>]*${marker}[^>]*>`).exec(html);
+  assert.ok(open, `expected a div with ${marker}`);
+  const tags = /<div\b[^>]*>|<\/div>/g;
+  tags.lastIndex = open.index;
+  let depth = 0;
+  let match: RegExpExecArray | null;
+  while ((match = tags.exec(html))) {
+    depth += match[0].startsWith('</') ? -1 : 1;
+    if (depth === 0) return html.slice(open.index, tags.lastIndex);
+  }
+  assert.fail(`unclosed div with ${marker}`);
+}
 const config = {
   title: 'New loyalty system',
   description: 'Register, shop and enjoy the benefits',
@@ -28,15 +41,19 @@ const config = {
   buttonBorderColor: hex('189cd8'),
 };
 
-test('a CTA page with a picture fills the screen with it and writes the title, the text and the buttons over it', async (t) => {
+test('a CTA picture keeps its actions in a screen-aligned bar below the image', async (t) => {
   const { default: CTAPage } = await load(t, 'picture');
   const html = renderToStaticMarkup(<CTAPage config={config} pageId="p1" onNext={() => undefined} />);
   assert.match(html, /data-cta-picture/);
   assert.match(html, /<img src="https:\/\/images\.example\.test\/popup\.jpg"/);
   assert.match(html, /<h1[^>]*>New loyalty system<\/h1>/);
   assert.match(html, /Register, shop and enjoy the benefits/);
-  assert.match(html, /<button[^>]*aria-label="Visit URL"[^>]*>Join<\/button>/);
-  assert.match(html, /<button[^>]*aria-label="Continue"[^>]*>Continue<\/button>/);
+  const art = divBlock(html, 'data-cta-picture-art');
+  const actions = divBlock(html, 'data-cta-picture-actions');
+  assert.equal(/aria-label="Visit URL"|aria-label="Continue"/.test(art), false, 'actions never cover the picture');
+  assert.ok(html.indexOf(actions) > html.indexOf(art), 'the action bar follows the image area');
+  assert.match(actions, /<button[^>]*aria-label="Visit URL"[^>]*>Join<\/button>/);
+  assert.match(actions, /<button[^>]*aria-label="Continue"[^>]*>Continue<\/button>/);
   assert.ok(html.includes(`background:${hex('1b3a69')}`) && html.includes(`border:4px solid ${hex('189cd8')}`), 'the club colours');
 });
 
@@ -50,12 +67,14 @@ test('an end page (no continue button) shows only the visit button, and a page w
   assert.match(noLink, /aria-label="Continue"/);
 });
 
-test('the picture fits the page and keeps its shape, and the darkening is there while there is writing over it', async (t) => {
+test('the picture fits its area and keeps its shape, and the darkening is only behind the writing', async (t) => {
   const { default: CTAPage } = await load(t, 'fit');
   const html = renderToStaticMarkup(<CTAPage config={config} pageId="p1" onNext={() => undefined} />);
   assert.match(html, /object-fit:contain/);
   assert.equal(/object-fit:cover/.test(html), false);
   assert.match(html, /linear-gradient/);
+  const imageOnly = renderToStaticMarkup(<CTAPage config={{ ...config, hideTexts: true }} pageId="p1" onNext={() => undefined} />);
+  assert.equal(/linear-gradient/.test(imageOnly), false, 'buttons below the picture do not darken it');
 });
 
 test('the title and the text can be hidden: the heading stays for a screen reader, drawn as nothing', async (t) => {
@@ -89,4 +108,3 @@ test('a page with no address has no visit button and no link, even when a photo 
   assert.equal(/Visit URL/.test(html), false);
   assert.equal(/data-cta-picture-link/.test(html), false);
 });
-

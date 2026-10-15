@@ -36,7 +36,7 @@ export default function FullScreenPage({ children, marker }: { children: ReactNo
     <main
       ref={ref}
       {...marker}
-      style={{ position: 'fixed', inset: 0, overflow: 'hidden', containerType: 'size', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}
+      style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', containerType: 'size', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}
     >
       {children}
     </main>
