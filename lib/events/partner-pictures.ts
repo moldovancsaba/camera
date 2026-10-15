@@ -22,7 +22,7 @@ export const PARTNER_PICTURE_FIELDS: readonly PartnerPictureField[] = [
   { key: 'welcomeLeft', label: 'Welcome page: left image', helper: 'A transparent PNG on the bottom edge: full width in portrait, half the width at the left in landscape.', page: 'welcome', field: 'bottomImageUrl' },
   { key: 'welcomeRight', label: 'Welcome page: right image', helper: 'A transparent PNG of the same size as the left image, over it in portrait and at the right in landscape.', page: 'welcome', field: 'cornerImageUrl' },
   { key: 'welcomeScreen', label: 'Welcome page: giant screen picture', helper: 'Shown on the 3D giant screen above the Start button; 16:9 works best. It takes the place of the picture drawn from the default slideshow for the events of this partner that have none of their own.', page: 'welcome', field: 'screenImageUrl' },
-  { key: 'ctaBackground', label: 'CTA page: background picture', helper: 'Fills the CTA page behind its title, text and buttons.', page: 'cta', field: 'backgroundImageUrl' },
+  { key: 'ctaBackground', label: 'CTA page: background picture', helper: 'Appears above the title, text and buttons on the CTA page.', page: 'cta', field: 'backgroundImageUrl' },
   { key: 'emailFooter', label: 'E-mail footer picture', helper: 'The picture under the card of the e-mails to the users, for the events of this partner that have none of their own.', page: null, field: null },
 ] as const;
 

@@ -5,6 +5,8 @@
 
 ## Current change
 
+Picture-backed CTA pages now place the title and description below the artwork and above the actions. The visit and continue buttons have matching dimensions; the outlined appearance of the second button no longer makes it smaller.
+
 When the built-in selector shows messages only, it now titles the page “Choose your message” / “Válaszd ki az üzeneted” and removes the duplicate subsection heading. The hidden frame selector is no longer mentioned.
 
 The legal acceptance checkbox on Who-are-you is now a larger control with 16px text and a 44px minimum-height label row. The whole sentence toggles consent when tapped; its legal links remain independently tappable.

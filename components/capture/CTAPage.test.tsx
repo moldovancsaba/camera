@@ -46,14 +46,17 @@ test('a CTA picture keeps its actions in a screen-aligned bar below the image', 
   const html = renderToStaticMarkup(<CTAPage config={config} pageId="p1" onNext={() => undefined} />);
   assert.match(html, /data-cta-picture/);
   assert.match(html, /<img src="https:\/\/images\.example\.test\/popup\.jpg"/);
-  assert.match(html, /<h1[^>]*>New loyalty system<\/h1>/);
-  assert.match(html, /Register, shop and enjoy the benefits/);
   const art = divBlock(html, 'data-cta-picture-art');
+  const copy = divBlock(html, 'data-cta-picture-copy');
   const actions = divBlock(html, 'data-cta-picture-actions');
   assert.equal(/aria-label="Visit URL"|aria-label="Continue"/.test(art), false, 'actions never cover the picture');
-  assert.ok(html.indexOf(actions) > html.indexOf(art), 'the action bar follows the image area');
+  assert.match(copy, /<h1[^>]*>New loyalty system<\/h1>/);
+  assert.match(copy, /Register, shop and enjoy the benefits/);
+  assert.ok(html.indexOf(copy) > html.indexOf(art), 'the title and description follow the image area');
+  assert.ok(html.indexOf(actions) > html.indexOf(copy), 'the action bar follows the title and description');
   assert.match(actions, /<button[^>]*aria-label="Visit URL"[^>]*>Join<\/button>/);
   assert.match(actions, /<button[^>]*aria-label="Continue"[^>]*>Continue<\/button>/);
+  assert.equal((actions.match(/height:4\.25rem/g) ?? []).length, 2, 'both actions have the same height');
   assert.ok(html.includes(`background:${hex('1b3a69')}`) && html.includes(`border:4px solid ${hex('189cd8')}`), 'the club colours');
 });
 
@@ -67,12 +70,12 @@ test('an end page (no continue button) shows only the visit button, and a page w
   assert.match(noLink, /aria-label="Continue"/);
 });
 
-test('the picture fits its area and keeps its shape, and the darkening is only behind the writing', async (t) => {
+test('the picture fits its area and stays unobscured by overlaid copy', async (t) => {
   const { default: CTAPage } = await load(t, 'fit');
   const html = renderToStaticMarkup(<CTAPage config={config} pageId="p1" onNext={() => undefined} />);
   assert.match(html, /object-fit:contain/);
   assert.equal(/object-fit:cover/.test(html), false);
-  assert.match(html, /linear-gradient/);
+  assert.equal(/linear-gradient/.test(html), false, 'the title and description are outside the artwork');
   const imageOnly = renderToStaticMarkup(<CTAPage config={{ ...config, hideTexts: true }} pageId="p1" onNext={() => undefined} />);
   assert.equal(/linear-gradient/.test(imageOnly), false, 'buttons below the picture do not darken it');
 });

@@ -7,10 +7,10 @@ pictures; camera writes the words.
 
 A CTA page (`cta`) can carry `backgroundImageUrl`. The page then shows the **whole picture, fitted to its own screen area with its aspect ratio kept** (`object-fit:
 contain`, centred, in any orientation; the event's page colour shows around it; before 2026-10-09 it was cropped to fill, owner report 209, camera#491). The
-page's own title (big, uppercase) and text (italic) may appear over the picture with a soft dark veil. Its buttons are always in a separate, screen-aligned
-bar below the image: a round visit button (`visitButtonText`, opens the page's address) and a quieter outline button for the next step (`buttonText`). They
-never cover the image and use the club's colours (`buttonColor`, `buttonTextColor`, `buttonBorderColor`, hex). Without a picture the page is the plain card it
-always was. Set in the admin pages editor of the event (CTA page, "Picture page") with the picture picker: chosen from the event's images library
+page's own title (big, uppercase) and text (italic) appear in a screen-aligned area below the picture. The buttons sit below that copy in their own
+screen-aligned bar: a round visit button (`visitButtonText`, opens the page's address) and an outlined button for the next step (`buttonText`). Both
+buttons have the same width and height; the outline is a colour treatment only. They never cover the image and use the club's colours (`buttonColor`,
+`buttonTextColor`, `buttonBorderColor`, hex). Without a picture the page is the plain card it always was. Set in the admin pages editor of the event (CTA page, "Picture page") with the picture picker: chosen from the event's images library
 (its partner's library and its own uploads, `docs/LIBRARIES.md`), uploaded there (PNG, JPEG, WebP or SVG, up to 4 MB), or pasted as an address; the
 page keeps the plain address either way. Settings of the page: `lib/db/schemas.ts` (`CustomPage.config`), component `components/capture/CTAPage.tsx`,
 the round buttons `components/capture/PillButton.tsx` (shared with the welcome step).
@@ -19,11 +19,11 @@ Three optional switches on a picture page (camera#491; `lib/capture/cta-layout.t
 reader, visually hidden), **`pictureLink`** makes the **whole picture a link** to the page's address (a full-page button, `aria-label` = the visit button text), and **`hideButtons`**
 hides the visit and continue buttons. The buttons only go when something else leads on: the picture is the link, or the page is the last one (continue button off), so a page is
 never a dead end by accident (the editor says so). A tap on a picture whose buttons are hidden opens the address in a **new tab and goes on to the next page** when the page is not the
-last, and goes to the address in the **same tab** on the last page. When nothing is written over the picture the dark veil is not drawn. A page with no address has no visit button and no
+last, and goes to the address in the **same tab** on the last page. The artwork is never darkened for page copy, since the copy stays below it. A page with no address has no visit button and no
 link (before, a page with no address but a known photo id linked to "?submissionId=…").
 
-Hand over to the designers: a portrait-safe picture (guests are on phones; the picture is fitted above the action bar), dark enough at its middle for
-white title or text. Do not draw button labels or controls into the picture: the app renders those once, in the separate bar below the artwork.
+Hand over to the designers: a portrait-safe picture (guests are on phones; the picture is fitted above the copy and action rows). Keep copy and button
+labels out of the picture: the app renders the page title and description below the artwork, followed by the matching-size controls.
 
 ## Email footer picture
 

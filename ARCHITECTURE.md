@@ -64,7 +64,7 @@ Browser / Public Screens
 
 ### Picture-backed CTA pages
 
-`components/capture/CTAPage.tsx` composes the screen in an explicit two-row grid: a flexible, aspect-ratio-preserving image area for the artwork and optional copy, then a safe-area-padded action row below it. The grid reserves the actions' own row, so CTA and Continue buttons cannot cover the design on narrow or wide screens. `FullScreenPage` supplies the fixed, event-coloured viewport for both CTA and Welcome pages.
+`components/capture/CTAPage.tsx` composes the screen in an explicit three-row grid: a flexible, aspect-ratio-preserving image area for the artwork, the title and description below it, then a safe-area-padded action row. Both actions have equal width and height; the second button's outline is only a colour treatment. The reserved copy and action rows keep text and controls off the artwork on narrow and wide screens. `FullScreenPage` supplies the fixed, event-coloured viewport for both CTA and Welcome pages.
 
 ### Consent recorded across capture SSO
 
