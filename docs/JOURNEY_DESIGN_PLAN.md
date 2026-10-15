@@ -76,7 +76,7 @@ The Start button of the welcome page (`components/capture/PillButton.tsx`: round
 - **Quieter button** (`light`, `default`, `outline`): the same design **inverted**: the label colour as the fill, the fill colour as the label, the same ring. Wherever the flow had a secondary button, it is now the inverted Start design.
 - **Sizes** are the buttons' own (`xs`, `sm`, `md` and the event's button size); the ring is 2 px on `xs` and 3 px on `sm`, which also get less padding and tighter letters so two buttons side by side (Google and Facebook) fit. A long label wraps instead of being cut.
 - **Colours:** `EventTheme.buttonRing` and the fill and label come from the **Start button of the event's active welcome page** when it sets them (`buttonColor`, `buttonTextColor`, `buttonBorderColor`, `welcomeButtonColours` in `lib/theme/load.ts`), so the whole flow looks like the Start button of that event; only the label is still checked for contrast (3:1). Otherwise they are the style's button colours as before, and the ring is the label colour.
-- The CTA page with a picture keeps its own round buttons (`PillButton`, its `outline` variant over the picture).
+- The CTA page with a picture keeps its own round buttons (`PillButton`, its `outline` variant), aligned in a dedicated bar below the image so they never cover its design.
 
 For the MTK x Vasas event this resolves to the fill `#1b3a69`, the label white and the ring `#189cd8`, exactly the Start button.
 
@@ -89,4 +89,3 @@ For the MTK x Vasas event this resolves to the fill `#1b3a69`, the label white a
 - **Measured, not assumed:** `scratchpad`-style browser check on the built app with the real MTK theme, a derived theme (no welcome colours) and an event-colour theme: every text, placeholder and input edge on consent, login, photo screen, waiting, CTA and restart pages, 98 measurements per theme. Before: 24 below the limit (dimmed text 3.27:1, placeholders 1.89:1, a link 4.39:1, the purple slider and segment); after: 0 below the limit, and the only colour not from the event is the hover shade of a button (a mix of its fill and label).
 - **Layout found on the way:** the three buttons of the photo screen clipped their labels on phones narrower than 430 points; they are compact now and wrap onto a second row; the Google and Facebook buttons stack under 381 points. Checked at 320, 360, 375, 390, 414 and 430 points on every page: no clipped label, no sideways overflow. Not yet seen on a real phone.
 - **Left as the club chose it:** the ring colour the club set on its welcome page (`#189cd8` for MTK) is 2.81:1 against the light card on the inverted buttons (Google, Facebook, Retake, Reset); their labels read at 11:1, and the club's colours are not changed.
-

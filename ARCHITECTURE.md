@@ -1,7 +1,7 @@
 # Architecture
 
 **Version**: 12.3.42  
-**Last Updated**: 2026-10-14
+**Last Updated**: 2026-10-15
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -61,6 +61,10 @@ Browser / Public Screens
 - external SSO service
 - Resend (transactional email)
 - optional Upstash Redis for shared rate limiting
+
+### Picture-backed CTA pages
+
+`components/capture/CTAPage.tsx` composes the screen as two sibling regions: a flexible, aspect-ratio-preserving image area for the artwork and optional copy, then a safe-area-padded action bar below it. The action bar is outside the image area, so CTA and Continue buttons cannot cover the design on narrow or wide screens. `FullScreenPage` supplies the fixed, event-coloured viewport for both CTA and Welcome pages.
 
 ### Consent recorded across capture SSO
 

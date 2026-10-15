@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — keep CTA actions below the picture (2026-10-15)
+
+- **Changed:** picture-backed CTA pages put visit and Continue actions in a centered bar below the image, with safe-area spacing. The buttons no longer overlay the image.
+- **Verified locally:** CTA layout and current analytics changes were reviewed together; GitHub Verify will run for this PR.
+
 ## Unreleased — separate capture and event loading messages (2026-10-15)
 
 - **Fixed:** the long, full-screen loading message (`capture.loading`) is separate from event-flow loading copy (`event.loading`), so each can be edited independently.
