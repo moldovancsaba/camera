@@ -64,15 +64,6 @@ import { DEFAULT_VIEW, currentShape, viewAspect, viewRect, wantedWindow, withFie
 import { journey } from '@/lib/journey/client';
 import { useT } from '@/components/i18n/UiLanguageProvider';
 
-/** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
-function capturePromptBackground(fill: string): string {
-  const t = fill.trim();
-  if (t.startsWith('var(')) {
-    return `linear-gradient(to bottom right, color-mix(in srgb, ${t} 85%, var(--app-shell-bg-start)), color-mix(in srgb, ${t} 58%, var(--app-shell-bg-end)))`;
-  }
-  return `linear-gradient(to bottom right, ${t}dd, ${t}aa)`;
-}
-
 /** The camera that opens: the front camera, for everyone (owner decision 2026-10-06). There is no switch to another: the device's own camera app does that on a phone (owner, 2026-10-09). */
 const FACING: FacingModeValue = 'user';
 
@@ -1056,19 +1047,21 @@ export default function CameraCapture({
                 onClick={() => void startCamera()}
                 className="absolute inset-0 flex items-center justify-center p-3 md:p-4 w-full h-full cursor-pointer transition-all z-30"
                 style={{
-                  background: capturePromptBackground(captureButtonColor),
-                  color: `var(--event-button-text, ${CAMERA_STAGE_WHITE})`,
+                  background: 'transparent',
+                  color: 'var(--event-card-text, var(--event-heading, var(--app-shell-fg)))',
                 }}
+                aria-label={`${promptTitle}. ${t('camera.startAction')}`}
               >
-                <div className=" text-center max-w-xs md:max-w-md">
-                  <svg className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-full max-w-lg rounded-2xl border p-6 text-center shadow-xl md:p-8" style={{ background: 'var(--event-card-bg, var(--app-shell-bg-start))', borderColor: 'var(--event-card-border, var(--mantine-color-default-border))' }}>
+                  <svg className="mx-auto mb-4 h-12 w-12 md:h-14 md:w-14" fill="none" stroke="var(--event-button-bg, currentColor)" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <p className="text-base md:text-lg font-semibold mb-2">{promptTitle}</p>
-                  <p className="text-xs ">
-                    {promptDescription}
-                  </p>
+                  <h2 className="mb-2 text-xl font-semibold md:text-2xl">{promptTitle}</h2>
+                  <p className="mx-auto mb-6 max-w-md text-sm md:text-base">{promptDescription}</p>
+                  <span aria-hidden="true" className="inline-flex min-h-12 items-center justify-center rounded-full border-2 px-8 py-3 font-bold uppercase tracking-wider" style={{ background: captureButtonColor, color: `var(--event-button-text, ${CAMERA_STAGE_WHITE})`, borderColor: 'var(--event-button-ring, transparent)' }}>
+                    {t('camera.startAction')}
+                  </span>
                 </div>
               </button>
             )}

@@ -356,13 +356,18 @@ export default function EventCapturePage({
   } = approvalTexts(takePhotoConfig, language, uiTexts);
   const cameraPromptTitle = own('camera.ready.title', takePhotoConfig?.cameraPromptTitle);
   const storedCameraPromptDescription = takePhotoConfig?.cameraPromptDescription?.trim();
+  const cameraPromptDescriptionIsDefault = !storedCameraPromptDescription || [
+    'Click to start your camera and take a photo',
+    'Opens your camera and takes the photo at the best quality. You can move and zoom it afterwards.',
+    'Kattints a kamera indításához és a fotó elkészítéséhez',
+    'Megnyitja a kamerádat, és a lehető legjobb minőségben készíti el a fotót. Utána mozgathatod és nagyíthatod.',
+    'Start the camera and take your photo to continue.',
+    'Indítsd el a kamerát, és készíts fotót a folytatáshoz.',
+  ].includes(storedCameraPromptDescription ?? '');
   const cameraPromptDescription =
-    storedCameraPromptDescription === 'Click to start your camera and take a photo' ||
-    storedCameraPromptDescription === 'Opens your camera and takes the photo at the best quality. You can move and zoom it afterwards.' ||
-    storedCameraPromptDescription === 'Kattints a kamera indításához és a fotó elkészítéséhez' ||
-    storedCameraPromptDescription === 'Megnyitja a kamerádat, és a lehető legjobb minőségben készíti el a fotót. Utána mozgathatod és nagyíthatod.'
-      ? t('camera.prompt.desktop')
-      : own('camera.prompt.desktop', takePhotoConfig?.cameraPromptDescription);
+    cameraPromptDescriptionIsDefault
+      ? own(captureMethod === 'system' ? 'camera.prompt.device' : 'camera.prompt.desktop', undefined)
+      : storedCameraPromptDescription;
   const errorFrameMessage = own('flow.errorFrame', takePhotoConfig?.errorFrameMessage);
   const errorSaveMessage = own('flow.errorSave', takePhotoConfig?.errorSaveMessage);
   const linkCopiedMessage = own('flow.linkCopied', takePhotoConfig?.linkCopiedMessage);
