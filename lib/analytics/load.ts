@@ -45,9 +45,31 @@ export function analyticsEventOf(doc: Record<string, unknown>): AnalyticsEvent {
 
 /** The facts of the photos (originals, never try-on results) filed under an event, or of every event when none is given. */
 export async function loadPhotoFacts(db: Db, event: Pick<AnalyticsEvent, 'eventId'> | null): Promise<PhotoFacts[]> {
-  const filter = event ? { $or: [{ eventId: event.eventId }, { eventIds: { $in: [event.eventId] } }], submissionKind: { $ne: 'tryon_result' } } : { submissionKind: { $ne: 'tryon_result' } };
-  const docs = await db.collection(COLLECTIONS.SUBMISSIONS).find(filter, { projection: PHOTO_PROJECTION }).toArray();
-  return docs.map((doc) => photoFactsOf(doc)).filter((facts): facts is PhotoFacts => facts !== null);
+  const eventKeys = event ? [event.eventId] : null;
+  const filter = event ? { $or: [{ eventId: event.eventId }, { eventIds: { $in: eventKeys! } }, { hiddenFromEvents: { $in: eventKeys! } }], submissionKind: { $ne: 'tryon_result' } } : { submissionKind: { $ne: 'tryon_result' } };
+  const [docs, tombstones] = await Promise.all([
+    db.collection(COLLECTIONS.SUBMISSIONS).find(filter, { projection: PHOTO_PROJECTION }).toArray(),
+    db.collection(COLLECTIONS.PHOTO_DELETION_ANALYTICS).find(event ? { eventId: { $in: eventKeys } } : {}, { projection: { eventId: 1, submissionId: 1, createdAt: 1, reviewStatus: 1, identityStatus: 1, method: 1, deviceClass: 1 } }).toArray(),
+  ]);
+  const facts = docs.map((doc) => photoFactsOf(doc)).filter((fact): fact is PhotoFacts => fact !== null);
+  const currentSubmissionIds = new Set(facts.map((fact) => fact.id));
+  for (const tombstone of tombstones) {
+    if (typeof tombstone.submissionId === 'string' && currentSubmissionIds.has(tombstone.submissionId)) continue;
+    const fact = photoFactsOf({
+      _id: tombstone._id,
+      eventId: tombstone.eventId,
+      eventIds: [tombstone.eventId],
+      createdAt: tombstone.createdAt,
+      reviewStatus: tombstone.reviewStatus,
+      userId: tombstone.identityStatus === 'REGISTERED' ? 'registered' : 'anonymous',
+      method: tombstone.method,
+      isArchived: true,
+      analyticsDeletion: 'manual',
+      metadata: { identityStatus: tombstone.identityStatus, deviceClass: tombstone.deviceClass },
+    });
+    if (fact) facts.push(fact);
+  }
+  return facts;
 }
 
 export async function loadRegistrations(db: Db, event: AnalyticsEvent): Promise<RegistrationFact[]> {
@@ -97,7 +119,7 @@ export async function loadEventAnalytics(db: Db, event: AnalyticsEvent, options:
     loadJourneySummary(db, event.eventId, options),
     loadEventVocabulary(db, { partnerId: event.partnerId, annotationVocabulary: event.annotationVocabulary }),
   ]);
-  return { event, report: buildEventReport({ photos, registrations, slideshows, vocabulary }, options), sources, journey };
+  return { event, report: buildEventReport({ photos, registrations, slideshows, vocabulary }, { ...options, eventKey: event.eventId }), sources, journey };
 }
 
 export interface AllEventsAnalytics {

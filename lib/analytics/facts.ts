@@ -17,6 +17,7 @@ export type PhotoSource = 'user' | 'editor';
 export type CaptureMethod = 'camera' | 'upload' | 'unknown';
 export type { DeviceClass };
 export type Identity = 'signed_in' | 'email' | 'none';
+export type PhotoDeletion = 'manual' | 'automatic_no_login' | 'automatic_other' | null;
 
 export interface Decision {
   action: 'approve' | 'reject';
@@ -44,6 +45,10 @@ export interface PhotoFacts {
   source: PhotoSource;
   /** Left out of every count and named as such: removed from the event by an admin, or the picture is gone. */
   excluded: 'archived' | 'broken' | null;
+  /** A deleted photo remains in these outcome totals even though it is no longer an active photo. */
+  deletion?: PhotoDeletion;
+  /** Event assignments removed by a manager; a submission can still be filed under another event. */
+  hiddenEventKeys?: string[];
   method: CaptureMethod;
   device: DeviceClass;
   review: ReviewState;
@@ -81,6 +86,11 @@ export const PHOTO_PROJECTION = {
   eventIds: 1,
   submissionKind: 1,
   isArchived: 1,
+  archivedAt: 1,
+  hiddenFromEvents: 1,
+  consentStatus: 1,
+  consentExpiredAt: 1,
+  updatedAt: 1,
   'mediaHealth.broken': 1,
   createdAt: 1,
   method: 1,
@@ -119,6 +129,7 @@ export const PHOTO_PROJECTION = {
   'metadata.emailSentAfterRelatedPhotos': 1,
   'metadata.emailSentAfterTryOnResubmissionApproved': 1,
   'metadata.rejectionEmailSent': 1,
+  'metadata.identityStatus': 1,
 } as const;
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
@@ -185,6 +196,7 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
   const reframe = record(doc.reframe);
   const variant = record(doc.frameVariant);
   const peopleReview = record(doc.peopleReview);
+  const identityStatus = text(record(doc.metadata).identityStatus);
 
   const source: PhotoSource = metadata.adminGalleryUpload === true ? 'editor' : 'user';
   const userId = text(doc.userId);
@@ -198,6 +210,12 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
   const eventId = text(doc.eventId);
   if (eventId) refs.add(eventId);
   if (Array.isArray(doc.eventIds)) for (const id of doc.eventIds) if (typeof id === 'string' && id) refs.add(id);
+  const hiddenEventKeys = Array.isArray(doc.hiddenFromEvents) ? [...new Set(doc.hiddenFromEvents.filter((id): id is string => typeof id === 'string' && Boolean(id)))] : [];
+  const deletion: PhotoDeletion = doc.analyticsDeletion === 'manual'
+    ? 'manual'
+    : doc.consentStatus === 'expired'
+      ? (identityStatus === 'NO USER' || userId === 'anonymous' ? 'automatic_no_login' : 'automatic_other')
+      : null;
 
   const decisions = decisionsOf(doc.reviewHistory);
   const review: ReviewState = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : doc.reviewStatus === 'pending_review' ? 'waiting' : 'none';
@@ -224,6 +242,8 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
     createdAt,
     source,
     excluded: doc.isArchived === true ? 'archived' : mediaHealth.broken === true ? 'broken' : null,
+    deletion,
+    hiddenEventKeys,
     method,
     // A new photo stores the class itself (issue 521, phase 2, decision 243: no device string); an older photo stores the user agent, classified here at read time.
     device: storedDeviceClass(metadata.deviceClass) ?? deviceClassOf(metadata.deviceInfo ?? metadata.device),

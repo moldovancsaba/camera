@@ -26,6 +26,9 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport, jour
   add('scope', 'added by editors', report.scope.addedByEditors);
   add('scope', 'removed from the event (left out)', report.scope.removed);
   add('scope', 'picture gone (left out)', report.scope.brokenPictures);
+  add('scope', 'deleted automatically (NO USER)', report.scope.deletedAutomaticallyNoLogin);
+  add('scope', 'deleted automatically (registered identity)', report.scope.deletedAutomaticallyOther);
+  add('scope', 'deleted manually', report.scope.deletedManually);
   add('scope', 'first photo at', report.scope.firstPhotoAt);
   add('scope', 'last photo at', report.scope.lastPhotoAt);
 
@@ -33,6 +36,8 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport, jour
   add('photos', 'taken', photos.taken);
   add('photos', 'approved', photos.approved);
   add('photos', 'declined', photos.rejected);
+  add('photos', 'approved (including deleted photos)', report.outcomes.approved);
+  add('photos', 'declined (including deleted photos)', report.outcomes.rejected);
   add('photos', 'waiting', photos.waiting);
   add('photos', 'not vetted', photos.notVetted);
   add('photos', 'approval rate (0 to 1)', photos.approvalRate === null ? null : Math.round(photos.approvalRate * 1000) / 1000);

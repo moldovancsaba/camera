@@ -49,7 +49,7 @@ export default async function AllEventsAnalyticsPage({ searchParams }: { searchP
         report
           ? [
               { label: 'Photos taken', value: formatCount(report.photos.taken), iconKey: 'photo' as const },
-              { label: 'Approved', value: formatCount(report.photos.approved), iconKey: 'photo' as const },
+              { label: 'Approved', value: formatCount(report.outcomes.approved), iconKey: 'photo' as const },
               { label: 'Waiting', value: formatCount(report.photos.waiting), iconKey: 'photo' as const },
               { label: 'Users', value: formatCount(report.users.distinct), iconKey: 'users' as const },
             ]

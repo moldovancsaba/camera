@@ -32,6 +32,7 @@ import {
 import { dispatchPendingSubmissionEmailForSubmission } from '@/lib/email/submission-result-email';
 import { dispatchArrivedEmail } from '@/lib/email/triggers';
 import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
+import { recordManualPhotoDeletion } from '@/lib/analytics/photo-deletion';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { safeLinkUrl } from '@/lib/events/consent';
 
@@ -131,6 +132,9 @@ export const DELETE = withErrorHandler(async (
   // Files first, row second: a failed file delete answers 502 and keeps the row, so the same
   // request can simply be repeated (camera#211).
   const files = await deleteSubmissionFiles(db, submission);
+
+  // Preserve only the event-scoped analytics needed after this submission is permanently removed.
+  await recordManualPhotoDeletion(db, submission);
 
   // Permanently delete the submission
   const result = await db

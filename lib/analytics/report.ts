@@ -44,6 +44,8 @@ export interface ReportOptions {
   to?: string | null;
   /** The clock for "the oldest photo has waited", injected in tests. */
   now?: Date;
+  /** The event UUID lets the report distinguish a photo removed from one event but still filed under another. */
+  eventKey?: string;
 }
 
 export interface DurationStats {
@@ -77,6 +79,8 @@ export interface DayRow {
 
 export interface EventReport {
   options: { timeZone: string; from: string | null; to: string | null };
+  /** Full historical review totals, including archived, automatically deleted, and manually deleted photos. */
+  outcomes: { approved: number; rejected: number };
   /** The vocabulary the people and the reject reasons were counted with, so a screen and the counters for messmass read the same words. */
   vocabulary: ResolvedVocabulary;
   scope: {
@@ -86,6 +90,9 @@ export interface EventReport {
     /** Left out: removed from the event by an admin, and gone (the picture cannot be shown). */
     removed: number;
     brokenPictures: number;
+    deletedAutomaticallyNoLogin: number;
+    deletedAutomaticallyOther: number;
+    deletedManually: number;
     firstPhotoAt: string | null;
     lastPhotoAt: string | null;
   };
@@ -212,31 +219,43 @@ function durationStats(seconds: readonly number[]): DurationStats {
 }
 
 /** The photos the report counts for a range, and how many were left out. */
-function inScope(photos: readonly PhotoFacts[], options: ReportOptions): { counted: PhotoFacts[]; removed: number; broken: number } {
+function inScope(photos: readonly PhotoFacts[], options: ReportOptions): { counted: PhotoFacts[]; inRange: PhotoFacts[]; removed: number; broken: number; deletedAutomaticallyNoLogin: number; deletedAutomaticallyOther: number; deletedManually: number } {
   const counted: PhotoFacts[] = [];
+  const inRange: PhotoFacts[] = [];
   let removed = 0;
   let broken = 0;
+  let deletedAutomaticallyNoLogin = 0;
+  let deletedAutomaticallyOther = 0;
+  let deletedManually = 0;
   for (const photo of photos) {
     const day = localParts(photo.createdAt, options.timeZone)?.day;
     // A photo with no valid time cannot be put on a day: it is counted only when no range is asked for.
     if (day ? !dayInRange(day, options.from, options.to) : Boolean(options.from || options.to)) continue;
-    if (photo.excluded === 'archived') removed += 1;
+    inRange.push(photo);
+    const hiddenFromEvent = options.eventKey ? (photo.hiddenEventKeys ?? []).includes(options.eventKey) : Boolean(photo.hiddenEventKeys?.length);
+    if (photo.deletion === 'automatic_no_login') deletedAutomaticallyNoLogin += 1;
+    else if (photo.deletion === 'automatic_other') deletedAutomaticallyOther += 1;
+    else if (photo.deletion === 'manual' || photo.excluded === 'archived' || hiddenFromEvent) {
+      deletedManually += 1;
+      if (photo.excluded === 'archived') removed += 1;
+    }
     else if (photo.excluded === 'broken') broken += 1;
     else counted.push(photo);
   }
-  return { counted, removed, broken };
+  return { counted, inRange, removed, broken, deletedAutomaticallyNoLogin, deletedAutomaticallyOther, deletedManually };
 }
 
 export function buildEventReport(input: ReportInput, options: ReportOptions): EventReport {
   const now = options.now ?? new Date();
   const vocabulary = input.vocabulary ?? STANDARD_VOCABULARY;
-  const { counted, removed, broken } = inScope(input.photos, options);
+  const { counted, inRange, removed, broken, deletedAutomaticallyNoLogin, deletedAutomaticallyOther, deletedManually } = inScope(input.photos, options);
   const userPhotos = counted.filter((photo) => photo.source === 'user');
   const editorPhotos = counted.filter((photo) => photo.source === 'editor');
 
   // --- photos by state ---
   const approved = userPhotos.filter((photo) => photo.review === 'approved').length;
   const rejected = userPhotos.filter((photo) => photo.review === 'rejected').length;
+  const allUserPhotoRecords = inRange.filter((photo) => photo.source === 'user');
   const waitingPhotos = userPhotos.filter((photo) => photo.review === 'waiting');
   const waitingAges = waitingPhotos.map((photo) => secondsBetween(photo.submittedAt, now.toISOString())).filter((value): value is number => value !== null);
 
@@ -386,8 +405,12 @@ export function buildEventReport(input: ReportInput, options: ReportOptions): Ev
 
   return {
     options: { timeZone: options.timeZone, from: options.from || null, to: options.to || null },
+    outcomes: {
+      approved: allUserPhotoRecords.filter((photo) => photo.review === 'approved').length,
+      rejected: allUserPhotoRecords.filter((photo) => photo.review === 'rejected').length,
+    },
     vocabulary,
-    scope: { counted: counted.length, addedByEditors: editorPhotos.length, removed, brokenPictures: broken, firstPhotoAt: times[0] ?? null, lastPhotoAt: times[times.length - 1] ?? null },
+    scope: { counted: counted.length, addedByEditors: editorPhotos.length, removed, brokenPictures: broken, deletedAutomaticallyNoLogin, deletedAutomaticallyOther, deletedManually, firstPhotoAt: times[0] ?? null, lastPhotoAt: times[times.length - 1] ?? null },
     photos: {
       taken: userPhotos.length,
       approved,
@@ -495,6 +518,9 @@ export interface EventsTableRow {
   taken: number;
   approved: number;
   rejected: number;
+  deletedAutomaticallyNoLogin: number;
+  deletedAutomaticallyOther: number;
+  deletedManually: number;
   waiting: number;
   plays: number;
   users: number;
@@ -504,24 +530,27 @@ export interface EventsTableRow {
 /** One row per event for the all-events view: the same counts as the report, grouped by the event a photo is filed under. Busiest first. */
 export function buildEventsTable(photos: readonly PhotoFacts[], events: ReadonlyArray<{ key: string; name: string; id?: string }>, options: ReportOptions): EventsTableRow[] {
   const known = new Map(events.map((event) => [event.key, event]));
-  const keys = [...new Set(photos.map((photo) => photo.eventKey).filter((key): key is string => Boolean(key)))];
+  const keys = [...new Set(photos.flatMap((photo) => [...photo.eventKeys, ...(photo.hiddenEventKeys ?? [])]))];
   return keys
     .map((key) => {
-      const report = buildEventReport({ photos: photos.filter((photo) => photo.eventKey === key) }, options);
+      const report = buildEventReport({ photos: photos.filter((photo) => photo.eventKeys.includes(key) || (photo.hiddenEventKeys ?? []).includes(key)) }, { ...options, eventKey: key });
       return {
         key,
         id: known.get(key)?.id ?? null,
         name: known.get(key)?.name ?? key,
         taken: report.photos.taken,
-        approved: report.photos.approved,
-        rejected: report.photos.rejected,
+        approved: report.outcomes.approved,
+        rejected: report.outcomes.rejected,
+        deletedAutomaticallyNoLogin: report.scope.deletedAutomaticallyNoLogin,
+        deletedAutomaticallyOther: report.scope.deletedAutomaticallyOther,
+        deletedManually: report.scope.deletedManually,
         waiting: report.photos.waiting,
         plays: report.screens.plays,
         users: report.users.distinct,
         avgDecisionSeconds: report.vetting.timeToFirstDecision.avgSeconds,
       };
     })
-    .filter((row) => row.taken > 0 || row.plays > 0)
+    .filter((row) => row.taken > 0 || row.plays > 0 || row.deletedAutomaticallyNoLogin > 0 || row.deletedAutomaticallyOther > 0 || row.deletedManually > 0)
     .sort((a, b) => b.taken - a.taken || a.name.localeCompare(b.name));
 }
 
