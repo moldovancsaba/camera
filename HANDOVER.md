@@ -5,6 +5,8 @@
 
 ## Current change
 
+The owner confirms all photos in the affected event received the required consent on the login page. The stored submissions did not contain the consent records, so their public share links returned “Photo Not Found.” The current fix appends the exact browser-retained consent to the same saved submission after SSO returns, defers approval links until consent is persisted, and lets authorized admins inspect the image while consent is pending. Existing affected rows need an owner-authorized, audited recovery; this code does not fabricate per-checkbox evidence. See the newest entry in `RELEASE_NOTES.md`.
+
 Analytics now includes average and median time from the first capture page to the first saved photo, CTA click-through, selected sign-in/identity method shares, rejection-reason percentages, and returning/new shares among identifiable photo submitters. Exact denominators, collection fields and retention are in `docs/ANALYTICS_DATA_DICTIONARY.md`. Journey remains anonymous; Google/Facebook values are provider-route selections, not confirmed authentication results.
 
 The guest photo is uploaded through the established `/api/submissions` flow when they confirm the crop with **TOVÁBB**. The reframe screen shows upload progress, and the flow advances only after the submission is stored. A failed upload leaves the photo on screen for retry. An unauthenticated record is flagged `NO USER`; a later SSO login links it to the account.

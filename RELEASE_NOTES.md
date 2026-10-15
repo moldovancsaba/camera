@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — persist login-page consent before exposing approved photos (2026-10-15)
+
+- **Fixed:** after same-tab SSO returns to the saved selfie, the capture flow now appends the consent the guest ticked on the login page to that exact submission before continuing. Previously it restored the checkbox state in the browser but left the saved photo marked as awaiting consent.
+- **Fixed:** approval no longer sends a public share link while required consent is pending. For new photos approved first, the link email is sent after the consent record is saved. The admin gallery opens the stored image directly for authorized admins while consent is still pending.
+- **Existing event photos:** the owner confirms all photos in the affected event received consent. Their stored records still need a narrowly scoped, auditable recovery before their existing links can open; no consent evidence is fabricated by this code change.
+- **Verified locally:** type-check, lint, production build, and inventory check passed. The build reports the existing Google Fonts CSS `@import` ordering warning. Unit tests and GitHub Verify remain for the pull request.
+
 ## Unreleased — complete the capture analytics audit and requested measures (2026-10-14)
 
 - **Added:** Journey Analytics now reports average and median time from capture-page open to first saved photo, unique CTA click-through, and shares of Google, Facebook and Pseudo identity-route choices. These are event-scoped counts; provider entries are selections, not successful sign-ins.
@@ -6188,3 +6195,10 @@ See ROADMAP.md for complete future planning.
 ---
 
 **Note**: All completed tasks are moved from TASKLIST.md to this file immediately upon completion, maintaining a complete historical record of development progress.
+## Unreleased — keep consent given on the post-upload login page
+
+- **Fixed:** after a guest ticks acceptance on the login page and returns from same-tab SSO, the flow now writes the remembered consent records to the saved photo before advancing. This prevents a photo the guest consented to from remaining `consentStatus: pending`, which kept its approved share link on Photo Not Found.
+- **Fixed:** an approval email is deferred while required consent is genuinely pending; if a guest records consent after moderation approved the photo, the share link is sent then.
+- **Changed:** the admin gallery's View action opens the stored image directly while a photo's consent is pending, so an editor can inspect it without making the public share page available.
+- **Verified:** unit checks and GitHub Verify.
+- **Not done:** no exact historical consent text or timestamp is reconstructed for previously affected submissions.

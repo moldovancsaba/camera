@@ -336,6 +336,10 @@ package it is off for every event, so none of the behaviour below applies yet.
 - **Pending photos in the Blob store** are referenced by `photoReview.photoUrl`, so the orphan finder does not report them and deleting the
   submission deletes the file.
 
+### Approved link says “Photo Not Found” after login-page consent
+
+If an approved submission's thumbnail is present but its share page says the photo is unavailable, the saved record may still be awaiting required acceptance from the post-upload Who-are-you page. That acceptance must be appended to the same submission after SSO returns; until it is saved, public share routes keep the photo private. The capture flow now persists the remembered consent before advancing, and approval mail is deferred until consent is recorded. For older submissions affected before this fix, use an owner-authorized, audited recovery based on the owner's confirmation; do not invent individual checkbox text or acceptance timestamps.
+
 ### Turning photo vetting on (camera#271)
 
 1. **One event first.** A global admin opens the event's **Vetting** tab (`/admin/events/<id>/vetting`) and presses *Turn vetting on*. Take a

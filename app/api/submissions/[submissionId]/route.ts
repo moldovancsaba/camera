@@ -32,6 +32,7 @@ import {
 import { dispatchPendingSubmissionEmailForSubmission } from '@/lib/email/submission-result-email';
 import { dispatchArrivedEmail } from '@/lib/email/triggers';
 import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
+import { sendApprovedLinkAfterConsent } from '@/lib/photo-vetting/review';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { safeLinkUrl } from '@/lib/events/consent';
 
@@ -296,7 +297,7 @@ export const PATCH = withErrorHandler(async (
     if (next.length > 0) {
       const now = new Date().toISOString();
       const acceptedAny = next.some((record) => record.accepted) && submission.consentPendingReason !== 'gallery';
-      await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+      const consentUpdate = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
         { _id: objectId },
         {
           $push: { consents: { $each: next } },
@@ -310,6 +311,13 @@ export const PATCH = withErrorHandler(async (
           ...(acceptedAny && submission.consentStatus === 'pending' ? { $unset: { consentExpiresAt: '', consentPendingReason: '', consentShareOptIn: '' } } : {}),
         },
       );
+      if (consentUpdate.modifiedCount === 1 && acceptedAny && submission.consentStatus === 'pending' && submission.reviewStatus === 'approved') {
+        // Approval can happen while this required login-page checkbox is still awaiting its record. Once this
+        // PATCH makes the photo public, send the link now instead of leaving an approved photo unreachable.
+        runAfterResponse(async () => {
+          await sendApprovedLinkAfterConsent(db, objectId);
+        });
+      }
     }
     return apiSuccess({ submissionId, action, appendedConsents: next.length });
   }
