@@ -1,5 +1,9 @@
 # Messages in the capture flow (owner feedback 2026-10-09, MTK x Vasas)
 
+## One loading message
+
+Every visible loading state in the capture page uses the same `event.loading` text-level key. Edit it at **Event → Texts**, search for `event.loading`, and select the event's language. A custom value saved in the old event `loadingText` field is presented there as the event's own wording; saving Event Texts migrates and clears the old field. The route-level fallback has only an accessible hidden label and no visible copy, so it cannot flash a second loading phrase before the event's configured text appears.
+
 On the real MTK x Vasas event the owner sent two phone screenshots: "Fotó mentése..." (saving) drawn straight over the photo, and a pop-up repeating the words of the card under it while the page behind had turned dark teal instead of the event's blue. His words: messages overlap each other, there are too many types and styles of messages, and the colours show the theme from messmass was not imported properly.
 
 ## What was wrong (read from the code and the real event)

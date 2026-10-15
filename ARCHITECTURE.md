@@ -446,6 +446,8 @@ every level (global, partner, event): **an event follows its partner and the par
 never overridden by a later change above.** For text levels, a missing key inherits while an explicit empty string hides that text. Implemented for the logo slots (`lib/slots/*`), the text levels (`lib/i18n/overrides.ts`: the code dictionary, the Dictionary, a partner's Texts, an
 event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`), the partner's default language (`eventLanguage`) and the legal part of the e-mails (`lib/email/legal*.ts`).
 
+The capture loading label is `event.loading` at the same text levels. The legacy `Event.loadingText` is surfaced as the event's own wording until Event → Texts is saved, then removed; all capture loading states read the same resolved key. The route-level loading boundary stays text-free because it runs before an event's language is known.
+
 ## 15. Frames, layouts and messages at an event
 
 ([docs/FRAME_LAYOUT_SELECTION_PLAN.md](docs/FRAME_LAYOUT_SELECTION_PLAN.md), [docs/FRAME_MESSAGE_SELECTION_CONSISTENCY.md](docs/FRAME_MESSAGE_SELECTION_CONSISTENCY.md), [docs/DEFAULT_FRAME_PLAN.md](docs/DEFAULT_FRAME_PLAN.md), [docs/LIBRARIES.md](docs/LIBRARIES.md).)

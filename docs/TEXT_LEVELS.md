@@ -14,6 +14,8 @@ Every default text of the user journey is a key of the dictionary (`lib/i18n/mes
 
 A level stores **only what an editor wrote**, per language (`{ en: { key: text }, hu: { ... } }`); where it wrote nothing it looks at the level above each time. A new partner or event therefore starts with nothing stored and shows what its parent shows, and a wording written at a level is its own and never changed by a later change above. A missing key means "use the one from above". An empty string is an explicit hide, allowing an editor to suppress a dictionary label such as “(optional)” without changing the dictionary for other events.
 
+The old `Event.loadingText` field is migrated into the event's `event.loading` wording when the event is read. It appears as the event's own value under **Event → Texts** (search `event.loading`); saving that editor removes the old field. All visible capture loading states use this same resolved text. The route-level suspense fallback has no visible wording because it runs before the event language and text levels are available.
+
 ## What a wording may be
 
 Plain text, at most 500 characters, no `<` or `>` (nothing is ever rendered as markup, e-mails included), and a text that has `{name}` markers keeps **exactly the same markers** as the dictionary text, so a changed wording can never break the place where a value is filled in. The check is the same in the editor (shown under the input), in the routes (400 with the reason) and when a stored value is read (a wording that no longer passes, for example after a key was renamed, is dropped alone; the rest is kept). `lib/i18n/overrides.ts`.

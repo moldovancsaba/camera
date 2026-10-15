@@ -11,6 +11,7 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { en, type MessageKey } from '@/lib/i18n/messages.en';
+import { hu } from '@/lib/i18n/messages.hu';
 import { UI_LANGUAGES, isUiLanguage, normalizeUiLanguage, type UiLanguage } from '@/lib/i18n';
 
 export const TEXT_MAX = 500;
@@ -113,7 +114,8 @@ export async function savePartnerTexts(db: Db, partnerId: string, texts: TextsBy
 }
 
 export async function saveEventTexts(db: Db, eventId: string, texts: TextsByLanguage, now: string): Promise<boolean> {
-  const result = await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId }, { $set: { texts, updatedAt: now } });
+  // Saving the text-level editor migrates the old single-language loading field into `texts.event.loading`.
+  const result = await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId }, { $set: { texts, updatedAt: now }, $unset: { loadingText: '' } });
   return result.matchedCount > 0;
 }
 
@@ -147,6 +149,18 @@ export interface EventTexts {
 export async function loadEventTexts(db: Db, event: Document, partner?: Document | null): Promise<EventTexts> {
   const partnerDoc = partner === undefined ? (typeof event.partnerId === 'string' && event.partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null) : partner;
   const language = eventLanguage(event, partnerDoc);
-  const levels = { global: await getGlobalTexts(db), partner: storedTexts(partnerDoc?.texts), event: storedTexts(event.texts) };
+  const eventTexts = storedTexts(event.texts);
+  // `loadingText` predates the text levels. Keep a custom legacy value editable in Event → Texts and
+  // make every loading state use the same event → partner → global → dictionary resolution.
+  const legacyLoadingText = typeof event.loadingText === 'string' ? event.loadingText.trim() : '';
+  if (
+    legacyLoadingText &&
+    legacyLoadingText !== en['event.loading'] &&
+    legacyLoadingText !== hu['event.loading'] &&
+    !Object.prototype.hasOwnProperty.call(eventTexts[language] ?? {}, 'event.loading')
+  ) {
+    eventTexts[language] = { ...(eventTexts[language] ?? {}), 'event.loading': legacyLoadingText };
+  }
+  const levels = { global: await getGlobalTexts(db), partner: storedTexts(partnerDoc?.texts), event: eventTexts };
   return { language, overrides: overridesFor(language, levels.global, levels.partner, levels.event), levels, partner: partnerDoc ?? null };
 }
