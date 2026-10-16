@@ -67,6 +67,8 @@ export interface WhoAreYouMarketingOptIn {
 
 export interface WhoAreYouPageProps {
   config: WhoAreYouPageConfig;
+  /** Existing guest contact carried into a later photo's contact step. */
+  initialData?: Partial<WhoAreYouPageData>;
   /** Present when the event shows its acceptance here instead of on a page of its own. */
   acceptance?: WhoAreYouAcceptance;
   marketingOptIn?: WhoAreYouMarketingOptIn;
@@ -90,6 +92,7 @@ export interface WhoAreYouPageProps {
 
 export default function WhoAreYouPage({
   config,
+  initialData,
   acceptance,
   marketingOptIn,
   onNext,
@@ -107,8 +110,8 @@ export default function WhoAreYouPage({
   onDraftChange,
 }: WhoAreYouPageProps) {
   const { t, own } = useT();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(initialData?.name ?? '');
+  const [email, setEmail] = useState(initialData?.email ?? '');
   const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
   const pendingDraftSave = useRef<Promise<boolean>>(Promise.resolve(true));
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
