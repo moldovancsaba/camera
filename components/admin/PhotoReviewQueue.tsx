@@ -9,7 +9,7 @@
  * tabs and the list always show what the server holds, also when an answer never arrives.
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -106,14 +106,40 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
   const [rejectNote, setRejectNote] = useState('');
   const [progress, setProgress] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [newPhotosCount, setNewPhotosCount] = useState(0);
+  const previousPhotoIds = useRef<Set<string> | null>(null);
 
-  // The Waiting list asks the server for new photos by itself (camera#373), so an approver at the match does not have to reload the page.
+  // The Waiting list asks the server for new photos by itself (camera#373), including when an approver returns to this tab after it was in the background.
   useEffect(() => {
-    const timer = setInterval(() => {
+    const refreshIfReady = () => {
       if (shouldRefreshWaiting({ status, hidden: document.visibilityState === 'hidden', deciding: busy.length > 0, rejecting: rejecting !== null })) router.refresh();
-    }, WAITING_REFRESH_MS);
-    return () => clearInterval(timer);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshIfReady();
+    };
+    const onPageShow = () => refreshIfReady();
+    const timer = setInterval(refreshIfReady, WAITING_REFRESH_MS);
+    window.addEventListener('focus', refreshIfReady);
+    window.addEventListener('pageshow', onPageShow);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refreshIfReady);
+      window.removeEventListener('pageshow', onPageShow);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [status, busy.length, rejecting, router]);
+
+  // A refresh should be visible to the reviewer, especially when the one-at-a-time screen has an active photo open.
+  useEffect(() => {
+    const ids = new Set(initialItems.map((item) => item.id));
+    const previous = previousPhotoIds.current;
+    if (status === 'pending_review' && previous) {
+      const added = [...ids].filter((id) => !previous.has(id)).length;
+      if (added > 0) setNewPhotosCount((count) => count + added);
+    }
+    previousPhotoIds.current = ids;
+  }, [initialItems, status]);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const allIds = useMemo(() => items.map((item) => item.id), [items]);
@@ -264,6 +290,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
       ) : null}
 
       {notice ? <InlineAlert title={notice.title} message={notice.message} severity={notice.severity} /> : null}
+      {newPhotosCount > 0 && status === 'pending_review' ? <InlineAlert title="More photos are waiting" message={`${newPhotosCount} more ${newPhotosCount === 1 ? 'photo is' : 'photos are'} waiting for vetting.`} severity="success" /> : null}
 
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))' }}>
         {items.map((item) => {
