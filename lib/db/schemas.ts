@@ -851,7 +851,7 @@ export interface Submission {
   } | null;
   shareToken?: string | null;        // Opaque share id of a vetted photo (/share/<token>); older photos use their database id
   /**
-   * The people marked at vetting (issue 542, lib/photo-vetting/people.ts): per person a rectangle in percent of the photo, one of the 8 person buttons (gender and age), an emotion and
+   * The people marked during vetting or later on Photo analysis (issue 542, lib/photo-vetting/people.ts): per person a rectangle in percent of the photo, one of the 8 person buttons (gender and age), an emotion and
    * merchandise. Missing: nobody looked yet; an empty list: looked, nobody marked. `peopleReview` says who marked them and when. Used by the analytics.
    */
   people?: PersonTag[];

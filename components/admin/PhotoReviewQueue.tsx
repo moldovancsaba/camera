@@ -328,9 +328,6 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
               );
             }
             actions.push(
-              <Link key="analysis" href={`/admin/events/${eventId}/vetting/review?analysis=${item.id}`} style={{ textDecoration: 'none' }}>
-                <SemanticButton action="photo-review:update-analysis" size="xs" variant="secondary">Update analysis</SemanticButton>
-              </Link>,
               <Link key="view" href={`/share/${item.id}`} style={{ textDecoration: 'none' }}>
                 <SemanticButton action="photo-review:view-photo" size="xs" variant="secondary">View</SemanticButton>
               </Link>

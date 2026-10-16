@@ -27,6 +27,7 @@ import { loadGallerySubmissions } from '@/lib/gallery/submissions';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { collectEventSpecificStats, type EventSpecificStats } from '@/lib/events/stats';
+import { countPhotoAnalysisQueue } from '@/lib/photo-vetting/queue';
 
 interface EventFrameDetails {
   frameId: string;
@@ -137,6 +138,7 @@ export default async function EventDetailPage({
   let event: EventDoc | null = null;
   let partner: PartnerDoc | null = null;
   let photoCount = 0;
+  let photoAnalysisCounts = { needs_analysis: 0, analysed: 0 };
   let slideshows: SlideshowDoc[] = [];
   let slideshowLayouts: SlideshowLayoutDoc[] = [];
   let landingPages: LandingPageDoc[] = [];
@@ -175,6 +177,7 @@ export default async function EventDetailPage({
 
     // The gallery has its own page; the overview only says how many photos it holds (camera#488).
     photoCount = (await loadGallerySubmissions(db, event.eventId, 1)).total;
+    photoAnalysisCounts = await countPhotoAnalysisQueue(db, event.eventId);
 
     slideshows = (await db
       .collection(COLLECTIONS.SLIDESHOWS)
@@ -393,6 +396,20 @@ export default async function EventDetailPage({
               </Button>
             </Group>
           </Card>
+
+          {canManageEvent ? (
+            <Card>
+              <Title order={3}>Photo analysis</Title>
+              <Text size="sm" c="dimmed" mt="xs" mb="md">
+                {photoAnalysisCounts.needs_analysis} photo{photoAnalysisCounts.needs_analysis === 1 ? '' : 's'} need analysis; {photoAnalysisCounts.analysed} already analysed. This work is separate from approve/reject.
+              </Text>
+              <Group grow>
+                <Button component="a" href={`/admin/events/${id}/analysis`} variant="light">
+                  Open Photo analysis
+                </Button>
+              </Group>
+            </Card>
+          ) : null}
         </Stack>
 
         <StyleSections
