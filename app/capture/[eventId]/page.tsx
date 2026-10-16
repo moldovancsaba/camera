@@ -55,7 +55,7 @@ import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep
 import { type FullFrameCapture } from '@/lib/camera/frame-capture';
 import { frameSilhouette } from '@/lib/frame/silhouette';
 import { frameWithSelectionDisplay, pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
-import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
+import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, fitting, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
 import { storedFrameSelection } from '@/lib/frame/selection';
 import FrameMessageSelectionPage from '@/components/capture/FrameMessageSelectionPage';
 import { DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID, withFrameMessageSelectionPage } from '@/lib/events/default-pages';
@@ -930,7 +930,22 @@ export default function EventCapturePage({
   // reframe step (camera#209), whose default is the largest crop that fills the frame.
   const handleCameraCapture = (capture: FullFrameCapture) => {
     // Without the editor's setting a random image is picked for this shutter press; with it the image was drawn when the camera step opened.
-    if (generatedFrame && !selection) {
+    if (selection && selectionFrame) {
+      // The camera can be used before the effect that prepares its selected design has run (most visible on the message-only page).
+      // Resolve it at the shutter too, and discard a stale design if the guest changed their message just before taking the photo.
+      const allowed = fitting(selectionFrame, choice);
+      const selectedImageUrl = selectedFrame?.generated ? selectedFrame.imageUrl : null;
+      const currentIsAllowed = Boolean(
+        selectedImageUrl && allowed.some((variant) => variant.imageUrl === selectedImageUrl),
+      );
+      if (!currentIsAllowed) {
+        const variant = drawVariant(selectionFrame, choice, lastDrawKey.current);
+        if (variant) {
+          lastDrawKey.current = variantKeyOf(variant);
+          setSelectedFrame(variantFrame(variant));
+        }
+      }
+    } else if (generatedFrame && !selection) {
       const variant = pickVariant(generatedFrame, lastVariantIndex.current);
       if (variant) {
         lastVariantIndex.current = variant.index;
@@ -993,6 +1008,14 @@ export default function EventCapturePage({
     if (!compositeImage || !event) return;
 
     clearCaptureNotices();
+    if (selection && selectionFrame) {
+      const allowed = fitting(selectionFrame, choice);
+      const selectedImageUrl = selectedFrame?.generated ? selectedFrame.imageUrl : null;
+      if (!selectedImageUrl || !allowed.some((variant) => variant.imageUrl === selectedImageUrl)) {
+        notifyCapture('error', errorFrameMessage);
+        return;
+      }
+    }
     setIsSaving(true);
     journey.uploadStarted(captureMethod ?? 'system');
 
@@ -1146,7 +1169,8 @@ export default function EventCapturePage({
     void handleSaveRef.current();
   }, [saveRequested, compositeImage, isSaving]);
 
-  const updateSubmissionContact = async (submissionId: string, userInfo: WhoAreYouPageData) => {
+  type SubmissionWriteResult = { ok: true } | { ok: false; status?: number };
+  const updateSubmissionContact = async (submissionId: string, userInfo: WhoAreYouPageData): Promise<SubmissionWriteResult> => {
     try {
       const response = await fetch(`/api/submissions/${submissionId}`, {
         method: 'PATCH',
@@ -1160,29 +1184,55 @@ export default function EventCapturePage({
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.warn('Could not persist guest contact on submission:', response.status, errorData);
-        return false;
+        return { ok: false, status: response.status };
       }
 
-      return true;
+      return { ok: true };
     } catch (error) {
       console.warn('Could not persist guest contact on submission:', error);
+      return { ok: false };
+    }
+  };
+
+  const updateSubmissionContactDraft = async (userInfo: Partial<WhoAreYouPageData>) => {
+    if (flowPhase !== 'presubmit' || !savedSubmissionId) return true;
+    try {
+      const response = await fetch(`/api/submissions/${savedSubmissionId}`, {
+        method: 'PATCH',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save_user_info_draft', userInfo }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('Could not autosave guest contact on submission:', response.status, errorData);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.warn('Could not autosave guest contact on submission:', error);
       return false;
     }
   };
 
-  const updateSubmissionConsents = async (submissionId: string, consents: CollectedData['consents']) => {
-    if (consents.length === 0) return true;
-    const response = await fetch(`/api/submissions/${submissionId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'append_consents', consents }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.warn('Could not persist consent on submission:', response.status, errorData);
-      return false;
+  const updateSubmissionConsents = async (submissionId: string, consents: CollectedData['consents']): Promise<SubmissionWriteResult> => {
+    if (consents.length === 0) return { ok: true };
+    try {
+      const response = await fetch(`/api/submissions/${submissionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'append_consents', consents }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('Could not persist consent on submission:', response.status, errorData);
+        return { ok: false, status: response.status };
+      }
+      return { ok: true };
+    } catch (error) {
+      console.warn('Could not persist consent on submission:', error);
+      return { ok: false };
     }
-    return true;
   };
 
   const finalizeSubmissionEmail = useCallback(async (submissionId: string, userInfo?: WhoAreYouPageData | null) => {
@@ -1421,10 +1471,17 @@ export default function EventCapturePage({
 
     // The submission already exists because TOVÁBB uploaded it before this page.
     if (savedSubmissionId) {
-      await updateSubmissionContact(savedSubmissionId, data);
+      const contactSave = await updateSubmissionContact(savedSubmissionId, data);
+      if (!contactSave.ok) {
+        // Do not let a guest leave the contact step with an address that only exists in client state.
+        // The decision email and the admin contact details both depend on this write succeeding.
+        notifyCapture('error', contactSave.status ? t('flow.serverError', { status: contactSave.status }) : t('flow.unexpectedError'));
+        return;
+      }
       const consents = [...collectedData.consents, ...declinedAcceptance()];
-      if (!(await updateSubmissionConsents(savedSubmissionId, consents))) {
-        notifyCapture('error', t('flow.serverError', { status: 500 }));
+      const consentSave = await updateSubmissionConsents(savedSubmissionId, consents);
+      if (!consentSave.ok) {
+        notifyCapture('error', consentSave.status ? t('flow.serverError', { status: consentSave.status }) : t('flow.unexpectedError'));
         return;
       }
     }
@@ -1439,9 +1496,12 @@ export default function EventCapturePage({
   const handleConsentComplete = async (page: CustomPage, data: AcceptPageData | CTAPageData) => {
     // A consent page with several checkboxes leaves one record per checkbox: its exact text, its link and the time (camera#330).
     const consents = [...collectedData.consents, ...consentRecords({ pageId: page.pageId, pageType: page.pageType as 'accept' | 'cta', checkboxText: page.config.checkboxText }, data)];
-    if (savedSubmissionId && !(await updateSubmissionConsents(savedSubmissionId, consents))) {
-      notifyCapture('error', t('flow.serverError', { status: 500 }));
-      return;
+    if (savedSubmissionId) {
+      const consentSave = await updateSubmissionConsents(savedSubmissionId, consents);
+      if (!consentSave.ok) {
+        notifyCapture('error', consentSave.status ? t('flow.serverError', { status: consentSave.status }) : t('flow.unexpectedError'));
+        return;
+      }
     }
     setCollectedData(prev => ({ ...prev, consents }));
     // A sign-in on a later page leaves this page and comes back: what was accepted is kept for it (issue 523).
@@ -1721,6 +1781,7 @@ export default function EventCapturePage({
       case 'who-are-you':
         return (
           <WhoAreYouPage
+            initialData={flowPhase === 'presubmit' ? collectedData.userInfo : undefined}
             config={{
               title: currentPage.config.title,
               description: currentPage.config.description,
@@ -1745,6 +1806,7 @@ export default function EventCapturePage({
             captureSubmissionId={flowPhase === 'presubmit' ? savedSubmissionId : null}
             captureSourceSlug={sourceLinkSlug}
             onBeforeSocialLogin={flowPhase === 'presubmit' ? prepareCaptureForSocialLogin : undefined}
+            onDraftChange={flowPhase === 'presubmit' ? updateSubmissionContactDraft : undefined}
             onNext={handleWhoAreYouComplete}
             acceptance={
               acceptanceBox

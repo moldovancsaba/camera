@@ -12,7 +12,7 @@
  * - Stores data in submission for audit trail
  */
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { loginOptions } from '@/lib/events/identity-page';
 import { useT } from '@/components/i18n/UiLanguageProvider';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
@@ -67,10 +67,14 @@ export interface WhoAreYouMarketingOptIn {
 
 export interface WhoAreYouPageProps {
   config: WhoAreYouPageConfig;
+  /** Existing guest contact carried into a later photo's contact step. */
+  initialData?: Partial<WhoAreYouPageData>;
   /** Present when the event shows its acceptance here instead of on a page of its own. */
   acceptance?: WhoAreYouAcceptance;
   marketingOptIn?: WhoAreYouMarketingOptIn;
-  onNext: (data: WhoAreYouPageData) => void;
+  onNext: (data: WhoAreYouPageData) => void | Promise<void>;
+  /** Save what the guest has typed after leaving either field; the final button still validates the complete address. */
+  onDraftChange?: (data: Partial<WhoAreYouPageData>) => Promise<boolean>;
   onBack?: () => void;
   logoUrl?: string | null;
   brandColor?: string;
@@ -88,6 +92,7 @@ export interface WhoAreYouPageProps {
 
 export default function WhoAreYouPage({
   config,
+  initialData,
   acceptance,
   marketingOptIn,
   onNext,
@@ -102,11 +107,14 @@ export default function WhoAreYouPage({
   captureSubmissionId,
   captureSourceSlug,
   onBeforeSocialLogin,
+  onDraftChange,
 }: WhoAreYouPageProps) {
   const { t, own } = useT();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(initialData?.name ?? '');
+  const [email, setEmail] = useState(initialData?.email ?? '');
   const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
+  const pendingDraftSave = useRef<Promise<boolean>>(Promise.resolve(true));
+  const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // With the acceptance on this page nothing works until its box is ticked.
   const [accepted, setAccepted] = useState(acceptance?.checked === true);
   const acceptanceRequired = acceptance?.required !== false;
@@ -141,11 +149,40 @@ export default function WhoAreYouPage({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
+  const saveDraft = useCallback(() => {
+    if (!onDraftChange) return;
+    if (draftSaveTimer.current) {
+      clearTimeout(draftSaveTimer.current);
+      draftSaveTimer.current = null;
+    }
+    const draft = { name: name.trim(), email: email.trim() };
+    if (!draft.name && !draft.email) return;
+    // Keep field-blur writes in order so a slower partial write cannot overwrite a newer address.
+    pendingDraftSave.current = pendingDraftSave.current
+      .catch(() => false)
+      .then(() => onDraftChange(draft));
+  }, [email, name, onDraftChange]);
+
+  // Persist guest contact while they type, not only when they press Continue. A short
+  // debounce limits requests; blur and Continue still flush the newest value immediately.
+  useEffect(() => {
+    if (!onDraftChange || (!name.trim() && !email.trim())) return;
+    draftSaveTimer.current = setTimeout(saveDraft, 350);
+    return () => {
+      if (draftSaveTimer.current) {
+        clearTimeout(draftSaveTimer.current);
+        draftSaveTimer.current = null;
+      }
+    };
+  }, [email, name, onDraftChange, saveDraft]);
+
+  const handleNext = async () => {
     if (locked) return;
     if (validate()) {
+      saveDraft();
+      await pendingDraftSave.current.catch(() => false);
       journey.record('login.method', 'pseudo');
-      onNext({
+      await onNext({
         name: name.trim(),
         email: email.trim(),
       });
@@ -248,6 +285,7 @@ export default function WhoAreYouPage({
                 setErrors((current) => ({ ...current, name: undefined }));
               }
             }}
+            onBlur={saveDraft}
             onKeyDown={handleKeyPress}
             placeholder={own(['login.namePlaceholderEditor', 'login.namePlaceholder'], config.namePlaceholder)}
             disabled={locked}
@@ -266,6 +304,7 @@ export default function WhoAreYouPage({
                 setErrors((current) => ({ ...current, email: undefined }));
               }
             }}
+            onBlur={saveDraft}
             onKeyDown={handleKeyPress}
             placeholder={own(['login.emailPlaceholderEditor', 'login.emailPlaceholder'], config.emailPlaceholder)}
             disabled={locked}

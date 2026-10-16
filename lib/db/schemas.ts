@@ -851,7 +851,7 @@ export interface Submission {
   } | null;
   shareToken?: string | null;        // Opaque share id of a vetted photo (/share/<token>); older photos use their database id
   /**
-   * The people marked at vetting (issue 542, lib/photo-vetting/people.ts): per person a rectangle in percent of the photo, one of the 8 person buttons (gender and age), an emotion and
+   * The people marked during vetting or later on Photo analysis (issue 542, lib/photo-vetting/people.ts): per person a rectangle in percent of the photo, one of the 8 person buttons (gender and age), an emotion and
    * merchandise. Missing: nobody looked yet; an empty list: looked, nobody marked. `peopleReview` says who marked them and when. Used by the analytics.
    */
   people?: PersonTag[];
@@ -876,6 +876,12 @@ export interface Submission {
     name?: string;                   // User's name from onboarding form
     email?: string;                  // User's email from onboarding form
     collectedAt: string;             // ISO 8601 timestamp when data was collected
+  };
+  /** Values autosaved while the post-photo contact form is being completed; promoted to userInfo on Continue. */
+  userInfoDraft?: {
+    name?: string;
+    email?: string;
+    updatedAt: string;
   };
   
   // Consent records from accept/CTA pages
@@ -936,6 +942,19 @@ export interface Submission {
     emailFailedAt?: string;          // ISO 8601 timestamp if delivery failed
     emailError?: string;             // Error message if email failed
     shareUrl?: string;               // Public share URL emailed to the user
+    /** A vetted decision email waits here when moderation finishes before the guest's email is collected. */
+    approvalEmailPending?: boolean;
+    rejectionEmailPending?: boolean;
+    rejectionEmailSent?: boolean;
+    rejectionEmailAt?: string;
+    rejectionEmailSkipReason?: string | null;
+    rejectionEmailRecipient?: string;
+    rejectionEmailProvider?: string;
+    rejectionEmailMessageId?: string | null;
+    rejectionEmailError?: string | null;
+    /** Atomic short-lived claim prevents duplicate decision emails when login callbacks race. */
+    decisionEmailSending?: boolean;
+    decisionEmailSendingAt?: string;
   };
   
   // Sharing and engagement
