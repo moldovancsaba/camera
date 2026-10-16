@@ -367,10 +367,12 @@ export const PATCH = withErrorHandler(async (
         {
           $set: {
             userInfo: userInfoPayload,
+            // Preserve the address entered by a guest in the fields used by admin lists
+            // and legacy email flows. A logged-in account remains the primary identity.
+            userEmail: session?.user?.email || userInfoPayload.email,
+            userName: session?.user?.name || userInfoPayload.name,
             ...(session?.user?.id ? {
               userId: session.user.id,
-              userEmail: session.user.email || userInfoPayload.email,
-              userName: session.user.name || userInfoPayload.name,
               'metadata.identityStatus': 'REGISTERED',
             } : {}),
           },
