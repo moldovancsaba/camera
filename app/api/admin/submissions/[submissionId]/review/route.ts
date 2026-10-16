@@ -106,6 +106,6 @@ export const POST = withErrorHandler(async (
     submissionId,
     reviewStatus: action === 'approve' || action === 'retry_approval_email' ? 'approved' : action === 'reject' ? 'rejected' : 'pending_review',
     email: result.email,
-    emailDeferred: 'emailDeferred' in result && result.emailDeferred === true,
+    ...('emailDeferred' in result && result.emailDeferred === true ? { emailDeferred: true } : {}),
   });
 });
