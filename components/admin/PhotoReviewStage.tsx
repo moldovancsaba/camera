@@ -197,7 +197,7 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
         setError(failure instanceof Error ? failure.message : 'The decision could not be saved');
         return;
       }
-      onDecided(item.id, decisionNotice(action, answer.email));
+      onDecided(item.id, decisionNotice(action, answer.email, answer.emailDeferred === true));
     } finally {
       setBusy(null);
       onWorking(false);
@@ -234,7 +234,7 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
         <strong data-review-position>
           {analysisOnly ? `Updating analysis ${position} of ${total}` : `Photo ${position} of ${total} waiting`}
         </strong>
-        {item.email ? <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{item.email}</span> : null}
+        <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{item.identityLabel}</span>
       </div>
       <p style={DIMMED} data-review-help>
         {analysisOnly ? 'Update the people marked on this photo. Saving changes the analysis only; visibility stays the same.' : markPeople

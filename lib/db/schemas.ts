@@ -877,6 +877,12 @@ export interface Submission {
     email?: string;                  // User's email from onboarding form
     collectedAt: string;             // ISO 8601 timestamp when data was collected
   };
+  /** Values autosaved while the post-photo contact form is being completed; promoted to userInfo on Continue. */
+  userInfoDraft?: {
+    name?: string;
+    email?: string;
+    updatedAt: string;
+  };
   
   // Consent records from accept/CTA pages
   // Empty array if no consent pages in event flow
@@ -936,6 +942,19 @@ export interface Submission {
     emailFailedAt?: string;          // ISO 8601 timestamp if delivery failed
     emailError?: string;             // Error message if email failed
     shareUrl?: string;               // Public share URL emailed to the user
+    /** A vetted decision email waits here when moderation finishes before the guest's email is collected. */
+    approvalEmailPending?: boolean;
+    rejectionEmailPending?: boolean;
+    rejectionEmailSent?: boolean;
+    rejectionEmailAt?: string;
+    rejectionEmailSkipReason?: string | null;
+    rejectionEmailRecipient?: string;
+    rejectionEmailProvider?: string;
+    rejectionEmailMessageId?: string | null;
+    rejectionEmailError?: string | null;
+    /** Atomic short-lived claim prevents duplicate decision emails when login callbacks race. */
+    decisionEmailSending?: boolean;
+    decisionEmailSendingAt?: string;
   };
   
   // Sharing and engagement

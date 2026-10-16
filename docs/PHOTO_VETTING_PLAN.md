@@ -162,6 +162,16 @@ A vetting person describes each photo before deciding: who is in it (gender and 
 - **Analysis-only correction:** the Approved list has **Update analysis**. It lets a manager update the people boxes and tags through `PUT /api/admin/submissions/<id>/people`. It does not call the decision endpoint, so status, public visibility and guest email are unchanged.
 - **Visibility rule:** public surfaces continue to use the shared `isPubliclyVisible` rule. Pending/rejected records remain excluded from the gallery, downloads, link previews, and slideshow feeds while a review is open.
 
+## Identity collected after capture and decision emails (2026-10-16)
+
+The live guest flow uploads the photo as soon as the guest confirms it, then may ask for social login or contact details on later pages. The submission is created with `userId: 'anonymous'` and the non-deliverable placeholder `userEmail: 'anonymous@event'` when no identity was available at upload time. A moderator can therefore approve or reject before an email address is attached.
+
+- A missing recipient is recorded as a deferred approval or rejection email. It is never sent to `anonymous@event` or to the moderator. If the guest never provides an address, no email can be sent.
+- The existing post-capture login callback links the same submission id to the social account; the typed contact page writes `userInfo.email`. Either identity handoff retries a pending decision email after the write.
+- Approval uses the photo's opaque `shareToken` URL. The generic after-save email path skips every record with `photoReview`, so it cannot send a database-id URL for a vetted photo.
+- An atomic, short-lived claim prevents a repeated login callback from sending the same decision email twice. A missing address keeps the pending state; a provider error is recorded as a failure. Approved emails can also be retried through the existing approval retry action.
+- The submission list displays a known `userInfo.email`, otherwise labels the placeholder as **NO USER**.
+
 ## Open questions
 
 1. **Is a typed email enough, or must it be verified?** The existing "who are you" page offers a typed name and email ("pseudo
