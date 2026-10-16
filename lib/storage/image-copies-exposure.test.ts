@@ -17,6 +17,7 @@ const ALLOWED: Record<string, string> = {
   'app/api/admin/image-safety/route.ts': 'admin API (global admins only): the Image safety card; a comment names the field, the answers carry counts, ids and public addresses, never a delete link or the private file address',
   'lib/storage/image-safety.ts': 'reads the copies to count and to make the missing ones (admin API only); its answers name the private crop by photo id, never by address',
   'lib/photo-vetting/review.ts': 'names the dependency that records the copies after an approval; reads no copy',
+  'lib/photo-vetting/queue.ts': 'admin-only vetting and analysis queue; exposes only the verified original image URL, never copy metadata or delete links',
   'lib/submissions/delete-files.ts': 'reads the addresses and delete links only to delete the files with the submission; returns counts and public ImgBB addresses, never a delete link',
   'app/api/internal/purge-unconsented-captures/route.ts': 'scheduled server-only cleanup deletes expired unconsented photos; its response contains counts only',
 };

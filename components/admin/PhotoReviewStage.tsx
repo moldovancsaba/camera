@@ -177,7 +177,10 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
   const missing = whatIsMissing(draft, vocabulary, markPeople);
   const approveOk = canApprove(draft, vocabulary, markPeople);
   const rejectOk = canReject(draft, vocabulary, markPeople, reasons);
-  const hint = busy ? 'Saving…' : rejecting ? (missing ?? (chosenReasons(reasons, vocabulary).length === 0 ? 'Choose at least one reason.' : null)) : missing;
+  const displayPhotoUrl = analysisOnly ? item.analysisPhotoUrl : item.photoUrl;
+  const hint = analysisOnly && !displayPhotoUrl
+    ? 'The unframed original is unavailable, so analysis cannot be updated.'
+    : busy ? 'Saving…' : rejecting ? (missing ?? (chosenReasons(reasons, vocabulary).length === 0 ? 'Choose at least one reason.' : null)) : missing;
 
   /** One press, one thing for the user: save the people, then decide, then the next photo. If the save fails nothing is decided. */
   const decide = async (action: 'approve' | 'reject') => {
@@ -263,34 +266,38 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
             picture, so the overlay that takes the drawing, and the rectangles in percent, are exactly the photo. */}
         <div className={styles.photoColumn}>
           <div style={{ background: 'var(--mantine-color-gray-1)', display: 'inline-block', lineHeight: 0, maxWidth: '100%', position: 'relative', userSelect: 'none' }}>
-            {item.photoUrl ? (
-              <Image src={item.photoUrl} alt={`Photo ${position} of ${total} waiting`} width={1600} height={900} unoptimized priority draggable={false} style={{ display: 'block', height: 'auto', maxHeight: 'calc(100vh - 12rem)', maxWidth: '100%', width: 'auto' }} />
+            {displayPhotoUrl ? (
+              <Image src={displayPhotoUrl} alt={`Photo ${position} of ${total}`} width={1600} height={900} unoptimized priority draggable={false} style={{ display: 'block', height: 'auto', maxHeight: 'calc(100vh - 12rem)', maxWidth: '100%', width: 'auto' }} />
             ) : (
-              <div style={{ aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'var(--mantine-color-dimmed)', width: '30rem', maxWidth: '100%' }}>No photo</div>
+              <div role={analysisOnly ? 'status' : undefined} style={{ aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'var(--mantine-color-dimmed)', padding: '1rem', textAlign: 'center', width: '30rem', maxWidth: '100%' }}>
+                {analysisOnly ? 'The unframed original is unavailable for analysis.' : 'No photo'}
+              </div>
             )}
-            <div
-              ref={overlay}
-              role="group"
-              aria-label={markPeople ? 'The photo. Press and drag to draw a rectangle around a person.' : 'The photo'}
-              data-photo-overlay
-              onPointerDown={onDown}
-              onPointerMove={onMove}
-              onPointerUp={onUp}
-              onPointerCancel={onCancel}
-              style={{ cursor: markPeople && !busy ? 'crosshair' : 'default', inset: 0, position: 'absolute', touchAction: markPeople ? 'none' : 'auto' }}
-            >
-              {draft.people.map((person, index) => {
-                const colour = colourOf(index);
-                return (
-                  <div key={person.id} data-person-box={person.id} data-selected={person.id === draft.selectedId} data-complete={isComplete(person, vocabulary)} style={rectangleStyle(person.box, colour, { selected: person.id === draft.selectedId, complete: isComplete(person, vocabulary) })}>
-                    <span aria-hidden style={{ background: colour, borderRadius: '0.25rem', color: 'var(--mantine-color-dark-9)', fontSize: '0.8125rem', fontWeight: 700, left: 2, lineHeight: 1.3, padding: '0 0.3rem', position: 'absolute', top: 2 }}>
-                      {index + 1}
-                    </span>
-                  </div>
-                );
-              })}
-              {drawing ? <div data-drawing-box style={{ ...rectangleStyle(drawing, nextColour, { complete: false }), border: `3px dotted ${nextColour}` }} /> : null}
-            </div>
+            {displayPhotoUrl ? (
+              <div
+                ref={overlay}
+                role="group"
+                aria-label={markPeople ? 'The photo. Press and drag to draw a rectangle around a person.' : 'The photo'}
+                data-photo-overlay
+                onPointerDown={onDown}
+                onPointerMove={onMove}
+                onPointerUp={onUp}
+                onPointerCancel={onCancel}
+                style={{ cursor: markPeople && !busy ? 'crosshair' : 'default', inset: 0, position: 'absolute', touchAction: markPeople ? 'none' : 'auto' }}
+              >
+                {draft.people.map((person, index) => {
+                  const colour = colourOf(index);
+                  return (
+                    <div key={person.id} data-person-box={person.id} data-selected={person.id === draft.selectedId} data-complete={isComplete(person, vocabulary)} style={rectangleStyle(person.box, colour, { selected: person.id === draft.selectedId, complete: isComplete(person, vocabulary) })}>
+                      <span aria-hidden style={{ background: colour, borderRadius: '0.25rem', color: 'var(--mantine-color-dark-9)', fontSize: '0.8125rem', fontWeight: 700, left: 2, lineHeight: 1.3, padding: '0 0.3rem', position: 'absolute', top: 2 }}>
+                        {index + 1}
+                      </span>
+                    </div>
+                  );
+                })}
+                {drawing ? <div data-drawing-box style={{ ...rectangleStyle(drawing, nextColour, { complete: false }), border: `3px dotted ${nextColour}` }} /> : null}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -398,7 +405,7 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
             </p>
             {analysisOnly ? (
               <div style={BUTTON_ROW}>
-                <SemanticButton action="photo-review:save-analysis" type="button" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'save'} onClick={() => void saveAnalysis()}>
+                <SemanticButton action="photo-review:save-analysis" type="button" styles={DECISION_BUTTON} disabled={!approveOk || !displayPhotoUrl || busy !== null} loading={busy === 'save'} onClick={() => void saveAnalysis()}>
                   Save analysis
                 </SemanticButton>
                 <SemanticButton action="photo-review:mark-skip" type="button" variant="outline" styles={DECISION_BUTTON} disabled={busy !== null || !canSkip} onClick={() => onSkip(item.id)}>

@@ -27,6 +27,8 @@ export interface PhotoQueueItem {
   approvalEmailSent: boolean;
   /** The plain photo while waiting or rejected (private, for moderators only), the real picture once approved. */
   photoUrl: string | null;
+  /** The original, unframed picture used only by Analysis. Never falls back to the approved framed composite. */
+  analysisPhotoUrl: string | null;
   frameKind: 'generated' | 'own' | 'none';
   shareOptIn: boolean;
   last: { action: 'approve' | 'reject' | 'return_to_vetting'; by: string; at: string; reason: string | null } | null;
@@ -54,6 +56,8 @@ const emailOf = (doc: Document): string | null => {
 export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary): PhotoQueueItem {
   const status: QueueStatus = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : 'pending_review';
   const review = (doc.photoReview ?? {}) as Document;
+  const unframedCopies = Array.isArray(doc.imageCopies) ? (doc.imageCopies as Document[]) : [];
+  const verifiedUnframedCopy = unframedCopies.find((copy) => copy.role === 'unframed' && copy.state === 'verified' && typeof copy.url === 'string' && copy.url.trim());
   const history = Array.isArray(doc.reviewHistory) ? (doc.reviewHistory as Document[]) : [];
   const last = history[history.length - 1];
   const name = text(doc.userInfo?.name) ?? text(doc.userInfoDraft?.name) ?? text(doc.userName) ?? 'Guest';
@@ -69,6 +73,7 @@ export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary):
     identityLabel: email ?? (registered ? 'REGISTERED · NO EMAIL' : 'NO USER'),
     approvalEmailSent: doc.metadata?.emailSentAfterSave === true || doc.metadata?.emailSent === true,
     photoUrl: status === 'approved' || (status === 'pending_review' && typeof review.returnedAt === 'string') ? text(doc.imageUrl) ?? text(review.photoUrl) : text(review.photoUrl),
+    analysisPhotoUrl: text(review.photoUrl) ?? text(verifiedUnframedCopy?.url),
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',
     shareOptIn: review.shareOptIn === true,
     people: (() => {
