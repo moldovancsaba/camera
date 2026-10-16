@@ -273,7 +273,12 @@ export const PATCH = withErrorHandler(async (
 
   if (shouldSaveUserInfoDraft) {
     if (submission.userInfo?.collectedAt && !isAdmin) {
-      throw apiForbidden('This submission has already been finalized.');
+      // A repeat-photo flow can render the contact page again after creating this
+      // photo with the guest's already-finalized contact. Its autosave is only a
+      // convenience draft and must not turn that harmless revisit into an error.
+      // Do not mutate finalized contact data here; the explicit update below still
+      // validates that the submitted contact matches the finalized value.
+      return apiSuccess({ submissionId, action, draftSaved: false, alreadyFinalized: true });
     }
     const now = new Date().toISOString();
     const draftName = normalizedUserInfoDraft?.name ?? submission.userInfoDraft?.name ?? '';
@@ -385,6 +390,19 @@ export const PATCH = withErrorHandler(async (
 
   const alreadyFinalized = Boolean((submission as Submission).userInfo?.collectedAt);
   if (alreadyFinalized && !isAdmin) {
+    const savedUserInfo = (submission as Submission).userInfo;
+    const sameFinalizedContact = Boolean(
+      action === 'update_user_info' && normalizedUserInfo && savedUserInfo &&
+      normalizedUserInfo.name.trim() === savedUserInfo.name?.trim() &&
+      normalizedUserInfo.email.toLowerCase() === savedUserInfo.email?.trim().toLowerCase(),
+    );
+    if (sameFinalizedContact) {
+      // The capture journey carries a guest's contact into each new photo. Saving
+      // that same contact after the photo pages are revisited is an idempotent
+      // confirmation, not an attempt to rewrite finalized identity data.
+      schedulePendingVettingEmail(db, objectId);
+      return apiSuccess({ submissionId, action, unchanged: true });
+    }
     throw apiForbidden('This submission has already been finalized.');
   }
 
