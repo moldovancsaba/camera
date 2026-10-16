@@ -303,8 +303,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Keep the guest-provided contact on the legacy top-level fields too. Admin queues
       // and older email integrations still read these fields; writing only userInfo.email
       // made real guest addresses appear as anonymous@event.
-      userEmail: session?.user?.email || validatedUserInfo?.email || 'anonymous@event',
-      userName: session?.user?.name || session?.user?.email || validatedUserInfo?.name || (session?.user?.id ? 'REGISTERED USER' : 'NO USER'),
+      userEmail: validatedUserInfo?.email || session?.user?.email || 'anonymous@event',
+      userName: validatedUserInfo?.name || session?.user?.name || session?.user?.email || (session?.user?.id ? 'REGISTERED USER' : 'NO USER'),
       // Frame data (null if no frame assigned to event)
       frameId: frame?.frameId || null,
       frameName: frame?.name || null,
