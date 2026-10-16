@@ -1,3 +1,5 @@
+'use client';
+
 /** The already-analysed photos of one event, with direct links to correct a saved analysis. */
 
 import Image from 'next/image';
