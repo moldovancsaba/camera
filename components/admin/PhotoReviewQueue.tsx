@@ -63,7 +63,7 @@ class NoAnswerError extends Error {
   }
 }
 
-async function review(id: string, action: 'approve' | 'reject' | 'return_to_vetting', rejection?: { reasons: string[]; note?: string }): Promise<ReviewAnswer> {
+async function review(id: string, action: 'approve' | 'reject' | 'return_to_vetting' | 'retry_approval_email', rejection?: { reasons: string[]; note?: string }): Promise<ReviewAnswer> {
   let response: Response;
   try {
     response = await fetch(`/api/admin/submissions/${id}/review`, {
@@ -194,6 +194,28 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
     }
   };
 
+  const retryApprovalEmail = async (id: string) => {
+    setNotice(null);
+    markBusy([id]);
+    try {
+      const answer = await review(id, 'retry_approval_email');
+      setNotice({
+        severity: answer.email === 'sent' ? 'success' : 'warning',
+        title: answer.email === 'sent' ? 'Approval email sent' : 'Approval email not sent',
+        message: answer.email === 'sent'
+          ? 'The guest has been sent the link to the approved photo.'
+          : answer.email === 'failed'
+            ? 'The email provider could not send the link. You can try again.'
+            : 'No email was sent. Check that the guest has an email address and approval emails are enabled for this event.',
+      });
+    } catch (error) {
+      setNotice({ severity: 'error', title: 'Approval email retry failed', message: error instanceof Error ? error.message : 'The email could not be retried.' });
+    } finally {
+      markFree([id]);
+      router.refresh();
+    }
+  };
+
   if (items.length === 0) {
     return (
       <div style={{ display: 'grid', gap: '1rem' }}>
@@ -292,6 +314,13 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
             );
           }
           if (item.status === 'approved') {
+            if (canReview && item.email && !item.approvalEmailSent) {
+              actions.push(
+                <SemanticButton key="retry-approval-email" action="photo-review:retry-approval-email" type="button" size="xs" variant="secondary" onClick={() => void retryApprovalEmail(item.id)} disabled={isBusy}>
+                  {isBusy ? 'Sending…' : 'Send approval link'}
+                </SemanticButton>
+              );
+            }
             actions.push(
               <Link key="analysis" href={`/admin/events/${eventId}/vetting/review?analysis=${item.id}`} style={{ textDecoration: 'none' }}>
                 <SemanticButton action="photo-review:update-analysis" size="xs" variant="secondary">Update analysis</SemanticButton>

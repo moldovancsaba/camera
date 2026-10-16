@@ -27,7 +27,7 @@ interface Options {
 }
 
 function setup(t: TestContext, options: Options = {}) {
-  const calls = { access: [] as Array<{ id: string; role: unknown }>, approve: [] as unknown[][], reject: [] as unknown[][], reopen: [] as unknown[][] };
+  const calls = { access: [] as Array<{ id: string; role: unknown }>, approve: [] as unknown[][], reject: [] as unknown[][], reopen: [] as unknown[][], retryEmail: [] as unknown[][] };
   const submission = options.submission === undefined ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review', peopleReview: { by: 'u1', at: '2026-10-10T10:00:00.000Z' } } : options.submission;
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
@@ -57,6 +57,7 @@ function setup(t: TestContext, options: Options = {}) {
       approvePhoto: async (...args: unknown[]) => (calls.approve.push(args), options.outcome ?? { ok: true, email: 'sent' }),
       rejectPhoto: async (...args: unknown[]) => (calls.reject.push(args), options.outcome ?? { ok: true, email: 'sent' }),
       returnPhotoToVetting: async (...args: unknown[]) => (calls.reopen.push(args), options.outcome ?? { ok: true, email: 'sent' }),
+      retryApprovedPhotoEmail: async (...args: unknown[]) => (calls.retryEmail.push(args), 'sent'),
     },
   });
   return calls;
@@ -86,6 +87,17 @@ test('a manager returns a decided photo to vetting', async (t) => {
   assert.deepEqual((await response.json() as { data: Record<string, unknown> }).data, { submissionId: id, reviewStatus: 'pending_review', email: 'sent' });
   assert.equal(calls.reopen.length, 1);
   assert.deepEqual(calls.reopen[0][2], { email: 'manager@example.com', id: 'u2' });
+});
+
+test('an event manager can retry an approval email for an already-approved photo', async (t) => {
+  const calls = setup(t, { session: manager, submission: { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'approved' } });
+  const { POST } = await importRoute('retry-approval-email');
+  const response = await POST(post({ action: 'retry_approval_email' }), params);
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json() as { data: Record<string, unknown> }).data, { submissionId: id, reviewStatus: 'approved', email: 'sent' });
+  assert.equal(calls.retryEmail.length, 1);
+  assert.equal((calls.retryEmail[0][1] as ObjectId).toString(), id);
+  assert.deepEqual(calls.access, [{ id: eventId.toString(), role: 'manager' }]);
 });
 
 test('a rejection carries the moderator, a trimmed note cut to 500 characters and the reasons', async (t) => {

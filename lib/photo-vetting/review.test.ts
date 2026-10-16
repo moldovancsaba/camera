@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId, type Db } from 'mongodb';
 import sharp from 'sharp';
-import { approvePhoto, rejectPhoto, returnPhotoToVetting, resolveFrameImageUrl, sendApprovedLinkAfterConsent, type ReviewActor, type ReviewDeps } from './review';
+import { approvePhoto, rejectPhoto, returnPhotoToVetting, resolveFrameImageUrl, retryApprovedPhotoEmail, sendApprovedLinkAfterConsent, type ReviewActor, type ReviewDeps } from './review';
 import { recordApprovalCopies, type ApprovalCopiesInput, type ImageCopyDeps } from '@/lib/storage/image-copies';
 import type { ImageCopy } from '@/lib/db/schemas';
 import { fakeDb as libraryFakeDb } from '@/lib/library/fake-db';
@@ -57,14 +57,15 @@ function deletePath(target: Doc, path: string) {
   delete cursor[parts.at(-1)!];
 }
 
-function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; beforeUpdate?: () => void } = {}) {
+function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; beforeUpdate?: () => void; mongoSnapshot?: boolean } = {}) {
   const updates: Array<{ filter: Doc; update: Doc }> = [];
+  const persistedSubmission = options.mongoSnapshot ? structuredClone(submission) as Doc : submission;
   const db = {
     collection: (name: string) => ({
       findOne: async (filter: Doc) => {
         if (name === 'frames') return options.frames?.find((f) => f.frameId === filter.frameId) ?? null;
         if (name === 'events') return options.event === undefined ? { _id: new ObjectId(), eventId: 'event-uuid', name: 'Derby' } : options.event;
-        if (name === 'submissions') return submission;
+        if (name === 'submissions') return persistedSubmission;
         return null;
       },
       updateOne: async (filter: Doc, update: Doc) => {
@@ -72,18 +73,18 @@ function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; 
         updates.push({ filter, update });
         const status = filter.reviewStatus as unknown;
         const allowed = typeof status === 'string' ? [status] : ((status as { $in: string[] } | undefined)?.$in ?? null);
-        if (allowed && !allowed.includes(submission.reviewStatus as string)) return { matchedCount: 0 };
-        for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(submission, path, value);
-        for (const path of Object.keys((update.$unset as Doc) ?? {})) deletePath(submission, path);
+        if (allowed && !allowed.includes(persistedSubmission.reviewStatus as string)) return { matchedCount: 0 };
+        for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(persistedSubmission, path, value);
+        for (const path of Object.keys((update.$unset as Doc) ?? {})) deletePath(persistedSubmission, path);
         for (const [path, value] of Object.entries((update.$push as Doc) ?? {})) {
-          const list = ((submission[path] as unknown[]) ??= []);
+          const list = ((persistedSubmission[path] as unknown[]) ??= []);
           list.push(value);
         }
         return { matchedCount: 1 };
       },
     }),
   };
-  return { db: db as never, updates };
+  return { db: db as never, updates, persistedSubmission };
 }
 
 interface Calls { fetched: string[]; uploads: Array<{ base64: string; name: string }>; copies: ApprovalCopiesInput[]; approvedMails: unknown[]; rejectedMails: unknown[]; underReviewMails: unknown[] }
@@ -132,6 +133,20 @@ test('approval makes the picture from the photo and the recorded frame image, pu
   assert.ok(updates[0].filter.reviewStatus, 'the update is conditional on the status');
 });
 
+test('approval sends the email using the approved database state even though the original Mongo read remains pending', async () => {
+  const { photo, frame } = await fixtures();
+  const submission = pendingSubmission();
+  const { db, persistedSubmission } = fakeDb(submission, { mongoSnapshot: true });
+  const { deps: d, calls } = deps(photo, frame);
+
+  const result = await approvePhoto(db, submission as never, ACTOR, d);
+
+  assert.deepEqual(result, { ok: true, email: 'sent' });
+  assert.equal(submission.reviewStatus, 'pending_review', 'the caller still has the object it originally read');
+  assert.equal(persistedSubmission.reviewStatus, 'approved', 'MongoDB stores the approved state separately');
+  assert.equal(calls.approvedMails.length, 1, 'the stale in-memory status does not suppress the approval email');
+});
+
 test('approval keeps the share link private and sends no email while the login-page consent is pending', async () => {
   const { photo, frame } = await fixtures();
   const submission = pendingSubmission({ consentStatus: 'pending', consentPendingReason: 'acceptance' });
@@ -157,6 +172,17 @@ test('recording consent after approval sends the pending share link once it is p
   assert.equal((submission.metadata as Doc).emailSentAfterSave, true);
   assert.equal(await sendApprovedLinkAfterConsent(db, submission._id as ObjectId, d), 'skipped');
   assert.equal(calls.approvedMails.length, 1, 'a recorded successful email is not sent twice');
+});
+
+test('an event manager can retry an approval email for a photo that was already approved without sending a duplicate', async () => {
+  const submission = pendingSubmission({ reviewStatus: 'approved', imageUrl: 'https://store.test/submission-1.jpg' });
+  const { db } = fakeDb(submission);
+  const { deps: d, calls } = deps(Buffer.alloc(0), Buffer.alloc(0));
+
+  assert.equal(await retryApprovedPhotoEmail(db, submission._id as ObjectId, d), 'sent');
+  assert.equal((submission.metadata as Doc).emailSentAfterSave, true);
+  assert.equal(await retryApprovedPhotoEmail(db, submission._id as ObjectId, d), 'skipped');
+  assert.equal(calls.approvedMails.length, 1);
 });
 
 test('returning a public approved photo hides it and emails the guest the review link', async () => {

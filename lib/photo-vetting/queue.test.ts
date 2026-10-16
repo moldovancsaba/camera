@@ -29,7 +29,15 @@ test('an approved photo shows the real picture and the last decision', () => {
     reviewHistory: [{ action: 'reject', by: 'a', at: 't1', reason: 'blurry' }, { action: 'approve', by: 'mod@example.com', at: 't2', reason: null }],
   }, V);
   assert.equal(item.photoUrl, 'https://s/submission-1.jpg');
+  assert.equal(item.approvalEmailSent, false);
   assert.deepEqual(item.last, { action: 'approve', by: 'mod@example.com', at: 't2', reason: null });
+});
+
+test('approval email retry status accepts the actual successful send markers and an older address field', () => {
+  const needsRetry = toPhotoQueueItem({ ...base(), reviewStatus: 'approved', userInfo: undefined, userEmail: 'legacy@example.com' }, V);
+  const sent = toPhotoQueueItem({ ...base(), reviewStatus: 'approved', metadata: { emailSentAfterSave: true } }, V);
+  assert.deepEqual([needsRetry.email, needsRetry.approvalEmailSent], ['legacy@example.com', false]);
+  assert.equal(sent.approvalEmailSent, true);
 });
 
 test('a returned approved photo uses its published composite when the private source is gone', () => {

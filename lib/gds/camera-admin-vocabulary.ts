@@ -96,6 +96,7 @@ export const cameraAdminVocabularyPacks = [
     'toggle-select-all': { defaultMessage: 'Toggle selection', icon: GdsIcons.Toggle, feedback: savedFeedback },
     'view-photo': { defaultMessage: 'View photo', icon: GdsIcons.Eye, feedback: openedFeedback },
     'update-analysis': { defaultMessage: 'Update analysis', icon: GdsIcons.Edit, feedback: openedFeedback },
+    'retry-approval-email': { defaultMessage: 'Send approval link', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'return-to-vetting': { defaultMessage: 'Back to vetting', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'save-analysis': { defaultMessage: 'Save analysis', icon: GdsIcons.Save, feedback: savedFeedback },
     'turn-on': { defaultMessage: 'Turn vetting on', icon: GdsIcons.Check, feedback: savedFeedback },
