@@ -39,7 +39,7 @@ export interface PhotoQueueItem {
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
 const emailOf = (doc: Document): string | null => {
-  const emails = [text(doc.userInfo?.email), text(doc.userEmail)];
+  const emails = [text(doc.userInfo?.email), text(doc.userInfoDraft?.email), text(doc.userEmail)];
   return emails.find((email) => email && email !== 'anonymous@event' && email !== 'anonymous@event.com') ?? null;
 };
 
@@ -52,7 +52,7 @@ export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary):
   const review = (doc.photoReview ?? {}) as Document;
   const history = Array.isArray(doc.reviewHistory) ? (doc.reviewHistory as Document[]) : [];
   const last = history[history.length - 1];
-  const name = text(doc.userInfo?.name) ?? text(doc.userName) ?? 'Guest';
+  const name = text(doc.userInfo?.name) ?? text(doc.userInfoDraft?.name) ?? text(doc.userName) ?? 'Guest';
   const email = emailOf(doc);
   const registered = typeof doc.userId === 'string' && Boolean(doc.userId) && doc.userId !== 'anonymous';
   return {

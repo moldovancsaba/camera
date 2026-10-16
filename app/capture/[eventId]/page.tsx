@@ -1170,6 +1170,27 @@ export default function EventCapturePage({
     }
   };
 
+  const updateSubmissionContactDraft = async (userInfo: Partial<WhoAreYouPageData>) => {
+    if (flowPhase !== 'presubmit' || !savedSubmissionId) return true;
+    try {
+      const response = await fetch(`/api/submissions/${savedSubmissionId}`, {
+        method: 'PATCH',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save_user_info_draft', userInfo }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('Could not autosave guest contact on submission:', response.status, errorData);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.warn('Could not autosave guest contact on submission:', error);
+      return false;
+    }
+  };
+
   const updateSubmissionConsents = async (submissionId: string, consents: CollectedData['consents']) => {
     if (consents.length === 0) return true;
     const response = await fetch(`/api/submissions/${submissionId}`, {
@@ -1750,6 +1771,7 @@ export default function EventCapturePage({
             captureSubmissionId={flowPhase === 'presubmit' ? savedSubmissionId : null}
             captureSourceSlug={sourceLinkSlug}
             onBeforeSocialLogin={flowPhase === 'presubmit' ? prepareCaptureForSocialLogin : undefined}
+            onDraftChange={flowPhase === 'presubmit' ? updateSubmissionContactDraft : undefined}
             onNext={handleWhoAreYouComplete}
             acceptance={
               acceptanceBox

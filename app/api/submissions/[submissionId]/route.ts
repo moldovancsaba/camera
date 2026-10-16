@@ -35,9 +35,10 @@ import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
 import { recordManualPhotoDeletion } from '@/lib/analytics/photo-deletion';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { safeLinkUrl } from '@/lib/events/consent';
+import { isValidEmail } from '@/lib/photo-vetting/pending';
 
 interface FinalizeSubmissionBody {
-  action?: 'update_user_info' | 'append_consents' | 'link_account' | 'finalize';
+  action?: 'update_user_info' | 'save_user_info_draft' | 'append_consents' | 'link_account' | 'finalize';
   userInfo?: {
     name?: string;
     email?: string;
@@ -61,6 +62,15 @@ function normalizeUserInfoInput(input?: FinalizeSubmissionBody['userInfo']): { n
   }
 
   return { name, email };
+}
+
+/** Keep the exact partial values a guest has typed while the saved photo is still on the contact step. */
+function normalizeUserInfoDraft(input?: FinalizeSubmissionBody['userInfo']): { name?: string; email?: string } | null {
+  if (!input || typeof input !== 'object') return null;
+  const name = typeof input.name === 'string' ? input.name.trim().slice(0, 200) : undefined;
+  const email = typeof input.email === 'string' ? input.email.trim().slice(0, 254) : undefined;
+  if (name === undefined && email === undefined) return null;
+  return { ...(name !== undefined ? { name } : {}), ...(email !== undefined ? { email } : {}) };
 }
 
 async function applySubmissionMetadataPatch(
@@ -219,14 +229,17 @@ export const PATCH = withErrorHandler(async (
   const payload = (await request.json().catch(() => ({}))) as FinalizeSubmissionBody;
   const action = payload.action ?? 'update_user_info';
   const shouldFinalize = action === 'finalize';
+  const shouldSaveUserInfoDraft = action === 'save_user_info_draft';
   const shouldAppendConsents = action === 'append_consents';
   const shouldLinkAccount = action === 'link_account';
   const normalizedUserInfo = normalizeUserInfoInput(payload.userInfo);
+  const normalizedUserInfoDraft = normalizeUserInfoDraft(payload.userInfo);
   const consents = Array.isArray(payload.consents) ? payload.consents : null;
 
-  if (!shouldFinalize && !shouldAppendConsents && !shouldLinkAccount && !normalizedUserInfo) {
+  if (!shouldFinalize && !shouldSaveUserInfoDraft && !shouldAppendConsents && !shouldLinkAccount && !normalizedUserInfo) {
     throw apiBadRequest('Invalid request payload');
   }
+  if (shouldSaveUserInfoDraft && !normalizedUserInfoDraft) throw apiBadRequest('Invalid contact draft');
   if (shouldAppendConsents && (!consents || consents.length === 0 || consents.some((item) => {
     if (!item || typeof item !== 'object') return true;
     const record = item as Record<string, unknown>;
@@ -256,14 +269,43 @@ export const PATCH = withErrorHandler(async (
     throw apiNotFound('Submission not found');
   }
 
+  const isAdmin = Boolean(session && (session.appRole === 'admin' || session.appRole === 'superadmin'));
+
+  if (shouldSaveUserInfoDraft) {
+    if (submission.userInfo?.collectedAt && !isAdmin) {
+      throw apiForbidden('This submission has already been finalized.');
+    }
+    const now = new Date().toISOString();
+    const draftName = normalizedUserInfoDraft?.name ?? submission.userInfoDraft?.name ?? '';
+    const draftEmail = normalizedUserInfoDraft?.email ?? submission.userInfoDraft?.email ?? '';
+    const set: Record<string, unknown> = {
+      userInfoDraft: { name: draftName, email: draftEmail, updatedAt: now },
+      updatedAt: now,
+    };
+    if (normalizedUserInfoDraft && Object.hasOwn(normalizedUserInfoDraft, 'name')) {
+      set.userName = draftName || 'NO USER';
+    }
+    if (normalizedUserInfoDraft && Object.hasOwn(normalizedUserInfoDraft, 'email')) {
+      set.userEmail = isValidEmail(draftEmail) ? sanitizeEmail(draftEmail) : 'anonymous@event';
+    }
+    const draftFilter = isAdmin
+      ? { _id: objectId }
+      : { _id: objectId, 'userInfo.collectedAt': { $exists: false } };
+    const saved = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(draftFilter, { $set: set });
+    if (saved.matchedCount !== 1) throw apiForbidden('This submission has already been finalized.');
+    if (isValidEmail(draftEmail)) schedulePendingVettingEmail(db, objectId);
+    return apiSuccess({ submissionId, action, draftSaved: true });
+  }
+
   if (shouldLinkAccount) {
     if (!session?.user?.id) throw apiForbidden('Sign-in is required to link this photo');
     if (submission.userId !== 'anonymous' && submission.userId !== session.user.id) {
       throw apiForbidden('This photo belongs to another account');
     }
     const now = new Date().toISOString();
-    const email = session.user.email || submission.userInfo?.email || '';
-    const name = session.user.name || submission.userInfo?.name || email || 'REGISTERED USER';
+    const typedDraftEmail = isValidEmail(submission.userInfoDraft?.email) ? sanitizeEmail(submission.userInfoDraft.email) : '';
+    const email = submission.userInfo?.email || typedDraftEmail || session.user.email || '';
+    const name = submission.userInfo?.name || submission.userInfoDraft?.name || session.user.name || email || 'REGISTERED USER';
     const userInfo = email ? { name, email, collectedAt: now } : null;
     await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
       { _id: objectId, $or: [{ userId: 'anonymous' }, { userId: session.user.id }] },
@@ -276,6 +318,7 @@ export const PATCH = withErrorHandler(async (
           'metadata.identityStatus': 'REGISTERED',
           updatedAt: now,
         },
+        $unset: { userInfoDraft: '' },
       },
     );
     schedulePendingVettingEmail(db, objectId);
@@ -341,7 +384,6 @@ export const PATCH = withErrorHandler(async (
   }
 
   const alreadyFinalized = Boolean((submission as Submission).userInfo?.collectedAt);
-  const isAdmin = Boolean(session && (session.appRole === 'admin' || session.appRole === 'superadmin'));
   if (alreadyFinalized && !isAdmin) {
     throw apiForbidden('This submission has already been finalized.');
   }
@@ -377,6 +419,7 @@ export const PATCH = withErrorHandler(async (
             } : {}),
           },
           $unset: {
+            userInfoDraft: '',
             ...(preserveVettingMissingRecipient ? {} : { 'metadata.emailSkipReason': '' }),
             'metadata.emailSentAfterSave': '',
             'metadata.emailSentAfterRelatedPhotos': '',
