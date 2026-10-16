@@ -22,6 +22,7 @@ interface SubmissionGalleryItem {
   userEmail: string;
   userId?: string;
   userInfo?: { email?: string | null } | null;
+  userInfoDraft?: { email?: string | null } | null;
   partnerId?: string | null;
   eventId?: string | null;
   frameName?: string;
@@ -61,12 +62,23 @@ function meaningfulIdentityExpression() {
       vars: {
         email: { $toLower: { $trim: { input: { $ifNull: ['$userEmail', ''] } } } },
         userInfoEmail: { $toLower: { $trim: { input: { $ifNull: ['$userInfo.email', ''] } } } },
+        draftEmail: { $toLower: { $trim: { input: { $ifNull: ['$userInfoDraft.email', ''] } } } },
         name: { $toLower: { $trim: { input: { $ifNull: ['$userName', ''] } } } },
         userInfoName: { $toLower: { $trim: { input: { $ifNull: ['$userInfo.name', ''] } } } },
+        draftName: { $toLower: { $trim: { input: { $ifNull: ['$userInfoDraft.name', ''] } } } },
       },
       in: {
         $switch: {
           branches: [
+            {
+              case: {
+                $and: [
+                  { $ne: ['$$draftEmail', ''] },
+                  { $not: { $in: ['$$draftEmail', ['anonymous@event', 'anonymous@event.com', 'unknown@unknown.com']] } },
+                ],
+              },
+              then: '$$draftEmail',
+            },
             {
               case: {
                 $and: [
@@ -75,6 +87,15 @@ function meaningfulIdentityExpression() {
                 ],
               },
               then: '$$userInfoEmail',
+            },
+            {
+              case: {
+                $and: [
+                  { $ne: ['$$draftName', ''] },
+                  { $not: { $in: ['$$draftName', ['event guest', 'anonymous user', 'unknown']] } },
+                ],
+              },
+              then: '$$draftName',
             },
             {
               case: {
@@ -143,6 +164,7 @@ export default async function AdminSubmissionsPage({
         { userName: { $regex: search, $options: 'i' } },
         { userEmail: { $regex: search, $options: 'i' } },
         { 'userInfo.email': { $regex: search, $options: 'i' } },
+        { 'userInfoDraft.email': { $regex: search, $options: 'i' } },
         { eventName: { $regex: search, $options: 'i' } },
         { partnerName: { $regex: search, $options: 'i' } },
         { frameName: { $regex: search, $options: 'i' } },
@@ -228,6 +250,8 @@ export default async function AdminSubmissionsPage({
         userName: submission.userName ?? '',
         userEmail: submission.userInfo?.email && !['anonymous@event', 'anonymous@event.com'].includes(submission.userInfo.email)
           ? submission.userInfo.email
+          : submission.userInfoDraft?.email && !['anonymous@event', 'anonymous@event.com'].includes(submission.userInfoDraft.email)
+            ? submission.userInfoDraft.email
           : submission.userId === 'anonymous' || ['anonymous@event', 'anonymous@event.com'].includes(submission.userEmail)
             ? 'NO USER'
             : submission.userEmail ?? '',

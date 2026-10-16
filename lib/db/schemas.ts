@@ -877,6 +877,12 @@ export interface Submission {
     email?: string;                  // User's email from onboarding form
     collectedAt: string;             // ISO 8601 timestamp when data was collected
   };
+  /** Values autosaved while the post-photo contact form is being completed; promoted to userInfo on Continue. */
+  userInfoDraft?: {
+    name?: string;
+    email?: string;
+    updatedAt: string;
+  };
   
   // Consent records from accept/CTA pages
   // Empty array if no consent pages in event flow
