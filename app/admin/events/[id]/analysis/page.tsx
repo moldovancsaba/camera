@@ -10,7 +10,6 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 import { countPhotoAnalysisQueue, loadPhotoAnalysisQueue, type PhotoAnalysisTab } from '@/lib/photo-vetting/queue';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
-import { StateBlock } from '@sovereignsquad/gds-core/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,7 +86,10 @@ export default async function EventPhotoAnalysisPage({
 
       {tab === 'needs_analysis' ? (
         counts.needs_analysis === 0 ? (
-          <StateBlock variant="empty" title="No photos need analysis" description="When photos are ready to analyse, they will appear here. Photos waiting for a vetting decision or consent stay out of this queue." />
+          <Card>
+            <Text fw={700}>No photos need analysis</Text>
+            <Text size="sm" c="dimmed" mt="xs">When photos are ready to analyse, they will appear here. Photos waiting for a vetting decision or consent stay out of this queue.</Text>
+          </Card>
         ) : (
           <Card>
             <Stack gap="sm">
@@ -101,7 +103,10 @@ export default async function EventPhotoAnalysisPage({
           </Card>
         )
       ) : counts.analysed === 0 ? (
-        <StateBlock variant="empty" title="No analysed photos yet" description="Photos appear here after someone saves their analysis." />
+        <Card>
+          <Text fw={700}>No analysed photos yet</Text>
+          <Text size="sm" c="dimmed" mt="xs">Photos appear here after someone saves their analysis.</Text>
+        </Card>
       ) : (
         <>
           <Card>

@@ -432,7 +432,7 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
   const [skipped, setSkipped] = useState<string[]>([]);
   const [notice, setNotice] = useState<DecisionNotice | null>(null);
   const [working, setWorking] = useState(false);
-  const startingAnalysisTotal = useRef(analysisTotal ?? items.length);
+  const [startingAnalysisTotal] = useState(() => analysisTotal ?? items.length);
 
   const waiting = useMemo(() => {
     const open = items.filter((item) => !decided.includes(item.id));
@@ -483,7 +483,7 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
       key={item.id}
       item={item}
       position={decided.length + 1}
-      total={analysisOnly ? Math.max(startingAnalysisTotal.current, decided.length + waiting.length) : decided.length + waiting.length}
+      total={analysisOnly ? Math.max(startingAnalysisTotal, decided.length + waiting.length) : decided.length + waiting.length}
       vocabulary={vocabulary}
       markPeople={markPeople}
       analysisOnly={analysisOnly}

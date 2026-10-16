@@ -97,7 +97,7 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
           {oneAtATime ? (
             <PhotoReviewStage eventId={eventMongoId} items={items} vocabulary={vocabulary} markPeople={markPeople} embedded />
           ) : (
-            <PhotoReviewQueue key={status} status={status} initialItems={items} canReview eventId={eventMongoId} vocabulary={vocabulary} markPeopleEventId={required && markPeople ? eventMongoId : undefined} />
+            <PhotoReviewQueue key={status} status={status} initialItems={items} canReview vocabulary={vocabulary} markPeopleEventId={required && markPeople ? eventMongoId : undefined} />
           )}
         </>
       ) : null}
