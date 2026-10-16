@@ -175,10 +175,13 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
 
   let email: 'sent' | 'skipped' | 'failed' = 'skipped';
   const consentStillPending = submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired';
-  if (submission.shareToken && !consentStillPending && isPubliclyVisible(visibilityInputOf(submission)) && (reopeningExistingImage || submission.metadata?.emailSentAfterSave !== true)) {
+  // MongoDB does not mutate the document read above when the approval update succeeds. Check the state that was just saved,
+  // rather than the stale pending_review document, or every first-time approval is mistaken for a private photo and skips email.
+  const approvedSubmission = { ...submission, reviewStatus: 'approved', isShareVisible: review.shareOptIn === true };
+  if (submission.shareToken && !consentStillPending && isPubliclyVisible(visibilityInputOf(approvedSubmission)) && (reopeningExistingImage || submission.metadata?.emailSentAfterSave !== true)) {
     const shareUrl = approvedShareUrl(submission.shareToken);
     try {
-      const result = await deps.sendApproved(submission, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
+      const result = await deps.sendApproved(approvedSubmission, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
       const patch = buildEmailMetadataPatch(result, shareUrl);
       email = patch.sent ? 'sent' : patch.shouldRetry ? 'failed' : 'skipped';
       await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: patch.metadataPatch });
@@ -208,10 +211,8 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   return { ok: true, email };
 }
 
-/** Send the approved share link when a guest records consent after moderation has already approved the photo. */
-export async function sendApprovedLinkAfterConsent(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
-  const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
-  if (!submission || submission.reviewStatus !== 'approved' || submission.consentStatus !== 'received' || !isPubliclyVisible(visibilityInputOf(submission)) || !submission.shareToken || !submission.imageUrl || submission.metadata?.emailSentAfterSave === true) {
+async function sendApprovedLinkForSubmission(db: Db, submission: Submission | null, deps: ReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
+  if (!submission || submission.reviewStatus !== 'approved' || !isPubliclyVisible(visibilityInputOf({ ...submission })) || !submission.shareToken || !submission.imageUrl || submission.metadata?.emailSentAfterSave === true || submission.metadata?.emailSent === true) {
     return 'skipped';
   }
 
@@ -221,14 +222,27 @@ export async function sendApprovedLinkAfterConsent(db: Db, submissionId: ObjectI
     const result = await deps.sendApproved(submission, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
     const patch = buildEmailMetadataPatch(result, shareUrl);
     await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submissionId, reviewStatus: 'approved', consentStatus: 'received' },
+      { _id: submission._id, reviewStatus: 'approved', 'metadata.emailSentAfterSave': { $ne: true } },
       { $set: patch.metadataPatch },
     );
     return patch.sent ? 'sent' : patch.shouldRetry ? 'failed' : 'skipped';
   } catch (error) {
-    logWarn('photo_vetting.approval_email_failed', 'The approval email could not be sent after consent was recorded', { submissionId: String(submissionId), error: errorMessage(error) });
+    logWarn('photo_vetting.approval_email_failed', 'The approval email could not be sent', { submissionId: String(submission._id), error: errorMessage(error) });
     return 'failed';
   }
+}
+
+/** Send the approved share link when a guest records consent after moderation has already approved the photo. */
+export async function sendApprovedLinkAfterConsent(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
+  const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+  if (!submission || submission.consentStatus !== 'received') return 'skipped';
+  return sendApprovedLinkForSubmission(db, submission, deps);
+}
+
+/** Let an event manager retry a missed approval email for an already-approved, public photo. */
+export async function retryApprovedPhotoEmail(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
+  const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+  return sendApprovedLinkForSubmission(db, submission, deps);
 }
 
 /**

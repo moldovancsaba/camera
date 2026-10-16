@@ -20,7 +20,7 @@ import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound, 
 import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
 import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
-import { approvePhoto, rejectPhoto, returnPhotoToVetting, type ReviewFailure } from '@/lib/photo-vetting/review';
+import { approvePhoto, rejectPhoto, returnPhotoToVetting, retryApprovedPhotoEmail, type ReviewFailure } from '@/lib/photo-vetting/review';
 import { markPeopleOn } from '@/lib/photo-vetting/people';
 import { offeredReasons } from '@/lib/photo-vetting/review-state';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
@@ -48,8 +48,8 @@ export const POST = withErrorHandler(async (
 
   const body = (await request.json().catch(() => null)) as { action?: unknown; reason?: unknown; reasons?: unknown } | null;
   const action = body?.action;
-  if (action !== 'approve' && action !== 'reject' && action !== 'return_to_vetting') {
-    throw apiBadRequest('action must be "approve", "reject" or "return_to_vetting"');
+  if (action !== 'approve' && action !== 'reject' && action !== 'return_to_vetting' && action !== 'retry_approval_email') {
+    throw apiBadRequest('action must be "approve", "reject", "return_to_vetting" or "retry_approval_email"');
   }
   const reason = typeof body?.reason === 'string' && body.reason.trim() ? body.reason.trim().slice(0, MAX_REASON_LENGTH) : null;
   const chosen = Array.isArray(body?.reasons) ? [...new Set((body.reasons as unknown[]).filter((item): item is string => typeof item === 'string' && item.length > 0))] : [];
@@ -88,21 +88,23 @@ export const POST = withErrorHandler(async (
   }
 
   const actor = { email: session.user.email ?? null, id: session.user.id ?? null };
-  const result = action === 'approve'
-    ? await approvePhoto(db, submission, actor)
-    : action === 'reject'
-      ? await rejectPhoto(db, submission, actor, reason, reasons)
-      : await returnPhotoToVetting(db, submission, actor);
+  const result = action === 'retry_approval_email'
+    ? { ok: true as const, email: await retryApprovedPhotoEmail(db, submission._id) }
+    : action === 'approve'
+      ? await approvePhoto(db, submission, actor)
+      : action === 'reject'
+        ? await rejectPhoto(db, submission, actor, reason, reasons)
+        : await returnPhotoToVetting(db, submission, actor);
 
   if (!result.ok) {
     throw apiError(result.message, STATUS_OF[result.reason]);
   }
 
   // The counters for messmass read the decisions and the reasons: ask for a push after the response (nothing happens while the counters are off).
-  scheduleCounterSync(db, event);
+  if (action !== 'retry_approval_email') scheduleCounterSync(db, event);
   return apiSuccess({
     submissionId,
-    reviewStatus: action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'pending_review',
+    reviewStatus: action === 'approve' || action === 'retry_approval_email' ? 'approved' : action === 'reject' ? 'rejected' : 'pending_review',
     email: result.email,
   });
 });

@@ -21,6 +21,8 @@ export interface PhotoQueueItem {
   createdAt: string;
   name: string;
   email: string | null;
+  /** An approval link was already sent successfully. */
+  approvalEmailSent: boolean;
   /** The plain photo while waiting or rejected (private, for moderators only), the real picture once approved. */
   photoUrl: string | null;
   frameKind: 'generated' | 'own' | 'none';
@@ -51,7 +53,8 @@ export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary):
     status,
     createdAt: text(doc.createdAt) ?? '',
     name,
-    email: text(doc.userInfo?.email),
+    email: text(doc.userInfo?.email) ?? text(doc.userEmail),
+    approvalEmailSent: doc.metadata?.emailSentAfterSave === true || doc.metadata?.emailSent === true,
     photoUrl: status === 'approved' || (status === 'pending_review' && typeof review.returnedAt === 'string') ? text(doc.imageUrl) ?? text(review.photoUrl) : text(review.photoUrl),
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',
     shareOptIn: review.shareOptIn === true,
