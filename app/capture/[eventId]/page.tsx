@@ -55,7 +55,7 @@ import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep
 import { type FullFrameCapture } from '@/lib/camera/frame-capture';
 import { frameSilhouette } from '@/lib/frame/silhouette';
 import { frameWithSelectionDisplay, pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
-import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
+import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, fitting, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
 import { storedFrameSelection } from '@/lib/frame/selection';
 import FrameMessageSelectionPage from '@/components/capture/FrameMessageSelectionPage';
 import { DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID, withFrameMessageSelectionPage } from '@/lib/events/default-pages';
@@ -930,7 +930,22 @@ export default function EventCapturePage({
   // reframe step (camera#209), whose default is the largest crop that fills the frame.
   const handleCameraCapture = (capture: FullFrameCapture) => {
     // Without the editor's setting a random image is picked for this shutter press; with it the image was drawn when the camera step opened.
-    if (generatedFrame && !selection) {
+    if (selection && selectionFrame) {
+      // The camera can be used before the effect that prepares its selected design has run (most visible on the message-only page).
+      // Resolve it at the shutter too, and discard a stale design if the guest changed their message just before taking the photo.
+      const allowed = fitting(selectionFrame, choice);
+      const selectedImageUrl = selectedFrame?.generated ? selectedFrame.imageUrl : null;
+      const currentIsAllowed = Boolean(
+        selectedImageUrl && allowed.some((variant) => variant.imageUrl === selectedImageUrl),
+      );
+      if (!currentIsAllowed) {
+        const variant = drawVariant(selectionFrame, choice, lastDrawKey.current);
+        if (variant) {
+          lastDrawKey.current = variantKeyOf(variant);
+          setSelectedFrame(variantFrame(variant));
+        }
+      }
+    } else if (generatedFrame && !selection) {
       const variant = pickVariant(generatedFrame, lastVariantIndex.current);
       if (variant) {
         lastVariantIndex.current = variant.index;
@@ -993,6 +1008,14 @@ export default function EventCapturePage({
     if (!compositeImage || !event) return;
 
     clearCaptureNotices();
+    if (selection && selectionFrame) {
+      const allowed = fitting(selectionFrame, choice);
+      const selectedImageUrl = selectedFrame?.generated ? selectedFrame.imageUrl : null;
+      if (!selectedImageUrl || !allowed.some((variant) => variant.imageUrl === selectedImageUrl)) {
+        notifyCapture('error', errorFrameMessage);
+        return;
+      }
+    }
     setIsSaving(true);
     journey.uploadStarted(captureMethod ?? 'system');
 
