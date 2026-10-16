@@ -433,6 +433,8 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
   const [notice, setNotice] = useState<DecisionNotice | null>(null);
   const [working, setWorking] = useState(false);
   const [startingAnalysisTotal] = useState(() => analysisTotal ?? items.length);
+  const [newPhotosCount, setNewPhotosCount] = useState(0);
+  const previousPhotoIds = useRef<Set<string> | null>(null);
 
   const waiting = useMemo(() => {
     const open = items.filter((item) => !decided.includes(item.id));
@@ -441,14 +443,37 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
   }, [items, decided, skipped]);
   const item = waiting[0];
 
-  // The screen asks the server for new photos by itself (as the Waiting list always did, camera#373), so an approver at the match does not reload the page; not while a decision is in flight.
+  // The screen asks the server for new photos by itself (as the Waiting list always did, camera#373), including when an approver returns to this tab after it was in the background.
   useEffect(() => {
     if (analysisOnly) return;
-    const timer = setInterval(() => {
+    const refreshIfReady = () => {
       if (shouldRefreshWaiting({ status: 'pending_review', hidden: document.visibilityState === 'hidden', deciding: working, rejecting: false })) router.refresh();
-    }, WAITING_REFRESH_MS);
-    return () => clearInterval(timer);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshIfReady();
+    };
+    const onPageShow = () => refreshIfReady();
+    const timer = setInterval(refreshIfReady, WAITING_REFRESH_MS);
+    window.addEventListener('focus', refreshIfReady);
+    window.addEventListener('pageshow', onPageShow);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refreshIfReady);
+      window.removeEventListener('pageshow', onPageShow);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [working, router, analysisOnly]);
+
+  useEffect(() => {
+    const ids = new Set(items.map((item) => item.id));
+    const previous = previousPhotoIds.current;
+    if (!analysisOnly && previous) {
+      const added = [...ids].filter((id) => !previous.has(id)).length;
+      if (added > 0) setNewPhotosCount((count) => count + added);
+    }
+    previousPhotoIds.current = ids;
+  }, [items, analysisOnly]);
 
   const onDecided = useCallback(
     (id: string, message: DecisionNotice) => {
@@ -468,6 +493,7 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
     return (
       <div style={{ display: 'grid', gap: '1rem' }} data-photo-review-empty>
         {notice ? <InlineAlert title="Done" message={notice.text} severity={notice.warning ? 'warning' : 'success'} /> : null}
+        {!analysisOnly && newPhotosCount > 0 ? <InlineAlert title="More photos are waiting" message={`${newPhotosCount} more ${newPhotosCount === 1 ? 'photo is' : 'photos are'} waiting for vetting.`} severity="success" /> : null}
         <StateBlock
           variant="empty"
           title={analysisOnly ? (items.length === 0 ? 'No photos need analysis' : 'This batch is analysed') : items.length === 0 ? 'Nothing is waiting' : 'All the photos are decided'}
@@ -479,19 +505,22 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
   }
 
   return (
-    <PhotoWorkspace
-      key={item.id}
-      item={item}
-      position={decided.length + 1}
-      total={analysisOnly ? Math.max(startingAnalysisTotal, decided.length + waiting.length) : decided.length + waiting.length}
-      vocabulary={vocabulary}
-      markPeople={markPeople}
-      analysisOnly={analysisOnly}
-      canSkip={waiting.length > 1}
-      notice={notice}
-      onDecided={onDecided}
-      onSkip={onSkip}
-      onWorking={setWorking}
-    />
+    <div style={{ display: 'grid', gap: '1rem' }}>
+      {!analysisOnly && newPhotosCount > 0 ? <InlineAlert title="More photos are waiting" message={`${newPhotosCount} more ${newPhotosCount === 1 ? 'photo is' : 'photos are'} waiting for vetting. They will follow the current photo.`} severity="success" /> : null}
+      <PhotoWorkspace
+        key={item.id}
+        item={item}
+        position={decided.length + 1}
+        total={analysisOnly ? Math.max(startingAnalysisTotal, decided.length + waiting.length) : decided.length + waiting.length}
+        vocabulary={vocabulary}
+        markPeople={markPeople}
+        analysisOnly={analysisOnly}
+        canSkip={waiting.length > 1}
+        notice={notice}
+        onDecided={onDecided}
+        onSkip={onSkip}
+        onWorking={setWorking}
+      />
+    </div>
   );
 }
