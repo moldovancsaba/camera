@@ -277,6 +277,7 @@ export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Edit', description: 'The event details and capture experience settings.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
   { label: 'Pages of the user journey', description: 'Choose, edit and order the pages guests see for this event.', iconKey: 'layoutDashboard', path: '/pages', isVisible: everyone },
   { label: 'Vetting', description: 'Photos waiting for approval.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
+  { label: 'Photo analysis', description: 'Analyse photos after vetting, or analyse all eligible photos when vetting is off.', iconKey: 'photoScan', path: '/analysis', isVisible: everyone },
   { label: 'Vetting words', description: 'The words the reviewer describes a photo with at this event: gender, age, emotion, items and the reasons for a rejection.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
   { label: 'Gallery', description: 'The photos of the event: upload, select several at once, remove.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
   { label: 'Analytics', description: 'Photos, vetting, users, screens, e-mails and consents of the event.', iconKey: 'brandDatabricks', path: '/analytics', isVisible: everyone },

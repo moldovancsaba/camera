@@ -1,5 +1,5 @@
 /**
- * The people in a photo, marked at vetting (issue 542, docs/PHOTO_VETTING_PLAN.md; owner request 2026-10-10): the reviewer draws a rectangle around each person and says who it is (a gender
+ * The people in a photo, marked during vetting or later on Photo analysis (issue 542, docs/PHOTO_VETTING_PLAN.md; owner request 2026-10-10): the reviewer draws a rectangle around each person and says who it is (a gender
  * and an age), how they look (an emotion, optional) and what they wear or hold (items, optional). The result is stored with the photo (`Submission.people`) and is what the analytics read:
  * people per photo, the mix of gender and age, emotions, items. A rectangle is in percent of the photo, so it is the same on any screen and on the picture after approval.
  *

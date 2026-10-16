@@ -25,7 +25,6 @@ interface PhotoReviewQueueProps {
   status: QueueStatus;
   initialItems: PhotoQueueItem[];
   canReview: boolean;
-  eventId: string;
   /** The words of the event: the reasons of a rejection, and what a rejected card says. */
   vocabulary: ResolvedVocabulary;
   /**
@@ -95,7 +94,7 @@ const emailNote = (answers: ReviewAnswer[]): string => {
   return parts.length ? parts.join('; ') : '';
 };
 
-export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, eventId, markPeopleEventId }: PhotoReviewQueueProps) {
+export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, markPeopleEventId }: PhotoReviewQueueProps) {
   const router = useRouter();
   // Photos decided here leave the list at once; everything else comes from the server (initialItems is fresh after each router.refresh()).
   const [decided, setDecided] = useState<string[]>([]);
@@ -328,9 +327,6 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
               );
             }
             actions.push(
-              <Link key="analysis" href={`/admin/events/${eventId}/vetting/review?analysis=${item.id}`} style={{ textDecoration: 'none' }}>
-                <SemanticButton action="photo-review:update-analysis" size="xs" variant="secondary">Update analysis</SemanticButton>
-              </Link>,
               <Link key="view" href={`/share/${item.id}`} style={{ textDecoration: 'none' }}>
                 <SemanticButton action="photo-review:view-photo" size="xs" variant="secondary">View</SemanticButton>
               </Link>

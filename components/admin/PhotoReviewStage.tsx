@@ -1,8 +1,7 @@
 'use client';
 
 /**
- * The one-screen vetting review (issue 628, owner request 2026-10-12; first built as the big view of issue 542): ONE photo at a time, as big as the screen allows, with everything needed to decide it
- * on the same screen and no phases. Its save-only mode updates analysis on an approved photo without deciding it again. **Press and drag on the photo, at any time, to draw a rectangle: that makes a new person** and selects it; its gender and age (required), emotion and items
+ * The one-screen vetting and analysis workbench (issue 628, owner request 2026-10-12): ONE photo at a time, as big as the screen allows, with everything needed to decide or analyse it on the same screen. Its analysis-only mode never decides or republishes a photo. **Press and drag on the photo, at any time, to draw a rectangle: that makes a new person** and selects it; its gender and age (required), emotion and items
  * are plain text buttons beside the photo (under it on a narrow screen), in the words of the event's vocabulary (lib/photo-vetting/vocabulary.ts). A tap, or a sliver under 2 % a side, makes
  * nothing; a tap on a rectangle selects that person. "Nobody in this photo" counts as looking when the list is empty. **Approve** is open when every person is complete and there is somebody
  * or "nobody"; **Reject…** opens a separate reason step and does not decide yet. The photo stays in Waiting until at least one reason is selected and **Reject photo** is pressed; the final action also
@@ -23,7 +22,7 @@ import { Button } from '@/components/gds/PublicPrimitives';
 import { ChoiceChips, RejectActionNotice, RejectReasonPicker } from '@/components/admin/ReviewChoices';
 import { WAITING_REFRESH_MS, shouldRefreshWaiting } from '@/lib/photo-vetting/auto-refresh';
 import { MAX_PEOPLE, RECTANGLE_COLOURS, type PersonBox } from '@/lib/photo-vetting/people';
-import type { PhotoQueueItem } from '@/lib/photo-vetting/queue';
+import type { PhotoAnalysisItem, PhotoQueueItem } from '@/lib/photo-vetting/queue';
 import {
   MIN_SIDE_PERCENT,
   PERSON_GROUPS,
@@ -56,15 +55,21 @@ import { GROUPS, optionsOf, type ResolvedVocabulary } from '@/lib/photo-vetting/
 
 interface Props {
   eventId: string;
-  items: PhotoQueueItem[];
+  items: Array<PhotoQueueItem | PhotoAnalysisItem>;
   /** The words of the event (the standard list under the general, partner and event levels). */
   vocabulary: ResolvedVocabulary;
   /** The event asks for the people to be marked before a decision. */
   markPeople: boolean;
   /** Drawn inside the event's Vetting tab, not as a page of its own: the empty state has no way back to link to. */
   embedded?: boolean;
-  /** Edits people analysis on an already approved photo without changing status, visibility or email. */
+  /** Analyses a finalized photo without changing its vetting status, visibility or email. */
   analysisOnly?: boolean;
+  /** Where a one-photo analysis edit returns after saving. Batch analysis stays in this workbench and advances to the next photo. */
+  completionHref?: string;
+  /** Total number outstanding when this analysis session began, independent of the 60-photo page size. */
+  analysisTotal?: number;
+  backHref?: string;
+  backLabel?: string;
 }
 
 const ANSWER_TIMEOUT_MS = 120_000;
@@ -105,7 +110,7 @@ const BUTTON_ROW = { display: 'flex', flexWrap: 'wrap', gap: '0.5rem' } as const
 const DECISION_BUTTON = { root: { paddingInline: '0.75rem' } } as const;
 
 interface WorkspaceProps {
-  item: PhotoQueueItem;
+  item: PhotoQueueItem | PhotoAnalysisItem;
   position: number;
   total: number;
   vocabulary: ResolvedVocabulary;
@@ -211,7 +216,7 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
     setError(null);
     try {
       await send(`/api/admin/submissions/${item.id}/people`, 'PUT', { people: peopleToSave(draft), analysisOnly: true });
-      onDecided(item.id, { text: 'Analysis updated. The photo remains visible.', warning: false });
+      onDecided(item.id, { text: 'Analysis saved. Vetting and publication status are unchanged.', warning: false });
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'The analysis could not be saved');
     } finally {
@@ -232,12 +237,17 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: 1400 }} data-photo-review-stage>
       <div style={{ alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem', justifyContent: 'space-between' }}>
         <strong data-review-position>
-          {analysisOnly ? `Updating analysis ${position} of ${total}` : `Photo ${position} of ${total} waiting`}
+          {analysisOnly ? `${item.peopleMarked ? 'Updating analysis' : 'Photo'} ${position} of ${total}${item.peopleMarked ? '' : ' to analyse'}` : `Photo ${position} of ${total} waiting`}
         </strong>
         <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{item.identityLabel}</span>
       </div>
+      {analysisOnly && 'status' in item ? (
+        <p style={{ ...DIMMED, fontWeight: 600 }} data-analysis-vetting-status>
+          Vetting status: {item.status === 'published' ? 'Published without vetting' : item.status === 'approved' ? 'Approved' : 'Rejected'}
+        </p>
+      ) : null}
       <p style={DIMMED} data-review-help>
-        {analysisOnly ? 'Update the people marked on this photo. Saving changes the analysis only; visibility stays the same.' : markPeople
+        {analysisOnly ? 'Mark the people in this photo, or choose Nobody in this photo. Saving changes the analysis only; vetting, visibility, and email stay the same.' : markPeople
           ? '1. Draw a rectangle around each person. 2. Choose gender and age. Add emotion and items if you can. 3. Approve or reject.'
           : 'Look at the photo, then approve or reject it. A rejection needs a reason.'}
       </p>
@@ -387,20 +397,27 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
               {hint}
             </p>
             {analysisOnly ? (
-              <SemanticButton action="photo-review:save-analysis" type="button" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'save'} onClick={() => void saveAnalysis()}>
-                Save analysis
-              </SemanticButton>
-            ) : <div style={BUTTON_ROW}>
-              <SemanticButton action="photo-review:approve" type="button" color="green.8" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'approve'} onClick={() => void decide('approve')}>
-                Approve
-              </SemanticButton>
-              <SemanticButton action="photo-review:reject" type="button" color="red.8" styles={DECISION_BUTTON} aria-expanded={rejecting} aria-controls={rejecting ? 'photo-rejection-step' : undefined} disabled={busy !== null} onClick={() => setRejecting((open) => !open)}>
-                Reject…
-              </SemanticButton>
-              <SemanticButton action="photo-review:mark-skip" type="button" variant="outline" styles={DECISION_BUTTON} disabled={busy !== null || !canSkip} onClick={() => onSkip(item.id)}>
-                Skip for now
-              </SemanticButton>
-            </div>}
+              <div style={BUTTON_ROW}>
+                <SemanticButton action="photo-review:save-analysis" type="button" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'save'} onClick={() => void saveAnalysis()}>
+                  Save analysis
+                </SemanticButton>
+                <SemanticButton action="photo-review:mark-skip" type="button" variant="outline" styles={DECISION_BUTTON} disabled={busy !== null || !canSkip} onClick={() => onSkip(item.id)}>
+                  Skip for now
+                </SemanticButton>
+              </div>
+            ) : (
+              <div style={BUTTON_ROW}>
+                <SemanticButton action="photo-review:approve" type="button" color="green.8" styles={DECISION_BUTTON} disabled={!approveOk || busy !== null} loading={busy === 'approve'} onClick={() => void decide('approve')}>
+                  Approve
+                </SemanticButton>
+                <SemanticButton action="photo-review:reject" type="button" color="red.8" styles={DECISION_BUTTON} aria-expanded={rejecting} aria-controls={rejecting ? 'photo-rejection-step' : undefined} disabled={busy !== null} onClick={() => setRejecting((open) => !open)}>
+                  Reject…
+                </SemanticButton>
+                <SemanticButton action="photo-review:mark-skip" type="button" variant="outline" styles={DECISION_BUTTON} disabled={busy !== null || !canSkip} onClick={() => onSkip(item.id)}>
+                  Skip for now
+                </SemanticButton>
+              </div>
+            )}
           </section>
         </aside>
       </div>
@@ -408,13 +425,14 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
   );
 }
 
-export default function PhotoReviewStage({ eventId, items, vocabulary, markPeople, embedded = false, analysisOnly = false }: Props) {
+export default function PhotoReviewStage({ eventId, items, vocabulary, markPeople, embedded = false, analysisOnly = false, completionHref, analysisTotal, backHref, backLabel }: Props) {
   const router = useRouter();
   // Photos decided here leave the queue at once (the server list catches up after router.refresh()); a photo skipped goes to the back and comes round again.
   const [decided, setDecided] = useState<string[]>([]);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [notice, setNotice] = useState<DecisionNotice | null>(null);
   const [working, setWorking] = useState(false);
+  const [startingAnalysisTotal] = useState(() => analysisTotal ?? items.length);
 
   const waiting = useMemo(() => {
     const open = items.filter((item) => !decided.includes(item.id));
@@ -436,10 +454,10 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
     (id: string, message: DecisionNotice) => {
       setDecided((current) => [...current, id]);
       setNotice(message);
-      if (analysisOnly) router.push(`/admin/events/${eventId}/vetting?photos=approved`);
+      if (analysisOnly && completionHref) router.push(completionHref);
       else router.refresh();
     },
-    [router, analysisOnly, eventId],
+    [router, analysisOnly, completionHref],
   );
   const onSkip = useCallback((id: string) => {
     setNotice(null);
@@ -450,8 +468,12 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
     return (
       <div style={{ display: 'grid', gap: '1rem' }} data-photo-review-empty>
         {notice ? <InlineAlert title="Done" message={notice.text} severity={notice.warning ? 'warning' : 'success'} /> : null}
-        <StateBlock variant="empty" title={items.length === 0 ? 'Nothing is waiting' : 'All the photos are decided'} description="New photos of this event appear here until they are approved or rejected. This page looks for new photos by itself every 10 seconds." />
-        {embedded ? null : <Link href={`/admin/events/${eventId}/vetting`}>Back to the Vetting tab</Link>}
+        <StateBlock
+          variant="empty"
+          title={analysisOnly ? (items.length === 0 ? 'No photos need analysis' : 'This batch is analysed') : items.length === 0 ? 'Nothing is waiting' : 'All the photos are decided'}
+          description={analysisOnly ? 'Photos waiting for a vetting decision are handled on the Vetting page. Analysis never changes a photo’s vetting or publication status.' : 'New photos of this event appear here until they are approved or rejected. This page looks for new photos by itself every 10 seconds.'}
+        />
+        {embedded ? null : <Link href={backHref ?? `/admin/events/${eventId}/${analysisOnly ? 'analysis' : 'vetting'}`}>{backLabel ?? (analysisOnly ? 'Back to Photo analysis' : 'Back to the Vetting tab')}</Link>}
       </div>
     );
   }
@@ -461,7 +483,7 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, markPeopl
       key={item.id}
       item={item}
       position={decided.length + 1}
-      total={decided.length + waiting.length}
+      total={analysisOnly ? Math.max(startingAnalysisTotal, decided.length + waiting.length) : decided.length + waiting.length}
       vocabulary={vocabulary}
       markPeople={markPeople}
       analysisOnly={analysisOnly}

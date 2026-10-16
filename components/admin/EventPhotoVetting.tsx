@@ -18,7 +18,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { markPeopleOn, summarizePeople } from '@/lib/photo-vetting/people';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
-import { countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
+import { countPhotoAnalysisQueue, countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
 
 const TAB_LABEL: Record<QueueStatus, string> = { pending_review: 'Waiting', rejected: 'Rejected', approved: 'Approved' };
 
@@ -37,9 +37,10 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
   const eventUuid = String(event.eventId ?? '');
   // The words of the event first: the photos of the queue are read with them (a custom option would otherwise make a marked photo read as unmarked).
   const vocabulary = await loadEventVocabulary(db, event);
-  const [items, counts, marked] = await Promise.all([
+  const [items, counts, analysisCounts, marked] = await Promise.all([
     loadPhotoQueue(db, eventUuid, status, vocabulary),
     countPhotoQueue(db, eventUuid),
+    countPhotoAnalysisQueue(db, eventUuid),
     // What the reviewers marked in this event's photos (issue 542): only the people, nothing else is read.
     db.collection(COLLECTIONS.SUBMISSIONS).find({ $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }], people: { $exists: true }, isArchived: { $ne: true } }, { projection: { people: 1 } }).limit(5000).toArray(),
   ]);
@@ -58,6 +59,10 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
           While photo vetting is on, the photos of {String(event.name ?? 'this event')} wait here for approval. Approving puts the frame on the photo, publishes it and emails the user the link.
         </Text>
       </div>
+
+      <Link href={`/admin/events/${eventMongoId}/analysis`} style={{ alignSelf: 'start', fontSize: '0.875rem' }} data-photo-analysis-link>
+        Open Photo analysis ({analysisCounts.needs_analysis} to analyse)
+      </Link>
 
       {required || any ? (
         <>
@@ -92,13 +97,13 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
           {oneAtATime ? (
             <PhotoReviewStage eventId={eventMongoId} items={items} vocabulary={vocabulary} markPeople={markPeople} embedded />
           ) : (
-            <PhotoReviewQueue key={status} status={status} initialItems={items} canReview eventId={eventMongoId} vocabulary={vocabulary} markPeopleEventId={required && markPeople ? eventMongoId : undefined} />
+            <PhotoReviewQueue key={status} status={status} initialItems={items} canReview vocabulary={vocabulary} markPeopleEventId={required && markPeople ? eventMongoId : undefined} />
           )}
         </>
       ) : null}
 
       <PhotoVettingSwitch eventId={eventMongoId} required={required} canChange={canChangeSetting} />
-      {required ? <MarkPeopleSwitch eventId={eventMongoId} on={markPeople} canChange={canChangeSetting} /> : null}
+      <MarkPeopleSwitch eventId={eventMongoId} on={markPeople} canChange={canChangeSetting} vettingRequired={required} />
       <PeopleSummaryCard summary={summarizePeople(marked as Array<{ people?: unknown }>, vocabulary)} vocabulary={vocabulary} />
     </Stack>
   );
