@@ -21,6 +21,7 @@ export interface PhotoQueueItem {
   createdAt: string;
   name: string;
   email: string | null;
+  identityLabel: string;
   /** An approval link was already sent successfully. */
   approvalEmailSent: boolean;
   /** The plain photo while waiting or rejected (private, for moderators only), the real picture once approved. */
@@ -37,6 +38,10 @@ export interface PhotoQueueItem {
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
+const emailOf = (doc: Document): string | null => {
+  const emails = [text(doc.userInfo?.email), text(doc.userEmail)];
+  return emails.find((email) => email && email !== 'anonymous@event' && email !== 'anonymous@event.com') ?? null;
+};
 
 /**
  * One photo of the queue. The people are read with the vocabulary of the **event** (issue 628): a custom option of the event would otherwise make a marked photo read as unmarked, and the
@@ -48,12 +53,15 @@ export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary):
   const history = Array.isArray(doc.reviewHistory) ? (doc.reviewHistory as Document[]) : [];
   const last = history[history.length - 1];
   const name = text(doc.userInfo?.name) ?? text(doc.userName) ?? 'Guest';
+  const email = emailOf(doc);
+  const registered = typeof doc.userId === 'string' && Boolean(doc.userId) && doc.userId !== 'anonymous';
   return {
     id: String(doc._id),
     status,
     createdAt: text(doc.createdAt) ?? '',
     name,
-    email: text(doc.userInfo?.email) ?? text(doc.userEmail),
+    email,
+    identityLabel: email ?? (registered ? 'REGISTERED · NO EMAIL' : 'NO USER'),
     approvalEmailSent: doc.metadata?.emailSentAfterSave === true || doc.metadata?.emailSent === true,
     photoUrl: status === 'approved' || (status === 'pending_review' && typeof review.returnedAt === 'string') ? text(doc.imageUrl) ?? text(review.photoUrl) : text(review.photoUrl),
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',

@@ -43,6 +43,7 @@ interface Notice {
 
 interface ReviewAnswer {
   email?: 'sent' | 'skipped' | 'failed';
+  emailDeferred?: boolean;
 }
 
 const BULK_CONCURRENCY = 2;
@@ -84,9 +85,14 @@ async function review(id: string, action: 'approve' | 'reject' | 'return_to_vett
 
 const emailNote = (answers: ReviewAnswer[]): string => {
   const failed = answers.filter((answer) => answer.email === 'failed').length;
-  const skipped = answers.filter((answer) => answer.email === 'skipped').length;
-  const parts = [failed ? `${failed} email${failed === 1 ? '' : 's'} could not be sent` : '', skipped ? `${skipped} had no email to send to` : ''].filter(Boolean);
-  return parts.length ? ` (${parts.join(', ')})` : '';
+  const deferred = answers.filter((answer) => answer.emailDeferred === true).length;
+  const skipped = answers.filter((answer) => answer.email === 'skipped' && answer.emailDeferred !== true).length;
+  const parts = [
+    failed ? `${failed} email${failed === 1 ? '' : 's'} could not be sent` : '',
+    deferred ? `${deferred} will receive the email when they sign in or provide an email address` : '',
+    skipped ? `${skipped} email${skipped === 1 ? '' : 's'} were skipped (no recipient or event email setting)` : '',
+  ].filter(Boolean);
+  return parts.length ? parts.join('; ') : '';
 };
 
 export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, eventId, markPeopleEventId }: PhotoReviewQueueProps) {
@@ -156,7 +162,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
       });
     } else {
       const note = emailNote(answers);
-      setNotice({ severity: note ? 'warning' : 'success', title: done.length === 1 ? 'Photo approved' : `${done.length} photos approved`, message: `The user gets the link by email${note}.` });
+      setNotice({ severity: answers.some((answer) => answer.email === 'failed') ? 'warning' : 'success', title: done.length === 1 ? 'Photo approved' : `${done.length} photos approved`, message: note ? note : 'The user gets the link by email.' });
     }
   };
 
@@ -170,7 +176,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
       setReasons([]);
       setRejectNote('');
       const note = emailNote([answer]);
-      setNotice({ severity: note ? 'warning' : 'success', title: 'Photo rejected', message: `The user gets a short note${note}. The photo stays private.` });
+      setNotice({ severity: answer.email === 'failed' ? 'warning' : 'success', title: 'Photo rejected', message: `${note || 'The user gets a short note.'} The photo stays private.` });
     } catch (error) {
       setNotice({ severity: 'error', title: 'Not rejected', message: error instanceof Error ? error.message : 'The photo could not be rejected' });
     } finally {
@@ -268,7 +274,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
             { id: 'when', label: 'Taken', value: formatDateTime(item.createdAt), tone: 'muted' },
             { id: 'frame', label: 'Frame', value: FRAME_LABEL[item.frameKind], tone: 'muted' },
           ];
-          if (item.email) metadata.unshift({ id: 'email', label: 'Email', value: item.email });
+          metadata.unshift({ id: item.email ? 'email' : 'identity', label: item.email ? 'Email' : 'Identity', value: item.identityLabel });
           // The buttons show their fixed labels, so the card itself says that a decision is being made (it can take a few seconds).
           if (isBusy) metadata.push({ id: 'working', label: 'Now', value: isRejecting ? 'Rejecting…' : 'Approving… please wait', tone: 'warning' });
           if (item.status !== 'approved') metadata.push({ id: 'wall', label: 'Wall', value: item.shareOptIn ? 'shown' : 'private', tone: 'muted' });
