@@ -85,6 +85,17 @@ async function applySubmissionMetadataPatch(
   );
 }
 
+function schedulePendingVettingEmail(db: Db, submissionId: ObjectId) {
+  runAfterResponse(async () => {
+    try {
+      const { sendPendingVettingEmailAfterIdentity } = await import('@/lib/photo-vetting/review');
+      await sendPendingVettingEmailAfterIdentity(db, submissionId);
+    } catch (error) {
+      console.warn('[photo-vetting] Deferred decision email could not be completed', error instanceof Error ? error.message : error);
+    }
+  });
+}
+
 export const DELETE = withErrorHandler(async (
   request: NextRequest,
   context?: { params?: Promise<{ submissionId: string }> }
@@ -255,7 +266,7 @@ export const PATCH = withErrorHandler(async (
     const name = session.user.name || submission.userInfo?.name || email || 'REGISTERED USER';
     const userInfo = email ? { name, email, collectedAt: now } : null;
     await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: objectId, userId: 'anonymous' },
+      { _id: objectId, $or: [{ userId: 'anonymous' }, { userId: session.user.id }] },
       {
         $set: {
           userId: session.user.id,
@@ -267,6 +278,7 @@ export const PATCH = withErrorHandler(async (
         },
       },
     );
+    schedulePendingVettingEmail(db, objectId);
     if (email) {
       runAfterResponse(async () => {
         try {
@@ -323,6 +335,7 @@ export const PATCH = withErrorHandler(async (
           await sendApprovedLinkAfterConsent(db, objectId);
         });
       }
+      if (consentUpdate.modifiedCount === 1 && submission.reviewStatus === 'rejected') schedulePendingVettingEmail(db, objectId);
     }
     return apiSuccess({ submissionId, action, appendedConsents: next.length });
   }
@@ -344,6 +357,9 @@ export const PATCH = withErrorHandler(async (
       : null;
 
   if (userInfoPayload) {
+    const preserveVettingMissingRecipient = Boolean(
+      submission.photoReview && submission.metadata?.emailSent === false && submission.metadata?.emailSkipReason === 'missing_recipient',
+    );
     await db
       .collection<Submission>(COLLECTIONS.SUBMISSIONS)
       .updateOne(
@@ -351,15 +367,17 @@ export const PATCH = withErrorHandler(async (
         {
           $set: {
             userInfo: userInfoPayload,
+            // Preserve the address entered by a guest in the fields used by admin lists
+            // and legacy email flows. A logged-in account remains the primary identity.
+            userEmail: userInfoPayload.email,
+            userName: userInfoPayload.name,
             ...(session?.user?.id ? {
               userId: session.user.id,
-              userEmail: session.user.email || userInfoPayload.email,
-              userName: session.user.name || userInfoPayload.name,
               'metadata.identityStatus': 'REGISTERED',
             } : {}),
           },
           $unset: {
-            'metadata.emailSkipReason': '',
+            ...(preserveVettingMissingRecipient ? {} : { 'metadata.emailSkipReason': '' }),
             'metadata.emailSentAfterSave': '',
             'metadata.emailSentAfterRelatedPhotos': '',
             'metadata.emailFailedAt': '',
@@ -368,6 +386,7 @@ export const PATCH = withErrorHandler(async (
           },
         }
       );
+    schedulePendingVettingEmail(db, objectId);
   }
 
   let emailResult: Awaited<ReturnType<typeof dispatchPendingSubmissionEmailForSubmission>> | null = null;

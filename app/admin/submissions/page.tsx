@@ -20,6 +20,8 @@ interface SubmissionGalleryItem {
   previewImageUrl?: string | null;
   userName: string;
   userEmail: string;
+  userId?: string;
+  userInfo?: { email?: string | null } | null;
   partnerId?: string | null;
   eventId?: string | null;
   frameName?: string;
@@ -140,6 +142,7 @@ export default async function AdminSubmissionsPage({
       query.$or = [
         { userName: { $regex: search, $options: 'i' } },
         { userEmail: { $regex: search, $options: 'i' } },
+        { 'userInfo.email': { $regex: search, $options: 'i' } },
         { eventName: { $regex: search, $options: 'i' } },
         { partnerName: { $regex: search, $options: 'i' } },
         { frameName: { $regex: search, $options: 'i' } },
@@ -223,7 +226,11 @@ export default async function AdminSubmissionsPage({
         imageUrl: submission.imageUrl ?? '',
         previewImageUrl: submission.previewImageUrl ?? null,
         userName: submission.userName ?? '',
-        userEmail: submission.userEmail ?? '',
+        userEmail: submission.userInfo?.email && !['anonymous@event', 'anonymous@event.com'].includes(submission.userInfo.email)
+          ? submission.userInfo.email
+          : submission.userId === 'anonymous' || ['anonymous@event', 'anonymous@event.com'].includes(submission.userEmail)
+            ? 'NO USER'
+            : submission.userEmail ?? '',
         frameName: submission.frameName ?? null,
         createdAtLabel: formatDateTime(submission.createdAt),
         playCount: submission.playCount,

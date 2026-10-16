@@ -1421,7 +1421,12 @@ export default function EventCapturePage({
 
     // The submission already exists because TOVÁBB uploaded it before this page.
     if (savedSubmissionId) {
-      await updateSubmissionContact(savedSubmissionId, data);
+      if (!(await updateSubmissionContact(savedSubmissionId, data))) {
+        // Do not let a guest leave the contact step with an address that only exists in client state.
+        // The decision email and the admin contact details both depend on this write succeeding.
+        notifyCapture('error', t('flow.serverError', { status: 500 }));
+        return;
+      }
       const consents = [...collectedData.consents, ...declinedAcceptance()];
       if (!(await updateSubmissionConsents(savedSubmissionId, consents))) {
         notifyCapture('error', t('flow.serverError', { status: 500 }));
