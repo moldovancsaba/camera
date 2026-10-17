@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — show people counts on analysed photo cards
+
+- **Added:** each card in the event's Analysed photo list displays the number of people saved in its analysis, including an explicit zero-person result. Malformed or vocabulary-incompatible saved data is flagged for review instead of being presented as zero.
+- **Fixed:** the list uses the unframed analysis source instead of the framed public image; when the unframed source is unavailable it says so rather than showing the frame.
+- **Verified locally:** `npm run release:check` passed, including 348/348 unit-test files, type-check, lint, GDS checks, production guards, and production build; `npm run inventory:check` passed. The build emitted the existing Google Fonts CSS `@import` ordering warning.
+- **Not verified:** no authenticated browser walkthrough of the admin Analysis page was available; GitHub Verify is the required PR gate.
+
 ## Unreleased — keep Next while the CTA picture links out (2026-10-15)
 
 - **Added:** CTA picture settings can hide only the URL visit button while keeping Continue visible. Tapping the linked picture opens the destination in a new tab; Continue advances the configured journey.
