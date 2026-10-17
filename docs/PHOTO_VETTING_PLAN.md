@@ -175,6 +175,7 @@ The live guest flow uploads the photo as soon as the guest confirms it, then may
 ## Separate Photo analysis work (owner decision, 2026-10-16)
 
 - Vetting and people analysis are independent jobs. Vetting remains on its own page and owns approve/reject decisions. **Photo analysis** is a separate event page and uses the same one-photo drawing and labeling workbench, with Save and Skip actions and no vetting controls.
+- The **Analysed** list shows the saved people-marking count on each card, including an explicit `0`. If stored tags cannot be read with the event vocabulary, the card says **Review data** rather than reporting a false zero. It uses the unframed analysis image when available; a framed composite is not substituted, and a missing unframed source is called out.
 - If an event requires vetting, photos enter the analysis queue only after approval or rejection. A photo whose analysis was required during vetting is already complete and does not appear in the outstanding queue. If people marking was switched off during vetting, the finalized photo appears in Photo analysis for later work.
 - If vetting is off, photos that were published without a vetting record enter Photo analysis directly. Previously vetted, finalized photos remain eligible too.
 - Photos still awaiting a vetting decision, awaiting required consent, archived, known broken, or not a plain photo are excluded. A rejected photo is shown from its private review image, so it remains available to event managers without becoming public.
