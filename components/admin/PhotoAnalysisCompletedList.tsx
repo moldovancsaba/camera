@@ -22,6 +22,8 @@ export default function PhotoAnalysisCompletedList({ eventId, items }: { eventId
         const metadata: ListingMetadataRow[] = [
           { id: 'vetting', label: 'Vetting', value: vetting, tone: item.status === 'rejected' ? 'warning' : 'positive' },
           { id: 'analysed-at', label: 'Analysed', value: formatDateTime(item.analysisAt), tone: 'muted' },
+          // A saved empty list means nobody was marked; an invalid stored list must not masquerade as a valid zero.
+          { id: 'people-marked', label: 'People marked', value: item.peopleCount === null ? 'Review data' : String(item.peopleCount) },
         ];
         if (item.analysisBy) metadata.push({ id: 'analysed-by', label: 'By', value: item.analysisBy });
         if (item.email) metadata.unshift({ id: 'email', label: 'Email', value: item.email });
@@ -29,7 +31,7 @@ export default function PhotoAnalysisCompletedList({ eventId, items }: { eventId
           <ListingCard
             key={item.id}
             title={item.name}
-            image={item.photoUrl ? <Image src={item.photoUrl} alt={`Photo of ${item.name}`} width={800} height={450} unoptimized style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} /> : <div style={{ aspectRatio: '16 / 9' }}>No photo</div>}
+            image={item.analysisPhotoUrl ? <Image src={item.analysisPhotoUrl} alt={`Unframed photo of ${item.name}`} width={800} height={450} unoptimized style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} /> : <div style={{ aspectRatio: '16 / 9' }}>Unframed photo unavailable</div>}
             metadata={metadata}
             actions={[
               <Link key="edit" href={`/admin/events/${eventId}/analysis/review?edit=${item.id}`} style={{ textDecoration: 'none' }}>
