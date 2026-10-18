@@ -156,18 +156,29 @@ isActive, eventDate }] }`. `messmassEventId` falls back to `eventId` for
 events created directly in Camera (no messmass link); events provisioned by
 messmass (§1) carry a real `messmassEventId`.
 
-### `GET /api/internal/fanmass/events/{eventId}/media?since=<ISO>&limit=<n>`
+### `GET /api/internal/fanmass/events/{eventId}/media?afterAt=<ISO>&afterId=<capture-id>&limit=<n>`
 Incremental photo feed for one event, oldest first, so fanmass can advance a
-cursor and only re-pull new images. Matches on `{eventId}` or `{eventIds:
+compound cursor and only re-pull new images. Matches on `{eventId}` or `{eventIds:
 eventId}` (Camera's legacy single-event / current multi-event submission
-linkage). Returns only **original** fan photos — `submissionKind !== 'tryon_result'`
+linkage). `afterAt` is the availability timestamp and `afterId` is the stable
+submission id tie-breaker. This avoids losing two submissions with the same
+timestamp. The older `since=<ISO>` timestamp-only parameter remains available
+during rolling upgrades; new Fanmass clients should use the compound cursor.
+Returns only **original** fan photos — `submissionKind !== 'tryon_result'`
 and `originalImageUrl` present — never the frame-composited final image or
 a stored try-on result of the removed try-on integration, because fanmass measures brand exposure on the fan as
-photographed, not on the branded output. `limit` defaults to 200, capped at 500.
-Response: `{ eventId, media: [{ captureId, url, createdAt }] }`.
+photographed, not on the branded output. This compatibility feed also applies
+Camera's shared public-visibility rules: it excludes archived, hidden, broken,
+consent-pending/expired, waiting-review, and rejected submissions. That is a
+conservative published-photo feed, not authorization for pre-vetting analysis.
+`limit` defaults to 200, capped at 500.
+Response: `{ eventId, media: [{ captureId, url, createdAt }] }`; use the pair
+`(createdAt, captureId)` as the next cursor only after the item is durably
+staged. Items are sorted by that same pair. On a failed fetch, stop at the first
+failure and retry it before advancing to later items.
 
 **Photo vetting (camera#270):** a photo of an event with vetting required is in the feed only once it is approved; waiting and rejected
-photos are not. `createdAt` in the answer, and the `since` cut, mean *when the photo became available to this feed*: the capture time for
+photos are not. `createdAt` in the answer, and the cursor cut, mean *when the photo became available to this feed*: the capture time for
 every photo from before vetting (unchanged), the approval time for a vetted photo, so a photo approved after fanmass moved its cursor
 still arrives on the next poll. An approved vetted photo's `url` is the approved picture (the plain photo is private and deleted after
 approval).
