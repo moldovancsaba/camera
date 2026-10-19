@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest } from 'next/server';
+import type { WithId } from 'mongodb';
 import { apiSuccess, checkRateLimit, RATE_LIMITS, withErrorHandler } from '@/lib/api';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS } from '@/lib/db/schemas';
+import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { assertInternalFanmassSecret } from '@/lib/fanmass/internal';
 import { buildMediaFeedEligibilityMatch, FANMASS_MEDIA_JOBS_CONTRACT } from '@/lib/fanmass/media-feed';
 
@@ -30,7 +31,7 @@ export const POST = withErrorHandler(async (
     // An empty body means the server's bounded default.
   }
 
-  const submissions = db.collection(COLLECTIONS.SUBMISSIONS);
+  const submissions = db.collection<Submission>(COLLECTIONS.SUBMISSIONS);
   const now = new Date();
   const nowIso = now.toISOString();
   const leaseUntil = new Date(now.getTime() + LEASE_MS).toISOString();
@@ -38,7 +39,7 @@ export const POST = withErrorHandler(async (
 
   for (let index = 0; index < requested; index += 1) {
     const leaseToken = randomUUID();
-    const lease = {
+    const lease: NonNullable<Submission['fanmassIntakeByEvent']>[number] = {
       eventId,
       status: 'claimed',
       leaseToken,
@@ -49,7 +50,8 @@ export const POST = withErrorHandler(async (
     };
     // Use separate atomic branches for a first-time event claim and a retry. A
     // submission can appear in multiple events, so each event owns its own lease.
-    let candidate = await submissions.findOneAndUpdate(
+    let candidate: WithId<Submission> | null = null;
+    candidate = await submissions.findOneAndUpdate(
       {
         $and: [
           buildMediaFeedEligibilityMatch(eventId),
@@ -57,7 +59,7 @@ export const POST = withErrorHandler(async (
         ],
       },
       { $push: { fanmassIntakeByEvent: lease } },
-      { sort: { createdAt: 1, _id: 1 }, returnDocument: 'after' },
+      { sort: { createdAt: 1, _id: 1 }, returnDocument: 'after', includeResultMetadata: false },
     );
 
     if (!candidate) {
@@ -98,7 +100,7 @@ export const POST = withErrorHandler(async (
           },
           $inc: { 'fanmassIntakeByEvent.$.attempts': 1 },
         },
-        { sort: { createdAt: 1, _id: 1 }, returnDocument: 'after' },
+        { sort: { createdAt: 1, _id: 1 }, returnDocument: 'after', includeResultMetadata: false },
       );
     }
     if (!candidate) break;

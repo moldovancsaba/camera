@@ -7,10 +7,22 @@ const stages = (since?: string) => buildMediaFeedPipeline('evt-1', since, 50) as
 test('the feed covers one event, no try-on results, only photos with a picture that are not waiting or rejected', () => {
   const [match] = stages();
   const filter = match.$match as Record<string, unknown>;
-  assert.deepEqual(filter.$or, [{ eventId: 'evt-1' }, { eventIds: 'evt-1' }]);
-  assert.deepEqual(filter.submissionKind, { $ne: 'tryon_result' });
-  assert.deepEqual(filter.originalImageUrl, { $type: 'string' });
-  assert.deepEqual(filter.reviewStatus, { $nin: ['pending_review', 'rejected'] });
+  const clauses = filter.$and as Array<Record<string, unknown>>;
+  const eventClause = clauses.find((clause) => Array.isArray(clause.$or)
+    && (clause.$or as Array<Record<string, unknown>>).some((alternative) => 'eventId' in alternative));
+  const imageClause = clauses.find((clause) => Array.isArray(clause.$or)
+    && (clause.$or as Array<Record<string, unknown>>).some((alternative) => 'originalImageUrl' in alternative));
+  const visibilityClause = clauses.find((clause) => Array.isArray(clause.$and)
+    && (clause.$and as Array<Record<string, unknown>>).some((nested) => 'reviewStatus' in nested));
+
+  assert.deepEqual(eventClause?.$or, [{ eventId: 'evt-1' }, { eventIds: 'evt-1' }]);
+  assert.deepEqual(clauses.find((clause) => 'submissionKind' in clause)?.submissionKind, { $ne: 'tryon_result' });
+  assert.deepEqual(imageClause?.$or, [
+    { originalImageUrl: { $type: 'string', $ne: '' } },
+    { imageUrl: { $type: 'string', $ne: '' } },
+    { finalImageUrl: { $type: 'string', $ne: '' } },
+  ]);
+  assert.deepEqual((visibilityClause?.$and as Array<Record<string, unknown>>).find((nested) => 'reviewStatus' in nested)?.reviewStatus, { $nin: ['pending_review', 'rejected'] });
 });
 
 test('photos are ordered and cut by when they became available: the approval for a vetted photo, the capture for any other', () => {

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiBadRequest, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, withErrorHandler } from '@/lib/api';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS } from '@/lib/db/schemas';
+import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { assertInternalFanmassSecret } from '@/lib/fanmass/internal';
 
 /** Acknowledge only after Fanmass has durably queued the photo for analysis. */
@@ -31,7 +31,7 @@ export const POST = withErrorHandler(async (
   const now = new Date();
   const nowIso = now.toISOString();
   const errorCode = typeof body.errorCode === 'string' ? body.errorCode.replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 80) : '';
-  const submissions = (await connectToDatabase()).collection(COLLECTIONS.SUBMISSIONS);
+  const submissions = (await connectToDatabase()).collection<Submission>(COLLECTIONS.SUBMISSIONS);
   const claimFilter = {
     $or: [{ eventId }, { eventIds: eventId }],
     submissionId: captureId,
