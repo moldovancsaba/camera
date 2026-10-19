@@ -8,7 +8,10 @@ import { assertInternalFanmassSecret } from '@/lib/fanmass/internal';
 import { buildMediaFeedEligibilityMatch, FANMASS_MEDIA_JOBS_CONTRACT } from '@/lib/fanmass/media-feed';
 
 const LEASE_MS = 10 * 60 * 1000;
-const MAX_CLAIMS = 5;
+// WHAT: Return at most one photo per pull request.
+// WHY: Fanmass must process a single image at a time; a bounded multi-item
+//      lease still lets a later failure hold unrelated photos until expiry.
+const MAX_CLAIMS = 1;
 
 /** Claim eligible, already-visible originals. Claiming is independent of review decisions. */
 export const POST = withErrorHandler(async (

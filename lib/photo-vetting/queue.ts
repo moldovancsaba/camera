@@ -5,7 +5,7 @@
  */
 
 import type { Db, Document } from 'mongodb';
-import { COLLECTIONS } from '@/lib/db/schemas';
+import { COLLECTIONS, type FanmassPhotoAnalysis } from '@/lib/db/schemas';
 import { plainPhotoClause } from '@/lib/submissions/visibility';
 import { parsePeople, type PersonTag } from './people';
 import type { ResolvedVocabulary } from './vocabulary';
@@ -41,6 +41,8 @@ export interface PhotoQueueItem {
   analysisAt: string | null;
   /** Why the photo was rejected, as keys of the `reject_reason` group of the event's vocabulary (issue 628); none for a photo that was not rejected or was rejected before reasons existed. */
   rejectReasons: string[];
+  /** The latest per-photo local-analysis snapshot, with normalized AI boxes. */
+  fanmassAnalysis: FanmassPhotoAnalysis | null;
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
@@ -84,6 +86,7 @@ export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary):
     analysisBy: text(peopleReview.by),
     analysisAt: text(peopleReview.at),
     rejectReasons: Array.isArray(doc.rejectReasons) ? doc.rejectReasons.filter((key): key is string => typeof key === 'string' && key.length > 0) : [],
+    fanmassAnalysis: doc.fanmassAnalysis && typeof doc.fanmassAnalysis === 'object' ? doc.fanmassAnalysis as FanmassPhotoAnalysis : null,
     last:
       last && (last.action === 'approve' || last.action === 'reject' || last.action === 'return_to_vetting')
         ? { action: last.action, by: text(last.by) ?? 'unknown', at: text(last.at) ?? '', reason: text(last.reason) }

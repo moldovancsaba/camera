@@ -137,9 +137,9 @@ login is unaffected. Minting it needs the permission read to use Camera's own
 `client_credentials` token, which requires that grant (with
 `manage_permissions`) to be enabled for Camera's SSO client (owner action).
 
-## 2. fanmass → camera: read-only pull
+## 2. fanmass ↔ camera: one-photo pull and saved analysis result
 
-fanmass has no push access — it polls. On a schedule (`CAMERA_POLL_MINUTES`,
+fanmass pulls photos from Camera on a schedule (`CAMERA_POLL_MINUTES`,
 default one minute on the fanmass side), fanmass lists active events. Events
 that advertise `camera.fanmass.media-jobs.v1` use a durable lease/ack queue;
 older Camera builds continue through the timestamp cursor feed.
@@ -195,9 +195,12 @@ image fetch.
 
 Events that advertise this contract use the durable path instead of timestamp
 polling. The claim query applies the same eligibility rules as the legacy feed,
-then atomically leases up to five photos for ten minutes to bound local memory
-use. Lease state is recorded per event because a submission can appear in more
-than one event. Claiming does not require a full-frame original for legacy
+then atomically leases at most one photo for ten minutes per claim (zero when
+no eligible photo is available). The server enforces this even if a caller asks
+for more; Fanmass also requests one. This keeps image fetch, durable staging,
+analysis queueing, and acknowledgement sequential on a photo-by-photo basis.
+Lease state is recorded per event because a submission can appear in more than
+one event. Claiming does not require a full-frame original for legacy
 approved records: it falls back to their already-published image URL. New
 submissions use the unframed original. Archived, hidden,
 broken, consent-pending/expired, waiting-review, rejected, and derived photos
@@ -206,7 +209,8 @@ private fetch path, random lease token, and lease expiry; it contains no guest
 email, login identity, consent text, or public storage URL.
 
 - `POST /api/internal/fanmass/events/{eventId}/media/claim` with `{ limit? }`
-  returns `{ contractVersion, eventId, jobs: [{ captureId, createdAt,
+  returns zero or one job, regardless of the requested limit:
+  `{ contractVersion, eventId, jobs: [{ captureId, createdAt,
   fetchPath, leaseToken, leaseUntil }] }`.
 - `GET /api/internal/fanmass/events/{eventId}/media/{captureId}` requires both
   the service secret and `x-fanmass-lease`. Camera rechecks event visibility,
@@ -228,6 +232,39 @@ This path still covers only photos eligible under the existing published-photo
 rules. It does not authorize analysis of a waiting/rejected photo or enable
 pre-vetting analysis. Deletion/withdrawal propagation to copies already staged
 in Fanmass remains a release gate before an event pilot.
+
+### Per-photo analysis return (`fanmass.camera.photo-analysis.v1`)
+
+After Fanmass has finished the one-photo analysis, it posts a compact snapshot
+back to Camera. The Camera route is service-authenticated with the same
+`CAMERA_FANMASS_INTERNAL_SECRET`; it accepts only a currently eligible original
+submission for the route's event and capture id, so a hidden, archived, expired,
+waiting, rejected, broken, or derived image cannot receive an analysis snapshot.
+It never changes the human `people` annotations, vetting decision, visibility,
+or email state.
+
+`POST /api/internal/fanmass/events/{eventId}/media/{captureId}/analysis` accepts
+`contractVersion`, matching `eventId`/`captureId`, Fanmass `batchId`/`imageId`,
+`status`, `analysisStage`, `analyzedAt`, a summary, and the separate `boxes`
+object. `boxes.people[]` carries AI person boxes plus the detected demographic
+attributes; `boxes.faces[]` carries face detector boxes. Each box uses normalized
+`x`, `y`, `w`, `h` coordinates in the 0–1 range, measured against the original
+image, so it renders at the correct position at any screen size. The Camera
+photo-analysis workbench displays these in a separate violet dashed overlay;
+human labels remain editable and stored independently. The completed-photo
+cards also show Fanmass's detected person count and analysis stage.
+
+Camera stores the latest snapshot in `submissions.fanmassAnalysis`, beside the
+photo. This also permits a controlled one-at-a-time sync of earlier Fanmass
+results that were analyzed before this return route existed, as long as Camera
+still considers the photo eligible. Fanmass retains its original full
+`batch_images.result`; its local
+`cameraAnalysisDelivery` state acts as an outbox (`pending`/`delivered`) and
+retries a failed result push before it claims another image. The API is
+idempotent and an older snapshot cannot overwrite a newer one. Results do not
+include guest contact fields, public image URLs, face embeddings, or the photo
+bytes. The persisted boxes are admin/service-only and are not returned from
+public photo/share routes.
 
 ## 2a. savetheworld → camera: pledge campaign
 
