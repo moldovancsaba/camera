@@ -243,6 +243,13 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .collection(COLLECTIONS.SUBMISSIONS)
       .createIndex({ eventId: 1, reviewStatus: 1, createdAt: -1 }, { name: 'submissions_eventId_review_createdAt' })
   );
+  // Fanmass's durable lease state is per event because a submission can be reused across events.
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db.collection(COLLECTIONS.SUBMISSIONS).createIndex(
+      { 'fanmassIntakeByEvent.eventId': 1, 'fanmassIntakeByEvent.status': 1, createdAt: 1 },
+      { name: 'submissions_fanmassIntakeByEvent_createdAt' }
+    )
+  );
   // Share links of vetted photos carry an opaque token (camera#269); only photos that have one are indexed.
   await track(COLLECTIONS.SUBMISSIONS, () =>
     db

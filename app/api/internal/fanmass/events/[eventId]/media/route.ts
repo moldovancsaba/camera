@@ -13,7 +13,9 @@ import { buildMediaFeedPipeline } from '@/lib/fanmass/media-feed';
  * (`afterAt` + `afterId`; the capture time, or approval time for a vetted photo), oldest first. `since` remains supported for
  * older Fanmass clients; new clients use the stable id tie-breaker to avoid dropping same-timestamp submissions.
  * Uses originalImageUrl — the raw fan photo (best for fan-worn brand exposure),
- * not the frame-composited final image. imgbb URLs are publicly fetchable.
+ * not the frame-composited final image. The compatibility feed exposes an
+ * eligible image URL (Vercel Blob or legacy ImgBB); the durable claim path
+ * below keeps the storage URL private.
  *
  * Response: { success, data: { eventId, media: [{ captureId, url, createdAt }] } }
  */
@@ -36,7 +38,7 @@ export const GET = withErrorHandler(async (
   const db = await connectToDatabase();
 
   // Submissions link to an event via the legacy single-event mirror (eventId) or the multi-event array (eventIds[]).
-  // Only publicly eligible originals enter this legacy feed: archived, hidden, broken, consent-pending, waiting, rejected,
+  // Only publicly eligible originals enter this compatibility feed: archived, hidden, broken, consent-pending, waiting, rejected,
   // and derived images stay out. A separate purpose-gated private queue is required before analysis may access those images.
   // A photo is cut and ordered by when it became available (its approval, for a vetted photo), so a late approval still arrives.
   const submissions = await db

@@ -9,6 +9,28 @@
 
 import { publiclyVisibleClauses } from '@/lib/submissions/visibility';
 
+export const FANMASS_MEDIA_JOBS_CONTRACT = 'camera.fanmass.media-jobs.v1';
+
+/** Query shared by the cursor feed and the durable Fanmass claim endpoint. */
+export function buildMediaFeedEligibilityMatch(eventId: string): Record<string, unknown> {
+  return {
+    $and: [
+      { $or: [{ eventId }, { eventIds: eventId }] },
+      ...publiclyVisibleClauses([eventId]),
+      { submissionKind: { $ne: 'tryon_result' } },
+      {
+        $or: [
+          { originalImageUrl: { $type: 'string', $ne: '' } },
+          // Older approved submissions may only have the public composite URL.
+          // Preserve the legacy feed's imageUrl/finalImageUrl fallback for them.
+          { imageUrl: { $type: 'string', $ne: '' } },
+          { finalImageUrl: { $type: 'string', $ne: '' } },
+        ],
+      },
+    ],
+  };
+}
+
 export function buildMediaFeedPipeline(
   eventId: string,
   since: string | null | undefined,
@@ -17,14 +39,7 @@ export function buildMediaFeedPipeline(
 ): object[] {
   return [
     {
-      $match: {
-        $and: [
-          { $or: [{ eventId }, { eventIds: eventId }] },
-          ...publiclyVisibleClauses([eventId]),
-          { submissionKind: { $ne: 'tryon_result' } },
-          { originalImageUrl: { $type: 'string' } },
-        ],
-      },
+      $match: buildMediaFeedEligibilityMatch(eventId),
     },
     { $addFields: { availableAt: { $ifNull: ['$approvedAt', '$createdAt'] } } },
     ...(since
