@@ -959,6 +959,8 @@ export interface Submission {
     processingTimeMs?: number;       // Time taken to process (milliseconds)
     compositionEngine?: string;      // "canvas-api" or other
     identityStatus?: 'NO USER' | 'REGISTERED' | 'EMAIL' | 'CONTACT_PENDING' | 'ERASED'; // Legacy summary only; guestContact is canonical.
+    /** Event policy captured when this submission was created; controls release after guest contact is finalized. */
+    vettingRequired?: boolean;
     
     // Email delivery
     emailSent: boolean;              // Whether email was sent
