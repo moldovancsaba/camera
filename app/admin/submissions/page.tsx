@@ -146,7 +146,7 @@ export default async function AdminSubmissionsPage({
   const reviewStatusOf = (submission: unknown): SerializedSubmissionRow['reviewStatus'] => {
     const status = (submission as { reviewStatus?: unknown; submissionKind?: unknown }).reviewStatus;
     const kind = (submission as { submissionKind?: unknown }).submissionKind;
-    return kind !== 'tryon_result' && (status === 'pending_review' || status === 'rejected') ? status : null;
+    return kind !== 'tryon_result' && (status === 'awaiting_contact' || status === 'pending_review' || status === 'rejected') ? status : null;
   };
   let submissionRows: SerializedSubmissionRow[] = [];
   let galleryItemCount = 0;

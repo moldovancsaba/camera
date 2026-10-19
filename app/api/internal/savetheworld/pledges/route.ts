@@ -73,7 +73,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     });
 
     // A photo that is waiting for approval, or was not approved, has no picture to show yet (camera#270).
-    if (!submission || submission.reviewStatus === 'pending_review' || submission.reviewStatus === 'rejected') {
+    if (!submission || submission.reviewStatus === 'awaiting_contact' || submission.reviewStatus === 'pending_review' || submission.reviewStatus === 'rejected') {
       return apiSuccess({ pledges: [] });
     }
 

@@ -81,7 +81,7 @@ function approvedOriginalsClause(): object {
   return {
     $and: [
       { $or: [{ submissionKind: { $exists: false } }, { submissionKind: 'original' }] },
-      { reviewStatus: { $nin: ['pending_review', 'rejected'] } },
+      { reviewStatus: { $nin: ['awaiting_contact', 'pending_review', 'rejected'] } },
     ],
   };
 }

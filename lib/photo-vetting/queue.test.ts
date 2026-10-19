@@ -84,30 +84,35 @@ test('the reject reasons of a rejected photo are on its item: the keys, none for
 });
 
 test('the queue covers photos that went through vetting for one event, not archived', () => {
-  assert.deepEqual(queueFilter('e1', 'pending_review'), {
-    $or: [{ eventId: 'e1' }, { eventIds: { $in: ['e1'] } }],
-    photoReview: { $exists: true },
-    reviewStatus: 'pending_review',
-    isArchived: { $ne: true },
-  });
+  const filter = queueFilter('e1', 'pending_review');
+  assert.deepEqual(filter.$and?.[0], { $or: [{ eventId: 'e1' }, { eventIds: { $in: ['e1'] } }] });
+  assert.deepEqual(filter.$and?.[1], { photoReview: { $exists: true } });
+  assert.deepEqual(filter.$and?.[2], { isArchived: { $ne: true } });
+  assert.equal((filter.$and?.[3] as { reviewStatus?: string })?.reviewStatus, 'pending_review');
   assert.equal(isQueueStatus('rejected'), true);
   assert.equal(isQueueStatus('hidden'), false);
 });
 
-test('the waiting list is oldest first, decided lists newest first, and the counts cover the three states', async () => {
+test('the waiting list is oldest first, decided lists newest first, and the counts cover the queue states', async () => {
   const sorts: unknown[] = [];
   const counted: unknown[] = [];
+  const statuses = ['pending_review', 'awaiting_contact', 'rejected', 'approved'];
+  const countByStatus: Record<string, number> = { pending_review: 3, awaiting_contact: 2, rejected: 1, approved: 1 };
   const db = {
     collection: () => ({
       find: () => ({ sort: (s: unknown) => (sorts.push(s), { limit: () => ({ toArray: async () => [base()] }) }) }),
-      countDocuments: async (filter: { reviewStatus: string }) => (counted.push(filter.reviewStatus), filter.reviewStatus === 'pending_review' ? 3 : 1),
+      countDocuments: async () => {
+        const status = statuses[counted.length];
+        counted.push(status);
+        return countByStatus[status];
+      },
     }),
   } as never;
   assert.equal((await loadPhotoQueue(db, 'e1', 'pending_review', V)).length, 1);
   await loadPhotoQueue(db, 'e1', 'approved', V);
   assert.deepEqual(sorts, [{ createdAt: 1 }, { createdAt: -1 }]);
-  assert.deepEqual(await countPhotoQueue(db, 'e1'), { pending_review: 3, rejected: 1, approved: 1 });
-  assert.deepEqual(counted, ['pending_review', 'rejected', 'approved']);
+  assert.deepEqual(await countPhotoQueue(db, 'e1'), { pending_review: 3, awaiting_contact: 2, rejected: 1, approved: 1 });
+  assert.deepEqual(counted, statuses);
 });
 
 test('waiting photos are counted in total and per event, for every event or only for the ones given', async () => {

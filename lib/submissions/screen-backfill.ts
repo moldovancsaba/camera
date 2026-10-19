@@ -25,7 +25,7 @@ export function screenBackfillFilter(events: readonly string[], after?: ObjectId
       { $or: [{ imageUrl: { $type: 'string' } }, { finalImageUrl: { $type: 'string' } }] },
       { screenImageUrl: { $in: [null, ''] } },
       { isArchived: { $ne: true } },
-      { reviewStatus: { $nin: ['pending_review', 'rejected'] } },
+      { reviewStatus: { $nin: ['awaiting_contact', 'pending_review', 'rejected'] } },
       ...(after ? [{ _id: { $gt: after } }] : []),
     ],
   };

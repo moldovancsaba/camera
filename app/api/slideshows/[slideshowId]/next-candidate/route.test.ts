@@ -28,7 +28,7 @@ test('the candidate query applies the shared visibility rule: not archived, not 
   const text = JSON.stringify(filters[0].$and);
   assert.match(text, /"isArchived":\{"\$ne":true\}/);
   assert.match(text, /"hiddenFromEvents"/);
-  assert.match(text, /"reviewStatus":\{"\$nin":\["pending_review","rejected"\]\}/);
+  assert.match(text, /"reviewStatus":\{"\$nin":\["awaiting_contact","pending_review","rejected"\]\}/);
   assert.match(text, /"submissionKind":\{"\$exists":false\}\},\{"submissionKind":"original"/, 'only a plain photo: no kind or original');
   assert.doesNotMatch(text, /tryon_result/, 'a stored try-on result has no branch that lets it in');
 });

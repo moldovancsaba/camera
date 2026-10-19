@@ -213,7 +213,7 @@ export const GET = withErrorHandler(async (
     submissionId,
     eventId: submission.eventId ?? null,
     previewImageUrl,
-    pending: submission.reviewStatus === 'pending_review' || Boolean(pendingImageUrl),
+    pending: submission.reviewStatus === 'pending_review' || submission.reviewStatus === 'awaiting_contact' || Boolean(pendingImageUrl),
   });
 });
 
@@ -298,7 +298,6 @@ export const PATCH = withErrorHandler(async (
       : { _id: objectId, 'userInfo.collectedAt': { $exists: false } };
     const saved = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(draftFilter, { $set: set });
     if (saved.matchedCount !== 1) throw apiForbidden('This submission has already been finalized.');
-    if (isValidEmail(draftEmail)) schedulePendingVettingEmail(db, objectId);
     return apiSuccess({ submissionId, action, draftSaved: true });
   }
 
@@ -309,7 +308,10 @@ export const PATCH = withErrorHandler(async (
     }
     const now = new Date().toISOString();
     const typedDraftEmail = isValidEmail(submission.userInfoDraft?.email) ? sanitizeEmail(submission.userInfoDraft.email) : '';
-    const email = submission.userInfo?.email || typedDraftEmail || session.user.email || '';
+    const email = sanitizeEmail(submission.userInfo?.email || typedDraftEmail || session.user.email || '');
+    if (!isValidEmail(email) || ['anonymous@event', 'anonymous@event.com'].includes(email.toLowerCase())) {
+      throw apiBadRequest('A real email address is required before this photo can enter vetting');
+    }
     const name = submission.userInfo?.name || submission.userInfoDraft?.name || session.user.name || email || 'REGISTERED USER';
     const userInfo = email ? { name, email, collectedAt: now } : null;
     await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
@@ -320,6 +322,8 @@ export const PATCH = withErrorHandler(async (
           userEmail: email || 'anonymous@event',
           userName: name,
           ...(userInfo ? { userInfo } : {}),
+          contactStatus: 'complete',
+          ...(submission.reviewStatus === 'awaiting_contact' ? { reviewStatus: 'pending_review' } : {}),
           'metadata.identityStatus': 'REGISTERED',
           updatedAt: now,
         },
@@ -431,6 +435,8 @@ export const PATCH = withErrorHandler(async (
             // and legacy email flows. A logged-in account remains the primary identity.
             userEmail: userInfoPayload.email,
             userName: userInfoPayload.name,
+            contactStatus: 'complete',
+            ...(submission.reviewStatus === 'awaiting_contact' ? { reviewStatus: 'pending_review' } : {}),
             ...(session?.user?.id ? {
               userId: session.user.id,
               'metadata.identityStatus': 'REGISTERED',

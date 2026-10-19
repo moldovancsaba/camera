@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { isHiddenFromAllEvents, isPubliclyVisible, plainPhotoClause, publiclyVisibleClauses, visibilityInputOf } from './visibility';
 
-test('a plain photo is public unless it is pending or rejected; a missing status is public (legacy photos)', () => {
+test('a plain photo is public unless it is awaiting contact, pending or rejected; a missing status is public (legacy photos)', () => {
   assert.equal(isPubliclyVisible({ submissionKind: 'original' }), true);
   assert.equal(isPubliclyVisible({}), true, 'no kind and no status: saved before vetting existed');
   assert.equal(isPubliclyVisible({ submissionKind: 'original', reviewStatus: 'approved' }), true);
@@ -52,7 +52,7 @@ test('the query clauses express the same rule', () => {
   assert.deepEqual(clauses[3], { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: ['e1', 'u1'] } }] });
   const review = clauses[4] as { $and: object[] };
   assert.deepEqual(review.$and[0], plainPhotoClause, 'a plain photo: no kind or original');
-  assert.deepEqual(review.$and[1], { reviewStatus: { $nin: ['pending_review', 'rejected'] } });
+  assert.deepEqual(review.$and[1], { reviewStatus: { $nin: ['awaiting_contact', 'pending_review', 'rejected'] } });
   assert.doesNotMatch(JSON.stringify(clauses), /tryon_result/, 'a stored try-on result has no branch that lets it in');
 });
 

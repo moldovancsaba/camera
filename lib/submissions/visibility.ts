@@ -5,7 +5,7 @@
  *
  * - Archived by an admin: never public.
  * - Hidden from every event it belongs to ("remove from event"): never public.
- * - Only a plain photo (`submissionKind` missing or `original`) is public, and it is unless its review says `pending_review` or `rejected`.
+ * - Only a plain photo (`submissionKind` missing or `original`) is public, and it is unless its review says `awaiting_contact`, `pending_review` or `rejected`.
  *   A missing status is public: photos saved before vetting existed carry none, and that must not hide history (the plan backfills them as approved).
  * - A stored try-on result (`submissionKind: 'tryon_result'`, from the integration that was removed, issue 557) is never public, whatever its
  *   review says: nothing shows it on any surface. It used to be public when approved and not turned off for sharing.
@@ -70,11 +70,11 @@ export function isPubliclyVisible(submission: VisibilityInput | null | undefined
   if (isHiddenFromAllEvents(submission)) return false;
   // Only a plain photo can be public: a stored try-on result (or any other kind) never is.
   if (submission.submissionKind != null && submission.submissionKind !== 'original') return false;
-  return submission.reviewStatus !== 'pending_review' && submission.reviewStatus !== 'rejected';
+  return submission.reviewStatus !== 'awaiting_contact' && submission.reviewStatus !== 'pending_review' && submission.reviewStatus !== 'rejected';
 }
 
-/** Review states that keep a photo off every feed and page: waiting for a decision, or not approved (camera#270). */
-export const UNPUBLISHED_REVIEW_STATUSES = ['pending_review', 'rejected'] as const;
+/** Review states that keep a photo off every feed and page: waiting for guest contact or a decision, or not approved (camera#270). */
+export const UNPUBLISHED_REVIEW_STATUSES = ['awaiting_contact', 'pending_review', 'rejected'] as const;
 
 /** `reviewStatus` is neither of them; a missing status passes (photos from before vetting carry none). For feeds that already restrict the kind. */
 export const notWaitingOrRejectedClause = { reviewStatus: { $nin: [...UNPUBLISHED_REVIEW_STATUSES] }, 'mediaHealth.broken': { $ne: true } };
@@ -91,7 +91,7 @@ export function publiclyVisibleClauses(eventIdKeys: readonly string[]): object[]
     { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } },
     { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: [...eventIdKeys] } }] },
     {
-      $and: [plainPhotoClause, { reviewStatus: { $nin: ['pending_review', 'rejected'] } }],
+      $and: [plainPhotoClause, { reviewStatus: { $nin: ['awaiting_contact', 'pending_review', 'rejected'] } }],
     },
   ];
 }

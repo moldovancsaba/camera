@@ -20,7 +20,7 @@ import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { countPhotoAnalysisQueue, countPhotoQueue, loadPhotoQueue, PHOTO_QUEUE_PAGE_SIZE, type QueueStatus } from '@/lib/photo-vetting/queue';
 
-const TAB_LABEL: Record<QueueStatus, string> = { pending_review: 'Waiting', rejected: 'Rejected', approved: 'Approved' };
+const TAB_LABEL: Record<QueueStatus, string> = { pending_review: 'Waiting', awaiting_contact: 'Needs contact', rejected: 'Rejected', approved: 'Approved' };
 
 interface EventPhotoVettingProps {
   db: Db;
@@ -52,7 +52,7 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
   const firstVisible = items.length > 0 ? (currentPage - 1) * PHOTO_QUEUE_PAGE_SIZE + 1 : 0;
   const lastVisible = Math.min(currentPage * PHOTO_QUEUE_PAGE_SIZE, counts[status]);
   const required = photoVettingRequired(event);
-  const any = counts.pending_review + counts.rejected + counts.approved > 0;
+  const any = counts.pending_review + counts.awaiting_contact + counts.rejected + counts.approved > 0;
   const markPeople = markPeopleOn(event);
   // The Waiting list of an event with vetting on is the one-at-a-time screen unless the list of cards was asked for.
   const oneAtATime = required && status === 'pending_review' && view !== 'list';

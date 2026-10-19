@@ -26,6 +26,7 @@ import sharp from 'sharp';
 import { composePhotoWithFrame } from '@/lib/photo-vetting/compose';
 import { approvedShareUrl, sendPhotoApprovedEmail, sendPhotoNotApprovedEmail, sendPhotoUnderReviewEmail, takeAnotherPhotoUrl } from '@/lib/photo-vetting/emails';
 import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
+import { isValidEmail } from '@/lib/photo-vetting/pending';
 
 export interface ReviewActor {
   email: string | null;
@@ -71,7 +72,7 @@ export const defaultReviewDeps: ReviewDeps = {
   now: () => new Date().toISOString(),
 };
 
-export type ReviewFailure = 'not_reviewable' | 'no_photo' | 'compose_failed';
+export type ReviewFailure = 'not_reviewable' | 'no_photo' | 'missing_contact' | 'compose_failed';
 
 export type ApproveResult =
   | { ok: true; email: 'sent' | 'skipped' | 'failed'; emailDeferred?: true }
@@ -100,6 +101,10 @@ export async function resolveFrameImageUrl(db: Db, submission: Pick<Submission, 
 export async function approvePhoto(db: Db, submission: WithId<Submission>, actor: ReviewActor, deps: ReviewDeps = defaultReviewDeps): Promise<ApproveResult> {
   if (submission.reviewStatus !== 'pending_review' && submission.reviewStatus !== 'rejected') {
     return { ok: false, reason: 'not_reviewable', message: 'This photo is not waiting for a decision' };
+  }
+  const guestEmail = submission.userInfo?.email || (!submission.userInfoDraft ? submission.userEmail : null);
+  if (!isValidEmail(guestEmail) || ['anonymous@event', 'anonymous@event.com', 'admin@upload'].includes(guestEmail.toLowerCase())) {
+    return { ok: false, reason: 'missing_contact', message: 'The guest has not finished login or entered a valid email address. This photo cannot be approved yet.' };
   }
   const review = submission.photoReview;
   const reopeningExistingImage = Boolean(review?.returnedAt && submission.imageUrl);

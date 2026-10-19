@@ -12,7 +12,7 @@ import {
 // The database is never touched: a photo that is not approved is turned away before any lookup.
 const noDatabase = new Proxy({}, { get: () => { throw new Error('the database must not be used'); } }) as never;
 
-test('the generic email dispatcher sends nothing for a pending or rejected photo', async () => {
+test('the generic email dispatcher sends nothing for a photo awaiting contact, pending or rejected', async () => {
   for (const reviewStatus of ['pending_review', 'rejected']) {
     const result = await dispatchPendingSubmissionEmailForSubmission(noDatabase, { _id: new ObjectId(), reviewStatus } as never);
     assert.equal(result, null);

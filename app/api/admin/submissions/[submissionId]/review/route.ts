@@ -32,7 +32,7 @@ const REVIEW_RATE_LIMIT = {
 };
 const MAX_REASON_LENGTH = 500;
 
-const STATUS_OF: Record<ReviewFailure, number> = { not_reviewable: 409, no_photo: 409, compose_failed: 502 };
+const STATUS_OF: Record<ReviewFailure, number> = { not_reviewable: 409, no_photo: 409, missing_contact: 409, compose_failed: 502 };
 
 export const POST = withErrorHandler(async (
   request: NextRequest,

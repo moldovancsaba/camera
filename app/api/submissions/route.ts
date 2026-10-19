@@ -335,7 +335,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         : {
             fileSize: pendingPhoto?.size ?? null,
             mimeType: pendingPhoto?.mime ?? null,
-            reviewStatus: 'pending_review',
+            // The browser saves the photo before the post-capture identity step (which may redirect through social login).
+            // Keep the private image out of the vetting queue until a real guest address is finalized.
+            reviewStatus: identity ? 'pending_review' : 'awaiting_contact',
             photoReview: {
               photoUrl: pendingPhoto?.url ?? '',
               photoSize: pendingPhoto?.size ?? 0,
@@ -364,6 +366,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         : vetted && identity
           ? { userInfo: { name: identity.name ?? '', email: identity.email, collectedAt: createdAt } }
           : {}),
+      ...(vetted ? { contactStatus: identity ? 'complete' : 'awaiting_contact' } : {}),
       // Consent records from accept/CTA pages
       consents: validatedConsents,
       method: SubmissionMethod.CAMERA_CAPTURE,
@@ -420,7 +423,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     // A pending photo answers with what the waiting screen needs and nothing public: no picture, no share link (camera#266).
     if (vetted) {
       return apiCreated({
-        submission: { _id: result.insertedId, reviewStatus: 'pending_review', metadata: { emailSent: false } },
+        submission: { _id: result.insertedId, reviewStatus: submission.reviewStatus, metadata: { emailSent: false } },
         pending: true,
       });
     }

@@ -828,7 +828,9 @@ export interface Submission {
   sourceJobId?: string | null;       // Queue job that produced the derived try-on result
   // Stored by the removed try-on integration (issue 557, docs/TRYON_REMOVED.md); only the deletion of the submission's files reads the two URLs.
   tryOnRequest?: { sourceImageUrl?: string | null; sourceDeleteUrl?: string | null } | null;
-  reviewStatus?: 'pending_review' | 'approved' | 'rejected'; // Moderation status of the photo (photo vetting); a missing status counts as approved
+  reviewStatus?: 'awaiting_contact' | 'pending_review' | 'approved' | 'rejected'; // Vetted photos are not reviewable until guest contact is saved; a missing status counts as approved
+  /** Vetted capture stored before the post-photo contact step; it enters review only after contact is finalized. */
+  contactStatus?: 'awaiting_contact' | 'complete';
   reviewedAt?: string | null;
   reviewedBy?: string | null;
   reviewNotes?: string | null;

@@ -22,7 +22,7 @@ test('the feed covers one event, no try-on results, only photos with a picture t
     { imageUrl: { $type: 'string', $ne: '' } },
     { finalImageUrl: { $type: 'string', $ne: '' } },
   ]);
-  assert.deepEqual((visibilityClause?.$and as Array<Record<string, unknown>>).find((nested) => 'reviewStatus' in nested)?.reviewStatus, { $nin: ['pending_review', 'rejected'] });
+  assert.deepEqual((visibilityClause?.$and as Array<Record<string, unknown>>).find((nested) => 'reviewStatus' in nested)?.reviewStatus, { $nin: ['awaiting_contact', 'pending_review', 'rejected'] });
 });
 
 test('photos are ordered and cut by when they became available: the approval for a vetted photo, the capture for any other', () => {

@@ -21,7 +21,7 @@ export interface SerializedSubmissionRow {
   eventAdminId?: string | null;
   eventName?: string | null;
   /** Set for photos of vetted events that are not approved yet (camera#270). */
-  reviewStatus?: 'pending_review' | 'rejected' | null;
+  reviewStatus?: 'awaiting_contact' | 'pending_review' | 'rejected' | null;
 }
 
 function isLegacyGuestName(value: string): boolean {
@@ -55,7 +55,7 @@ export default function SubmissionsInventoryList({
         { label: 'Email', value: submission.userEmail },
         { label: 'Frame', value: submission.frameName || 'frameless' },
         { label: 'Created', value: submission.createdAtLabel },
-        submission.reviewStatus ? { label: 'Review', value: submission.reviewStatus === 'rejected' ? 'Rejected' : 'Waiting for approval' } : null,
+        submission.reviewStatus ? { label: 'Review', value: submission.reviewStatus === 'awaiting_contact' ? 'Waiting for guest contact' : submission.reviewStatus === 'rejected' ? 'Rejected' : 'Waiting for approval' } : null,
         submission.partnerName ? { label: 'Partner', value: submission.partnerName } : null,
         submission.eventName ? { label: 'Event', value: submission.eventName } : null,
         typeof submission.playCount === 'number' && submission.playCount > 0

@@ -147,7 +147,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
   const working = busy.length > 0;
   const mustMark = Boolean(markPeopleEventId) && status === 'pending_review';
   // The quick Approve and Reject (and the selection for a bulk approval) are for the lists where marking does not apply: an event without marking, and the Rejected list (a photo decided before can be approved again).
-  const canDecide = canReview && status !== 'approved' && !mustMark;
+  const canDecide = canReview && (status === 'pending_review' || status === 'rejected') && !mustMark;
 
   const removeFromList = (ids: string[]) => {
     setDecided((current) => [...current, ...ids]);
@@ -253,8 +253,8 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
         {notice ? <InlineAlert title={notice.title} message={notice.message} severity={notice.severity} /> : null}
         <StateBlock
           variant="empty"
-          title={status === 'pending_review' ? 'Nothing is waiting' : status === 'rejected' ? 'No rejected photos' : 'No approved photos yet'}
-          description={status === 'pending_review' ? 'New photos of this event appear here until they are approved or rejected. This page looks for new photos by itself every 10 seconds.' : 'Photos appear here once they have been decided.'}
+          title={status === 'pending_review' ? 'Nothing is waiting' : status === 'awaiting_contact' ? 'No photos need contact details' : status === 'rejected' ? 'No rejected photos' : 'No approved photos yet'}
+          description={status === 'pending_review' ? 'New photos with saved guest contact appear here until they are approved or rejected. This page looks for new photos by itself every 10 seconds.' : status === 'awaiting_contact' ? 'Photos stay here until the guest finishes login or enters their name and email.' : 'Photos appear here once they have been decided.'}
         />
       </div>
     );
@@ -290,6 +290,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
       ) : null}
 
       {notice ? <InlineAlert title={notice.title} message={notice.message} severity={notice.severity} /> : null}
+      {status === 'awaiting_contact' ? <InlineAlert title="Guest contact is not finished" message="These photos were saved before the guest completed login or entered their name and email. They cannot be approved until the guest contact is saved." severity="warning" /> : null}
       {newPhotosCount > 0 && status === 'pending_review' ? <InlineAlert title="More photos are waiting" message={`${newPhotosCount} more ${newPhotosCount === 1 ? 'photo is' : 'photos are'} waiting for vetting.`} severity="success" /> : null}
 
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))' }}>

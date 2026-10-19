@@ -1,7 +1,9 @@
 /**
- * The pending photo of a vetted event (camera#266, docs/PHOTO_VETTING_PLAN.md): the plain framed-size photo, stored as an unlisted
- * Blob object (random path, never mirrored to imgbb, never returned by a public route), the guest identity the approval email goes to,
- * and the opaque share token. The branded composite does not exist until approval.
+ * A vetted capture is first stored as an unlisted Blob object (random path,
+ * never mirrored to imgbb or returned by a public route). The capture can
+ * precede the required post-capture identity step, so its submission may be
+ * held as `awaiting_contact` until the guest finishes login or enters contact
+ * details. The branded composite does not exist until approval.
  */
 
 import { randomBytes } from 'node:crypto';
@@ -74,7 +76,8 @@ export interface GuestIdentity {
 
 /**
  * Who the guest is, for the email that carries the link once the photo is approved: the email typed on the "who are you" page, or the
- * email of the logged-in user (a social login). Null when there is none: a vetted event does not save a photo without one.
+ * email of the logged-in user (a social login). This can be null when the photo is first stored; those submissions must stay out of vetting
+ * until contact is finalized.
  */
 export function guestIdentity(userInfo: { email?: unknown; name?: unknown; [key: string]: unknown } | null | undefined, session: { user?: { email?: string | null; name?: string | null } | null } | null | undefined): GuestIdentity | null {
   if (isValidEmail(userInfo?.email)) {

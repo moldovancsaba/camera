@@ -32,7 +32,7 @@ test('the filter is photos of slideshow events that can be seen on a screen and 
   const filter = screenBackfillFilter(['e1', 'e2'], id(5)) as { $and: Array<Record<string, unknown>> };
   assert.deepEqual(filter.$and[0], { $or: [{ eventIds: { $in: ['e1', 'e2'] } }, { eventId: { $in: ['e1', 'e2'] } }] });
   assert.deepEqual(filter.$and.find((c) => 'screenImageUrl' in c), { screenImageUrl: { $in: [null, ''] } });
-  assert.deepEqual(filter.$and.find((c) => 'reviewStatus' in c), { reviewStatus: { $nin: ['pending_review', 'rejected'] } });
+  assert.deepEqual(filter.$and.find((c) => 'reviewStatus' in c), { reviewStatus: { $nin: ['awaiting_contact', 'pending_review', 'rejected'] } });
   assert.deepEqual(filter.$and.at(-1), { _id: { $gt: id(5) } });
   assert.equal((screenBackfillFilter(['e1']) as { $and: unknown[] }).$and.some((c) => '_id' in (c as object)), false);
 });

@@ -364,7 +364,7 @@ export async function dispatchPendingSubmissionEmailForSubmission(
 ): Promise<SendSubmissionEmailMetadataResult | null> {
   // Every photo with a vetting record uses the dedicated decision email in lib/photo-vetting/review.ts. This path's
   // database-id share URL is not the vetted photo's opaque share-token URL.
-  if (sourceSubmission.photoReview || sourceSubmission.reviewStatus === 'pending_review' || sourceSubmission.reviewStatus === 'rejected') {
+  if (sourceSubmission.photoReview || sourceSubmission.reviewStatus === 'awaiting_contact' || sourceSubmission.reviewStatus === 'pending_review' || sourceSubmission.reviewStatus === 'rejected') {
     return null;
   }
 

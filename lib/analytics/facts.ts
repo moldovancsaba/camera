@@ -221,7 +221,7 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
       : null;
 
   const decisions = decisionsOf(doc.reviewHistory);
-  const review: ReviewState = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : doc.reviewStatus === 'pending_review' ? 'waiting' : 'none';
+  const review: ReviewState = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : doc.reviewStatus === 'pending_review' || doc.reviewStatus === 'awaiting_contact' ? 'waiting' : 'none';
   const createdAt = text(doc.createdAt);
 
   const method: CaptureMethod = doc.method === 'camera_capture' ? 'camera' : doc.method === 'file_upload' ? 'upload' : 'unknown';
