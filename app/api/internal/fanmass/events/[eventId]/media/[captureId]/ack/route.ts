@@ -3,6 +3,7 @@ import { apiBadRequest, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, wi
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { assertInternalFanmassSecret } from '@/lib/fanmass/internal';
+import { submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
 /** Acknowledge only after Fanmass has durably queued the photo for analysis. */
 export const POST = withErrorHandler(async (
@@ -33,6 +34,7 @@ export const POST = withErrorHandler(async (
   const errorCode = typeof body.errorCode === 'string' ? body.errorCode.replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 80) : '';
   const submissions = (await connectToDatabase()).collection<Submission>(COLLECTIONS.SUBMISSIONS);
   const claimFilter = {
+    $and: [submissionProcessingMongoFilter],
     $or: [{ eventId }, { eventIds: eventId }],
     submissionId: captureId,
     fanmassIntakeByEvent: { $elemMatch: { eventId, status: 'claimed', leaseToken } },

@@ -26,7 +26,7 @@ import sharp from 'sharp';
 import { composePhotoWithFrame } from '@/lib/photo-vetting/compose';
 import { approvedShareUrl, sendPhotoApprovedEmail, sendPhotoNotApprovedEmail, sendPhotoUnderReviewEmail, takeAnotherPhotoUrl } from '@/lib/photo-vetting/emails';
 import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
-import { isValidEmail } from '@/lib/photo-vetting/pending';
+import { canProcessSubmission, guestContactOf, submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
 export interface ReviewActor {
   email: string | null;
@@ -99,11 +99,14 @@ export async function resolveFrameImageUrl(db: Db, submission: Pick<Submission, 
 }
 
 export async function approvePhoto(db: Db, submission: WithId<Submission>, actor: ReviewActor, deps: ReviewDeps = defaultReviewDeps): Promise<ApproveResult> {
+  if (!canProcessSubmission(submission)) {
+    return { ok: false, reason: 'missing_contact', message: 'This photo is held for erasure because the guest did not finish login or provide contact details.' };
+  }
   if (submission.reviewStatus !== 'pending_review' && submission.reviewStatus !== 'rejected') {
     return { ok: false, reason: 'not_reviewable', message: 'This photo is not waiting for a decision' };
   }
-  const guestEmail = submission.userInfo?.email || (!submission.userInfoDraft ? submission.userEmail : null);
-  if (!isValidEmail(guestEmail) || ['anonymous@event', 'anonymous@event.com', 'admin@upload'].includes(guestEmail.toLowerCase())) {
+  const guestEmail = guestContactOf(submission).email;
+  if (!guestEmail) {
     return { ok: false, reason: 'missing_contact', message: 'The guest has not finished login or entered a valid email address. This photo cannot be approved yet.' };
   }
   const review = submission.photoReview;
@@ -148,7 +151,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   );
   const at = deps.now();
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submission._id, reviewStatus: { $in: ['pending_review', 'rejected'] } },
+    { _id: submission._id, reviewStatus: { $in: ['pending_review', 'rejected'] }, $and: [submissionProcessingMongoFilter] },
     {
       $set: {
         imageUrl: picture.imageUrl,
@@ -231,10 +234,11 @@ async function sendApprovedLinkForSubmission(db: Db, submission: Submission | nu
   if (!submission?._id) return 'skipped';
   const submissionId = submission._id as ObjectId;
   const initial = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
-  if (!initial || initial.reviewStatus !== 'approved') return 'skipped';
+  if (!initial || initial.reviewStatus !== 'approved' || !canProcessSubmission(initial)) return 'skipped';
 
   const claimAt = deps.now();
   const claimFilter = decisionEmailClaimFilter(submissionId, 'approved', claimAt);
+  claimFilter.$and = [submissionProcessingMongoFilter];
   if (!force) {
     claimFilter['metadata.emailSentAfterSave'] = { $ne: true };
     claimFilter['metadata.emailSent'] = { $ne: true };
@@ -247,7 +251,7 @@ async function sendApprovedLinkForSubmission(db: Db, submission: Submission | nu
 
   try {
     const current = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
-    if (!current || current.reviewStatus !== 'approved' || !isPubliclyVisible(visibilityInputOf({ ...current })) || !current.shareToken || !current.imageUrl || (!force && (current.metadata?.emailSentAfterSave === true || current.metadata?.emailSent === true))) {
+    if (!current || current.reviewStatus !== 'approved' || !canProcessSubmission(current) || !isPubliclyVisible(visibilityInputOf({ ...current })) || !current.shareToken || !current.imageUrl || (!force && (current.metadata?.emailSentAfterSave === true || current.metadata?.emailSent === true))) {
       return 'skipped';
     }
 
@@ -257,7 +261,7 @@ async function sendApprovedLinkForSubmission(db: Db, submission: Submission | nu
     const patch = buildEmailMetadataPatch(result, shareUrl);
     const emailDeferred = patch.metadataPatch['metadata.emailSkipReason'] === 'missing_recipient';
     await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submissionId, reviewStatus: 'approved', 'metadata.decisionEmailSending': true },
+      { _id: submissionId, reviewStatus: 'approved', 'metadata.decisionEmailSending': true, $and: [submissionProcessingMongoFilter] },
       {
         $set: { ...patch.metadataPatch, ...(emailDeferred ? { 'metadata.approvalEmailPending': true } : {}) },
         ...(!emailDeferred ? { $unset: { 'metadata.approvalEmailPending': '' } } : {}),
@@ -290,14 +294,14 @@ export async function sendApprovedLinkAfterConsent(db: Db, submissionId: ObjectI
 async function sendRejectedNoteForSubmission(db: Db, submissionId: ObjectId, deps: ReviewDeps): Promise<DecisionEmailStatus> {
   const claimAt = deps.now();
   const claim = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-    { ...decisionEmailClaimFilter(submissionId, 'rejected', claimAt), 'metadata.rejectionEmailPending': true },
+    { ...decisionEmailClaimFilter(submissionId, 'rejected', claimAt), $and: [submissionProcessingMongoFilter], 'metadata.rejectionEmailPending': true },
     { $set: { 'metadata.decisionEmailSending': true, 'metadata.decisionEmailSendingAt': claimAt } },
   );
   if (!claim.matchedCount) return 'skipped';
 
   try {
     const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
-    if (!submission || submission.reviewStatus !== 'rejected' || submission.metadata?.rejectionEmailPending !== true) return 'skipped';
+    if (!submission || submission.reviewStatus !== 'rejected' || !canProcessSubmission(submission) || submission.metadata?.rejectionEmailPending !== true) return 'skipped';
     const event = await resolveEventForSubmission(db, submission).catch(() => null);
     const result = await deps.sendNotApproved(
       submission,
@@ -312,7 +316,7 @@ async function sendRejectedNoteForSubmission(db: Db, submissionId: ObjectId, dep
     const missingRecipient = !result.sent && result.skipped && result.reason === 'missing_recipient';
     const providerFailed = !result.sent && !result.skipped;
     await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submissionId, reviewStatus: 'rejected', 'metadata.decisionEmailSending': true },
+      { _id: submissionId, reviewStatus: 'rejected', 'metadata.decisionEmailSending': true, $and: [submissionProcessingMongoFilter] },
       {
         $set: {
           'metadata.rejectionEmailSent': result.sent,
@@ -373,6 +377,7 @@ export async function sendPendingVettingEmailAfterIdentity(db: Db, submissionId:
 /** Let an event manager retry a missed approval email for an already-approved, public photo. */
 export async function retryApprovedPhotoEmail(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
   const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+  if (!submission || !canProcessSubmission(submission)) return 'skipped';
   const result = await sendApprovedLinkForSubmission(db, submission, deps);
   return result === 'deferred' ? 'skipped' : result;
 }
@@ -382,13 +387,16 @@ export async function retryApprovedPhotoEmail(db: Db, submissionId: ObjectId, de
  * as `rejectReasons` and in the review history entry; `reason` is the free-text note. A photo rejected before reasons existed has neither, and the history entry carries `reasons` only when there are some.
  */
 export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor: ReviewActor, reason: string | null, reasons: readonly string[] = [], deps: ReviewDeps = defaultReviewDeps): Promise<RejectResult> {
+  if (!canProcessSubmission(submission)) {
+    return { ok: false, reason: 'missing_contact', message: 'This photo is held for erasure because the guest did not finish login or provide contact details.' };
+  }
   if (submission.reviewStatus !== 'pending_review') {
     return { ok: false, reason: 'not_reviewable', message: 'This photo is not waiting for a decision' };
   }
   const shouldSendRejectionEmail = !(submission.photoReview?.returnedAt && submission.photoReview.returnedWasPubliclyVisible !== true);
   const at = deps.now();
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submission._id, reviewStatus: 'pending_review' },
+    { _id: submission._id, reviewStatus: 'pending_review', $and: [submissionProcessingMongoFilter] },
     {
       $set: {
         reviewStatus: 'rejected',
@@ -415,13 +423,16 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
 
 /** Reopens an approved or rejected photo for the normal one-at-a-time review flow. */
 export async function returnPhotoToVetting(db: Db, submission: WithId<Submission>, actor: ReviewActor, deps: ReviewDeps = defaultReviewDeps): Promise<ReturnToVettingResult> {
+  if (!canProcessSubmission(submission)) {
+    return { ok: false, reason: 'missing_contact', message: 'This photo is held for erasure because the guest did not finish login or provide contact details.' };
+  }
   if ((submission.reviewStatus !== 'approved' && submission.reviewStatus !== 'rejected') || !submission.photoReview) {
     return { ok: false, reason: 'not_reviewable', message: 'This photo cannot be returned to vetting' };
   }
   const at = deps.now();
   const wasVisible = isPubliclyVisible(visibilityInputOf(submission));
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submission._id, reviewStatus: submission.reviewStatus },
+    { _id: submission._id, reviewStatus: submission.reviewStatus, $and: [submissionProcessingMongoFilter] },
     {
       $set: {
         reviewStatus: 'pending_review',

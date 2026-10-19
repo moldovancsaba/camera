@@ -19,6 +19,7 @@ import type { Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import sharp from 'sharp';
 import { COLLECTIONS, type ImageCopy } from '@/lib/db/schemas';
+import { submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 import { isAllowedLogoUrl } from '@/lib/frame/logo';
 import { detectImageProvider } from '@/lib/imgbb/url';
 import { isMissingImagePlaceholder } from '@/lib/media/placeholder';
@@ -121,7 +122,13 @@ export function needs(kind: SafetyKind, doc: Document): boolean {
 async function* pages(db: Db, after?: ObjectId): AsyncGenerator<Document[]> {
   let cursor = after;
   for (;;) {
-    const filter: Document = { submissionKind: { $ne: 'tryon_result' }, ...(cursor ? { _id: { $gt: cursor } } : {}) };
+    const filter: Document = {
+      $and: [
+        { submissionKind: { $ne: 'tryon_result' } },
+        submissionProcessingMongoFilter,
+        ...(cursor ? [{ _id: { $gt: cursor } }] : []),
+      ],
+    };
     const rows = await db.collection(COLLECTIONS.SUBMISSIONS).find(filter, { projection: PROJECTION }).sort({ _id: 1 }).limit(PAGE).toArray();
     if (rows.length === 0) return;
     yield rows;

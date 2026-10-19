@@ -36,6 +36,7 @@ import { recordManualPhotoDeletion } from '@/lib/analytics/photo-deletion';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { safeLinkUrl } from '@/lib/events/consent';
 import { isValidEmail } from '@/lib/photo-vetting/pending';
+import { canCompleteGuestContact, canProcessSubmission, finalizedGuestContactPatch } from '@/lib/submissions/guest-contact';
 
 interface FinalizeSubmissionBody {
   action?: 'update_user_info' | 'save_user_info_draft' | 'append_consents' | 'link_account' | 'finalize';
@@ -71,6 +72,24 @@ function normalizeUserInfoDraft(input?: FinalizeSubmissionBody['userInfo']): { n
   const email = typeof input.email === 'string' ? input.email.trim().slice(0, 254) : undefined;
   if (name === undefined && email === undefined) return null;
   return { ...(name !== undefined ? { name } : {}), ...(email !== undefined ? { email } : {}) };
+}
+
+/** A contact write must win the deadline race against the scheduled erasure worker. */
+function contactWindowFilter(now: string) {
+  return {
+    $and: [
+      { 'erasure.status': { $nin: ['deleting', 'complete'] } },
+      { $or: [{ 'erasure.status': { $ne: 'scheduled' } }, { 'erasure.deadlineAt': { $gt: now } }] },
+    ],
+  };
+}
+
+function canShareSubmission(submission: Submission | null | undefined): boolean {
+  return Boolean(
+    submission && canProcessSubmission(submission) && submission.consentStatus !== 'pending' &&
+    submission.reviewStatus !== 'pending_review' && submission.reviewStatus !== 'awaiting_contact' &&
+    submission.reviewStatus !== 'rejected' && (submission.imageUrl || submission.finalImageUrl),
+  );
 }
 
 async function applySubmissionMetadataPatch(
@@ -196,7 +215,7 @@ export const GET = withErrorHandler(async (
   const db = await connectToDatabase();
   const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne(
     { _id: new ObjectId(submissionId) },
-    { projection: { userId: 1, eventId: 1, imageUrl: 1, finalImageUrl: 1, photoReview: 1, reviewStatus: 1 } },
+    { projection: { userId: 1, eventId: 1, imageUrl: 1, finalImageUrl: 1, originalImageUrl: 1, photoReview: 1, reviewStatus: 1, consentStatus: 1, userInfo: 1, userInfoDraft: 1, userEmail: 1, guestContact: 1, erasure: 1, metadata: 1 } },
   );
   if (!submission) throw apiNotFound('Submission not found');
 
@@ -204,6 +223,7 @@ export const GET = withErrorHandler(async (
   if (submission.userId !== session.user.id && !isAdmin) {
     throw apiForbidden('You can only restore your own photo');
   }
+  if (!canCompleteGuestContact(submission, new Date().toISOString())) throw apiNotFound('This photo is scheduled for erasure');
 
   const pendingImageUrl = readTrimmedString(submission.photoReview?.photoUrl);
   const previewImageUrl = pendingImageUrl ?? readTrimmedString(submission.finalImageUrl) ?? readTrimmedString(submission.imageUrl);
@@ -213,7 +233,11 @@ export const GET = withErrorHandler(async (
     submissionId,
     eventId: submission.eventId ?? null,
     previewImageUrl,
-    pending: submission.reviewStatus === 'pending_review' || submission.reviewStatus === 'awaiting_contact' || Boolean(pendingImageUrl),
+    pending: submission.reviewStatus === 'pending_review' || (
+      submission.metadata?.vettingRequired !== false &&
+      (submission.reviewStatus === 'awaiting_contact' || Boolean(pendingImageUrl))
+    ),
+    shareable: canShareSubmission(submission),
   });
 });
 
@@ -281,23 +305,22 @@ export const PATCH = withErrorHandler(async (
       return apiSuccess({ submissionId, action, draftSaved: false, alreadyFinalized: true });
     }
     const now = new Date().toISOString();
+    if (!canCompleteGuestContact(submission, now)) {
+      return apiError('The 24-hour contact window has ended; this photo is scheduled for erasure.', 410);
+    }
     const draftName = normalizedUserInfoDraft?.name ?? submission.userInfoDraft?.name ?? '';
     const draftEmail = normalizedUserInfoDraft?.email ?? submission.userInfoDraft?.email ?? '';
     const set: Record<string, unknown> = {
       userInfoDraft: { name: draftName, email: draftEmail, updatedAt: now },
+      guestContact: { status: 'draft', source: 'typed_email', name: draftName, email: isValidEmail(draftEmail) ? sanitizeEmail(draftEmail) : null, updatedAt: now },
+      'metadata.identityStatus': 'CONTACT_PENDING',
       updatedAt: now,
     };
-    if (normalizedUserInfoDraft && Object.hasOwn(normalizedUserInfoDraft, 'name')) {
-      set.userName = draftName || 'NO USER';
-    }
-    if (normalizedUserInfoDraft && Object.hasOwn(normalizedUserInfoDraft, 'email')) {
-      set.userEmail = isValidEmail(draftEmail) ? sanitizeEmail(draftEmail) : 'anonymous@event';
-    }
     const draftFilter = isAdmin
       ? { _id: objectId }
       : { _id: objectId, 'userInfo.collectedAt': { $exists: false } };
-    const saved = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(draftFilter, { $set: set });
-    if (saved.matchedCount !== 1) throw apiForbidden('This submission has already been finalized.');
+    const saved = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne({ $and: [draftFilter, contactWindowFilter(now)] }, { $set: set });
+    if (saved.matchedCount !== 1) return apiError('This photo is no longer accepting contact details and is scheduled for erasure.', 410);
     return apiSuccess({ submissionId, action, draftSaved: true });
   }
 
@@ -307,6 +330,7 @@ export const PATCH = withErrorHandler(async (
       throw apiForbidden('This photo belongs to another account');
     }
     const now = new Date().toISOString();
+    if (!canCompleteGuestContact(submission, now)) return apiError('The 24-hour contact window has ended; this photo is scheduled for erasure.', 410);
     const typedDraftEmail = isValidEmail(submission.userInfoDraft?.email) ? sanitizeEmail(submission.userInfoDraft.email) : '';
     const email = sanitizeEmail(submission.userInfo?.email || typedDraftEmail || session.user.email || '');
     if (!isValidEmail(email) || ['anonymous@event', 'anonymous@event.com'].includes(email.toLowerCase())) {
@@ -314,23 +338,36 @@ export const PATCH = withErrorHandler(async (
     }
     const name = submission.userInfo?.name || submission.userInfoDraft?.name || session.user.name || email || 'REGISTERED USER';
     const userInfo = email ? { name, email, collectedAt: now } : null;
-    await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: objectId, $or: [{ userId: 'anonymous' }, { userId: session.user.id }] },
+    const promoteUnvettedCapture = submission.metadata?.vettingRequired === false && submission.reviewStatus === 'awaiting_contact';
+    const pendingPhotoUrl = typeof submission.photoReview?.photoUrl === 'string' ? submission.photoReview.photoUrl : '';
+    if (promoteUnvettedCapture && !pendingPhotoUrl) return apiError('The saved photo is unavailable and cannot be published.', 409);
+    const linked = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+      { $and: [{ _id: objectId, $or: [{ userId: 'anonymous' }, { userId: session.user.id }] }, contactWindowFilter(now)] },
       {
         $set: {
           userId: session.user.id,
-          userEmail: email || 'anonymous@event',
-          userName: name,
-          ...(userInfo ? { userInfo } : {}),
-          contactStatus: 'complete',
-          ...(submission.reviewStatus === 'awaiting_contact' ? { reviewStatus: 'pending_review' } : {}),
+          ...finalizedGuestContactPatch({ name, email, source: typedDraftEmail ? 'typed_email' : 'social_login', at: now }),
+          ...(submission.reviewStatus === 'awaiting_contact' && !promoteUnvettedCapture ? { reviewStatus: 'pending_review' } : {}),
+          ...(promoteUnvettedCapture ? {
+            imageUrl: pendingPhotoUrl,
+            finalImageUrl: pendingPhotoUrl,
+            originalImageUrl: submission.originalImageUrl || pendingPhotoUrl,
+            isShareVisible: submission.consentStatus === 'pending' ? false : submission.photoReview?.shareOptIn === true,
+          } : {}),
           'metadata.identityStatus': 'REGISTERED',
           updatedAt: now,
         },
-        $unset: { userInfoDraft: '' },
+        $unset: { userInfoDraft: '', erasure: '', ...(promoteUnvettedCapture ? { photoReview: '', reviewStatus: '' } : {}) },
       },
     );
+    if (linked.matchedCount !== 1) return apiError('The contact window ended or this photo was already finalized.', 410);
     schedulePendingVettingEmail(db, objectId);
+    if (promoteUnvettedCapture) {
+      runAfterResponse(async () => {
+        const { ensureScreenPicture } = await import('@/lib/submissions/screen-picture');
+        await ensureScreenPicture(db, { _id: objectId, imageUrl: pendingPhotoUrl, finalImageUrl: pendingPhotoUrl });
+      });
+    }
     if (email) {
       runAfterResponse(async () => {
         try {
@@ -366,7 +403,7 @@ export const PATCH = withErrorHandler(async (
       const now = new Date().toISOString();
       const acceptedAny = next.some((record) => record.accepted) && submission.consentPendingReason !== 'gallery';
       const consentUpdate = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-        { _id: objectId },
+        { $and: [{ _id: objectId }, contactWindowFilter(new Date().toISOString())] },
         {
           $push: { consents: { $each: next } },
           $set: {
@@ -379,6 +416,7 @@ export const PATCH = withErrorHandler(async (
           ...(acceptedAny && submission.consentStatus === 'pending' ? { $unset: { consentExpiresAt: '', consentPendingReason: '', consentShareOptIn: '' } } : {}),
         },
       );
+      if (consentUpdate.matchedCount !== 1) return apiError('This photo is no longer accepting updates and is scheduled for erasure.', 410);
       if (consentUpdate.modifiedCount === 1 && acceptedAny && submission.consentStatus === 'pending' && submission.reviewStatus === 'approved') {
         // Approval can happen while this required login-page checkbox is still awaiting its record. Once this
         // PATCH makes the photo public, send the link now instead of leaving an approved photo unreachable.
@@ -389,8 +427,11 @@ export const PATCH = withErrorHandler(async (
       }
       if (consentUpdate.modifiedCount === 1 && submission.reviewStatus === 'rejected') schedulePendingVettingEmail(db, objectId);
     }
-    return apiSuccess({ submissionId, action, appendedConsents: next.length });
+    const latest = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: objectId });
+    return apiSuccess({ submissionId, action, appendedConsents: next.length, shareable: canShareSubmission(latest) });
   }
+
+  if (normalizedUserInfo && !isValidEmail(normalizedUserInfo.email)) throw apiBadRequest('A valid email address is required.');
 
   const alreadyFinalized = Boolean((submission as Submission).userInfo?.collectedAt);
   if (alreadyFinalized && !isAdmin) {
@@ -421,29 +462,35 @@ export const PATCH = withErrorHandler(async (
       : null;
 
   if (userInfoPayload) {
+    if (!canCompleteGuestContact(submission, now)) return apiError('The 24-hour contact window has ended; this photo is scheduled for erasure.', 410);
     const preserveVettingMissingRecipient = Boolean(
       submission.photoReview && submission.metadata?.emailSent === false && submission.metadata?.emailSkipReason === 'missing_recipient',
     );
-    await db
+    const promoteUnvettedCapture = submission.metadata?.vettingRequired === false && submission.reviewStatus === 'awaiting_contact';
+    const pendingPhotoUrl = typeof submission.photoReview?.photoUrl === 'string' ? submission.photoReview.photoUrl : '';
+    if (promoteUnvettedCapture && !pendingPhotoUrl) return apiError('The saved photo is unavailable and cannot be published.', 409);
+    const finalized = await db
       .collection<Submission>(COLLECTIONS.SUBMISSIONS)
       .updateOne(
-        { _id: objectId },
+        { $and: [{ _id: objectId, 'userInfo.collectedAt': { $exists: false } }, contactWindowFilter(now)] },
         {
           $set: {
-            userInfo: userInfoPayload,
-            // Preserve the address entered by a guest in the fields used by admin lists
-            // and legacy email flows. A logged-in account remains the primary identity.
-            userEmail: userInfoPayload.email,
-            userName: userInfoPayload.name,
-            contactStatus: 'complete',
-            ...(submission.reviewStatus === 'awaiting_contact' ? { reviewStatus: 'pending_review' } : {}),
-            ...(session?.user?.id ? {
-              userId: session.user.id,
-              'metadata.identityStatus': 'REGISTERED',
+            ...finalizedGuestContactPatch({ name: userInfoPayload.name, email: userInfoPayload.email, source: 'typed_email', at: now }),
+            ...(submission.reviewStatus === 'awaiting_contact' && !promoteUnvettedCapture ? { reviewStatus: 'pending_review' } : {}),
+            ...(promoteUnvettedCapture ? {
+              imageUrl: pendingPhotoUrl,
+              finalImageUrl: pendingPhotoUrl,
+              originalImageUrl: submission.originalImageUrl || pendingPhotoUrl,
+              isShareVisible: submission.consentStatus === 'pending' ? false : submission.photoReview?.shareOptIn === true,
             } : {}),
+            ...(session?.user?.id ? { userId: session.user.id } : {}),
+            'metadata.identityStatus': session?.user?.id ? 'REGISTERED' : 'EMAIL',
+            updatedAt: now,
           },
           $unset: {
+            erasure: '',
             userInfoDraft: '',
+            ...(promoteUnvettedCapture ? { photoReview: '', reviewStatus: '' } : {}),
             ...(preserveVettingMissingRecipient ? {} : { 'metadata.emailSkipReason': '' }),
             'metadata.emailSentAfterSave': '',
             'metadata.emailSentAfterRelatedPhotos': '',
@@ -453,7 +500,14 @@ export const PATCH = withErrorHandler(async (
           },
         }
       );
+    if (finalized.matchedCount !== 1) return apiError('The contact window ended or this photo was already finalized.', 410);
     schedulePendingVettingEmail(db, objectId);
+    if (promoteUnvettedCapture) {
+      runAfterResponse(async () => {
+        const { ensureScreenPicture } = await import('@/lib/submissions/screen-picture');
+        await ensureScreenPicture(db, { _id: objectId, imageUrl: pendingPhotoUrl, finalImageUrl: pendingPhotoUrl });
+      });
+    }
   }
 
   let emailResult: Awaited<ReturnType<typeof dispatchPendingSubmissionEmailForSubmission>> | null = null;
@@ -488,9 +542,11 @@ export const PATCH = withErrorHandler(async (
     }
   }
 
+  const latestSubmission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: objectId });
   return apiSuccess({
     submissionId,
     action,
     emailResult,
+    shareable: canShareSubmission(latestSubmission),
   });
 });

@@ -1,6 +1,7 @@
 /**
- * A vetted capture is first stored as an unlisted Blob object (random path,
- * never mirrored to imgbb or returned by a public route). The capture can
+ * A capture without finalized contact is first stored as an unlisted public Blob object (random path,
+ * never mirrored to imgbb or returned by a public route). Anyone who obtains the raw Blob URL can
+ * still open it; storage-level access control requires a private Blob store. The capture can
  * precede the required post-capture identity step, so its submission may be
  * held as `awaiting_contact` until the guest finishes login or enters contact
  * details. The branded composite does not exist until approval.
@@ -9,7 +10,7 @@
 import { randomBytes } from 'node:crypto';
 import { put } from '@vercel/blob';
 
-/** Where pending photos live in the Blob store; every file under it is private to the moderation tools. */
+/** Where pending photos live; URLs are withheld until contact is finalized, but the current Blob store is public. */
 export const PENDING_PHOTO_PREFIX = 'pending/';
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -66,7 +67,7 @@ export function newShareToken(): string {
   return randomBytes(18).toString('base64url');
 }
 
-const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
+const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/i;
 export const isValidEmail = (value: unknown): value is string => typeof value === 'string' && value.length <= 254 && EMAIL.test(value.trim());
 
 export interface GuestIdentity {
@@ -80,12 +81,16 @@ export interface GuestIdentity {
  * until contact is finalized.
  */
 export function guestIdentity(userInfo: { email?: unknown; name?: unknown; [key: string]: unknown } | null | undefined, session: { user?: { email?: string | null; name?: string | null } | null } | null | undefined): GuestIdentity | null {
-  if (isValidEmail(userInfo?.email)) {
-    return { email: userInfo.email.trim(), name: typeof userInfo.name === 'string' && userInfo.name.trim() ? userInfo.name.trim() : null };
+  if (isValidEmail(userInfo?.email) && !isPlaceholderEmail(userInfo.email)) {
+    return { email: userInfo.email.trim().toLowerCase(), name: typeof userInfo.name === 'string' && userInfo.name.trim() ? userInfo.name.trim() : null };
   }
   const sessionEmail = session?.user?.email;
-  if (isValidEmail(sessionEmail) && !sessionEmail.startsWith('anonymous@')) {
-    return { email: sessionEmail.trim(), name: session?.user?.name?.trim() || null };
+  if (isValidEmail(sessionEmail) && !isPlaceholderEmail(sessionEmail)) {
+    return { email: sessionEmail.trim().toLowerCase(), name: session?.user?.name?.trim() || null };
   }
   return null;
+}
+
+function isPlaceholderEmail(value: string): boolean {
+  return ['anonymous@event', 'anonymous@event.com', 'admin@upload', 'unknown@unknown.com'].includes(value.trim().toLowerCase());
 }

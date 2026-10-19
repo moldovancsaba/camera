@@ -1110,8 +1110,12 @@ export default function EventCapturePage({
       setSavedSubmissionId(submissionId);
       journey.saved(true);
       setHasFinalizedSubmissionEmail(false);
-      // A photo of a vetted event is saved and waits for approval: no share link yet, the guest gets it by email.
-      if ((data.data ?? data).pending === true) {
+      const submissionResult = data.data ?? data;
+      const isPendingForVetting = submissionResult.pending === true && submissionResult.pendingReason !== 'contact';
+      const isPendingForContact = submissionResult.pending === true && submissionResult.pendingReason === 'contact';
+      // Vetted photos wait for a reviewer. No-vetting photos held only for contact
+      // continue through the required login/contact pages without claiming they need approval.
+      if (isPendingForVetting) {
         if (presubmitPages.length > 0 && !presubmitDone) {
           setPendingApproval(true);
           setFlowPhase('presubmit');
@@ -1131,11 +1135,11 @@ export default function EventCapturePage({
         }
         return;
       }
-      const emailNotice = buildEmailDeliveryNotice(data.data?.submission?.metadata, language);
+      const emailNotice = buildEmailDeliveryNotice(submissionResult.submission?.metadata, language);
       const finalSuccessMessage = emailNotice
         ? `${successMessage}\n${emailNotice}`
         : successMessage;
-      setShareUrl(`${origin}/share/${submissionId}`);
+      setShareUrl(isPendingForContact ? null : `${origin}/share/${submissionId}`);
       if (presubmitPages.length > 0 && !presubmitDone) {
         setFlowPhase('presubmit');
         setCurrentPageIndex(0);
@@ -1169,7 +1173,7 @@ export default function EventCapturePage({
     void handleSaveRef.current();
   }, [saveRequested, compositeImage, isSaving]);
 
-  type SubmissionWriteResult = { ok: true } | { ok: false; status?: number };
+  type SubmissionWriteResult = { ok: true; shareable?: boolean } | { ok: false; status?: number };
   const updateSubmissionContact = async (submissionId: string, userInfo: WhoAreYouPageData): Promise<SubmissionWriteResult> => {
     try {
       const response = await fetch(`/api/submissions/${submissionId}`, {
@@ -1187,7 +1191,9 @@ export default function EventCapturePage({
         return { ok: false, status: response.status };
       }
 
-      return { ok: true };
+      const payload = await response.json().catch(() => ({}));
+      const result = payload.data ?? payload;
+      return { ok: true, shareable: result.shareable === true };
     } catch (error) {
       console.warn('Could not persist guest contact on submission:', error);
       return { ok: false };
@@ -1228,7 +1234,9 @@ export default function EventCapturePage({
         console.warn('Could not persist consent on submission:', response.status, errorData);
         return { ok: false, status: response.status };
       }
-      return { ok: true };
+      const payload = await response.json().catch(() => ({}));
+      const result = payload.data ?? payload;
+      return { ok: true, shareable: result.shareable === true };
     } catch (error) {
       console.warn('Could not persist consent on submission:', error);
       return { ok: false };
@@ -1427,7 +1435,7 @@ export default function EventCapturePage({
           setSavedSubmissionId(submissionId);
           setCompositeImage(restored.previewImageUrl);
           setPendingApproval(restored.pending === true);
-          setShareUrl(restored.pending === true ? null : `${origin}/share/${submissionId}`);
+          setShareUrl(restored.shareable === true ? `${origin}/share/${submissionId}` : null);
           setCurrentPageIndex(pageIndex + 1);
           setFlowPhase('presubmit');
           journey.record('journey.resume');
@@ -1484,6 +1492,13 @@ export default function EventCapturePage({
         notifyCapture('error', consentSave.status ? t('flow.serverError', { status: consentSave.status }) : t('flow.unexpectedError'));
         return;
       }
+      if (!vetted) {
+        const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
+        setPendingApproval(false);
+        setShareUrl(consentSave.shareable === true || (consentSave.shareable === undefined && contactSave.shareable === true)
+          ? `${origin}/share/${savedSubmissionId}`
+          : null);
+      }
     }
 
     handleNextPage();
@@ -1501,6 +1516,10 @@ export default function EventCapturePage({
       if (!consentSave.ok) {
         notifyCapture('error', consentSave.status ? t('flow.serverError', { status: consentSave.status }) : t('flow.unexpectedError'));
         return;
+      }
+      if (!vetted && consentSave.shareable === true) {
+        const origin = canonicalPublicOrigin(window.location.origin, 'camera.messmass.com');
+        setShareUrl(`${origin}/share/${savedSubmissionId}`);
       }
     }
     setCollectedData(prev => ({ ...prev, consents }));

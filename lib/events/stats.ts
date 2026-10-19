@@ -1,5 +1,6 @@
 import type { Db } from 'mongodb';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
+import { submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
 // WHAT: The numbers on an event's overview: the pictures of the event and how many distinct e-mail addresses came with them.
 // WHY: it lived in lib/tryon/analytics.ts with the try-on analytics (issue 557, docs/TRYON_REMOVED.md); the try-on count and the
@@ -20,6 +21,7 @@ export async function collectEventSpecificStats(
         $and: [
           { $or: [{ eventId }, { eventIds: { $in: [eventId] } }] },
           { isArchived: { $ne: true } },
+          submissionProcessingMongoFilter,
           // A stored try-on result is not a picture of the event any more (issue 557): it is not counted.
           { submissionKind: { $ne: 'tryon_result' } }
         ]
@@ -31,12 +33,7 @@ export async function collectEventSpecificStats(
           $let: {
             vars: {
               rawEmail: {
-                $ifNull: [
-                  "$userEmail",
-                  "$userInfo.email",
-                  "$metadata.emailRecipient",
-                  ""
-                ]
+                $ifNull: ["$guestContact.email", { $ifNull: ["$userInfo.email", "$userEmail"] }]
               }
             },
             in: {
@@ -69,7 +66,7 @@ export async function collectEventSpecificStats(
           {
             $match: {
               email: {
-                $nin: ["", null, "anonymous@event", "m@m.m", "moldovancsaba@gmail.com"],
+                $nin: ["", null, "anonymous@event", "anonymous@event.com", "admin@upload", "unknown@unknown.com", "m@m.m"],
                 $not: /@seyuselfies\.com$|\.seyuselfies\.com$/
               }
             }

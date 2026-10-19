@@ -24,7 +24,8 @@ import { effectiveGalleryConsent, galleryChoice } from '@/lib/events/gallery-con
 import { effectiveCheckboxes } from '@/lib/events/checkbox-settings';
 import { GALLERY_MISSING_MESSAGE, mayRefuse, missingRequiredConsent, type GuardEvent } from '@/lib/events/consent-guard';
 import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
-import { guestIdentity, newShareToken, storePendingPhoto } from '@/lib/photo-vetting/pending';
+import { guestIdentity, isValidEmail, newShareToken, storePendingPhoto } from '@/lib/photo-vetting/pending';
+import { finalizedGuestContactPatch, incompleteContactErasure } from '@/lib/submissions/guest-contact';
 import {
   COLLECTIONS,
   SubmissionMethod,
@@ -201,14 +202,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       throw apiBadRequest('The reframe record for the original image is missing or invalid');
     }
 
-    // Convert base64 to buffer and upload to imgbb
-    const base64Data = imageData.split(',')[1]; // Remove data:image/png;base64, prefix
-    const uploadResult = vetted
-      ? null
-      : await uploadImage(base64Data, {
-          name: `submission-${Date.now()}`,
-        });
-
     // Get frame details from database (using frameId UUID)
     // Frame is optional - events with 0 frames submit frameId=null
     let frame = null;
@@ -239,9 +232,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       if (!userInfo.name || !userInfo.email) {
         throw apiBadRequest('userInfo must include both name and email');
       }
+      if (!isValidEmail(userInfo.email)) throw apiBadRequest('userInfo.email must be a valid email address');
       validatedUserInfo = {
         name: userInfo.name.trim(),
-        email: userInfo.email.trim(),
+        email: userInfo.email.trim().toLowerCase(),
         collectedAt: new Date().toISOString(),
       };
     }
@@ -280,31 +274,38 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
     }
 
-    // A vetted event needs to know who the guest is (the approval email goes there) and keeps the plain photo privately.
+    // A guest's contact must be finalized before any capture can enter review or public media processing.
     const createdAt = new Date().toISOString();
-    const consentExpiresAt = consentRefusal ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null;
+    const consentExpiresAt = consentRefusal ? new Date(Date.parse(createdAt) + 24 * 60 * 60 * 1000).toISOString() : null;
     // What the request and the event's setting make of the public gallery choice: `shareOptIn` (eligible for the wall) and the evidence of a ticked box.
     const wall = galleryChoice(gallerySetting, { shareOptIn, publicGalleryConsentVersion }, createdAt, galleryRequired);
-    let identity: ReturnType<typeof guestIdentity> = null;
+    const identity = guestIdentity(validatedUserInfo, session);
+    const base64Data = imageData.split(',')[1];
+    // Every capture is held in an unlisted Blob object until contact is finalized.
+    // This is essential for no-vetting events too: a public upload or ImgBB mirror
+    // would let an abandoned selfie escape the 24-hour erasure boundary.
+    const holdForContact = !identity;
     let pendingPhoto: Awaited<ReturnType<typeof storePendingPhoto>> | null = null;
-    if (vetted) {
-      identity = guestIdentity(validatedUserInfo, session);
+    let uploadResult: Awaited<ReturnType<typeof uploadImage>> | null = null;
+    if (vetted || holdForContact) {
       try {
         pendingPhoto = await storePendingPhoto(imageData, String(vettingEvent?._id ?? 'event'), { put: (pathname, body, options) => blobPut(pathname, body, options) });
       } catch (storeError) {
         throw apiBadRequest(storeError instanceof Error ? storeError.message : 'The photo could not be stored');
       }
+    } else {
+      uploadResult = await uploadImage(base64Data, { name: `submission-${Date.now()}` });
     }
-
     // Save submission to database
     const submission = {
       submissionId: `submission_${Date.now()}`,
       userId: session?.user?.id || 'anonymous',
-      // Keep the guest-provided contact on the legacy top-level fields too. Admin queues
-      // and older email integrations still read these fields; writing only userInfo.email
-      // made real guest addresses appear as anonymous@event.
-      userEmail: validatedUserInfo?.email || session?.user?.email || 'anonymous@event',
-      userName: validatedUserInfo?.name || session?.user?.name || session?.user?.email || (session?.user?.id ? 'REGISTERED USER' : 'NO USER'),
+      // Compatibility mirrors exist only after contact is known. Incomplete captures use guestContact
+      // and erasure state; never manufacture an email-looking placeholder for an actual guest.
+      ...(identity ? {
+        userEmail: identity.email,
+        userName: identity.name || session?.user?.name || identity.email,
+      } : {}),
       // Frame data (null if no frame assigned to event)
       frameId: frame?.frameId || null,
       frameName: frame?.name || null,
@@ -335,8 +336,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         : {
             fileSize: pendingPhoto?.size ?? null,
             mimeType: pendingPhoto?.mime ?? null,
+            ...(verifiedOriginal ? { originalImageUrl: verifiedOriginal.url, reframe: reframeRecord } : {}),
             // The browser saves the photo before the post-capture identity step (which may redirect through social login).
-            // Keep the private image out of the vetting queue until a real guest address is finalized.
+            // Keep this unlisted image out of vetting, publication, analysis, and Fanmass until contact is finalized.
             reviewStatus: identity ? 'pending_review' : 'awaiting_contact',
             photoReview: {
               photoUrl: pendingPhoto?.url ?? '',
@@ -352,7 +354,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Public pledge-wall visibility: true only when shareOptIn === true in the request
       // (the capture UI's checkbox defaults to checked); false otherwise. May later be
       // bulk-set to true by publish-selfies (see the shareOptIn note above).
-      isShareVisible: vetted || consentRefusal ? false : wall.shareOptIn,
+      isShareVisible: vetted || consentRefusal || !identity ? false : wall.shareOptIn,
       ...(consentRefusal ? { consentShareOptIn: wall.shareOptIn } : {}),
       ...(consentRefusal ? {
         consentStatus: 'pending',
@@ -366,7 +368,16 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         : vetted && identity
           ? { userInfo: { name: identity.name ?? '', email: identity.email, collectedAt: createdAt } }
           : {}),
-      ...(vetted ? { contactStatus: identity ? 'complete' : 'awaiting_contact' } : {}),
+      guestContact: identity
+        ? finalizedGuestContactPatch({
+            name: identity.name ?? validatedUserInfo?.name ?? session?.user?.name ?? identity.email,
+            email: identity.email,
+            source: validatedUserInfo?.email ? 'typed_email' : 'social_login',
+            at: createdAt,
+          }).guestContact
+        : { status: 'awaiting_contact', source: null, updatedAt: createdAt },
+      ...(!identity ? { erasure: incompleteContactErasure(createdAt) } : {}),
+      ...(!identity ? { reviewStatus: 'awaiting_contact' } : {}),
       // Consent records from accept/CTA pages
       consents: validatedConsents,
       method: SubmissionMethod.CAMERA_CAPTURE,
@@ -386,7 +397,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         finalHeight: imageHeight || frame?.height || 1080,
         emailSent: false,
         compositionEngine: vetted ? 'camera_capture_pending' : 'camera_capture',
-        ...(!session?.user?.id ? { identityStatus: 'NO USER' } : { identityStatus: 'REGISTERED' }),
+        identityStatus: identity ? (session?.user?.id ? 'REGISTERED' : 'EMAIL') : 'CONTACT_PENDING',
+        vettingRequired: vetted,
       },
       shareCount: 0,
       downloadCount: 0,
@@ -399,11 +411,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     const result = await db.collection('submissions').insertOne(submission);
     const submissionId = getSubmissionMongoIdString(result.insertedId);
-    scheduleCounterSync(db, vettingEvent as unknown as Record<string, unknown> | null);
+    if (identity) scheduleCounterSync(db, vettingEvent as unknown as Record<string, unknown> | null);
 
     // The "arrived" e-mail (epic 463), when the event has it on and the user's address is already known: after the answer is sent, so it never slows the photo. Without an address yet
     // the finalize call sends it once the contact is saved.
-    runAfterResponse(async () => {
+    if (identity) runAfterResponse(async () => {
       try {
         const arrived = await dispatchArrivedEmail(db, { ...submission, _id: result.insertedId });
         if (arrived && Object.keys(arrived.metadataPatch).length > 0) await db.collection('submissions').updateOne({ _id: result.insertedId }, { $set: arrived.metadataPatch });
@@ -414,17 +426,18 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     // A photo that is public at once (an event without photo approval) gets its screen-sized picture for the giant screen after the answer (camera#476, S7);
     // a pending one gets it when it is approved.
-    if (!vetted && typeof submission.imageUrl === 'string') {
+    if (!vetted && identity && typeof submission.imageUrl === 'string') {
       runAfterResponse(async () => {
         await ensureScreenPicture(db, { _id: result.insertedId, imageUrl: submission.imageUrl, finalImageUrl: submission.finalImageUrl });
       });
     }
 
-    // A pending photo answers with what the waiting screen needs and nothing public: no picture, no share link (camera#266).
-    if (vetted) {
+    // A capture held for contact answers with status only: no picture URL or share link leaves this route.
+    if (vetted || holdForContact) {
       return apiCreated({
         submission: { _id: result.insertedId, reviewStatus: submission.reviewStatus, metadata: { emailSent: false } },
         pending: true,
+        pendingReason: vetted ? 'vetting' : 'contact',
       });
     }
     const createdSubmission = {

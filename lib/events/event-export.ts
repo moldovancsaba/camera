@@ -21,6 +21,8 @@
 import type { Db } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
+import { guestContactOf } from '@/lib/submissions/guest-contact';
 
 export interface EventExportContext {
   /** Mongo _id string of the event. */
@@ -41,6 +43,8 @@ interface ExportSubmission {
   finalImageUrl?: string;
   submissionKind?: 'original' | 'tryon_result';
   userInfo?: { name?: string; email?: string; collectedAt?: string };
+  guestContact?: unknown;
+  userId?: string;
   createdAt?: string;
 }
 
@@ -103,6 +107,7 @@ export async function collectEventSubmissionsForExport(db: Db, eventUuid: string
       $and: [
         { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
         { isArchived: { $ne: true } },
+        submissionProcessingMongoFilter,
         {
           $or: [
             { hiddenFromEvents: { $exists: false } },
@@ -124,9 +129,13 @@ export function buildEmailRows(submissions: ExportSubmission[]): EventEmailRow[]
 
   for (const submission of submissions) {
     const createdAt = submission.createdAt ?? '';
-    const candidates: Array<{ email?: string; name?: string | null; source: string }> = [
-      { email: submission.userInfo?.email, name: submission.userInfo?.name, source: 'guest' },
-      { email: submission.userEmail, name: submission.userName, source: 'sso' },
+    const contact = guestContactOf(submission);
+    const candidates: Array<{ email?: string | null; name?: string | null; source: string }> = [
+      {
+        email: contact.email,
+        name: contact.name,
+        source: contact.source === 'social_login' || (contact.source === 'legacy' && submission.userId && submission.userId !== 'anonymous' && !submission.userInfo?.email) ? 'sso' : 'guest',
+      },
     ];
 
     for (const candidate of candidates) {
@@ -195,8 +204,8 @@ export function collectEventImages(submissions: ExportSubmission[]): EventImage[
         submissionId,
         kind,
         url: trimmed,
-        userEmail: submission.userEmail ?? '',
-        userName: submission.userName ?? submission.userInfo?.name ?? '',
+        userEmail: guestContactOf(submission).email ?? '',
+        userName: guestContactOf(submission).name ?? '',
         submissionKind: submission.submissionKind ?? 'original',
         createdAt: submission.createdAt ?? '',
       });

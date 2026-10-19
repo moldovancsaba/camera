@@ -11,6 +11,7 @@ import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import SubmissionsInventoryList, { type SerializedSubmissionRow } from '@/components/gds/SubmissionsInventoryList';
 import { mongoIdString } from '@/lib/gds/serialize-admin-rows';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
+import { guestContactOf, submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,7 @@ interface SubmissionGalleryItem {
   userId?: string;
   userInfo?: { email?: string | null } | null;
   userInfoDraft?: { email?: string | null } | null;
+  guestContact?: unknown;
   partnerId?: string | null;
   eventId?: string | null;
   frameName?: string;
@@ -158,7 +160,7 @@ export default async function AdminSubmissionsPage({
 
   try {
     const db = await connectToDatabase();
-    const query: Record<string, unknown> = { isArchived: false };
+    const query: Record<string, unknown> = { isArchived: false, ...submissionProcessingMongoFilter };
     if (search) {
       query.$or = [
         { userName: { $regex: search, $options: 'i' } },
@@ -243,18 +245,13 @@ export default async function AdminSubmissionsPage({
       if (!id) continue;
       const partner = submission.partnerId ? partnerById.get(submission.partnerId) : undefined;
       const event = submission.eventId ? eventById.get(submission.eventId) : undefined;
+      const contact = guestContactOf(submission);
       submissionRows.push({
         id,
         imageUrl: submission.imageUrl ?? '',
         previewImageUrl: submission.previewImageUrl ?? null,
         userName: submission.userName ?? '',
-        userEmail: submission.userInfo?.email && !['anonymous@event', 'anonymous@event.com'].includes(submission.userInfo.email)
-          ? submission.userInfo.email
-          : submission.userInfoDraft?.email && !['anonymous@event', 'anonymous@event.com'].includes(submission.userInfoDraft.email)
-            ? submission.userInfoDraft.email
-          : submission.userId === 'anonymous' || ['anonymous@event', 'anonymous@event.com'].includes(submission.userEmail)
-            ? 'NO USER'
-            : submission.userEmail ?? '',
+        userEmail: contact.status === 'complete' ? contact.email ?? '' : 'NO USER',
         frameName: submission.frameName ?? null,
         createdAtLabel: formatDateTime(submission.createdAt),
         playCount: submission.playCount,

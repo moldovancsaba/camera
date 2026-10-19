@@ -5,6 +5,7 @@ import { sanitizeEmail } from '@/lib/security/sanitize';
 import { loadEventTheme } from '@/lib/theme/load';
 import { emailFactsOf } from '@/lib/email/event-link';
 import { loadEventLegal } from '@/lib/email/legal';
+import { guestContactOf } from '@/lib/submissions/guest-contact';
 import { EMAIL_TYPES, parseTypeSettings, switchIsOn, type EmailType, type ResolvedType, type SwitchDefaults } from '@/lib/email/types';
 import type { EventFacts } from '@/lib/email/variables';
 import type { EventTheme } from '@/lib/theme/event-theme';
@@ -69,15 +70,15 @@ function readSenderName(value: unknown): string {
 }
 
 export function resolveSubmissionResultEmailRecipient(submission: {
+  guestContact?: unknown;
   userInfo?: { name?: string; email?: string } | null;
   userEmail?: string;
   userName?: string | null;
 }): SubmissionEmailRecipient {
+  const contact = guestContactOf(submission);
   // "there" when no name is known: the sender puts the word of the event's language in its place (camera#352).
-  const name = readString(submission.userInfo?.name) || readString(submission.userName) || translate(DEFAULT_UI_LANGUAGE, 'email.nameFallback');
-  const candidateEmail =
-    readString(submission.userInfo?.email) ||
-    (submission.userEmail && submission.userEmail !== 'anonymous@event' ? submission.userEmail : null);
+  const name = contact.name || readString(submission.userInfo?.name) || readString(submission.userName) || translate(DEFAULT_UI_LANGUAGE, 'email.nameFallback');
+  const candidateEmail = contact.status === 'complete' ? contact.email : null;
 
   return {
     name,

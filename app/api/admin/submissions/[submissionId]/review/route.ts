@@ -24,6 +24,7 @@ import { approvePhoto, rejectPhoto, returnPhotoToVetting, retryApprovedPhotoEmai
 import { markPeopleOn } from '@/lib/photo-vetting/people';
 import { offeredReasons } from '@/lib/photo-vetting/review-state';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
+import { canProcessSubmission } from '@/lib/submissions/guest-contact';
 
 const REVIEW_RATE_LIMIT = {
   max: 120,
@@ -63,6 +64,9 @@ export const POST = withErrorHandler(async (
     .findOne({ _id: new ObjectId(submissionId) });
   if (!submission) {
     throw apiNotFound('Submission');
+  }
+  if (!canProcessSubmission(submission)) {
+    throw apiError('This selfie is awaiting guest contact and is scheduled for erasure. It is unavailable for vetting.', 409);
   }
 
   const event = await resolveEventForSubmission(db, submission);

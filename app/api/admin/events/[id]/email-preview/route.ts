@@ -16,6 +16,7 @@ import {
   type SubmissionEmailTemplateType,
 } from '@/lib/email/submission-template-preview';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
+import { submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
 const TEMPLATE_TYPES = new Set(['after_save']);
 
@@ -50,7 +51,7 @@ export const POST = withErrorHandler(
     if (typeof body.sampleSubmissionId === 'string' && ObjectId.isValid(body.sampleSubmissionId)) {
       sampleSubmission = await db
         .collection<Submission>(COLLECTIONS.SUBMISSIONS)
-        .findOne({ _id: new ObjectId(body.sampleSubmissionId) });
+        .findOne({ _id: new ObjectId(body.sampleSubmissionId), $and: [submissionProcessingMongoFilter] });
     }
 
     const baseUrl = getConfiguredSiteUrl();

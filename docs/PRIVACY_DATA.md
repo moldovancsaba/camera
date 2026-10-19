@@ -1,6 +1,6 @@
 # What camera stores about a user, and for how long
 
-Written for owner decision 243 (2026-10-10, issue 521 phase 2): **stop storing the IP address of every photo, and review the full device string.** It is the one place that lists what is kept about the people who use the capture pages, where, and for how long, so the privacy notice and the answers to a request can be checked against it. The plan and the other decisions are in [ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md); the anonymous journey recording has its own page, [JOURNEY_RECORDING.md](JOURNEY_RECORDING.md). State of 2026-10-14.
+Written for owner decision 243 (2026-10-10, issue 521 phase 2) and updated 2026-10-19 for the finalized guest-contact lifecycle. It is the one place that lists what is kept about the people who use the capture pages, where, and for how long, so the privacy notice and the answers to a request can be checked against it. The current contact and erasure contract is [GUEST_CONTACT_AND_ERASURE.md](GUEST_CONTACT_AND_ERASURE.md); the anonymous journey recording has its own page, [JOURNEY_RECORDING.md](JOURNEY_RECORDING.md).
 
 ## The decision and what changed
 
@@ -19,7 +19,9 @@ Written for owner decision 243 (2026-10-10, issue 521 phase 2): **stop storing t
 
 | What | Where | Holds | Kept |
 |---|---|---|---|
-| The photo | `submissions` | the picture, the event, the frame and message chosen, how it was taken, the framing, sizes, the times, the review decisions; account identity when signed in, or the explicit `NO USER` marker when not registered; the name and e-mail **if the user gave them** (the Who-are-you page or a sign-in); the device class and browser family (new photos) | until the photo is removed |
+| A capture before contact is complete | `submissions` | the selfie needed to resume the flow, event/capture metadata, `guestContact.status=awaiting_contact` (or `draft`), and an erasure deadline; partial contact values, if entered, are drafts only | held in an unlisted public Blob object and unavailable through Camera review, publication, analytics, and Fanmass; anyone who obtains its raw Blob URL can open it. Image and user data are erased 24 hours after successful capture if contact is not completed. Storage-level access control requires a private Blob store and authenticated delivery. |
+| A completed guest submission | `submissions` | the picture, event, frame/message, capture/framing details, review decisions and annotations, finalized `guestContact`, and coarse device class/browser family | until the photo is removed under the applicable retention/deletion flow |
+| No-login erasure outcome | `submissions` | event references, capture time/method, completed erasure state, and `analyticsDeletion=automatic_no_login`; no name, email, account ID, image URL/copy, annotation, or reviewer history | retained only as a minimal aggregate deletion fact for event analytics |
 | Full camera image during capture | Browser memory | the uncropped camera image is held while the guest frames the photo; it is not uploaded or retained. TOVÁBB sends the finished composition through the established submission upload | discarded after a successful submission or retake; if upload fails it remains in the current browser session for retry |
 | The unframed photo (the crop the user saved, before the frame) | a private file in the Blob store (`pending/<event>/…`, an unlisted address, never returned by a public route) until its copy on ImgBB is verified, then **only on ImgBB** (a public third-party image host: the file has an address that anybody who knows it can open, and ImgBB's terms let it remove files without notice; owner decisions 295 and "variant B"). Both are named on the photo in `imageCopies`; the Blob entry stays as a `deleted` row | **since issue 509 the Blob file is kept after the photo is approved until ImgBB holds a verified copy, then deleted** (it used to be deleted at approval); a copy that cannot be verified leaves the Blob file in place. A waiting or rejected photo keeps its Blob file. Owner answer 226: ImgBB's copy is kept **90 days after the event, then deleted on request**. **That deletion is not built: nothing deletes it automatically yet**, so today it is kept until the photo is removed. Deleting a photo deletes the Blob file (if it is still there) and requests the deletion of the ImgBB file through its stored link (best effort: a failed request is logged with the file's address, and the file is then removed by hand). The admin Image safety card can make the ImgBB copy and delete the Blob file for approved photos where the approval could not (waiting and rejected photos are never copied) |
 | The framed picture | `submissions` (`imageUrl`), in the Blob store and, when the mirror worked, on ImgBB (its address and delete link are now recorded in `imageCopies`); the Image safety card also makes a second copy of a picture that existed in one place only (an extra file in our store under `rescue/`, or an ImgBB upload) | the picture the public sees (the frame is on it) | until the photo is removed (every recorded copy is deleted with it) |
@@ -41,11 +43,10 @@ The Analytics all-events repeat cohort groups existing photo submitter account/e
 
 ## Camera → Fanmass image analysis
 
-The Fanmass integration is limited to photos that already satisfy Camera's
-published-photo visibility rules. Waiting, rejected, archived, hidden, broken,
-consent-pending/expired, and derived images are not claimable. This is not a
-record of permission for a new analysis purpose, and it does not enable
-pre-vetting analysis.
+The Fanmass integration is limited to photos that satisfy Camera's shared
+eligibility rules. Contact-incomplete and erasure-scheduled captures, waiting,
+rejected, archived, hidden, broken, consent-pending/expired, and derived images
+are not claimable. This does not create permission for a new analysis purpose.
 
 Camera stores `submissions.fanmassIntakeByEvent[]` as operational queue
 metadata: event-scoped claim state, a random lease token, expiry, attempt
@@ -72,4 +73,4 @@ and verification of removed image derivatives are implemented and approved.
 
 1. What to do with the IP addresses and user agents of the photos taken before this change: leave them, or remove them (after the classes are written, for the user agents).
 2. The wording of the privacy notice (the audit's step F): this page is the list it must match.
-3. The erase flow covering the journey records (they hold no person, so it has nothing to erase for one user; the photo's own erase flow is unchanged).
+3. The erase flow covering anonymous Journey records (they hold no account identity; only aggregate counts remain after the raw rows expire).

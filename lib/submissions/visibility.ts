@@ -11,9 +11,13 @@
  *   review says: nothing shows it on any surface. It used to be public when approved and not turned off for sharing.
  * - A picture that is gone (its host answers 404, or serves its "image not found" stand-in): never public (`mediaHealth.broken`, lib/media/broken.ts). Not showing a picture is better
  *   than showing an error, on every surface (owner, 2026-10-09).
+ * - A new guest capture without finalized contact, or with a scheduled erasure: never public. `guestContact` is canonical for new captures;
+ *   the older contact fields are read only for legacy records.
  *
  * Pure and DOM-free, unit-tested in visibility.test.ts.
  */
+
+import { canProcessSubmission, processingContactMongoFilter, activeRetentionMongoFilter } from '@/lib/submissions/guest-contact';
 
 export interface VisibilityInput {
   submissionKind?: string | null;
@@ -26,6 +30,9 @@ export interface VisibilityInput {
   /** The picture is known to be gone. */
   mediaBroken?: boolean | null;
   consentStatus?: string | null;
+  guestContactStatus?: string | null;
+  erasureStatus?: string | null;
+  hasFinalizedContact?: boolean | null;
 }
 
 /** Every event reference a photo belongs to (the UUID and the ids it was filed under), without duplicates. */
@@ -59,6 +66,9 @@ export function visibilityInputOf(doc: Record<string, unknown> | null | undefine
     eventIds: texts(doc.eventIds),
     mediaBroken: (doc.mediaHealth as { broken?: unknown } | undefined)?.broken === true,
     consentStatus: text(doc.consentStatus),
+    guestContactStatus: text((doc.guestContact as { status?: unknown } | undefined)?.status),
+    erasureStatus: text((doc.erasure as { status?: unknown } | undefined)?.status),
+    hasFinalizedContact: canProcessSubmission(doc),
   };
 }
 
@@ -67,6 +77,9 @@ export function isPubliclyVisible(submission: VisibilityInput | null | undefined
   if (submission.isArchived === true) return false;
   if (submission.mediaBroken === true) return false;
   if (submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired') return false;
+  if (submission.erasureStatus === 'scheduled' || submission.erasureStatus === 'deleting' || submission.erasureStatus === 'complete') return false;
+  if (submission.guestContactStatus && submission.guestContactStatus !== 'complete') return false;
+  if (submission.hasFinalizedContact === false) return false;
   if (isHiddenFromAllEvents(submission)) return false;
   // Only a plain photo can be public: a stored try-on result (or any other kind) never is.
   if (submission.submissionKind != null && submission.submissionKind !== 'original') return false;
@@ -77,7 +90,14 @@ export function isPubliclyVisible(submission: VisibilityInput | null | undefined
 export const UNPUBLISHED_REVIEW_STATUSES = ['awaiting_contact', 'pending_review', 'rejected'] as const;
 
 /** `reviewStatus` is neither of them; a missing status passes (photos from before vetting carry none). For feeds that already restrict the kind. */
-export const notWaitingOrRejectedClause = { reviewStatus: { $nin: [...UNPUBLISHED_REVIEW_STATUSES] }, 'mediaHealth.broken': { $ne: true } };
+export const notWaitingOrRejectedClause = {
+  $and: [
+    { reviewStatus: { $nin: [...UNPUBLISHED_REVIEW_STATUSES] } },
+    { 'mediaHealth.broken': { $ne: true } },
+    processingContactMongoFilter,
+    activeRetentionMongoFilter,
+  ],
+};
 
 /** A plain photo for a MongoDB query: `submissionKind` missing or `original`, never a stored try-on result. */
 export const plainPhotoClause = { $or: [{ submissionKind: { $exists: false } }, { submissionKind: 'original' }] };
@@ -88,6 +108,8 @@ export function publiclyVisibleClauses(eventIdKeys: readonly string[]): object[]
     { isArchived: { $ne: true } },
     // A picture that is gone is not shown (lib/media/broken.ts).
     { 'mediaHealth.broken': { $ne: true } },
+    activeRetentionMongoFilter,
+    processingContactMongoFilter,
     { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } },
     { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: [...eventIdKeys] } }] },
     {

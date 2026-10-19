@@ -7,6 +7,7 @@ import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { plainPhotoClause } from '@/lib/submissions/visibility';
+import { submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
 export { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
 import { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
@@ -21,6 +22,8 @@ export async function galleryFilter(eventUuid: string): Promise<Document> {
       plainPhotoClause,
       // A picture that is gone is not shown, in any gallery (lib/media/broken.ts); the page says how many it hides.
       { 'mediaHealth.broken': { $ne: true } },
+      // Contact-incomplete captures are retained privately for erasure and never enter the gallery.
+      submissionProcessingMongoFilter,
       // A photo of a vetted event that is waiting or rejected is handled under Photos, not shown in the gallery (camera#268).
       { $or: [{ photoReview: { $exists: false } }, { reviewStatus: 'approved' }] },
       { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: [eventUuid] } }] },

@@ -19,6 +19,7 @@ import { getSession } from '@/lib/auth/session';
 import { buildUserManagementPropsFromSubmissions } from '@/lib/admin/build-user-management-props';
 import UserManagementActions from '@/components/admin/UserManagementActions';
 import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
+import { canProcessSubmission, submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
 export const dynamic = 'force-dynamic';
 
@@ -154,10 +155,10 @@ export default async function UserProfilePage({ params }: PageProps) {
     const allSubmissions = (
       await db
         .collection('submissions')
-        .find({})
+        .find({ $and: [submissionProcessingMongoFilter] })
         .sort({ createdAt: -1 })
         .toArray()
-    ).filter((sub) => viewerCanManageUsers || isPubliclyVisible(visibilityInputOf(sub)));
+    ).filter((sub) => canProcessSubmission(sub) && (viewerCanManageUsers || isPubliclyVisible(visibilityInputOf(sub))));
     
     console.log('Total submissions:', allSubmissions.length);
     console.log('Sample submission:', allSubmissions[0] ? {

@@ -8,6 +8,7 @@
 
 import { deviceClassOf, storedDeviceClass, type DeviceClass } from '@/lib/device/coarse';
 import { KEY_PATTERN } from '@/lib/photo-vetting/vocabulary';
+import { guestContactOf, hasFinalizedGuestContact } from '@/lib/submissions/guest-contact';
 
 export { deviceClassOf };
 
@@ -99,6 +100,15 @@ export const PHOTO_PROJECTION = {
   userId: 1,
   userEmail: 1,
   'userInfo.email': 1,
+  userInfoDraft: 1,
+  guestContact: 1,
+  erasure: 1,
+  analyticsDeletion: 1,
+  imageUrl: 1,
+  finalImageUrl: 1,
+  originalImageUrl: 1,
+  previewImageUrl: 1,
+  screenImageUrl: 1,
   reviewStatus: 1,
   reviewHistory: 1,
   rejectReasons: 1,
@@ -137,8 +147,6 @@ export const PHOTO_PROJECTION = {
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {});
-
-const PLACEHOLDER_EMAILS = new Set(['anonymous@event', 'admin@upload']);
 
 function decisionsOf(value: unknown): Decision[] {
   if (!Array.isArray(value)) return [];
@@ -191,22 +199,33 @@ function playsOf(doc: Record<string, unknown>): { plays: number; by: PhotoFacts[
 export function photoFactsOf(doc: Record<string, unknown> | null | undefined): PhotoFacts | null {
   if (!doc || typeof doc !== 'object') return null;
   if (doc.submissionKind === 'tryon_result') return null;
+  // Until contact is finalized, no internal report may inspect or derive facts from the selfie.
+  // Once erased, the row contributes only its explicit deletion outcome to aggregate retention metrics.
+  const deletionOutcome = doc.analyticsDeletion;
+  const mediaReview = record(doc.photoReview);
+  const hasPhotoBytesOrAnalysis = Boolean(
+    text(doc.imageUrl) || text(doc.finalImageUrl) || text(doc.originalImageUrl) || text(doc.previewImageUrl) ||
+    text(doc.screenImageUrl) || text(mediaReview.photoUrl) || Array.isArray(doc.people),
+  );
+  const isErasedNoLoginTombstone = deletionOutcome === 'automatic_no_login' && record(doc.erasure).status === 'complete';
+  const isDetachedManualTombstone = deletionOutcome === 'manual' && !hasPhotoBytesOrAnalysis &&
+    !record(doc.userInfo).email && !record(doc.userInfoDraft).email && !text(doc.userEmail) &&
+    (!text(doc.userId) || doc.userId === 'anonymous');
+  if (record(doc.metadata).adminGalleryUpload !== true && !hasFinalizedGuestContact(doc) && !isErasedNoLoginTombstone && !isDetachedManualTombstone) return null;
 
   const metadata = record(doc.metadata);
-  const userInfo = record(doc.userInfo);
   const photoReview = record(doc.photoReview);
   const mediaHealth = record(doc.mediaHealth);
   const reframe = record(doc.reframe);
   const variant = record(doc.frameVariant);
   const peopleReview = record(doc.peopleReview);
   const identityStatus = text(record(doc.metadata).identityStatus);
+  const guestContact = guestContactOf(doc);
 
   const source: PhotoSource = metadata.adminGalleryUpload === true ? 'editor' : 'user';
   const userId = text(doc.userId);
   const signedIn = Boolean(userId) && userId !== 'anonymous';
-  const accountEmail = text(doc.userEmail)?.toLowerCase() ?? null;
-  const typedEmail = text(userInfo.email)?.toLowerCase() ?? null;
-  const email = [accountEmail, typedEmail].find((candidate): candidate is string => Boolean(candidate) && !PLACEHOLDER_EMAILS.has(candidate as string)) ?? null;
+  const email = guestContact.status === 'complete' ? guestContact.email?.toLowerCase() ?? null : null;
   const identity: Identity = source === 'editor' ? 'none' : signedIn ? 'signed_in' : email ? 'email' : 'none';
 
   const refs = new Set<string>();
@@ -216,6 +235,10 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
   const hiddenEventKeys = Array.isArray(doc.hiddenFromEvents) ? [...new Set(doc.hiddenFromEvents.filter((id): id is string => typeof id === 'string' && Boolean(id)))] : [];
   const deletion: PhotoDeletion = doc.analyticsDeletion === 'manual'
     ? 'manual'
+    : doc.analyticsDeletion === 'automatic_no_login'
+      ? 'automatic_no_login'
+      : doc.analyticsDeletion === 'automatic_other'
+        ? 'automatic_other'
     : doc.consentStatus === 'expired'
       ? (identityStatus === 'NO USER' || userId === 'anonymous' ? 'automatic_no_login' : 'automatic_other')
       : null;

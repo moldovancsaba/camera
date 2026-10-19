@@ -4,6 +4,7 @@
  */
 
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
+import { guestContactOf } from '@/lib/submissions/guest-contact';
 
 export interface UserManagementProps {
   email: string;
@@ -35,8 +36,9 @@ export async function buildUserManagementPropsFromSubmissions(
 
   const accountDisabledMirror = submissions.some((s) => s.cameraAccountDisabled === true);
   const submission = submissions[0];
+  const contact = guestContactOf(submission);
 
-  const hasUserInfo = submission.userInfo?.email && submission.userInfo?.name;
+  const hasUserInfo = contact.status === 'complete' && contact.email;
   const isMergedPseudo = hasUserInfo && submission.userInfo?.mergedWith;
   const isAnonymous =
     !hasUserInfo &&
@@ -70,9 +72,9 @@ export async function buildUserManagementPropsFromSubmissions(
     userType = 'pseudo';
   }
 
-  const email = hasUserInfo ? submission.userInfo.email : submission.userEmail;
+  const email = hasUserInfo ? contact.email : submission.userEmail;
   const name = hasUserInfo
-    ? resolveDisplayName(submission.userInfo?.name)
+    ? resolveDisplayName(contact.name)
     : resolveDisplayName(submission.userName);
   const mergedWith = submission.userInfo?.mergedWith;
 

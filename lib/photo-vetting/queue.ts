@@ -10,10 +10,11 @@ import { plainPhotoClause } from '@/lib/submissions/visibility';
 import { isValidEmail } from '@/lib/photo-vetting/pending';
 import { parsePeople, type PersonTag } from './people';
 import type { ResolvedVocabulary } from './vocabulary';
+import { canProcessSubmission, guestContactOf, submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
-export type QueueStatus = 'pending_review' | 'awaiting_contact' | 'rejected' | 'approved';
+export type QueueStatus = 'pending_review' | 'rejected' | 'approved';
 
-export const QUEUE_STATUSES: readonly QueueStatus[] = ['pending_review', 'awaiting_contact', 'rejected', 'approved'];
+export const QUEUE_STATUSES: readonly QueueStatus[] = ['pending_review', 'rejected', 'approved'];
 
 /** The moderation lists are paged so large events do not drop photos after the first response. */
 export const PHOTO_QUEUE_PAGE_SIZE = 60;
@@ -49,24 +50,8 @@ export interface PhotoQueueItem {
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
 const emailOf = (doc: Document): string | null => {
-  // Only use fields owned by the guest journey. Never infer a recipient from moderation history or unrelated legacy fields.
-  const emails = [
-    text(doc.userInfo?.email),
-    text(doc.userInfoDraft?.email),
-    text(doc.userEmail),
-  ];
-  return emails.find((email) => email && isValidEmail(email) && !['anonymous@event', 'anonymous@event.com', 'admin@upload'].includes(email.toLowerCase())) ?? null;
-};
-
-const validGuestEmail = {
-  $regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/i,
-  $nin: ['anonymous@event', 'anonymous@event.com', 'admin@upload'],
-};
-const finalizedGuestContact: Document = {
-  $or: [
-    { 'userInfo.email': validGuestEmail },
-    { $and: [{ userEmail: validGuestEmail }, { userInfoDraft: { $exists: false } }] },
-  ],
+  const email = guestContactOf(doc).email;
+  return email && isValidEmail(email) ? email : null;
 };
 
 /**
@@ -74,13 +59,13 @@ const finalizedGuestContact: Document = {
  * vocabulary is required so no caller can forget it.
  */
 export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary): PhotoQueueItem {
-  const status: QueueStatus = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : doc.reviewStatus === 'awaiting_contact' ? 'awaiting_contact' : 'pending_review';
+  const status: QueueStatus = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : 'pending_review';
   const review = (doc.photoReview ?? {}) as Document;
   const unframedCopies = Array.isArray(doc.imageCopies) ? (doc.imageCopies as Document[]) : [];
   const verifiedUnframedCopy = unframedCopies.find((copy) => copy.role === 'unframed' && copy.state === 'verified' && typeof copy.url === 'string' && copy.url.trim());
   const history = Array.isArray(doc.reviewHistory) ? (doc.reviewHistory as Document[]) : [];
   const last = history[history.length - 1];
-  const name = text(doc.userInfo?.name) ?? text(doc.userInfoDraft?.name) ?? text(doc.userName) ?? 'Guest';
+  const name = guestContactOf(doc).name ?? text(doc.userName) ?? 'Guest';
   const email = emailOf(doc);
   const registered = typeof doc.userId === 'string' && Boolean(doc.userId) && doc.userId !== 'anonymous';
   const peopleReview = (doc.peopleReview ?? {}) as Document;
@@ -132,6 +117,7 @@ export function photoAnalysisEligibilityFilter(eventUuid: string): Document {
       plainPhotoClause,
       { 'mediaHealth.broken': { $ne: true } },
       { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } },
+      submissionProcessingMongoFilter,
       { reviewStatus: { $ne: 'pending_review' } },
       {
         $or: [
@@ -157,6 +143,7 @@ export function photoAnalysisRecordEligible(doc: Document): boolean {
   if (doc.isArchived === true || (doc.mediaHealth as Document | undefined)?.broken === true) return false;
   if (doc.submissionKind != null && doc.submissionKind !== 'original') return false;
   if (doc.consentStatus === 'pending' || doc.consentStatus === 'expiring' || doc.consentStatus === 'expired') return false;
+  if (!canProcessSubmission(doc)) return false;
   if (doc.reviewStatus === 'pending_review') return false;
   const reviewExists = doc.photoReview !== undefined && doc.photoReview !== null;
   if (reviewExists && doc.reviewStatus !== 'approved' && doc.reviewStatus !== 'rejected') return false;
@@ -208,21 +195,13 @@ export async function countPhotoAnalysisQueue(db: Db, eventUuid: string): Promis
 }
 
 export function queueFilter(eventUuid: string, status: QueueStatus): Document {
-  const stateFilter = status === 'pending_review'
-    ? { reviewStatus: 'pending_review', ...finalizedGuestContact }
-    : status === 'awaiting_contact'
-      ? {
-          $or: [
-            { reviewStatus: 'awaiting_contact' },
-            { reviewStatus: 'pending_review', $nor: [finalizedGuestContact] },
-          ],
-        }
-      : { reviewStatus: status };
+  const stateFilter = { reviewStatus: status };
   return {
     $and: [
       { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
       { photoReview: { $exists: true } },
       { isArchived: { $ne: true } },
+      submissionProcessingMongoFilter,
       stateFilter,
     ],
   };
@@ -240,10 +219,10 @@ export async function loadPhotoQueue(
   let cursor = db
     .collection(COLLECTIONS.SUBMISSIONS)
     .find(queueFilter(eventUuid, status))
-    .sort({ createdAt: status === 'pending_review' || status === 'awaiting_contact' ? 1 : -1 });
+    .sort({ createdAt: status === 'pending_review' ? 1 : -1 });
   if (offset > 0) cursor = cursor.skip(offset);
   const docs = await cursor.limit(limit).toArray();
-  return docs.map((doc) => ({ ...toPhotoQueueItem(doc, vocabulary), ...(status === 'awaiting_contact' ? { status } : {}) }));
+  return docs.map((doc) => toPhotoQueueItem(doc, vocabulary));
 }
 
 export async function countPhotoQueue(db: Db, eventUuid: string): Promise<Record<QueueStatus, number>> {
@@ -266,7 +245,7 @@ export async function countWaitingPhotos(db: Db, eventUuids: readonly string[] |
           reviewStatus: 'pending_review',
           isArchived: { $ne: true },
           eventId: eventUuids ? { $in: [...eventUuids] } : { $type: 'string' },
-          ...finalizedGuestContact,
+          ...submissionProcessingMongoFilter,
         },
       },
       { $group: { _id: '$eventId', count: { $sum: 1 } } },

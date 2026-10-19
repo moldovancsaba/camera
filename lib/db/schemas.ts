@@ -787,7 +787,7 @@ export interface Submission {
   _id?: ObjectId;                    // MongoDB document ID
   submissionId: string;              // Unique submission identifier (UUID)
   userId: string;                    // User ID from SSO
-  userEmail: string;                 // User email from SSO
+  userEmail: string;                 // Legacy mirror of finalized guestContact.email; blank until contact is known
   userName?: string | null;          // Cached display name used by share/profile/admin surfaces
   frameId: string;                   // Reference to frame used
   
@@ -828,9 +828,7 @@ export interface Submission {
   sourceJobId?: string | null;       // Queue job that produced the derived try-on result
   // Stored by the removed try-on integration (issue 557, docs/TRYON_REMOVED.md); only the deletion of the submission's files reads the two URLs.
   tryOnRequest?: { sourceImageUrl?: string | null; sourceDeleteUrl?: string | null } | null;
-  reviewStatus?: 'awaiting_contact' | 'pending_review' | 'approved' | 'rejected'; // Vetted photos are not reviewable until guest contact is saved; a missing status counts as approved
-  /** Vetted capture stored before the post-photo contact step; it enters review only after contact is finalized. */
-  contactStatus?: 'awaiting_contact' | 'complete';
+  reviewStatus?: 'awaiting_contact' | 'pending_review' | 'approved' | 'rejected'; // Vetted photos are not reviewable until guest contact is finalized; a missing status counts as approved for legacy media.
   reviewedAt?: string | null;
   reviewedBy?: string | null;
   reviewNotes?: string | null;
@@ -892,6 +890,15 @@ export interface Submission {
     email?: string;                  // User's email from onboarding form
     collectedAt: string;             // ISO 8601 timestamp when data was collected
   };
+  /** Canonical identity/contact lifecycle. `userInfo` and `userEmail` remain compatibility mirrors for older readers. */
+  guestContact?: {
+    status: 'awaiting_contact' | 'draft' | 'complete' | 'erased';
+    source: 'typed_email' | 'social_login' | 'legacy' | null;
+    name?: string | null;
+    email?: string | null;
+    updatedAt: string;
+    completedAt?: string;
+  };
   /** Values autosaved while the post-photo contact form is being completed; promoted to userInfo on Continue. */
   userInfoDraft?: {
     name?: string;
@@ -909,6 +916,16 @@ export interface Submission {
   consentExpiredAt?: string;
   consentPendingReason?: 'gallery' | 'acceptance';
   consentShareOptIn?: boolean;
+  /** No-contact capture retention is separate from consent: the unlinked image is erased 24 hours after capture. */
+  erasure?: {
+    status: 'scheduled' | 'deleting' | 'complete';
+    reason: 'contact_not_completed';
+    scheduledAt: string;
+    deadlineAt: string;
+    completedAt?: string;
+  };
+  /** Analytics-only outcome retained after automatic or manual deletion; never includes guest contact or image data. */
+  analyticsDeletion?: 'manual' | 'automatic_no_login' | 'automatic_other';
   
   // Comprehensive metadata for tracking and analytics
   metadata: {
@@ -941,7 +958,7 @@ export interface Submission {
     // Processing details
     processingTimeMs?: number;       // Time taken to process (milliseconds)
     compositionEngine?: string;      // "canvas-api" or other
-    identityStatus?: 'NO USER' | 'REGISTERED'; // Identity present when the capture upload was received
+    identityStatus?: 'NO USER' | 'REGISTERED' | 'EMAIL' | 'CONTACT_PENDING' | 'ERASED'; // Legacy summary only; guestContact is canonical.
     
     // Email delivery
     emailSent: boolean;              // Whether email was sent

@@ -10,6 +10,7 @@ import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 import { redirect } from 'next/navigation';
 import UsersInventoryView, { type SerializedAdminUserRow } from '@/components/gds/UsersInventoryView';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
+import { guestContactOf, submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,10 @@ export default async function AdminUsersPage({
     const submissions = await db
       .collection('submissions')
       .find({
-        $or: [{ isArchived: false }, { isArchived: { $exists: false } }],
+        $and: [
+          { $or: [{ isArchived: false }, { isArchived: { $exists: false } }] },
+          submissionProcessingMongoFilter,
+        ],
       })
       .sort({ createdAt: -1 })
       .toArray();
@@ -85,13 +89,14 @@ export default async function AdminUsersPage({
     const userMap = new Map<string, AdminUserListItem>();
 
     for (const submission of submissions) {
-      const hasUserInfo = submission.userInfo?.email && submission.userInfo?.name;
+      const contact = guestContactOf(submission);
+      const hasUserInfo = contact.status === 'complete' && contact.email;
       const isMergedPseudo = hasUserInfo && submission.userInfo?.mergedWith;
 
       const identifier = isMergedPseudo
         ? submission.userInfo.mergedWith
         : hasUserInfo
-          ? submission.userInfo.email
+          ? contact.email
           : submission.userId || submission.userEmail;
 
       const isAnonymous =
@@ -127,9 +132,9 @@ export default async function AdminUsersPage({
         const accountDisabledMirror = submission.cameraAccountDisabled === true;
 
         userMap.set(identifier, {
-          email: hasUserInfo ? submission.userInfo.email : submission.userEmail,
+          email: hasUserInfo ? contact.email : submission.userEmail,
           name: hasUserInfo
-            ? resolveDisplayName(submission.userInfo.name, isAnonymous)
+            ? resolveDisplayName(contact.name, isAnonymous)
             : resolveDisplayName(submission.userName, isAnonymous),
           isAnonymous,
           type: userType,

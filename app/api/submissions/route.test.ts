@@ -332,7 +332,7 @@ test('a vetted event saves the photo pending: private, no public picture, no mir
   }
 });
 
-test('a vetted event stores a capture without a registered user as NO USER', async (t) => {
+test('a capture without finalized contact stores lifecycle state without a fake email address', async (t) => {
   const restore = withStoreToken();
   const quiet = silence();
   try {
@@ -341,10 +341,12 @@ test('a vetted event stores a capture without a registered user as NO USER', asy
     assert.equal((await POST(submissionRequest())).status, 201);
     assert.equal(h.puts.length, 1);
     assert.equal(h.inserted.length, 1);
-    const doc = h.inserted[0] as { userName: string; userId: string; metadata: { identityStatus?: string } };
-    assert.equal(doc.userName, 'NO USER');
+    const doc = h.inserted[0] as { userName?: string; userEmail?: string; userId: string; guestContact: { status: string }; metadata: { identityStatus?: string } };
+    assert.equal(doc.userName, undefined);
+    assert.equal(doc.userEmail, undefined);
+    assert.equal(doc.guestContact.status, 'awaiting_contact');
     assert.equal(doc.userId, 'anonymous');
-    assert.equal(doc.metadata.identityStatus, 'NO USER');
+    assert.equal(doc.metadata.identityStatus, 'CONTACT_PENDING');
   } finally {
     quiet();
     restore();

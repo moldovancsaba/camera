@@ -20,6 +20,7 @@ import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
 import { parsePeople } from '@/lib/photo-vetting/people';
 import { photoAnalysisRecordEligible } from '@/lib/photo-vetting/queue';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
+import { canProcessSubmission, submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
 const MARK_RATE_LIMIT = { max: 120, windowMs: 60 * 1000, message: 'Too many saves. Please wait a minute and try again.' };
 
@@ -50,6 +51,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
   if (analysisOnly && !photoAnalysisRecordEligible(submission as unknown as Record<string, unknown>)) {
     throw apiError('This photo is no longer available for analysis. Reload the Photo analysis page.', 409);
   }
+  if (!canProcessSubmission(submission)) throw apiError('This selfie is awaiting guest contact and is scheduled for erasure. It cannot be analysed.', 409);
 
   // The keys are checked against the list this event offers now (a custom option is valid, a hidden one is not), and the version of that list is recorded with the marks.
   const vocabulary = await loadEventVocabulary(db, event);
@@ -63,7 +65,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
       : { reviewStatus: { $ne: 'pending_review' }, $or: [{ photoReview: { $exists: false } }, { photoReview: null }] }
     : {};
   const saved = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: new ObjectId(submissionId), ...analysisStatusGuard },
+    { _id: new ObjectId(submissionId), $and: [submissionProcessingMongoFilter, analysisStatusGuard] },
     { $set: { people: checked.value, peopleReview } }
   );
   if (analysisOnly && saved.matchedCount === 0) throw apiError('This photo is no longer available for analysis. Reload the Photo analysis page.', 409);

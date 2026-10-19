@@ -14,6 +14,7 @@ import { loadJourneySummary, type JourneySummary } from './journey';
 import { buildEventReport, buildEventsTable, type EventReport, type EventsTableRow, type RegistrationFact, type ReportOptions } from './report';
 import { buildSourcesReport, type SourceHit, type SourceLink, type SourcesReport } from './sources';
 import { dayInRange, localParts } from './time';
+import { submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 
 export interface AnalyticsEvent {
   /** The Mongo id as a string (`/admin/events/<id>`, the key of the short link rows). */
@@ -47,13 +48,23 @@ export function analyticsEventOf(doc: Record<string, unknown>): AnalyticsEvent {
 /** The facts of the photos (originals, never try-on results) filed under an event, or of every event when none is given. */
 export async function loadPhotoFacts(db: Db, event: Pick<AnalyticsEvent, 'eventId'> | null): Promise<PhotoFacts[]> {
   const eventKeys = event ? [event.eventId] : null;
-  const filter = event ? { $or: [{ eventId: event.eventId }, { eventIds: { $in: eventKeys! } }, { hiddenFromEvents: { $in: eventKeys! } }], submissionKind: { $ne: 'tryon_result' } } : { submissionKind: { $ne: 'tryon_result' } };
-  const [docs, tombstones] = await Promise.all([
-    db.collection(COLLECTIONS.SUBMISSIONS).find(filter, { projection: PHOTO_PROJECTION }).toArray(),
+  const eventScope = event ? { $or: [{ eventId: event.eventId }, { eventIds: { $in: eventKeys! } }, { hiddenFromEvents: { $in: eventKeys! } }] } : {};
+  const [docs, erasedCaptures, tombstones] = await Promise.all([
+    // Do not even load image/annotation fields for captures whose contact has not been finalized.
+    db.collection(COLLECTIONS.SUBMISSIONS).find({ $and: [eventScope, { submissionKind: { $ne: 'tryon_result' } }, submissionProcessingMongoFilter] }, { projection: PHOTO_PROJECTION }).toArray(),
+    // Erased no-contact rows retain only these aggregate-safe fields; no image URL, contact, or analysis is read.
+    db.collection(COLLECTIONS.SUBMISSIONS).find({ $and: [eventScope, { analyticsDeletion: 'automatic_no_login', 'erasure.status': 'complete' }] }, { projection: { eventId: 1, eventIds: 1, createdAt: 1, method: 1, reviewStatus: 1, analyticsDeletion: 1, 'erasure.status': 1, 'metadata.identityStatus': 1, 'metadata.deviceClass': 1 } }).toArray(),
     db.collection(COLLECTIONS.PHOTO_DELETION_ANALYTICS).find(event ? { eventId: { $in: eventKeys } } : {}, { projection: { eventId: 1, submissionId: 1, createdAt: 1, reviewStatus: 1, identityStatus: 1, method: 1, deviceClass: 1 } }).toArray(),
   ]);
   const facts = docs.map((doc) => photoFactsOf(doc)).filter((fact): fact is PhotoFacts => fact !== null);
   const currentSubmissionIds = new Set(facts.map((fact) => fact.id));
+  for (const erased of erasedCaptures) {
+    const fact = photoFactsOf(erased as Record<string, unknown>);
+    if (fact && !currentSubmissionIds.has(fact.id)) {
+      facts.push(fact);
+      currentSubmissionIds.add(fact.id);
+    }
+  }
   for (const tombstone of tombstones) {
     if (typeof tombstone.submissionId === 'string' && currentSubmissionIds.has(tombstone.submissionId)) continue;
     const fact = photoFactsOf({

@@ -9,6 +9,7 @@
 import type { Db, Document, ObjectId } from 'mongodb';
 import { ObjectId as Oid } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { canProcessSubmission, submissionProcessingMongoFilter } from '@/lib/submissions/guest-contact';
 import { isAllowedLogoUrl } from '@/lib/frame/logo';
 
 export type PictureCheck = 'ok' | 'broken' | 'unknown';
@@ -51,6 +52,7 @@ export type Outcome = 'marked' | 'cleared' | 'fine' | 'unknown' | 'no-picture';
 
 /** Checks the picture of one submission and records what it found: broken is marked, a picture that answers again clears an older mark, an unclear answer changes nothing. */
 export async function verifySubmission(db: Db, submission: Document, now: string, check: (url: string) => Promise<PictureCheck> = checkPicture): Promise<Outcome> {
+  if (!canProcessSubmission(submission)) return 'no-picture';
   const url = publicPictureOf(submission);
   if (!url) return 'no-picture';
   const result = await check(url);
@@ -58,18 +60,18 @@ export async function verifySubmission(db: Db, submission: Document, now: string
   const was = (submission.mediaHealth as MediaHealth | undefined)?.broken === true;
   if (result === 'broken') {
     const health: MediaHealth = { broken: true, reason: 'the picture is gone (http 404)', checkedAt: now };
-    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { mediaHealth: health } });
+    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id, $and: [submissionProcessingMongoFilter] }, { $set: { mediaHealth: health } });
     return 'marked';
   }
   const health: MediaHealth = { broken: false, checkedAt: now };
-  await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { mediaHealth: health } });
+  await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id, $and: [submissionProcessingMongoFilter] }, { $set: { mediaHealth: health } });
   return was ? 'cleared' : 'fine';
 }
 
 /** A report from a screen that could not load a picture: the server looks for itself (it never takes the screen's word for it) and records what it finds. */
 export async function reportBroken(db: Db, submissionId: unknown, now: string, check?: (url: string) => Promise<PictureCheck>): Promise<Outcome | 'not-found'> {
   if (typeof submissionId !== 'string' || !Oid.isValid(submissionId)) return 'not-found';
-  const submission = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: new Oid(submissionId) }, { projection: { imageUrl: 1, finalImageUrl: 1, mediaHealth: 1 } });
+  const submission = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: new Oid(submissionId), $and: [submissionProcessingMongoFilter] }, { projection: { imageUrl: 1, finalImageUrl: 1, mediaHealth: 1, metadata: 1, guestContact: 1, erasure: 1, userInfo: 1, userInfoDraft: 1, userEmail: 1 } });
   if (!submission) return 'not-found';
   // A fresh answer is not asked for again at once: a screen that reports every slide must not make us ask the host for every slide.
   const health = submission.mediaHealth as MediaHealth | undefined;
@@ -97,6 +99,7 @@ export function scanFilter(maxAgeDays: number, now: Date, after?: ObjectId): Doc
       { $or: [{ imageUrl: { $type: 'string' } }, { finalImageUrl: { $type: 'string' } }] },
       { $or: [{ 'mediaHealth.checkedAt': { $exists: false } }, { 'mediaHealth.checkedAt': { $lt: cutoff } }] },
       { isArchived: { $ne: true } },
+      submissionProcessingMongoFilter,
       ...(after ? [{ _id: { $gt: after } }] : []),
     ],
   };
@@ -111,7 +114,7 @@ export async function scanBatch(
   const now = options.now ?? new Date();
   const maxAgeDays = options.maxAgeDays ?? 7;
   const limit = Math.min(SCAN_BATCH_MAX, Math.max(1, Math.floor(options.limit ?? SCAN_BATCH_DEFAULT)));
-  const rows = await db.collection(COLLECTIONS.SUBMISSIONS).find(scanFilter(maxAgeDays, now, options.after)).project({ imageUrl: 1, finalImageUrl: 1, mediaHealth: 1 }).sort({ _id: 1 }).limit(limit).toArray();
+  const rows = await db.collection(COLLECTIONS.SUBMISSIONS).find(scanFilter(maxAgeDays, now, options.after)).project({ imageUrl: 1, finalImageUrl: 1, mediaHealth: 1, metadata: 1, guestContact: 1, erasure: 1, userInfo: 1, userInfoDraft: 1, userEmail: 1 }).sort({ _id: 1 }).limit(limit).toArray();
   const counts: ScanBatch['counts'] = {};
   for (let i = 0; i < rows.length; i += CONCURRENT) {
     const outcomes = await Promise.all(rows.slice(i, i + CONCURRENT).map((row) => verifySubmission(db, row, now.toISOString(), check)));
@@ -123,5 +126,5 @@ export async function scanBatch(
 
 /** Photos of an event that are marked broken right now (the gallery says how many it hides). */
 export async function countBroken(db: Db, eventKeys: readonly string[]): Promise<number> {
-  return db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ 'mediaHealth.broken': true, isArchived: { $ne: true }, $or: [{ eventId: { $in: [...eventKeys] } }, { eventIds: { $in: [...eventKeys] } }] });
+  return db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ 'mediaHealth.broken': true, isArchived: { $ne: true }, $and: [submissionProcessingMongoFilter], $or: [{ eventId: { $in: [...eventKeys] } }, { eventIds: { $in: [...eventKeys] } }] });
 }
