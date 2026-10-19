@@ -14,6 +14,9 @@ export type QueueStatus = 'pending_review' | 'rejected' | 'approved';
 
 export const QUEUE_STATUSES: readonly QueueStatus[] = ['pending_review', 'rejected', 'approved'];
 
+/** The moderation lists are paged so large events do not drop photos after the first response. */
+export const PHOTO_QUEUE_PAGE_SIZE = 60;
+
 export const isQueueStatus = (value: unknown): value is QueueStatus => typeof value === 'string' && (QUEUE_STATUSES as readonly string[]).includes(value);
 
 export interface PhotoQueueItem {
@@ -45,8 +48,19 @@ export interface PhotoQueueItem {
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
 const emailOf = (doc: Document): string | null => {
-  const emails = [text(doc.userInfo?.email), text(doc.userInfoDraft?.email), text(doc.userEmail)];
-  return emails.find((email) => email && email !== 'anonymous@event' && email !== 'anonymous@event.com') ?? null;
+  // Guest contact has appeared in the structured journey fields and in the older top-level field.
+  // Keep those ahead of looser legacy aliases; never substitute reviewer/audit addresses.
+  const emails = [
+    text(doc.userInfo?.email),
+    text(doc.userInfoDraft?.email),
+    text(doc.userEmail),
+    text(doc.contactInfo?.email),
+    text(doc.contact?.email),
+    text(doc.guest?.email),
+    text(doc.user?.email),
+    text(doc.email),
+  ];
+  return emails.find((email) => email && !['anonymous@event', 'anonymous@event.com', 'admin@upload'].includes(email.toLowerCase())) ?? null;
 };
 
 /**
@@ -196,14 +210,21 @@ export function queueFilter(eventUuid: string, status: QueueStatus): Document {
   };
 }
 
-export async function loadPhotoQueue(db: Db, eventUuid: string, status: QueueStatus, vocabulary: ResolvedVocabulary, limit = 60): Promise<PhotoQueueItem[]> {
+export async function loadPhotoQueue(
+  db: Db,
+  eventUuid: string,
+  status: QueueStatus,
+  vocabulary: ResolvedVocabulary,
+  limit = PHOTO_QUEUE_PAGE_SIZE,
+  offset = 0,
+): Promise<PhotoQueueItem[]> {
   // The waiting list is worked oldest first; the decided lists show the latest decisions first.
-  const docs = await db
+  let cursor = db
     .collection(COLLECTIONS.SUBMISSIONS)
     .find(queueFilter(eventUuid, status))
-    .sort({ createdAt: status === 'pending_review' ? 1 : -1 })
-    .limit(limit)
-    .toArray();
+    .sort({ createdAt: status === 'pending_review' ? 1 : -1 });
+  if (offset > 0) cursor = cursor.skip(offset);
+  const docs = await cursor.limit(limit).toArray();
   return docs.map((doc) => toPhotoQueueItem(doc, vocabulary));
 }
 

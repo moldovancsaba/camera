@@ -12,6 +12,8 @@ export const dynamic = 'force-dynamic';
 interface VettingQuery {
   /** Picks the photo list: waiting (the default), rejected or approved. */
   photos?: string;
+  /** One-based page of the selected photo list. */
+  page?: string;
   /** `list` shows the Waiting list as cards instead of the one-at-a-time screen. */
   view?: string;
 }
@@ -29,8 +31,10 @@ export default async function EventVettingTab({
 }) {
   const { id } = await params;
   if (!ObjectId.isValid(id)) notFound();
-  const { photos, view }: VettingQuery = searchParams ? await searchParams : {};
+  const { photos, page, view }: VettingQuery = searchParams ? await searchParams : {};
   const photoStatus: QueueStatus = isQueueStatus(photos) ? photos : 'pending_review';
+  const parsedPage = typeof page === 'string' ? Number.parseInt(page, 10) : 1;
+  const photoPage = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
   const session = await getSession();
   const db = await connectToDatabase();
@@ -43,7 +47,7 @@ export default async function EventVettingTab({
 
   return (
     <div style={{ display: 'grid', gap: '2.5rem' }}>
-      <EventPhotoVetting db={db} eventMongoId={id} event={event as { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; markPeopleInVetting?: unknown }} status={photoStatus} view={view === 'list' ? 'list' : undefined} canChangeSetting={globalAdmin} />
+      <EventPhotoVetting db={db} eventMongoId={id} event={event as { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; markPeopleInVetting?: unknown }} status={photoStatus} page={photoPage} view={view === 'list' ? 'list' : undefined} canChangeSetting={globalAdmin} />
     </div>
   );
 }

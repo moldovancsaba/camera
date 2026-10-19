@@ -18,7 +18,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { markPeopleOn, summarizePeople } from '@/lib/photo-vetting/people';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
-import { countPhotoAnalysisQueue, countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
+import { countPhotoAnalysisQueue, countPhotoQueue, loadPhotoQueue, PHOTO_QUEUE_PAGE_SIZE, type QueueStatus } from '@/lib/photo-vetting/queue';
 
 const TAB_LABEL: Record<QueueStatus, string> = { pending_review: 'Waiting', rejected: 'Rejected', approved: 'Approved' };
 
@@ -28,28 +28,41 @@ interface EventPhotoVettingProps {
   eventMongoId: string;
   event: { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; markPeopleInVetting?: unknown; partnerId?: unknown; annotationVocabulary?: unknown };
   status: QueueStatus;
+  /** Page of the selected photo list. */
+  page: number;
   /** `list` shows the Waiting list as cards instead of the one-at-a-time screen. */
   view?: 'list';
   canChangeSetting: boolean;
 }
 
-export default async function EventPhotoVetting({ db, eventMongoId, event, status, view, canChangeSetting }: EventPhotoVettingProps) {
+export default async function EventPhotoVetting({ db, eventMongoId, event, status, page, view, canChangeSetting }: EventPhotoVettingProps) {
   const eventUuid = String(event.eventId ?? '');
   // The words of the event first: the photos of the queue are read with them (a custom option would otherwise make a marked photo read as unmarked).
   const vocabulary = await loadEventVocabulary(db, event);
-  const [items, counts, analysisCounts, marked] = await Promise.all([
-    loadPhotoQueue(db, eventUuid, status, vocabulary),
+  const [counts, analysisCounts, marked] = await Promise.all([
     countPhotoQueue(db, eventUuid),
     countPhotoAnalysisQueue(db, eventUuid),
     // What the reviewers marked in this event's photos (issue 542): only the people, nothing else is read.
     db.collection(COLLECTIONS.SUBMISSIONS).find({ $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }], people: { $exists: true }, isArchived: { $ne: true } }, { projection: { people: 1 } }).limit(5000).toArray(),
   ]);
+  // The waiting queue stays in its existing one-at-a-time flow; the completed card lists page large event histories.
+  const pageCount = status === 'pending_review' ? 1 : Math.max(1, Math.ceil(counts[status] / PHOTO_QUEUE_PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), pageCount);
+  const items = await loadPhotoQueue(db, eventUuid, status, vocabulary, PHOTO_QUEUE_PAGE_SIZE, (currentPage - 1) * PHOTO_QUEUE_PAGE_SIZE);
+  const firstVisible = items.length > 0 ? (currentPage - 1) * PHOTO_QUEUE_PAGE_SIZE + 1 : 0;
+  const lastVisible = Math.min(currentPage * PHOTO_QUEUE_PAGE_SIZE, counts[status]);
   const required = photoVettingRequired(event);
   const any = counts.pending_review + counts.rejected + counts.approved > 0;
   const markPeople = markPeopleOn(event);
   // The Waiting list of an event with vetting on is the one-at-a-time screen unless the list of cards was asked for.
   const oneAtATime = required && status === 'pending_review' && view !== 'list';
   const listHref = `/admin/events/${eventMongoId}/vetting?photos=pending_review&view=list`;
+  const pageHref = (targetPage: number) => {
+    const query = new URLSearchParams({ photos: status });
+    if (targetPage > 1) query.set('page', String(targetPage));
+    if (view === 'list') query.set('view', 'list');
+    return `/admin/events/${eventMongoId}/vetting?${query.toString()}`;
+  };
 
   return (
     <Stack gap="lg" data-event-photo-vetting>
@@ -94,6 +107,16 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
               </Link>
             ) : null}
           </nav>
+          {pageCount > 1 ? (
+            <nav aria-label="Photo list pages" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+              <Text size="sm" c="dimmed">Showing {firstVisible}–{lastVisible} of {counts[status]} photos</Text>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {currentPage > 1 ? <Link href={pageHref(currentPage - 1)}>Previous</Link> : <span aria-disabled="true" style={{ color: 'var(--mantine-color-dimmed)' }}>Previous</span>}
+                <Text size="sm">Page {currentPage} of {pageCount}</Text>
+                {currentPage < pageCount ? <Link href={pageHref(currentPage + 1)}>Next</Link> : <span aria-disabled="true" style={{ color: 'var(--mantine-color-dimmed)' }}>Next</span>}
+              </div>
+            </nav>
+          ) : null}
           {oneAtATime ? (
             <PhotoReviewStage eventId={eventMongoId} items={items} vocabulary={vocabulary} markPeople={markPeople} embedded />
           ) : (
