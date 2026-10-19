@@ -834,6 +834,19 @@ export interface Submission {
   reviewNotes?: string | null;
   approvedAt?: string | null;
   approvedBy?: string | null;
+  /** Fanmass's durable, per-event intake state for eligible originals; never holds guest contact data. */
+  fanmassIntakeByEvent?: Array<{
+    eventId: string;
+    status: 'claimed' | 'queued' | 'staged' | 'failed';
+    leaseToken?: string;
+    leaseUntil?: string;
+    claimedAt?: string;
+    stagedAt?: string;
+    retryAfter?: string;
+    attempts?: number;
+    lastErrorCode?: string;
+    updatedAt: string;
+  }>;
   // A photo of a vetted event while it waits (camera#266): the plain framed-size photo in an unlisted Blob object (never mirrored,
   // never returned by a public route), what approval needs to compose the real picture, and the history of the review. The
   // branded composite does not exist until approval; imageUrl and finalImageUrl are absent until then.

@@ -17,6 +17,7 @@ const ALLOWED: Record<string, string> = {
   'app/api/admin/events/[id]/gallery-upload/route.ts': 'admin API (Events manager role): stores the editor\'s own plain upload as the original of the framed picture; the answer goes to that signed-in editor',
   'app/api/e2e/bootstrap/route.ts': 'dev-only test fixtures, blocked in production',
   'app/api/internal/fanmass/events/[eventId]/media/route.ts': 'service-to-service feed behind a shared secret; asks for the raw fan photo by design',
+  'app/api/internal/fanmass/events/[eventId]/media/[captureId]/route.ts': 'private, lease-bound service-to-service fetch behind a shared secret; returns the original bytes only to Fanmass and never returns its storage URL',
   'app/api/internal/savetheworld/pledges/route.ts': 'only documents that the original is never shown on the public wall',
   'app/api/submissions/route.ts': 'writes the submission; the response goes to the fan who made it',
   'lib/db/schemas.ts': 'type definition',

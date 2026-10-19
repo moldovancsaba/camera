@@ -39,6 +39,28 @@ Written for owner decision 243 (2026-10-10, issue 521 phase 2): **stop storing t
 
 The Analytics all-events repeat cohort groups existing photo submitter account/e-mail values in memory for a report and returns only counts to global admins. It does not create a stored cross-event identity map or join identities to anonymous Journey rows. The source slug is a narrow attribution field on the submission and should be included in the photo's normal deletion lifecycle.
 
+## Camera → Fanmass image analysis
+
+The Fanmass integration is limited to photos that already satisfy Camera's
+published-photo visibility rules. Waiting, rejected, archived, hidden, broken,
+consent-pending/expired, and derived images are not claimable. This is not a
+record of permission for a new analysis purpose, and it does not enable
+pre-vetting analysis.
+
+Camera stores `submissions.fanmassIntakeByEvent[]` as operational queue
+metadata: event-scoped claim state, a random lease token, expiry, attempt
+count, retry time, staged time, or a bounded error code for terminal media
+failures. It contains no guest e-mail, login identity, consent text, image
+bytes, or storage URL. Fanmass fetches an
+eligible original through the
+authenticated, lease-bound Camera route; the response is private and uncached.
+
+After staging, Fanmass holds its own image file and derived analysis output in
+its local data store. **Deletion/withdrawal propagation from Camera to these
+Fanmass copies is not implemented yet.** Do not enable a pilot or expand the
+analysis purpose until the retention window, deletion callback/reconciliation,
+and verification of removed image derivatives are implemented and approved.
+
 ## The IP address, everywhere it still appears
 
 - **The rate limiter** (`lib/api/rateLimiter.ts`) uses the IP address to count requests. It keeps it **in the memory of the server instance** (a bucket per path and address, cleared after an hour) or, when Upstash is configured, **as a SHA-256 hash** (`lib/api/upstash-rate-limit.ts`). It is not written to the database.

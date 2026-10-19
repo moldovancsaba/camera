@@ -95,8 +95,8 @@ export const RATE_LIMITS = {
    * Server-to-server internal routes (messmass provisioning, fanmass reads).
    * Callers are authenticated by shared secret, not end users — this tier
    * exists to catch a misbehaving caller (retry storm, bad cron) rather than
-   * to police untrusted traffic; kept generous relative to the ~15min fanmass
-   * poll and per-event messmass provisioning cadence.
+   * to police untrusted traffic. Buckets are route-specific, so the one-minute
+   * Fanmass poll is bounded independently for each event path.
    */
   INTERNAL_READ: { max: 120, windowMs: 60 * 1000 },
   INTERNAL_WRITE: { max: 60, windowMs: 60 * 1000 },

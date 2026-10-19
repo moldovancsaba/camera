@@ -140,8 +140,9 @@ login is unaffected. Minting it needs the permission read to use Camera's own
 ## 2. fanmass → camera: read-only pull
 
 fanmass has no push access — it polls. On a schedule (`CAMERA_POLL_MINUTES`,
-default 15 minutes on the fanmass side), fanmass lists active events, then
-pulls new photos per event using a stored cursor.
+default one minute on the fanmass side), fanmass lists active events. Events
+that advertise `camera.fanmass.media-jobs.v1` use a durable lease/ack queue;
+older Camera builds continue through the timestamp cursor feed.
 
 **Auth**: `assertInternalFanmassSecret()` ([lib/fanmass/internal.ts](../lib/fanmass/internal.ts)) —
 same header pattern as messmass (`x-fanmass-secret` or Bearer), compared
@@ -152,22 +153,34 @@ the messmass one — do not conflate them.
 Lists partner events (active only unless `?all=true`), max 500, sorted by
 `eventDate` then `createdAt` descending.
 Response: `{ events: [{ eventId, name, partnerId, partnerName, messmassEventId,
-isActive, eventDate }] }`. `messmassEventId` falls back to `eventId` for
+isActive, eventDate, mediaContractVersion }] }`. `mediaContractVersion` advertises
+`camera.fanmass.media-jobs.v1`; older builds omit it and continue using the
+cursor feed. `messmassEventId` falls back to `eventId` for
 events created directly in Camera (no messmass link); events provisioned by
 messmass (§1) carry a real `messmassEventId`.
 
-### `GET /api/internal/fanmass/events/{eventId}/media?since=<ISO>&limit=<n>`
+### `GET /api/internal/fanmass/events/{eventId}/media?afterAt=<ISO>&afterId=<capture-id>&limit=<n>`
 Incremental photo feed for one event, oldest first, so fanmass can advance a
-cursor and only re-pull new images. Matches on `{eventId}` or `{eventIds:
+compound cursor and only re-pull new images. Matches on `{eventId}` or `{eventIds:
 eventId}` (Camera's legacy single-event / current multi-event submission
-linkage). Returns only **original** fan photos — `submissionKind !== 'tryon_result'`
-and `originalImageUrl` present — never the frame-composited final image or
-a stored try-on result of the removed try-on integration, because fanmass measures brand exposure on the fan as
-photographed, not on the branded output. `limit` defaults to 200, capped at 500.
-Response: `{ eventId, media: [{ captureId, url, createdAt }] }`.
+linkage). `afterAt` is the availability timestamp and `afterId` is the stable
+submission id tie-breaker. This avoids losing two submissions with the same
+timestamp. The older `since=<ISO>` timestamp-only parameter remains available
+during rolling upgrades; new Fanmass clients should use the compound cursor.
+Returns only **original** fan submissions — `submissionKind !== 'tryon_result'`
+— never a stored try-on result of the removed try-on integration, because fanmass measures brand exposure on the fan as
+photographed, not on the branded output. This compatibility feed also applies
+Camera's shared public-visibility rules: it excludes archived, hidden, broken,
+consent-pending/expired, waiting-review, and rejected submissions. That is a
+conservative published-photo feed, not authorization for pre-vetting analysis.
+`limit` defaults to 200, capped at 500.
+Response: `{ eventId, media: [{ captureId, url, createdAt }] }`; use the pair
+`(createdAt, captureId)` as the next cursor only after the item is durably
+staged. Items are sorted by that same pair. On a failed fetch, stop at the first
+failure and retry it before advancing to later items.
 
 **Photo vetting (camera#270):** a photo of an event with vetting required is in the feed only once it is approved; waiting and rejected
-photos are not. `createdAt` in the answer, and the `since` cut, mean *when the photo became available to this feed*: the capture time for
+photos are not. `createdAt` in the answer, and the cursor cut, mean *when the photo became available to this feed*: the capture time for
 every photo from before vetting (unchanged), the approval time for a vetted photo, so a photo approved after fanmass moved its cursor
 still arrives on the next poll. An approved vetted photo's `url` is the approved picture (the plain photo is private and deleted after
 approval).
@@ -177,6 +190,44 @@ for photos stored since v12.2.14, imgbb (`i.ibb.co`) for older ones — fetched 
 fanmass **without** the shared secret — deliberate, so the secret is never
 exposed to a third-party host. Do not "fix" this by trying to authenticate the
 image fetch.
+
+### Durable photo intake (`camera.fanmass.media-jobs.v1`)
+
+Events that advertise this contract use the durable path instead of timestamp
+polling. The claim query applies the same eligibility rules as the legacy feed,
+then atomically leases up to five photos for ten minutes to bound local memory
+use. Lease state is recorded per event because a submission can appear in more
+than one event. Claiming does not require a full-frame original for legacy
+approved records: it falls back to their already-published image URL. New
+submissions use the unframed original. Archived, hidden,
+broken, consent-pending/expired, waiting-review, rejected, and derived photos
+stay out. The response includes a capture ID, availability time, relative
+private fetch path, random lease token, and lease expiry; it contains no guest
+email, login identity, consent text, or public storage URL.
+
+- `POST /api/internal/fanmass/events/{eventId}/media/claim` with `{ limit? }`
+  returns `{ contractVersion, eventId, jobs: [{ captureId, createdAt,
+  fetchPath, leaseToken, leaseUntil }] }`.
+- `GET /api/internal/fanmass/events/{eventId}/media/{captureId}` requires both
+  the service secret and `x-fanmass-lease`. Camera rechecks event visibility,
+  claim ownership, lease expiry, storage host, image MIME type and 32 MiB size
+  limit before returning image bytes with `Cache-Control: private, no-store`.
+- `POST /api/internal/fanmass/events/{eventId}/media/{captureId}/ack` with
+  `{ leaseToken, outcome: 'staged' | 'retry' | 'failed', errorCode? }` marks a photo
+  staged only after Fanmass has durably queued its analysis job. Fanmass derives
+  a stable job identity from the source, event batch, analysis depth, and sorted
+  capture filenames so a lost acknowledgement cannot enqueue that chunk twice.
+  Retry releases
+  the claim after an increasing backoff capped at 30 minutes; a lost worker lease expires and is claimable
+  again. Intake job identity includes the sorted capture IDs so a replay of the
+  same source chunk is deduplicated. Unsupported or oversized media receives a
+  terminal `failed` state instead of retrying forever; an operator must correct
+  the source or queue state before it can be reprocessed.
+
+This path still covers only photos eligible under the existing published-photo
+rules. It does not authorize analysis of a waiting/rejected photo or enable
+pre-vetting analysis. Deletion/withdrawal propagation to copies already staged
+in Fanmass remains a release gate before an event pilot.
 
 ## 2a. savetheworld → camera: pledge campaign
 

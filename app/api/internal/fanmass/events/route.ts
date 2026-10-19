@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiSuccess, withErrorHandler, checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { assertInternalFanmassSecret } from '@/lib/fanmass/internal';
+import { FANMASS_MEDIA_JOBS_CONTRACT } from '@/lib/fanmass/media-feed';
 
 /**
  * GET /api/internal/fanmass/events
@@ -12,7 +13,7 @@ import { assertInternalFanmassSecret } from '@/lib/fanmass/internal';
  *
  * Query: ?all=true to include inactive events (default: active only).
  * Response: { success, data: { events: [{ eventId, name, partnerId, partnerName,
- *            messmassEventId, isActive, eventDate }] } }
+ *            messmassEventId, isActive, eventDate, mediaContractVersion }] } }
  *
  * messmassEventId falls back to eventId for events created directly in camera
  * (no messmass link). Events provisioned by messmass (lib/messmass/provision.ts)
@@ -44,6 +45,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       messmassEventId: e.messmassEventId ?? e.eventId,
       isActive: e.isActive ?? true,
       eventDate: e.eventDate ?? null,
+      mediaContractVersion: FANMASS_MEDIA_JOBS_CONTRACT,
     })),
   });
 });
