@@ -51,7 +51,7 @@ function PercentBox({ x, y, w, h, label, colour }: { x: number; y: number; w: nu
         height: `${h * 100}%`,
       }}
     >
-      <span style={{ background: colour, color: '#111827', fontSize: '0.75rem', fontWeight: 700, left: 0, lineHeight: 1.4, padding: '0 0.25rem', position: 'absolute', top: 0 }}>{label}</span>
+      <span style={{ background: colour, color: 'var(--mantine-color-dark-9)', fontSize: '0.75rem', fontWeight: 700, left: 0, lineHeight: 1.4, padding: '0 0.25rem', position: 'absolute', top: 0 }}>{label}</span>
     </div>
   );
 }
@@ -115,8 +115,8 @@ export default function FanmassPhotoResultReview({
               <Image src={item.photoUrl} alt="Original photo analysed by Fanmass" width={1600} height={1200} unoptimized priority style={{ display: 'block', height: 'auto', maxHeight: 'calc(100vh - 13rem)', maxWidth: '100%', width: 'auto' }} />
               {result ? (
                 <div aria-label="Fanmass result boxes" style={{ inset: 0, position: 'absolute' }}>
-                  {people.map((person, index) => <PercentBox key={`person-${person.id}`} {...person.box} label={`Person ${index + 1}`} colour="#facc15" />)}
-                  {faces.map((face, index) => <PercentBox key={`face-${face.id}`} {...face.box} label={`Face ${index + 1}`} colour="#38bdf8" />)}
+                  {people.map((person, index) => <PercentBox key={`person-${person.id}`} {...person.box} label={`Person ${index + 1}`} colour="var(--mantine-color-yellow-5)" />)}
+                  {faces.map((face, index) => <PercentBox key={`face-${face.id}`} {...face.box} label={`Face ${index + 1}`} colour="var(--mantine-color-blue-5)" />)}
                 </div>
               ) : null}
             </div>
