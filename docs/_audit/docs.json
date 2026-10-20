@@ -37,6 +37,7 @@
   {"file": "docs/EMAIL_TEMPLATES.md", "title": "Email template verification"},
   {"file": "docs/EVENT_EXPORTS.md", "title": "Event Data Exports \u2014 Low-Level Design"},
   {"file": "docs/EXECUTION_ORDER.md", "title": "Execution order (owner answers of 2026-10-10)"},
+  {"file": "docs/FANMASS_RESULTS_IN_CAMERA.md", "title": "Fanmass results in Camera"},
   {"file": "docs/FRAME_BASE.md", "title": "Frames from the designers' picture (frame base)"},
   {"file": "docs/FRAME_LAYOUT_SELECTION_PLAN.md", "title": "Layout and message selection at an event (client feedback 2026-10-09)"},
   {"file": "docs/FRAME_MESSAGE_SELECTION_CONSISTENCY.md", "title": "Frame and message selection consistency"},
