@@ -163,8 +163,10 @@ zero-caller deprecation list).
 
 ## 4. CURRENT (verified, for the record)
 - ARCHITECTURE.md:167-173 proxy/appAccess/x-camera-pathname — matches proxy.ts.
-- docs/MESSMASS_FANMASS_INTEGRATION.md:94-106 fanmass media contract — matches
-  app/api/internal/fanmass/events/[eventId]/media/route.ts:30-54.
+- Historical Fanmass media-feed contract — retired 2026-10-20. Fanmass now
+  independently reads eligible Camera records from Atlas and owns its queue and
+  result collections; current contract is `docs/MESSMASS_FANMASS_INTEGRATION.md`
+  §2 and Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md`.
 - docs/TRYON_ARCHITECTURE.md:47-49 rerun re-moderation — matches
   lib/tryon/completion.ts:68-70,261-263.
 

@@ -25,7 +25,7 @@ transparent shapes instead.
 | 8 | Try-on | yes, with their frame as well | the try-on job waits for the source photo's approval; a try-on result is public only when approved, and its frame is put on at approval as for photos |
 | 9 | Share links | yes | new photos get an opaque share token; old links keep working for old photos |
 
-Everything else in the plan stands as written (pledge wall, slideshows, fanmass feed and emails get approved photos only).
+Everything else in the plan stands as written (pledge wall, slideshows and emails get approved photos only). The historical Fanmass HTTP feed described below was retired on 2026-10-20; the active integration is Fanmass-owned Atlas discovery and is documented in `docs/MESSMASS_FANMASS_INTEGRATION.md` and the Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md`.
 
 **Identity today, from the production database:** only 7 of 238 events have an active "who are you" page (name and email, or Google / Facebook
 login through SSO); 229 have no custom pages at all, and provisioning from messmass and savetheworld creates none. 1,179 of 1,574 saved
@@ -56,7 +56,7 @@ photos carry an email. So "every event requires an email or a social login" is a
 | 7* | `/users/[name]` | yes | none: lists every submission of a name, including archived and hidden |
 | 8* | savetheworld pledge wall `/api/internal/savetheworld/pledges` | service secret, feeds a public page | only `isShareVisible === true`, which defaults to true |
 | 9* | savetheworld `publish-selfies` | service secret | bulk-sets `isShareVisible` on every unflagged photo |
-| 10* | fanmass media feed | service secret, external system | none; sends the private full-size original when one exists |
+| 10* | Fanmass analysis eligibility | Atlas read role (Fanmass-owned queue) | no Camera HTTP route; Fanmass reads a minimal projection and fetches only the original of eligible photos |
 | 11 | Guest result email | to the guest | links to `/share/<id>`; "after save" is sent when the guest finishes; readiness only checks that an image exists |
 | 12 | Greatest hits `/greatest-hits/[slug]` | yes | strict (try-on only, approved + visible + great): safe |
 | 13 | Admin gallery, partner page, submissions list, event export | admin / manager | no review filter, which is right for a moderation view; needs a pending badge |
@@ -103,7 +103,7 @@ before approval.
 | V-6 | Opaque share token for new photos (`/share/<token>`), old `/share/<id>` links keep working for old photos | the Mongo id is guessable; pending pages should not be enumerable |
 | V-7 | Pages for a pending or rejected photo are `noindex` and send no Open Graph image | previews must not leak |
 | V-8 | Moderation: one queue for photos next to the try-on queue (`/admin/events/[id]/vetting`), approve / reject, bulk approve, keyboard friendly, audit trail; event managers and global admins can vet their events (owner, 2026-10-06) | the client's staff must be able to do it |
-| V-9 | Every downstream feed takes approved photos only: slideshows, `/users/[name]`, pledge wall, `publish-selfies`, fanmass feed, emails, the manual email script | all of them show or send photos today without a check |
+| V-9 | Every downstream surface applies the correct publication gate: slideshows, `/users/[name]`, pledge wall, `publish-selfies`, the retired Fanmass HTTP feed, emails, and the manual email script | Historical state at the plan's original review. Fanmass now discovers eligible records through its own read-only Atlas integration; see the integration contract. Other publication surfaces still require separate verification. |
 | V-10 | Try-on keeps its own vetting; the try-on job is held until the source photo is approved (no cost for rejected photos); a try-on result is only public when both are approved, and its frame is put on at approval, as for photos (owner, 2026-10-06) | avoids publishing a result of an unapproved photo |
 
 ## Work packages

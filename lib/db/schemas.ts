@@ -888,6 +888,10 @@ export interface Submission {
   consentExpiredAt?: string;
   consentPendingReason?: 'gallery' | 'acceptance';
   consentShareOptIn?: boolean;
+  /** Captures submitted without a user identity stay private and are erased after 24 hours. */
+  retentionStatus?: 'pending_erasure' | 'erasing' | 'erased';
+  retentionExpiresAt?: string;
+  retentionErasedAt?: string;
   
   // Comprehensive metadata for tracking and analytics
   metadata: {

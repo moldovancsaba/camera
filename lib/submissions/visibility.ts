@@ -26,6 +26,7 @@ export interface VisibilityInput {
   /** The picture is known to be gone. */
   mediaBroken?: boolean | null;
   consentStatus?: string | null;
+  retentionStatus?: string | null;
 }
 
 /** Every event reference a photo belongs to (the UUID and the ids it was filed under), without duplicates. */
@@ -59,6 +60,7 @@ export function visibilityInputOf(doc: Record<string, unknown> | null | undefine
     eventIds: texts(doc.eventIds),
     mediaBroken: (doc.mediaHealth as { broken?: unknown } | undefined)?.broken === true,
     consentStatus: text(doc.consentStatus),
+    retentionStatus: text(doc.retentionStatus),
   };
 }
 
@@ -67,6 +69,7 @@ export function isPubliclyVisible(submission: VisibilityInput | null | undefined
   if (submission.isArchived === true) return false;
   if (submission.mediaBroken === true) return false;
   if (submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired') return false;
+  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') return false;
   if (isHiddenFromAllEvents(submission)) return false;
   // Only a plain photo can be public: a stored try-on result (or any other kind) never is.
   if (submission.submissionKind != null && submission.submissionKind !== 'original') return false;
@@ -89,6 +92,7 @@ export function publiclyVisibleClauses(eventIdKeys: readonly string[]): object[]
     // A picture that is gone is not shown (lib/media/broken.ts).
     { 'mediaHealth.broken': { $ne: true } },
     { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } },
+    { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
     { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: [...eventIdKeys] } }] },
     {
       $and: [plainPhotoClause, { reviewStatus: { $nin: ['pending_review', 'rejected'] } }],

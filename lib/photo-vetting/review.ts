@@ -98,6 +98,9 @@ export async function resolveFrameImageUrl(db: Db, submission: Pick<Submission, 
 }
 
 export async function approvePhoto(db: Db, submission: WithId<Submission>, actor: ReviewActor, deps: ReviewDeps = defaultReviewDeps): Promise<ApproveResult> {
+  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') {
+    return { ok: false, reason: 'not_reviewable', message: 'This capture is scheduled for erasure and cannot be approved' };
+  }
   if (submission.reviewStatus !== 'pending_review' && submission.reviewStatus !== 'rejected') {
     return { ok: false, reason: 'not_reviewable', message: 'This photo is not waiting for a decision' };
   }
@@ -136,7 +139,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
 
   const at = deps.now();
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submission._id, reviewStatus: { $in: ['pending_review', 'rejected'] } },
+    { _id: submission._id, reviewStatus: { $in: ['pending_review', 'rejected'] }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
     {
       $set: {
         imageUrl: picture.imageUrl,
@@ -235,13 +238,14 @@ async function sendApprovedLinkForSubmission(db: Db, submission: Submission | nu
 /** Send the approved share link when a guest records consent after moderation has already approved the photo. */
 export async function sendApprovedLinkAfterConsent(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
   const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
-  if (!submission || submission.consentStatus !== 'received') return 'skipped';
+  if (!submission || submission.consentStatus !== 'received' || submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') return 'skipped';
   return sendApprovedLinkForSubmission(db, submission, deps);
 }
 
 /** Let an event manager retry a missed approval email for an already-approved, public photo. */
 export async function retryApprovedPhotoEmail(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
   const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+  if (submission?.retentionStatus === 'pending_erasure' || submission?.retentionStatus === 'erasing' || submission?.retentionStatus === 'erased') return 'skipped';
   return sendApprovedLinkForSubmission(db, submission, deps);
 }
 
@@ -250,12 +254,12 @@ export async function retryApprovedPhotoEmail(db: Db, submissionId: ObjectId, de
  * as `rejectReasons` and in the review history entry; `reason` is the free-text note. A photo rejected before reasons existed has neither, and the history entry carries `reasons` only when there are some.
  */
 export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor: ReviewActor, reason: string | null, reasons: readonly string[] = [], deps: ReviewDeps = defaultReviewDeps): Promise<RejectResult> {
-  if (submission.reviewStatus !== 'pending_review') {
+  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased' || submission.reviewStatus !== 'pending_review') {
     return { ok: false, reason: 'not_reviewable', message: 'This photo is not waiting for a decision' };
   }
   const at = deps.now();
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submission._id, reviewStatus: 'pending_review' },
+    { _id: submission._id, reviewStatus: 'pending_review', retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
     {
       $set: {
         reviewStatus: 'rejected',
@@ -286,13 +290,13 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
 
 /** Reopens an approved or rejected photo for the normal one-at-a-time review flow. */
 export async function returnPhotoToVetting(db: Db, submission: WithId<Submission>, actor: ReviewActor, deps: ReviewDeps = defaultReviewDeps): Promise<ReturnToVettingResult> {
-  if ((submission.reviewStatus !== 'approved' && submission.reviewStatus !== 'rejected') || !submission.photoReview) {
+  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased' || (submission.reviewStatus !== 'approved' && submission.reviewStatus !== 'rejected') || !submission.photoReview) {
     return { ok: false, reason: 'not_reviewable', message: 'This photo cannot be returned to vetting' };
   }
   const at = deps.now();
   const wasVisible = isPubliclyVisible(visibilityInputOf(submission));
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submission._id, reviewStatus: submission.reviewStatus },
+    { _id: submission._id, reviewStatus: submission.reviewStatus, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
     {
       $set: {
         reviewStatus: 'pending_review',

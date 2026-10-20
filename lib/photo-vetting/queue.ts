@@ -77,6 +77,7 @@ export function queueFilter(eventUuid: string, status: QueueStatus): Document {
     photoReview: { $exists: true },
     reviewStatus: status,
     isArchived: { $ne: true },
+    retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
   };
 }
 
@@ -110,6 +111,7 @@ export async function countWaitingPhotos(db: Db, eventUuids: readonly string[] |
           photoReview: { $exists: true },
           reviewStatus: 'pending_review',
           isArchived: { $ne: true },
+          retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
           eventId: eventUuids ? { $in: [...eventUuids] } : { $type: 'string' },
         },
       },

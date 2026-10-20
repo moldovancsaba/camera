@@ -91,6 +91,8 @@ export const PHOTO_PROJECTION = {
   archivedAt: 1,
   hiddenFromEvents: 1,
   consentStatus: 1,
+  analyticsDeletion: 1,
+  retentionStatus: 1,
   consentExpiredAt: 1,
   updatedAt: 1,
   'mediaHealth.broken': 1,
@@ -216,9 +218,13 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
   const hiddenEventKeys = Array.isArray(doc.hiddenFromEvents) ? [...new Set(doc.hiddenFromEvents.filter((id): id is string => typeof id === 'string' && Boolean(id)))] : [];
   const deletion: PhotoDeletion = doc.analyticsDeletion === 'manual'
     ? 'manual'
-    : doc.consentStatus === 'expired'
-      ? (identityStatus === 'NO USER' || userId === 'anonymous' ? 'automatic_no_login' : 'automatic_other')
-      : null;
+    : doc.analyticsDeletion === 'automatic_no_login'
+      ? 'automatic_no_login'
+      : doc.analyticsDeletion === 'automatic_other'
+        ? 'automatic_other'
+        : doc.consentStatus === 'expired'
+          ? (identityStatus === 'NO USER' || userId === 'anonymous' ? 'automatic_no_login' : 'automatic_other')
+          : null;
 
   const decisions = decisionsOf(doc.reviewHistory);
   const review: ReviewState = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : doc.reviewStatus === 'pending_review' ? 'waiting' : 'none';

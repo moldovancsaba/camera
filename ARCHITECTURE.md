@@ -388,7 +388,7 @@ Major API groups:
 - admin users/submissions utilities: `/api/admin/**`
 - event data exports: `/api/admin/events/[id]/export/emails` and `/api/admin/events/[id]/export/images` (manager-gated; CSV + ZIP, shared logic in `lib/events/event-export.ts`)
 - go-short redirects: `/api/go-short/**`
-- internal service-to-service: `/api/internal/messmass/**` (messmass provisions organisations/partners/events; messmass is master), `/api/internal/fanmass/**` (fanmass pulls events + media, read-only), `/api/internal/savetheworld/**` (savetheworld provisions partners/events, reads the pledge wall, bulk-publishes an event's selfies; `x-savetheworld-secret`), `/api/internal/email/send` (shared cross-app email via Resend; accepts the messmass or fanmass caller secret) — each gated by a shared secret, not a user session. See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
+- internal service-to-service: `/api/internal/messmass/**` (messmass provisions organisations/partners/events; messmass is master), `/api/internal/savetheworld/**` (savetheworld provisions partners/events, reads the pledge wall, bulk-publishes an event's selfies; `x-savetheworld-secret`), `/api/internal/email/send` (shared cross-app email via Resend; accepts the messmass or fanmass caller secret). Fanmass image discovery is a read-only Atlas database boundary, not a Camera HTTP API: Fanmass reads eligible Camera source records and writes only its own pipeline database. See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
 
 The exact route list should be taken from `app/api/**/route.ts`, not from memory.
 

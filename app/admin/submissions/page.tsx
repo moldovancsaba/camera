@@ -135,7 +135,10 @@ export default async function AdminSubmissionsPage({
 
   try {
     const db = await connectToDatabase();
-    const query: Record<string, unknown> = { isArchived: false };
+    const query: Record<string, unknown> = {
+      isArchived: false,
+      retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+    };
     if (search) {
       query.$or = [
         { userName: { $regex: search, $options: 'i' } },

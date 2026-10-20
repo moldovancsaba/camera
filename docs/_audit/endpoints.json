@@ -88,8 +88,6 @@
   {"path": "/api/images", "methods": ["GET", "POST"], "file": "app/api/images/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/internal/activity-export", "methods": ["GET"], "file": "app/api/internal/activity-export/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/internal/email/send", "methods": ["POST"], "file": "app/api/internal/email/send/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
-  {"path": "/api/internal/fanmass/events/[eventId]/media", "methods": ["GET"], "file": "app/api/internal/fanmass/events/[eventId]/media/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
-  {"path": "/api/internal/fanmass/events", "methods": ["GET"], "file": "app/api/internal/fanmass/events/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/internal/follow-up-emails", "methods": ["GET"], "file": "app/api/internal/follow-up-emails/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/internal/messmass/events", "methods": ["POST"], "file": "app/api/internal/messmass/events/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/internal/messmass/frame-backfill", "methods": ["POST"], "file": "app/api/internal/messmass/frame-backfill/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},

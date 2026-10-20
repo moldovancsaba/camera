@@ -8,14 +8,18 @@ Camera integrates with three other apps in the SEYU fan-engagement stack:
 **messmass** (event reporting/partner management, the master for
 organisations/partners/events), **fanmass** (image analytics — brand/sponsor/fan
 recognition on captured photos), and **savetheworld** (pledge campaign app, §2a).
-All three integrations are server-to-server, authenticated by a shared secret,
-and live entirely under `app/api/internal/**`. None of them has any other way
-into Camera's data — no shared database access, no session reuse.
+Messmass and Savetheworld use authenticated HTTP integrations. Fanmass is
+deliberately different: it independently reads a narrow, read-only Camera Atlas
+projection and writes only to its own pipeline database. Camera has no Fanmass
+queue, media feed, image upload, result callback, or Fanmass API client. The
+shared-secret email route is a separate service and is not an image integration.
 
 ```text
 messmass      --(provision org/partner/event)---------->  camera
 messmass      --(send email)---------------------------->  camera
-camera        <--(poll: events, then media)-----------    fanmass
+camera Atlas  --(read-only source data)--------------->  fanmass
+fanmass Atlas --(Fanmass-owned queue/results)---------->  fanmass
+fanmass       --(event analytics summaries)----------->  messmass
 savetheworld  --(partners/events, pledge wall, publish)-->  camera
 camera        --(browser handoff: post-selfie CTA)----->  savetheworld
 ```
@@ -137,46 +141,48 @@ login is unaffected. Minting it needs the permission read to use Camera's own
 `client_credentials` token, which requires that grant (with
 `manage_permissions`) to be enabled for Camera's SSO client (owner action).
 
-## 2. fanmass → camera: read-only pull
+## 2. Camera Atlas → Fanmass: independent discovery and analysis
 
-fanmass has no push access — it polls. On a schedule (`CAMERA_POLL_MINUTES`,
-default 15 minutes on the fanmass side), fanmass lists active events, then
-pulls new photos per event using a stored cursor.
+Camera writes its normal event and submission records, including consent,
+retention, and human vetting decisions, to Camera's Atlas database. Camera does
+not make a Fanmass request at capture, vetting, approval, or deletion time.
+Fanmass independently watches and scans Atlas. It creates its own queue and
+result records in a separate Fanmass-owned Atlas database; the Camera source
+database is never updated by Fanmass.
 
-**Auth**: `assertInternalFanmassSecret()` ([lib/fanmass/internal.ts](../lib/fanmass/internal.ts)) —
-same header pattern as messmass (`x-fanmass-secret` or Bearer), compared
-against `CAMERA_FANMASS_INTERNAL_SECRET`. This is a **different secret** from
-the messmass one — do not conflate them.
+**Database permissions**: configure the Fanmass Atlas database principal with
+read-only access to the Camera database and read/write access only to the
+Fanmass pipeline database (`fanmass_camera_pipeline` by default). No Camera
+application route, shared media queue, claim, receipt, or result callback is
+part of the data path. Fanmass change streams are a low-latency optimization;
+bounded resumable source and queue scans recover after downtime or lost resume
+tokens.
 
-### `GET /api/internal/fanmass/events?all=true`
-Lists partner events (active only unless `?all=true`), max 500, sorted by
-`eventDate` then `createdAt` descending.
-Response: `{ events: [{ eventId, name, partnerId, partnerName, messmassEventId,
-isActive, eventDate }] }`. `messmassEventId` falls back to `eventId` for
-events created directly in Camera (no messmass link); events provisioned by
-messmass (§1) carry a real `messmassEventId`.
+**One-photo contract**: one queue identity is derived from each Camera
+submission Mongo `_id`; event links are metadata and never duplicate the
+analysis job. One global Atlas lease permits at most one active source-photo
+analysis. Fanmass rechecks eligibility before fetching and before saving the
+result, runs the complete local analysis, stores normalized output and
+person/face boxes in Fanmass Atlas, then releases the lease. Crash recovery is
+idempotent and fenced; a crash may recompute a photo but cannot publish a stale
+result.
 
-### `GET /api/internal/fanmass/events/{eventId}/media?since=<ISO>&limit=<n>`
-Incremental photo feed for one event, oldest first, so fanmass can advance a
-cursor and only re-pull new images. Matches on `{eventId}` or `{eventIds:
-eventId}` (Camera's legacy single-event / current multi-event submission
-linkage). Returns only **original** fan photos — `submissionKind !== 'tryon_result'`
-and `originalImageUrl` present — never the frame-composited final image or
-a stored try-on result of the removed try-on integration, because fanmass measures brand exposure on the fan as
-photographed, not on the branded output. `limit` defaults to 200, capped at 500.
-Response: `{ eventId, media: [{ captureId, url, createdAt }] }`.
+**Eligibility**: new records must have successful consent, a real user
+identity, and a usable original image. When Camera vetting is required, only
+approved submissions qualify. Missing identity, pending/expired consent,
+pending erasure, erasing/erased, deleted, archived, hidden, broken, rejected,
+waiting, and non-Camera generated images do not qualify. The source projection
+collapses identity to a boolean on Atlas; Fanmass does not receive the guest's
+email, name, social-login data, or consent wording. Camera's scheduled erasure
+remains authoritative; Fanmass removes its derived/local copies through its
+retryable privacy-cleanup queue when a source disappears or becomes ineligible.
 
-**Photo vetting (camera#270):** a photo of an event with vetting required is in the feed only once it is approved; waiting and rejected
-photos are not. `createdAt` in the answer, and the `since` cut, mean *when the photo became available to this feed*: the capture time for
-every photo from before vetting (unchanged), the approval time for a vetted photo, so a photo approved after fanmass moved its cursor
-still arrives on the next poll. An approved vetted photo's `url` is the approved picture (the plain photo is private and deleted after
-approval).
-
-`url` is a public image link — Vercel Blob (`*.public.blob.vercel-storage.com`)
-for photos stored since v12.2.14, imgbb (`i.ibb.co`) for older ones — fetched by
-fanmass **without** the shared secret — deliberate, so the secret is never
-exposed to a third-party host. Do not "fix" this by trying to authenticate the
-image fetch.
+**Analysis ownership and reporting**: Fanmass owns machine analysis and
+per-photo boxes. Messmass owns event reporting and receives Fanmass's normalized
+event summary over its existing authenticated analysis-summary API. Camera does
+not receive or store a second Fanmass result copy. The full field, retry,
+privacy, monitoring, and release contracts are in the Fanmass repository's
+`docs/CAMERA_ATLAS_QUEUE_CONTRACT.md`.
 
 ## 2a. savetheworld → camera: pledge campaign
 
@@ -282,26 +288,24 @@ in Camera, not duplicated between the internal API and Camera's own feature.
   the fleet's email transport (POST /api/internal/email/send). Not inbound-only.
 - Camera does not know about `launchmass` — no code, config, or data path
   connects them.
-- Camera does not resolve the analytics fanmass produces; that data flows
-  fanmass → messmass directly (`messmass.fanmass.analytics-summary.v1`,
-  documented in the messmass repo), bypassing Camera entirely.
+- Camera does not resolve or store Fanmass analytics. Per-photo results and
+  boxes stay in Fanmass; event aggregates flow directly from Fanmass to
+  Messmass (`messmass.fanmass.analytics-summary.v1`).
 
 ## 5. Rate limiting
 
-All 8 §1-§3 routes are rate-limited via the shared token-bucket limiter
+All HTTP routes that declare a tier use the shared token-bucket limiter
 ([lib/api/rateLimiter.ts](../lib/api/rateLimiter.ts)); the §2a savetheworld
 routes list their tier per route:
 
-- `RATE_LIMITS.INTERNAL_READ` — 120 requests/minute (the three `GET` routes:
-  partners lookup, fanmass events, fanmass media)
+- `RATE_LIMITS.INTERNAL_READ` — 120 requests/minute (the partner lookup and
+  public Savetheworld read routes)
 - `RATE_LIMITS.INTERNAL_WRITE` — 60 requests/minute (the five `POST` routes:
   organizations, partners, events, sso-session, email send)
 
-These tiers exist to catch a misbehaving caller (retry storm, bad cron, buggy
-poll loop) — not to police untrusted public traffic, since every caller here
-is already secret-authenticated. A `429` on these routes means the *calling
-app* (messmass or fanmass) is retrying too aggressively, not that a rate limit
-config needs loosening for a legitimate one-off burst.
+These tiers exist to catch a misbehaving HTTP caller (retry storm or bad cron),
+not to police untrusted public traffic. Fanmass Atlas reads do not pass through
+Camera's HTTP limiter.
 
 ## 6. Data model / indexes
 
@@ -322,7 +326,7 @@ See `.env.example` for the full list; the integration-specific ones:
 | Var | Direction | Purpose |
 |---|---|---|
 | `CAMERA_MESSMASS_INTERNAL_SECRET` | messmass → camera **and** camera → messmass | Auth for §1 routes (including sso-session) and §3 (email); also the secret camera sends outbound in §4's `pushPartnerToMessmass`/`pushSsoSessionToMessmass` calls (same shared secret both directions) |
-| `CAMERA_FANMASS_INTERNAL_SECRET` | fanmass → camera | Auth for §2 routes and §3 (email) |
+| `CAMERA_FANMASS_INTERNAL_SECRET` | fanmass → camera | Auth for the shared email route only. It does not authorize image reads or queue operations. |
 | `CAMERA_SAVETHEWORLD_INTERNAL_SECRET` | savetheworld → camera | Auth for §2a routes |
 | `SAVETHEWORLD_APP_URL` | camera → savetheworld (browser) | Base URL for the default post-selfie CTA on newly provisioned savetheworld events (§2a); unset = no CTA |
 | `MESSMASS_BASE_URL` | camera → messmass | Base URL camera calls outbound for the §4 partner-push and sso-session-mint requests ([lib/messmassClient.ts](../lib/messmassClient.ts):14) |
@@ -357,11 +361,7 @@ curl -X POST http://localhost:3000/api/internal/messmass/organizations \
   -H "Content-Type: application/json" \
   -d '{"name":"Test Org"}'
 
-# 3. Pull events (fanmass side)
-curl http://localhost:3000/api/internal/fanmass/events \
-  -H "x-fanmass-secret: $CAMERA_FANMASS_INTERNAL_SECRET"
-
-# 4. Send an email (messmass or fanmass side)
+# 3. Send an email (messmass or fanmass side)
 curl -X POST http://localhost:3000/api/internal/email/send \
   -H "x-messmass-secret: $CAMERA_MESSMASS_INTERNAL_SECRET" \
   -H "Content-Type: application/json" \

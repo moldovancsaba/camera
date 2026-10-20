@@ -105,8 +105,6 @@ Note: the first-edition scanner flagged `email-preview`, `fix-mojibake-text`, `m
 | Endpoint | Auth | Request | Response | Side effects |
 |---|---|---|---|---|
 | POST /api/internal/email/send | assertInternalMessmassSecret OR assertInternalFanmassSecret; rate limit INTERNAL_WRITE | body `{to, subject, html, text?, fromName?, fromLocalPart?}` (domain always Camera's verified domain) | `{sent, messageId?\|error?}` (200 even on soft failure) | external: sends email via Resend |
-| GET /api/internal/fanmass/events | assertInternalFanmassSecret; rate limit INTERNAL_READ | `?all=true` | `{events[{eventId, name, partnerId, partnerName, messmassEventId, isActive, eventDate}]}` | none |
-| GET /api/internal/fanmass/events/[eventId]/media | assertInternalFanmassSecret; rate limit INTERNAL_READ | `?since=<ISO>&limit` | `{eventId, media[{captureId, url, createdAt}]}` (originals only) | none |
 | POST /api/internal/messmass/events | assertInternalMessmassSecret; rate limit INTERNAL_WRITE | body `{messmassEventId, eventName, eventDate?, messmassPartnerId?\|partnerId?}` | 201/200 `{event}` | idempotently inserts/links `events` (inherits partner defaults); a new event also takes its frame-design snapshot from messmass, best effort, and its frame images are rendered after the response (a failure is logged and never blocks provisioning, camera#234, #235); `maxDuration` 60 s |
 | POST /api/internal/messmass/organizations | assertInternalMessmassSecret; rate limit INTERNAL_WRITE | body `{name, messmassOrganizationId?}` | 201/200 `{organization}` | upserts `organizations` |
 | GET /api/internal/messmass/partners | assertInternalMessmassSecret; rate limit INTERNAL_READ | `?name&messmassPartnerId` | `{partners[]}` | none |
