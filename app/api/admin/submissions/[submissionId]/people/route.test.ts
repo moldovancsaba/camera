@@ -29,7 +29,11 @@ interface Options {
 
 function setup(t: TestContext, options: Options = {}) {
   const calls = { access: [] as Array<{ id: string; role: unknown }>, updates: [] as Array<{ filter: unknown; update: Record<string, unknown> }> };
-  const submission = options.submission === undefined ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review' } : options.submission;
+  const submission = options.submission === undefined
+    ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review', consentStatus: 'received' }
+    : options.submission && !('consentStatus' in options.submission)
+      ? { ...options.submission, consentStatus: 'received' }
+      : options.submission;
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
     exports: {
@@ -85,7 +89,12 @@ test('analysis updates on an approved photo leave its status and visibility unto
   const { PUT } = await importRoute('analysis-only');
   assert.equal((await PUT(put({ people: [person()], analysisOnly: true }), params)).status, 200);
   const update = calls.updates[0].update as { $set: Record<string, unknown> };
-  assert.deepEqual(calls.updates[0].filter, { _id: new ObjectId(id), reviewStatus: 'approved' });
+  assert.deepEqual(calls.updates[0].filter, {
+    $and: [
+      { _id: new ObjectId(id), reviewStatus: 'approved' },
+      { consentStatus: 'received' },
+    ],
+  });
   assert.deepEqual(Object.keys(update.$set).sort(), ['people', 'peopleReview']);
   assert.equal(update.$set.reviewStatus, undefined);
   assert.equal(update.$set.isShareVisible, undefined);

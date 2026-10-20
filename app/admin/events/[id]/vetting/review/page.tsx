@@ -9,6 +9,7 @@ import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 import { markPeopleOn } from '@/lib/photo-vetting/people';
 import { loadPhotoQueue, toPhotoQueueItem } from '@/lib/photo-vetting/queue';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
+import { CONSENT_ELIGIBLE_FILTER } from '@/lib/events/consent-eligibility';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,9 +34,14 @@ export default async function EventVettingReviewPage({ params, searchParams }: {
     : await loadPhotoQueue(db, String(event.eventId ?? ''), 'pending_review', vocabulary, 50);
   const analysisDoc = analysisOnly
     ? await db.collection(COLLECTIONS.SUBMISSIONS).findOne({
-        _id: new ObjectId(analysis),
-        $or: [{ eventId: String(event.eventId ?? '') }, { eventIds: { $in: [String(event.eventId ?? '')] } }],
-        photoReview: { $exists: true }, reviewStatus: 'approved', isArchived: { $ne: true },
+        $and: [
+          {
+            _id: new ObjectId(analysis),
+            $or: [{ eventId: String(event.eventId ?? '') }, { eventIds: { $in: [String(event.eventId ?? '')] } }],
+            photoReview: { $exists: true }, reviewStatus: 'approved', isArchived: { $ne: true },
+          },
+          CONSENT_ELIGIBLE_FILTER,
+        ],
       })
     : null;
   // Review on a card of the Vetting tab opens the photo that was pressed first (issue 542, owner answer 267); the others follow, oldest first. A photo that is not waiting any more (decided meanwhile) is simply not found.

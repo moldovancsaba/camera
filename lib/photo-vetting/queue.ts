@@ -7,6 +7,7 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { plainPhotoClause } from '@/lib/submissions/visibility';
+import { CONSENT_ELIGIBLE_FILTER, CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER, hasConsentEvidenceForProcessing } from '@/lib/events/consent-eligibility';
 import { parsePeople, type PersonTag } from './people';
 import type { ResolvedVocabulary } from './vocabulary';
 
@@ -111,7 +112,7 @@ export function photoAnalysisEligibilityFilter(eventUuid: string): Document {
       { isArchived: { $ne: true } },
       plainPhotoClause,
       { 'mediaHealth.broken': { $ne: true } },
-      { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } },
+      CONSENT_ELIGIBLE_FILTER,
       { reviewStatus: { $ne: 'pending_review' } },
       {
         $or: [
@@ -136,7 +137,7 @@ export function photoAnalysisEligibilityFilter(eventUuid: string): Document {
 export function photoAnalysisRecordEligible(doc: Document): boolean {
   if (doc.isArchived === true || (doc.mediaHealth as Document | undefined)?.broken === true) return false;
   if (doc.submissionKind != null && doc.submissionKind !== 'original') return false;
-  if (doc.consentStatus === 'pending' || doc.consentStatus === 'expiring' || doc.consentStatus === 'expired') return false;
+  if (!hasConsentEvidenceForProcessing(doc)) return false;
   if (doc.reviewStatus === 'pending_review') return false;
   const reviewExists = doc.photoReview !== undefined && doc.photoReview !== null;
   if (reviewExists && doc.reviewStatus !== 'approved' && doc.reviewStatus !== 'rejected') return false;
@@ -189,11 +190,16 @@ export async function countPhotoAnalysisQueue(db: Db, eventUuid: string): Promis
 
 export function queueFilter(eventUuid: string, status: QueueStatus): Document {
   return {
-    $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }],
-    photoReview: { $exists: true },
-    reviewStatus: status,
-    isArchived: { $ne: true },
-    retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+    $and: [
+      { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
+      CONSENT_ELIGIBLE_FILTER,
+      {
+        photoReview: { $exists: true },
+        reviewStatus: status,
+        isArchived: { $ne: true },
+        retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+      },
+    ],
   };
 }
 
@@ -208,9 +214,18 @@ export async function loadPhotoQueue(db: Db, eventUuid: string, status: QueueSta
   return docs.map((doc) => toPhotoQueueItem(doc, vocabulary));
 }
 
-export async function countPhotoQueue(db: Db, eventUuid: string): Promise<Record<QueueStatus, number>> {
-  const counts = await Promise.all(QUEUE_STATUSES.map((status) => db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(queueFilter(eventUuid, status))));
-  return { pending_review: counts[0], rejected: counts[1], approved: counts[2] };
+export async function countPhotoQueue(db: Db, eventUuid: string): Promise<Record<QueueStatus, number> & { consentPending: number; consentUnknown: number }> {
+  const eventFilter = { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] };
+  const [pending, rejected, approved, consentPending, consentUnknown] = await Promise.all([
+    ...QUEUE_STATUSES.map((status) => db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(queueFilter(eventUuid, status))),
+    db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({
+      $and: [eventFilter, CONSENT_PENDING_FILTER, { photoReview: { $exists: true }, isArchived: { $ne: true }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } }],
+    }),
+    db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({
+      $and: [eventFilter, CONSENT_UNKNOWN_FILTER, { photoReview: { $exists: true }, isArchived: { $ne: true }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } }],
+    }),
+  ]);
+  return { pending_review: pending, rejected, approved, consentPending, consentUnknown };
 }
 
 /**
@@ -227,6 +242,7 @@ export async function countWaitingPhotos(db: Db, eventUuids: readonly string[] |
           photoReview: { $exists: true },
           reviewStatus: 'pending_review',
           isArchived: { $ne: true },
+          ...CONSENT_ELIGIBLE_FILTER,
           retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
           eventId: eventUuids ? { $in: [...eventUuids] } : { $type: 'string' },
         },

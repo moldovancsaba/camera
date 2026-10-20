@@ -1,7 +1,7 @@
 /** Erase captures with no identity, and captures without required consent, after 24 hours. */
 
 import { NextRequest } from 'next/server';
-import { ObjectId, type Document, type Filter } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
@@ -28,8 +28,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const now = new Date().toISOString();
   const staleErasureBefore = new Date(Date.now() - STALE_ERASURE_AFTER_MS).toISOString();
   const consentDueFilter = {
-    consentStatus: 'pending',
-    consentExpiresAt: { $lte: now },
+    $or: [
+      { consentStatus: 'pending', consentExpiresAt: { $lte: now } },
+      {
+        consentStatus: 'expiring',
+        $or: [
+          { 'metadata.consentErasureStartedAt': { $lte: staleErasureBefore } },
+          { 'metadata.consentErasureStartedAt': { $exists: false } },
+        ],
+      },
+    ],
     retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
   };
   const identityDueFilter = {
@@ -113,25 +121,26 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       continue;
     }
 
-    const galleryProof = (submission.publicGalleryConsent as { grantedAt?: unknown } | undefined)?.grantedAt;
-    const hasAcceptedRecord = Array.isArray(submission.consents) && submission.consents.some((record) => (record as { accepted?: unknown })?.accepted === true);
-    const consentArrived = typeof galleryProof === 'string' || (submission.consentPendingReason !== 'gallery' && hasAcceptedRecord);
-    if (consentArrived) {
-      await submissions.updateOne(
-        { _id: submission._id, consentStatus: 'pending', consentExpiresAt: { $lte: now } },
-        {
-          $set: { consentStatus: 'received', isShareVisible: submission.consentShareOptIn === true, updatedAt: now },
-          $unset: { consentExpiresAt: '', consentPendingReason: '', consentShareOptIn: '' },
-        },
-      );
-      continue;
-    }
-    // Claim atomically so a consent submitted at the deadline wins over cleanup.
-    const consentStillMissing = submission.consentPendingReason === 'gallery'
-      ? { 'publicGalleryConsent.grantedAt': { $exists: false } }
-      : { consents: { $not: { $elemMatch: { accepted: true } } }, 'publicGalleryConsent.grantedAt': { $exists: false } };
-    const claim = await submissions.updateOne({ ...consentDueFilter, ...consentStillMissing, _id: submission._id as ObjectId } as Filter<Document>, {
-      $set: { consentStatus: 'expiring', updatedAt: now },
+    // `consentStatus` is changed to `received` only by the full required-consent
+    // validator in the capture API. An arbitrary accepted record (for example,
+    // optional marketing) is not proof that the required consent set is complete.
+    // Claim atomically: if the guest's complete consent is saved first, this filter
+    // no longer matches; if cleanup claims first, the consent API refuses the write.
+    const consentErasureClaim = submission.consentStatus === 'pending'
+      ? { _id: submission._id as ObjectId, consentStatus: 'pending', consentExpiresAt: { $lte: now } }
+      : {
+          _id: submission._id as ObjectId,
+          consentStatus: 'expiring',
+          $or: [
+            { 'metadata.consentErasureStartedAt': { $lte: staleErasureBefore } },
+            { 'metadata.consentErasureStartedAt': { $exists: false } },
+          ],
+        };
+    const claim = await submissions.updateOne({
+      ...consentErasureClaim,
+      retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+    }, {
+      $set: { consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now, updatedAt: now },
     });
     if (claim.modifiedCount !== 1) continue;
 
@@ -139,17 +148,18 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       const files = await deleteSubmissionFiles(db, submission);
       // ImgBB deletion is best-effort in the shared delete helper. Keep the source URLs and retry next run if it failed.
       if (files.imgbbFailed > 0) {
-        await submissions.updateOne({ _id: submission._id, consentStatus: 'expiring' }, { $set: { consentStatus: 'pending', updatedAt: now } });
+        await submissions.updateOne({ _id: submission._id, consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now }, { $set: { consentStatus: 'pending', updatedAt: now }, $unset: { 'metadata.consentErasureStartedAt': '' } });
         retried += 1;
         continue;
       }
       await submissions.updateOne(
-        { _id: submission._id, consentStatus: 'expiring' },
+        { _id: submission._id, consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now },
         {
           $set: {
             consentStatus: 'expired',
             consentExpiredAt: now,
             isShareVisible: false,
+            isSlideshowEligible: false,
             'metadata.consentExpiredForLackOfConsent': true,
             'metadata.consentExpiredAt': now,
             updatedAt: now,
@@ -157,14 +167,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
           $unset: {
             imageUrl: '', finalImageUrl: '', originalImageUrl: '', previewImageUrl: '', screenImageUrl: '',
             deleteUrl: '', imageId: '', imageCopies: '', consentShareOptIn: '', 'photoReview.photoUrl': '',
+            people: '', peopleReview: '', fanmassAnalysisReview: '',
             'tryOnRequest.sourceImageUrl': '', 'tryOnRequest.sourceDeleteUrl': '',
+            'metadata.consentErasureStartedAt': '',
           },
         },
       );
       deleted += 1;
     } catch (error) {
       console.error(`Unconsented capture cleanup failed for ${String(submission._id)}`, error);
-      await submissions.updateOne({ _id: submission._id, consentStatus: 'expiring' }, { $set: { consentStatus: 'pending', updatedAt: now } });
+      await submissions.updateOne({ _id: submission._id, consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now }, { $set: { consentStatus: 'pending', updatedAt: now }, $unset: { 'metadata.consentErasureStartedAt': '' } });
       retried += 1;
     }
   }

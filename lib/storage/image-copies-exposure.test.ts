@@ -18,6 +18,7 @@ const ALLOWED: Record<string, string> = {
   'lib/storage/image-safety.ts': 'reads the copies to count and to make the missing ones (admin API only); its answers name the private crop by photo id, never by address',
   'lib/photo-vetting/review.ts': 'names the dependency that records the copies after an approval; reads no copy',
   'lib/photo-vetting/queue.ts': 'admin-only vetting and analysis queue; exposes only the verified original image URL, never copy metadata or delete links',
+  'lib/fanmass/photo-results.ts': 'admin-only, event-manager-authorized Fanmass review page uses the verified photo URL to display the image; no public route or API returns image-copy metadata or delete links',
   'lib/submissions/delete-files.ts': 'reads the addresses and delete links only to delete the files with the submission; returns counts and public ImgBB addresses, never a delete link',
   'app/api/internal/purge-unconsented-captures/route.ts': 'scheduled server-only cleanup deletes expired unconsented photos; its response contains counts only',
 };
