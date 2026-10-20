@@ -8,7 +8,7 @@
 
 import Link from 'next/link';
 import type { Db } from 'mongodb';
-import { Stack, Text, Title } from '@/components/gds/PublicPrimitives';
+import { Card, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import PhotoReviewQueue from '@/components/admin/PhotoReviewQueue';
 import PhotoReviewStage from '@/components/admin/PhotoReviewStage';
 import PhotoVettingSwitch from '@/components/admin/PhotoVettingSwitch';
@@ -63,6 +63,17 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
       <Link href={`/admin/events/${eventMongoId}/analysis`} style={{ alignSelf: 'start', fontSize: '0.875rem' }} data-photo-analysis-link>
         Open Photo analysis ({analysisCounts.needs_analysis} to analyse)
       </Link>
+
+      {counts.consentPending > 0 || counts.consentUnknown > 0 ? (
+        <Card aria-label="Photos on consent hold">
+          <Stack gap="xs">
+            <Text fw={700}>Photos excluded by consent checks ({counts.consentPending + counts.consentUnknown})</Text>
+            {counts.consentPending > 0 ? <Text size="sm">Awaiting required consent: {counts.consentPending}</Text> : null}
+            {counts.consentUnknown > 0 ? <Text size="sm">Consent status missing; held from review: {counts.consentUnknown}</Text> : null}
+            <Text size="sm" c="dimmed">These photos stay private and are excluded from vetting and analysis. Photos with an expired 24-hour consent window are removed by Camera’s scheduled cleanup. A missing consent record must be verified before the photo can be reviewed.</Text>
+          </Stack>
+        </Card>
+      ) : null}
 
       {required || any ? (
         <>

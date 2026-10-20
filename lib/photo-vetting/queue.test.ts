@@ -9,6 +9,7 @@ const base = () => ({
   createdAt: '2026-10-06T12:00:00.000Z',
   userInfo: { name: 'Ann', email: 'ann@example.com' },
   reviewStatus: 'pending_review',
+  consentStatus: 'received',
   frameVariant: { index: 0, message: 'Go', imageUrl: 'https://s/x.png' },
   photoReview: { photoUrl: 'https://s/pending/e/abc.jpg', shareOptIn: true },
   reviewHistory: [],
@@ -85,11 +86,16 @@ test('the reject reasons of a rejected photo are on its item: the keys, none for
 
 test('the queue covers photos that went through vetting for one event, not archived', () => {
   assert.deepEqual(queueFilter('e1', 'pending_review'), {
-    $or: [{ eventId: 'e1' }, { eventIds: { $in: ['e1'] } }],
-    photoReview: { $exists: true },
-    reviewStatus: 'pending_review',
-    isArchived: { $ne: true },
-    retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+    $and: [
+      { $or: [{ eventId: 'e1' }, { eventIds: { $in: ['e1'] } }] },
+      { consentStatus: 'received' },
+      {
+        photoReview: { $exists: true },
+        reviewStatus: 'pending_review',
+        isArchived: { $ne: true },
+        retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+      },
+    ],
   });
   assert.equal(isQueueStatus('rejected'), true);
   assert.equal(isQueueStatus('hidden'), false);
@@ -101,13 +107,18 @@ test('the waiting list is oldest first, decided lists newest first, and the coun
   const db = {
     collection: () => ({
       find: () => ({ sort: (s: unknown) => (sorts.push(s), { limit: () => ({ toArray: async () => [base()] }) }) }),
-      countDocuments: async (filter: { reviewStatus: string }) => (counted.push(filter.reviewStatus), filter.reviewStatus === 'pending_review' ? 3 : 1),
+      countDocuments: async (filter: { $and?: Array<Record<string, unknown>> }) => {
+        const status = filter.$and?.find((clause) => typeof clause.reviewStatus === 'string')?.reviewStatus as string | undefined;
+        if (!status) return 0;
+        counted.push(status);
+        return status === 'pending_review' ? 3 : 1;
+      },
     }),
   } as never;
   assert.equal((await loadPhotoQueue(db, 'e1', 'pending_review', V)).length, 1);
   await loadPhotoQueue(db, 'e1', 'approved', V);
   assert.deepEqual(sorts, [{ createdAt: 1 }, { createdAt: -1 }]);
-  assert.deepEqual(await countPhotoQueue(db, 'e1'), { pending_review: 3, rejected: 1, approved: 1 });
+  assert.deepEqual(await countPhotoQueue(db, 'e1'), { pending_review: 3, rejected: 1, approved: 1, consentPending: 0, consentUnknown: 0 });
   assert.deepEqual(counted, ['pending_review', 'rejected', 'approved']);
 });
 

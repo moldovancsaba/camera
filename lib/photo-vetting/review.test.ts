@@ -15,6 +15,11 @@ const AT = '2026-10-06T12:00:00.000Z';
 
 type Doc = Record<string, unknown>;
 
+function conditionalReviewStatus(filter: Doc): unknown {
+  const clauses = Array.isArray(filter.$and) ? filter.$and as Doc[] : [];
+  return filter.reviewStatus ?? clauses.find((clause) => 'reviewStatus' in clause)?.reviewStatus;
+}
+
 async function fixtures() {
   const photo = await sharp({ create: { width: 64, height: 36, channels: 3, background: { r: 10, g: 120, b: 10 } } }).jpeg().toBuffer();
   const frame = await sharp({ create: { width: 64, height: 36, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 0.5 } } }).png().toBuffer();
@@ -28,6 +33,7 @@ function pendingSubmission(extra: Doc = {}): Doc {
     partnerId: 'p1',
     userId: 'anonymous',
     reviewStatus: 'pending_review',
+    consentStatus: 'received',
     shareToken: 'tok123',
     userInfo: { name: 'Ann', email: 'ann@example.com', collectedAt: AT },
     frameVariant: { index: 0, message: 'Go', imageUrl: VARIANT_URL },
@@ -71,9 +77,12 @@ function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; 
       updateOne: async (filter: Doc, update: Doc) => {
         options.beforeUpdate?.();
         updates.push({ filter, update });
-        const status = filter.reviewStatus as unknown;
+        const clauses = Array.isArray(filter.$and) ? filter.$and as Doc[] : [];
+        const status = conditionalReviewStatus(filter);
         const allowed = typeof status === 'string' ? [status] : ((status as { $in: string[] } | undefined)?.$in ?? null);
         if (allowed && !allowed.includes(persistedSubmission.reviewStatus as string)) return { matchedCount: 0 };
+        const consentClause = clauses.find((clause) => typeof clause.consentStatus === 'string');
+        if (consentClause && consentClause.consentStatus !== persistedSubmission.consentStatus) return { matchedCount: 0 };
         for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(persistedSubmission, path, value);
         for (const path of Object.keys((update.$unset as Doc) ?? {})) deletePath(persistedSubmission, path);
         for (const [path, value] of Object.entries((update.$push as Doc) ?? {})) {
@@ -130,7 +139,7 @@ test('approval makes the picture from the photo and the recorded frame image, pu
   assert.match(String(calls.approvedMails[0]), /\/share\/tok123$/, 'the link carries the token, not the database id');
   assert.equal((submission.photoReview as Doc).photoUrl, PHOTO_URL, 'the private unframed photo is kept and still named (issue 509)');
   assert.equal(calls.copies.length, 1, 'the copies are recorded after the answer');
-  assert.ok(updates[0].filter.reviewStatus, 'the update is conditional on the status');
+  assert.equal(conditionalReviewStatus(updates[0].filter), 'pending_review', 'the update is conditional on the status');
 });
 
 test('approval sends the email using the approved database state even though the original Mongo read remains pending', async () => {
@@ -147,7 +156,7 @@ test('approval sends the email using the approved database state even though the
   assert.equal(calls.approvedMails.length, 1, 'the stale in-memory status does not suppress the approval email');
 });
 
-test('approval keeps the share link private and sends no email while the login-page consent is pending', async () => {
+test('a photo with login-page consent pending cannot be approved or emailed', async () => {
   const { photo, frame } = await fixtures();
   const submission = pendingSubmission({ consentStatus: 'pending', consentPendingReason: 'acceptance' });
   const { db } = fakeDb(submission);
@@ -155,8 +164,12 @@ test('approval keeps the share link private and sends no email while the login-p
 
   const result = await approvePhoto(db, submission as never, ACTOR, d);
 
-  assert.deepEqual(result, { ok: true, email: 'skipped' });
-  assert.equal(submission.reviewStatus, 'approved');
+  assert.deepEqual(result, {
+    ok: false,
+    reason: 'consent_required',
+    message: 'This photo is on hold until the required consent is recorded. It cannot be approved.',
+  });
+  assert.equal(submission.reviewStatus, 'pending_review');
   assert.equal(calls.approvedMails.length, 0);
 });
 
@@ -197,7 +210,7 @@ test('returning a public approved photo hides it and emails the guest the review
   assert.equal(submission.isShareVisible, false);
   assert.equal((submission.photoReview as Doc).returnedWasPubliclyVisible, true);
   assert.match(String(calls.underReviewMails[0]), /\/share\/tok123$/);
-  assert.equal(updates[0].filter.reviewStatus, 'approved', 'return is conditional on the status the moderator saw');
+  assert.equal(conditionalReviewStatus(updates[0].filter), 'approved', 'return is conditional on the status the moderator saw');
 });
 
 test('returning a rejected photo does not send a visibility email', async () => {

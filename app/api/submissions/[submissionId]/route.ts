@@ -15,7 +15,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { ObjectId, type Db } from 'mongodb';
+import { ObjectId, type Db, type Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type Submission, type UserConsent } from '@/lib/db/schemas';
 import { sanitizeEmail } from '@/lib/security/sanitize';
@@ -36,6 +36,10 @@ import { recordManualPhotoDeletion } from '@/lib/analytics/photo-deletion';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { safeLinkUrl } from '@/lib/events/consent';
 import { isValidEmail } from '@/lib/photo-vetting/pending';
+import { missingRequiredConsent, type GuardEvent } from '@/lib/events/consent-guard';
+import type { CheckboxSettingsHolder } from '@/lib/events/checkbox-settings';
+import { photoVettingRequired } from '@/lib/events/photo-vetting';
+import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
 
 interface FinalizeSubmissionBody {
   action?: 'update_user_info' | 'save_user_info_draft' | 'append_consents' | 'link_account' | 'finalize';
@@ -361,6 +365,9 @@ export const PATCH = withErrorHandler(async (
   }
 
   if (shouldAppendConsents) {
+    if (submission.consentStatus === 'expiring' || submission.consentStatus === 'expired') {
+      throw apiError('This photo is no longer available because its consent window has ended.', 409);
+    }
     const additions = consents as Array<Record<string, unknown>>;
     const existing = Array.isArray(submission.consents) ? submission.consents as UserConsent[] : [];
     const next = additions
@@ -378,22 +385,66 @@ export const PATCH = withErrorHandler(async (
       .filter((record) => !existing.some((stored) => stored.pageId === record.pageId && stored.checkboxText === record.checkboxText && stored.accepted === record.accepted));
     if (next.length > 0) {
       const now = new Date().toISOString();
-      const acceptedAny = next.some((record) => record.accepted) && submission.consentPendingReason !== 'gallery';
+      const mergedConsents = [...existing, ...next];
+      let requiredConsentComplete = false;
+      if (submission.consentStatus === 'pending') {
+        const eventId = readTrimmedString(submission.eventId);
+        const eventFilter = eventId
+          ? ObjectId.isValid(eventId)
+            ? { $or: [{ eventId }, { _id: new ObjectId(eventId) }] }
+            : { eventId }
+          : null;
+        const event = eventFilter ? await db.collection(COLLECTIONS.EVENTS).findOne(eventFilter) : null;
+        if (event) {
+          const guardEvent = event as unknown as GuardEvent & { journeyDefaults?: unknown };
+          const partnerId = readTrimmedString(event.partnerId);
+          const partner = partnerId
+            ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId })
+            : null;
+          const missing = missingRequiredConsent(
+            guardEvent,
+            partner as CheckboxSettingsHolder | null,
+            {
+              consents: mergedConsents,
+              shareOptIn: submission.consentShareOptIn,
+              publicGalleryConsentVersion: submission.publicGalleryConsent?.version,
+            },
+            {
+              consentDefault: eventGetsDefaults(guardEvent, await getDefaultsRollout(db)),
+              vettingRequired: photoVettingRequired(guardEvent),
+            },
+          );
+          requiredConsentComplete = missing === null;
+        }
+      }
+      const completePendingConsent = requiredConsentComplete && submission.consentStatus === 'pending';
+      // The upload-time consent guard may require several legal checkboxes. A single accepted
+      // record (especially optional marketing) must never release the privacy hold.
+      const appendFilter: Filter<Submission> = submission.consentStatus === 'pending'
+        ? {
+            _id: objectId,
+            consentStatus: 'pending',
+            ...(typeof submission.consentExpiresAt === 'string' ? { consentExpiresAt: { $gt: now } } : {}),
+          }
+        : { _id: objectId };
       const consentUpdate = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-        { _id: objectId },
+        appendFilter,
         {
           $push: { consents: { $each: next } },
           $set: {
             updatedAt: now,
-            ...(acceptedAny && submission.consentStatus === 'pending' ? {
+            ...(completePendingConsent ? {
               consentStatus: 'received',
               isShareVisible: submission.consentShareOptIn === true,
             } : {}),
           },
-          ...(acceptedAny && submission.consentStatus === 'pending' ? { $unset: { consentExpiresAt: '', consentPendingReason: '', consentShareOptIn: '' } } : {}),
+          ...(completePendingConsent ? { $unset: { consentExpiresAt: '', consentPendingReason: '', consentShareOptIn: '' } } : {}),
         },
       );
-      if (consentUpdate.modifiedCount === 1 && acceptedAny && submission.consentStatus === 'pending' && submission.reviewStatus === 'approved') {
+      if (consentUpdate.modifiedCount === 0 && submission.consentStatus === 'pending') {
+        throw apiError('The consent hold has ended or this photo is being removed. It cannot be released.', 409);
+      }
+      if (consentUpdate.modifiedCount === 1 && completePendingConsent && submission.reviewStatus === 'approved') {
         // Approval can happen while this required login-page checkbox is still awaiting its record. Once this
         // PATCH makes the photo public, send the link now instead of leaving an approved photo unreachable.
         runAfterResponse(async () => {

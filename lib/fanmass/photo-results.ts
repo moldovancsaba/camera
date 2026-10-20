@@ -1,6 +1,7 @@
 import type { Db, Document, ObjectId } from 'mongodb';
 import { connectToDatabaseByName } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { CONSENT_ELIGIBLE_FILTER, CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER } from '@/lib/events/consent-eligibility';
 
 const PIPELINE_DATABASE = process.env.CAMERA_PIPELINE_DATABASE?.trim() || 'fanmass_camera_pipeline';
 const QUEUE_COLLECTION = 'fanmass_camera_analysis_queue';
@@ -77,8 +78,16 @@ export type FanmassQueueCounts = Record<'queued' | 'leased' | 'processing' | 're
 export interface FanmassEventAnalysisPage {
   totalCameraSubmissions: number;
   approvedPhotos: number;
+  approvedWithConsent: number;
   rejectedPhotos: number;
   approvedAwaitingConsent: number;
+  rejectedAwaitingConsent: number;
+  approvedConsentUnknown: number;
+  rejectedConsentUnknown: number;
+  consentBlockedDecisions: number;
+  consentPendingPhotos: number;
+  consentUnknownPhotos: number;
+  welcomeToCameraTransitions: number;
   eligiblePhotos: number;
   awaitingDiscovery: number;
   queueCounts: FanmassQueueCounts;
@@ -141,7 +150,7 @@ function fanmassEligiblePhotoFilter(eventId: string, event: Document): Document 
       { submissionKind: { $ne: 'tryon_result' } },
       { method: { $in: [null, 'camera_capture'] } },
       { hiddenFromEvents: { $nin: [eventId] } },
-      { consentStatus: { $in: [null, '', 'received'] } },
+      CONSENT_ELIGIBLE_FILTER,
       vettingRequired ? { reviewStatus: 'approved' } : { reviewStatus: { $in: [null, '', 'approved'] } },
       partnerId
         ? { $or: [{ partnerId }, { partnerId: { $exists: false } }, { partnerId: null }, { partnerId: '' }] }
@@ -299,11 +308,22 @@ export async function loadFanmassEventAnalysisPage(
   const deliveries = pipelineDb.collection(DELIVERY_COLLECTION);
   const submissions = cameraDb.collection(COLLECTIONS.SUBMISSIONS);
 
-  const [totalCameraSubmissions, approvedPhotos, rejectedPhotos, approvedAwaitingConsent, eligiblePhotos, statusRows, deliveryRows, resultTotals, sourceDocs] = await Promise.all([
+  const [totalCameraSubmissions, approvedPhotos, approvedWithConsent, rejectedPhotos, approvedAwaitingConsent, rejectedAwaitingConsent, approvedConsentUnknown, rejectedConsentUnknown, consentBlockedDecisions, consentPendingPhotos, consentUnknownPhotos, welcomeRows, eligiblePhotos, statusRows, deliveryRows, resultTotals, sourceDocs] = await Promise.all([
     submissions.countDocuments(eventFilter),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }] }),
+    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_ELIGIBLE_FILTER] }),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved', consentStatus: { $in: ['pending', 'expiring', 'expired'] } }] }),
+    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_PENDING_FILTER] }),
+    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }, CONSENT_PENDING_FILTER] }),
+    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_UNKNOWN_FILTER] }),
+    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }, CONSENT_UNKNOWN_FILTER] }),
+    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: { $in: ['approved', 'rejected'] } }, { $or: [CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER] }] }),
+    submissions.countDocuments({ $and: [eventFilter, CONSENT_PENDING_FILTER] }),
+    submissions.countDocuments({ $and: [eventFilter, CONSENT_UNKNOWN_FILTER] }),
+    cameraDb.collection(COLLECTIONS.JOURNEY_DAILY).aggregate([
+      { $match: { eventId, name: 'step.transition', key: 'welcome>camera' } },
+      { $group: { _id: null, count: { $sum: '$count' } } },
+    ]).toArray(),
     submissions.countDocuments(eligibleFilter),
     queue.aggregate([{ $match: fanmassEventFilter(eventId) }, { $group: { _id: '$status', count: { $sum: 1 } } }]).toArray(),
     deliveries.aggregate([{ $match: fanmassEventFilter(eventId) }, { $group: { _id: '$status', count: { $sum: 1 } } }]).toArray(),
@@ -349,6 +369,7 @@ export async function loadFanmassEventAnalysisPage(
     if (key) deliveriesCount[key] = finiteNumber(row.count);
   }
   const resultTotal = resultTotals[0] ?? {};
+  const welcomeToCameraTransitions = finiteNumber(welcomeRows[0]?.count);
   const completedResults = finiteNumber(resultTotal.completedResults);
   const queueCoverage = Object.entries(statusCounts)
     .filter(([status]) => status !== 'cancelled')
@@ -382,8 +403,16 @@ export async function loadFanmassEventAnalysisPage(
   return {
     totalCameraSubmissions,
     approvedPhotos,
+    approvedWithConsent,
     rejectedPhotos,
     approvedAwaitingConsent,
+    rejectedAwaitingConsent,
+    approvedConsentUnknown,
+    rejectedConsentUnknown,
+    consentBlockedDecisions,
+    consentPendingPhotos,
+    consentUnknownPhotos,
+    welcomeToCameraTransitions,
     eligiblePhotos,
     awaitingDiscovery,
     queueCounts: statusCounts,

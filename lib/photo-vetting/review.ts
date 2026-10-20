@@ -15,6 +15,7 @@
 
 import type { Db, Document, ObjectId, WithId } from 'mongodb';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
+import { CONSENT_ELIGIBLE_FILTER, hasConsentEvidenceForProcessing } from '@/lib/events/consent-eligibility';
 import { uploadImageTracked, type MirrorResult } from '@/lib/imgbb/upload';
 import { recordApprovalCopies, type ApprovalCopiesInput } from '@/lib/storage/image-copies';
 import { logWarn } from '@/lib/observability/logger';
@@ -71,7 +72,7 @@ export const defaultReviewDeps: ReviewDeps = {
   now: () => new Date().toISOString(),
 };
 
-export type ReviewFailure = 'not_reviewable' | 'no_photo' | 'compose_failed';
+export type ReviewFailure = 'not_reviewable' | 'no_photo' | 'compose_failed' | 'consent_required';
 
 export type ApproveResult =
   | { ok: true; email: 'sent' | 'skipped' | 'failed'; emailDeferred?: true }
@@ -98,6 +99,9 @@ export async function resolveFrameImageUrl(db: Db, submission: Pick<Submission, 
 }
 
 export async function approvePhoto(db: Db, submission: WithId<Submission>, actor: ReviewActor, deps: ReviewDeps = defaultReviewDeps): Promise<ApproveResult> {
+  if (!hasConsentEvidenceForProcessing(submission as unknown as Record<string, unknown>)) {
+    return { ok: false, reason: 'consent_required', message: 'This photo is on hold until the required consent is recorded. It cannot be approved.' };
+  }
   if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') {
     return { ok: false, reason: 'not_reviewable', message: 'This capture is scheduled for erasure and cannot be approved' };
   }
@@ -146,7 +150,12 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   );
   const at = deps.now();
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submission._id, reviewStatus: { $in: ['pending_review', 'rejected'] }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+    {
+      $and: [
+        { _id: submission._id, reviewStatus: { $in: ['pending_review', 'rejected'] }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+        CONSENT_ELIGIBLE_FILTER,
+      ],
+    },
     {
       $set: {
         imageUrl: picture.imageUrl,
@@ -381,13 +390,21 @@ export async function retryApprovedPhotoEmail(db: Db, submissionId: ObjectId, de
  * as `rejectReasons` and in the review history entry; `reason` is the free-text note. A photo rejected before reasons existed has neither, and the history entry carries `reasons` only when there are some.
  */
 export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor: ReviewActor, reason: string | null, reasons: readonly string[] = [], deps: ReviewDeps = defaultReviewDeps): Promise<RejectResult> {
+  if (!hasConsentEvidenceForProcessing(submission as unknown as Record<string, unknown>)) {
+    return { ok: false, reason: 'consent_required', message: 'This photo is on hold until the required consent is recorded. It cannot be rejected.' };
+  }
   if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased' || submission.reviewStatus !== 'pending_review') {
     return { ok: false, reason: 'not_reviewable', message: 'This photo is not waiting for a decision' };
   }
   const shouldSendRejectionEmail = !(submission.photoReview?.returnedAt && submission.photoReview.returnedWasPubliclyVisible !== true);
   const at = deps.now();
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submission._id, reviewStatus: 'pending_review', retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+    {
+      $and: [
+        { _id: submission._id, reviewStatus: 'pending_review', retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+        CONSENT_ELIGIBLE_FILTER,
+      ],
+    },
     {
       $set: {
         reviewStatus: 'rejected',
@@ -414,13 +431,21 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
 
 /** Reopens an approved or rejected photo for the normal one-at-a-time review flow. */
 export async function returnPhotoToVetting(db: Db, submission: WithId<Submission>, actor: ReviewActor, deps: ReviewDeps = defaultReviewDeps): Promise<ReturnToVettingResult> {
+  if (!hasConsentEvidenceForProcessing(submission as unknown as Record<string, unknown>)) {
+    return { ok: false, reason: 'consent_required', message: 'This photo cannot return to vetting until the required consent is recorded.' };
+  }
   if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased' || (submission.reviewStatus !== 'approved' && submission.reviewStatus !== 'rejected') || !submission.photoReview) {
     return { ok: false, reason: 'not_reviewable', message: 'This photo cannot be returned to vetting' };
   }
   const at = deps.now();
   const wasVisible = isPubliclyVisible(visibilityInputOf(submission));
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submission._id, reviewStatus: submission.reviewStatus, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+    {
+      $and: [
+        { _id: submission._id, reviewStatus: submission.reviewStatus, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+        CONSENT_ELIGIBLE_FILTER,
+      ],
+    },
     {
       $set: {
         reviewStatus: 'pending_review',

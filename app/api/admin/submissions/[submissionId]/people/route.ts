@@ -20,6 +20,7 @@ import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
 import { parsePeople } from '@/lib/photo-vetting/people';
 import { photoAnalysisRecordEligible } from '@/lib/photo-vetting/queue';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
+import { CONSENT_ELIGIBLE_FILTER, hasConsentEvidenceForProcessing } from '@/lib/events/consent-eligibility';
 
 const MARK_RATE_LIMIT = { max: 120, windowMs: 60 * 1000, message: 'Too many saves. Please wait a minute and try again.' };
 
@@ -39,6 +40,9 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
   if (!submission) throw apiNotFound('Submission');
   if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') {
     throw apiError('This capture is scheduled for erasure and cannot be analyzed.', 409);
+  }
+  if (!hasConsentEvidenceForProcessing(submission as unknown as Record<string, unknown>)) {
+    throw apiError('This photo is on hold until the required consent is recorded and cannot be analyzed.', 409);
   }
   if (analysisOnly && submission.reviewStatus !== 'approved') throw apiError('This photo is no longer approved. Reload the Vetting list before editing its analysis.', 409);
 
@@ -67,7 +71,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
       : { reviewStatus: { $ne: 'pending_review' }, $or: [{ photoReview: { $exists: false } }, { photoReview: null }] }
     : {};
   const saved = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: new ObjectId(submissionId), ...analysisStatusGuard },
+    { $and: [{ _id: new ObjectId(submissionId), ...analysisStatusGuard }, CONSENT_ELIGIBLE_FILTER] },
     { $set: { people: checked.value, peopleReview } }
   );
   if (analysisOnly && saved.matchedCount === 0) throw apiError('This photo is no longer available for analysis. Reload the Photo analysis page.', 409);
