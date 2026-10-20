@@ -139,7 +139,7 @@ test('approval makes the picture from the photo and the recorded frame image, pu
   assert.match(String(calls.approvedMails[0]), /\/share\/tok123$/, 'the link carries the token, not the database id');
   assert.equal((submission.photoReview as Doc).photoUrl, PHOTO_URL, 'the private unframed photo is kept and still named (issue 509)');
   assert.equal(calls.copies.length, 1, 'the copies are recorded after the answer');
-  assert.equal(conditionalReviewStatus(updates[0].filter), 'pending_review', 'the update is conditional on the status');
+  assert.deepEqual(conditionalReviewStatus(updates[0].filter), { $in: ['pending_review', 'rejected'] }, 'the update is conditional on the status');
 });
 
 test('approval sends the email using the approved database state even though the original Mongo read remains pending', async () => {
