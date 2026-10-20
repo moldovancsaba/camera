@@ -1,7 +1,7 @@
 import type { Db, Document, ObjectId } from 'mongodb';
 import { connectToDatabaseByName } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { CONSENT_ELIGIBLE_FILTER, CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER } from '@/lib/events/consent-eligibility';
+import { CONSENT_ELIGIBLE_FILTER, CONSENT_EXPIRED_FILTER, CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER } from '@/lib/events/consent-eligibility';
 
 const PIPELINE_DATABASE = process.env.CAMERA_PIPELINE_DATABASE?.trim() || 'fanmass_camera_pipeline';
 const QUEUE_COLLECTION = 'fanmass_camera_analysis_queue';
@@ -79,13 +79,17 @@ export interface FanmassEventAnalysisPage {
   totalCameraSubmissions: number;
   approvedPhotos: number;
   approvedWithConsent: number;
+  approvedConsentExpired: number;
   rejectedPhotos: number;
+  rejectedWithConsent: number;
   approvedAwaitingConsent: number;
   rejectedAwaitingConsent: number;
+  rejectedConsentExpired: number;
   approvedConsentUnknown: number;
   rejectedConsentUnknown: number;
   consentBlockedDecisions: number;
   consentPendingPhotos: number;
+  consentExpiredPhotos: number;
   consentUnknownPhotos: number;
   welcomeToCameraTransitions: number;
   eligiblePhotos: number;
@@ -308,17 +312,21 @@ export async function loadFanmassEventAnalysisPage(
   const deliveries = pipelineDb.collection(DELIVERY_COLLECTION);
   const submissions = cameraDb.collection(COLLECTIONS.SUBMISSIONS);
 
-  const [totalCameraSubmissions, approvedPhotos, approvedWithConsent, rejectedPhotos, approvedAwaitingConsent, rejectedAwaitingConsent, approvedConsentUnknown, rejectedConsentUnknown, consentBlockedDecisions, consentPendingPhotos, consentUnknownPhotos, welcomeRows, eligiblePhotos, statusRows, deliveryRows, resultTotals, sourceDocs] = await Promise.all([
+  const [totalCameraSubmissions, approvedPhotos, approvedWithConsent, approvedConsentExpired, rejectedPhotos, rejectedWithConsent, approvedAwaitingConsent, rejectedAwaitingConsent, rejectedConsentExpired, approvedConsentUnknown, rejectedConsentUnknown, consentBlockedDecisions, consentPendingPhotos, consentExpiredPhotos, consentUnknownPhotos, welcomeRows, eligiblePhotos, statusRows, deliveryRows, resultTotals, sourceDocs] = await Promise.all([
     submissions.countDocuments(eventFilter),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }] }),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_ELIGIBLE_FILTER] }),
+    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_EXPIRED_FILTER] }),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }] }),
+    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }, CONSENT_ELIGIBLE_FILTER] }),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_PENDING_FILTER] }),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }, CONSENT_PENDING_FILTER] }),
+    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }, CONSENT_EXPIRED_FILTER] }),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_UNKNOWN_FILTER] }),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }, CONSENT_UNKNOWN_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: { $in: ['approved', 'rejected'] } }, { $or: [CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER] }] }),
+    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: { $in: ['approved', 'rejected'] } }, { $or: [CONSENT_PENDING_FILTER, CONSENT_EXPIRED_FILTER, CONSENT_UNKNOWN_FILTER] }] }),
     submissions.countDocuments({ $and: [eventFilter, CONSENT_PENDING_FILTER] }),
+    submissions.countDocuments({ $and: [eventFilter, CONSENT_EXPIRED_FILTER] }),
     submissions.countDocuments({ $and: [eventFilter, CONSENT_UNKNOWN_FILTER] }),
     cameraDb.collection(COLLECTIONS.JOURNEY_DAILY).aggregate([
       { $match: { eventId, name: 'step.transition', key: 'welcome>camera' } },
@@ -404,13 +412,17 @@ export async function loadFanmassEventAnalysisPage(
     totalCameraSubmissions,
     approvedPhotos,
     approvedWithConsent,
+    approvedConsentExpired,
     rejectedPhotos,
+    rejectedWithConsent,
     approvedAwaitingConsent,
     rejectedAwaitingConsent,
+    rejectedConsentExpired,
     approvedConsentUnknown,
     rejectedConsentUnknown,
     consentBlockedDecisions,
     consentPendingPhotos,
+    consentExpiredPhotos,
     consentUnknownPhotos,
     welcomeToCameraTransitions,
     eligiblePhotos,

@@ -25,17 +25,21 @@ function FanmassStatusSummary({ data }: { data: FanmassEventAnalysisPage }) {
   const working = data.queueCounts.queued + data.queueCounts.leased + data.queueCounts.processing + data.queueCounts.retry;
   const failed = data.queueCounts.failed + data.queueCounts.cancelled + data.missingResults;
   const cards = [
-    ['Saved Camera photos', data.totalCameraSubmissions],
+    ['Camera submission records', data.totalCameraSubmissions],
     ['Journeys reached camera (not saved-photo count)', data.welcomeToCameraTransitions],
     ['Approved decisions', data.approvedPhotos],
     ['Approved · consent received', data.approvedWithConsent],
     ['Approved · consent pending', data.approvedAwaitingConsent],
+    ['Approved · consent expired and erased', data.approvedConsentExpired],
     ['Approved · consent status missing', data.approvedConsentUnknown],
     ['Rejected decisions · not sent to AI', data.rejectedPhotos],
+    ['Rejected · consent received', data.rejectedWithConsent],
     ['Rejected · consent pending', data.rejectedAwaitingConsent],
+    ['Rejected · consent expired and erased', data.rejectedConsentExpired],
     ['Rejected · consent status missing', data.rejectedConsentUnknown],
-    ['Decided photos blocked by consent status', data.consentBlockedDecisions],
+    ['Decisions blocked from Fanmass by consent status', data.consentBlockedDecisions],
     ['Photos currently on consent hold', data.consentPendingPhotos],
+    ['Photos erased after consent expired', data.consentExpiredPhotos],
     ['Photos with missing consent status · held', data.consentUnknownPhotos],
     ['Eligible for Fanmass', data.eligiblePhotos],
     ['Waiting for Fanmass discovery', data.awaitingDiscovery],
@@ -50,7 +54,7 @@ function FanmassStatusSummary({ data }: { data: FanmassEventAnalysisPage }) {
     <Card>
       <Stack gap="sm">
         <Text fw={700}>Fanmass per-photo status</Text>
-        <Text size="sm" c="dimmed">Fanmass processes one eligible photo at a time. “Journeys reached camera” counts journey transitions, not saved selfies; a journey can stop before a photo is uploaded. Rejected photos and photos waiting for consent stay outside the AI queue. This status refreshes every 10 seconds while the page is open.</Text>
+        <Text size="sm" c="dimmed">Fanmass processes one eligible photo at a time. Journey transitions count people reaching the camera step; submission records count persisted submissions and may remain after their image is erased for missing consent. A transition can happen without a photo being saved. The consent breakdown below reconciles approved and rejected decisions, and photos waiting for consent, expired consent, or missing consent proof stay outside the AI queue. This status refreshes every 10 seconds while the page is open.</Text>
         <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 11rem), 1fr))' }}>
           {cards.map(([label, value]) => (
             <div key={label} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
