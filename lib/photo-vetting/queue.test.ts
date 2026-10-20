@@ -89,6 +89,7 @@ test('the queue covers photos that went through vetting for one event, not archi
     photoReview: { $exists: true },
     reviewStatus: 'pending_review',
     isArchived: { $ne: true },
+    retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
   });
   assert.equal(isQueueStatus('rejected'), true);
   assert.equal(isQueueStatus('hidden'), false);
