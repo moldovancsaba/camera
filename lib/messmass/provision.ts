@@ -149,6 +149,9 @@ export async function provisionEvent(input: {
   if (input.cameraEventId) {
     target = await db.collection(COLLECTIONS.EVENTS).findOne({ eventId: input.cameraEventId });
     if (!target) throw apiNotFound('camera event to link');
+    if (target.partnerId !== partner.partnerId) {
+      throw apiBadRequest('Camera event belongs to a different partner and cannot be linked to this Messmass event');
+    }
     const currentMessmassEventId = String(target.messmassEventId || '');
     if (currentMessmassEventId && currentMessmassEventId !== input.messmassEventId && currentMessmassEventId !== input.replaceMessmassEventId) {
       throw apiBadRequest('Camera event is already linked to a different Messmass event');
