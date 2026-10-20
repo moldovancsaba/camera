@@ -126,6 +126,26 @@ export async function connectToDatabase(): Promise<Db> {
 }
 
 /**
+ * Return another database on the same Atlas deployment and MongoClient.
+ *
+ * Camera uses this only for the Fanmass-owned analysis pipeline database. The
+ * application connection must have read access to that database; Camera never
+ * writes Fanmass queue or result records. Keeping the same client avoids
+ * opening a second pool for the same Atlas cluster.
+ */
+export async function connectToDatabaseByName(databaseName: string): Promise<Db> {
+  const name = databaseName.trim();
+  if (!name || name.includes("\0")) {
+    throw new Error('A valid MongoDB database name is required');
+  }
+  await connectToDatabase();
+  if (!cached.client) {
+    throw new Error('MongoDB client is unavailable');
+  }
+  return cached.client.db(name);
+}
+
+/**
  * Get a specific collection from the database
  * 
  * @param collectionName - Name of the collection
