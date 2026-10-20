@@ -15,6 +15,11 @@ export const CONSENT_PENDING_FILTER: Document = {
   consentStatus: { $in: ['pending', 'expiring'] },
 };
 
+/** Captures whose required-consent window elapsed and whose image was erased. */
+export const CONSENT_EXPIRED_FILTER: Document = {
+  consentStatus: 'expired',
+};
+
 /** Legacy or malformed consent state is not proof of consent and remains excluded until verified. */
 export const CONSENT_UNKNOWN_FILTER: Document = {
   $or: [
