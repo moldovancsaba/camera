@@ -149,6 +149,9 @@ export async function provisionEvent(input: {
   if (input.cameraEventId) {
     target = await db.collection(COLLECTIONS.EVENTS).findOne({ eventId: input.cameraEventId });
     if (!target) throw apiNotFound('camera event to link');
+    if (target.partnerId !== partner.partnerId) {
+      throw apiBadRequest('Camera event belongs to a different partner and cannot be linked to this Messmass event');
+    }
     const currentMessmassEventId = String(target.messmassEventId || '');
     if (currentMessmassEventId && currentMessmassEventId !== input.messmassEventId && currentMessmassEventId !== input.replaceMessmassEventId) {
       throw apiBadRequest('Camera event is already linked to a different Messmass event');
@@ -172,7 +175,24 @@ export async function provisionEvent(input: {
     if (input.eventDate === null || input.eventDate === undefined || input.eventDate === '') {
       update.$unset = { eventDate: '' };
     }
-    await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: target._id }, update);
+    // Recheck ownership in the write filter as well as above. A concurrent
+    // link request must not let two Messmass events claim the same Camera event.
+    const allowedCurrentLinks: Record<string, unknown>[] = [
+      { messmassEventId: input.messmassEventId },
+      { messmassEventId: { $exists: false } },
+      { messmassEventId: null },
+      { messmassEventId: '' },
+    ];
+    if (input.replaceMessmassEventId) {
+      allowedCurrentLinks.push({ messmassEventId: input.replaceMessmassEventId });
+    }
+    const result = await db.collection(COLLECTIONS.EVENTS).updateOne(
+      { _id: target._id, partnerId: partner.partnerId, $or: allowedCurrentLinks },
+      update,
+    );
+    if (result.matchedCount !== 1) {
+      throw apiBadRequest('Camera event link changed while it was being saved; refresh and retry the exact event link');
+    }
     return { eventId: target.eventId, mongoId: String(target._id), partnerId: partner.partnerId, created: false };
   }
 
