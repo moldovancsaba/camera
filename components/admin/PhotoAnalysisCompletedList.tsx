@@ -22,7 +22,7 @@ export default function PhotoAnalysisCompletedList({ eventId, items }: { eventId
         const metadata: ListingMetadataRow[] = [
           { id: 'vetting', label: 'Vetting', value: vetting, tone: item.status === 'rejected' ? 'warning' : 'positive' },
           { id: 'analysed-at', label: 'Analysed', value: formatDateTime(item.analysisAt), tone: 'muted' },
-          { id: 'fanmass-people', label: 'Fanmass AI', value: item.fanmassAnalysis ? `${item.fanmassAnalysis.summary.personCount} people · ${item.fanmassAnalysis.analysisStage}` : 'No result received', tone: item.fanmassAnalysis?.status === 'failed' ? 'warning' : 'muted' },
+          { id: 'people-marked', label: 'People marked', value: item.peopleMarked ? String(item.people.length) : 'Not analysed', tone: item.peopleMarked ? 'positive' : 'warning' },
         ];
         if (item.analysisBy) metadata.push({ id: 'analysed-by', label: 'By', value: item.analysisBy });
         if (item.email) metadata.unshift({ id: 'email', label: 'Email', value: item.email });

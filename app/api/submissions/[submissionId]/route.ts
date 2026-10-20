@@ -131,6 +131,14 @@ export const DELETE = withErrorHandler(async (
     throw apiNotFound('Submission not found');
   }
 
+  const retentionExpiry = Date.parse(String(submission.retentionExpiresAt || ''));
+  if (
+    submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased' ||
+    (submission.retentionStatus === 'pending_erasure' && (!Number.isFinite(retentionExpiry) || retentionExpiry <= Date.now()))
+  ) {
+    throw apiError('The capture has passed its 24-hour identity deadline and is being erased.', 409);
+  }
+
   // Authorization check: User must own the submission OR be admin
   const isOwner = submission.userId === session.user.id;
   // Check app-specific role (appRole), not SSO-level role (user.role)
@@ -312,8 +320,17 @@ export const PATCH = withErrorHandler(async (
     const email = submission.userInfo?.email || typedDraftEmail || session.user.email || '';
     const name = submission.userInfo?.name || submission.userInfoDraft?.name || session.user.name || email || 'REGISTERED USER';
     const userInfo = email ? { name, email, collectedAt: now } : null;
-    await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: objectId, $or: [{ userId: 'anonymous' }, { userId: session.user.id }] },
+    const linked = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+      {
+        _id: objectId,
+        $and: [
+          { $or: [{ userId: 'anonymous' }, { userId: session.user.id }] },
+          { $or: [
+            { retentionStatus: { $exists: false } },
+            { retentionStatus: 'pending_erasure', retentionExpiresAt: { $gt: now } },
+          ] },
+        ],
+      },
       {
         $set: {
           userId: session.user.id,
@@ -323,9 +340,10 @@ export const PATCH = withErrorHandler(async (
           'metadata.identityStatus': 'REGISTERED',
           updatedAt: now,
         },
-        $unset: { userInfoDraft: '' },
+        $unset: { retentionStatus: '', retentionExpiresAt: '', userInfoDraft: '' },
       },
     );
+    if (linked.matchedCount !== 1) throw apiError('The capture can no longer be linked because its erasure deadline has passed.', 409);
     schedulePendingVettingEmail(db, objectId);
     if (email) {
       runAfterResponse(async () => {
@@ -420,10 +438,16 @@ export const PATCH = withErrorHandler(async (
     const preserveVettingMissingRecipient = Boolean(
       submission.photoReview && submission.metadata?.emailSent === false && submission.metadata?.emailSkipReason === 'missing_recipient',
     );
-    await db
+    const savedIdentity = await db
       .collection<Submission>(COLLECTIONS.SUBMISSIONS)
       .updateOne(
-        { _id: objectId },
+        {
+          _id: objectId,
+          $or: [
+            { retentionStatus: { $exists: false } },
+            { retentionStatus: 'pending_erasure', retentionExpiresAt: { $gt: now } },
+          ],
+        },
         {
           $set: {
             userInfo: userInfoPayload,
@@ -447,6 +471,7 @@ export const PATCH = withErrorHandler(async (
           },
         }
       );
+    if (savedIdentity.matchedCount !== 1) throw apiError('The capture can no longer be identified because its erasure deadline has passed.', 409);
     schedulePendingVettingEmail(db, objectId);
   }
 

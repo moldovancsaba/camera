@@ -432,13 +432,13 @@ async function savedWith(t: TestContext, caseId: string, event: Record<string, u
 }
 
 test('an event that does not ask (the standard) stores the page’s choice as before; a ticked box still leaves its evidence', async (t) => {
-  const plain = await savedWith(t, 'gallery-not-asked', undefined, null, { shareOptIn: true });
+  const plain = await savedWith(t, 'gallery-not-asked', undefined, null, { userInfo: GUEST, shareOptIn: true });
   assert.equal(plain.isShareVisible, true);
   assert.equal('publicGalleryConsent' in plain, false);
 });
 
 test('an event that asks makes a photo eligible with the ticked box and its version, and keeps the evidence', async (t) => {
-  const ticked = await savedWith(t, 'gallery-asked-ticked', { galleryConsent: true }, null, { shareOptIn: true, publicGalleryConsentVersion: 1 });
+  const ticked = await savedWith(t, 'gallery-asked-ticked', { galleryConsent: true }, null, { userInfo: GUEST, shareOptIn: true, publicGalleryConsentVersion: 1 });
   assert.equal(ticked.isShareVisible, true);
   assert.equal(ticked.publicGalleryConsent?.version, 1);
   assert.equal(typeof ticked.publicGalleryConsent?.grantedAt, 'string');
@@ -462,7 +462,7 @@ test('an event that made no choice follows its partner: the partner asks, so an 
 });
 
 test('an event’s own choice not to ask wins over a partner that asks', async (t) => {
-  const own = await savedWith(t, 'gallery-own-wins', { partnerId: 'P1', galleryConsent: false }, { galleryConsent: true }, { shareOptIn: true });
+  const own = await savedWith(t, 'gallery-own-wins', { partnerId: 'P1', galleryConsent: false }, { galleryConsent: true }, { userInfo: GUEST, shareOptIn: true });
   assert.equal(own.isShareVisible, true);
 });
 
@@ -586,7 +586,7 @@ test('the public gallery permission set to required: upload proceeds privately w
     assert.equal(refused.inserted[0].consentStatus, 'pending');
     assert.equal(refused.inserted[0].isShareVisible, false);
   }
-  const saved = await run('gallery-required-ticked', event, null, { shareOptIn: true, publicGalleryConsentVersion: 1 });
+  const saved = await run('gallery-required-ticked', event, null, { userInfo: GUEST, shareOptIn: true, publicGalleryConsentVersion: 1 });
   assert.equal(saved.status, 201);
   const doc = saved.inserted[0] as unknown as { isShareVisible: boolean; publicGalleryConsent: { version: number; required?: boolean } };
   assert.equal(doc.isShareVisible, true);

@@ -41,25 +41,25 @@ The Analytics all-events repeat cohort groups existing photo submitter account/e
 
 ## Camera → Fanmass image analysis
 
-The Fanmass integration is limited to photos that already satisfy Camera's
-published-photo visibility rules. Waiting, rejected, archived, hidden, broken,
-consent-pending/expired, and derived images are not claimable. This is not a
-record of permission for a new analysis purpose, and it does not enable
-pre-vetting analysis.
+Camera remains the authority for consent, identity, retention, and human
+vetting. It does not create a Fanmass queue record, call Fanmass, transfer image
+bytes through a Camera API, or store Fanmass's machine-analysis result. Fanmass
+independently reads eligible Camera Atlas records with a least-privilege
+read-only source role, then owns its queue, local image copy, analysis, boxes,
+retry state, and privacy cleanup in its own pipeline database.
 
-Camera stores `submissions.fanmassIntakeByEvent[]` as operational queue
-metadata: event-scoped claim state, a random lease token, expiry, attempt
-count, retry time, staged time, or a bounded error code for terminal media
-failures. It contains no guest e-mail, login identity, consent text, image
-bytes, or storage URL. Fanmass fetches an
-eligible original through the
-authenticated, lease-bound Camera route; the response is private and uncached.
-
-After staging, Fanmass holds its own image file and derived analysis output in
-its local data store. **Deletion/withdrawal propagation from Camera to these
-Fanmass copies is not implemented yet.** Do not enable a pilot or expand the
-analysis purpose until the retention window, deletion callback/reconciliation,
-and verification of removed image derivatives are implemented and approved.
+Only identified, consented submissions with a usable image can be discovered.
+If the event requires vetting, the submission must be approved first. A
+submission awaiting required identity is marked for 24-hour erasure and is
+excluded from vetting, publication, and Fanmass analysis. Consent withdrawal,
+source deletion, retention expiry, or later ineligibility must be reconciled by
+Fanmass and remove its per-photo result and derived/local copies. That cleanup
+is implemented in Fanmass, but production operation still requires the
+least-privilege Atlas configuration and a verified end-to-end deletion run;
+the Camera Atlas/Fanmass processing path must not be treated as live until that
+operational gate is complete. See [the integration contract](MESSMASS_FANMASS_INTEGRATION.md)
+and the Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md` for the exact source
+projection, queue, privacy, and recovery contract.
 
 ## The IP address, everywhere it still appears
 

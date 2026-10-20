@@ -8,14 +8,18 @@ Camera integrates with three other apps in the SEYU fan-engagement stack:
 **messmass** (event reporting/partner management, the master for
 organisations/partners/events), **fanmass** (image analytics — brand/sponsor/fan
 recognition on captured photos), and **savetheworld** (pledge campaign app, §2a).
-All three integrations are server-to-server, authenticated by a shared secret,
-and live entirely under `app/api/internal/**`. None of them has any other way
-into Camera's data — no shared database access, no session reuse.
+Messmass and Savetheworld use authenticated HTTP integrations. Fanmass is
+deliberately different: it independently reads a narrow, read-only Camera Atlas
+projection and writes only to its own pipeline database. Camera has no Fanmass
+queue, media feed, image upload, result callback, or Fanmass API client. The
+shared-secret email route is a separate service and is not an image integration.
 
 ```text
 messmass      --(provision org/partner/event)---------->  camera
 messmass      --(send email)---------------------------->  camera
-camera        <--(poll: events, then media)-----------    fanmass
+camera Atlas  --(read-only source data)--------------->  fanmass
+fanmass Atlas --(Fanmass-owned queue/results)---------->  fanmass
+fanmass       --(event analytics summaries)----------->  messmass
 savetheworld  --(partners/events, pledge wall, publish)-->  camera
 camera        --(browser handoff: post-selfie CTA)----->  savetheworld
 ```
@@ -137,134 +141,49 @@ login is unaffected. Minting it needs the permission read to use Camera's own
 `client_credentials` token, which requires that grant (with
 `manage_permissions`) to be enabled for Camera's SSO client (owner action).
 
-## 2. fanmass ↔ camera: one-photo pull and saved analysis result
+## 2. Camera Atlas → Fanmass: independent discovery and analysis
 
-fanmass pulls photos from Camera on a schedule (`CAMERA_POLL_MINUTES`,
-default one minute on the fanmass side), fanmass lists active events. Events
-that advertise `camera.fanmass.media-jobs.v1` use a durable lease/ack queue;
-older Camera builds continue through the timestamp cursor feed.
+Camera writes its normal event and submission records, including consent,
+retention, and human vetting decisions, to Camera's Atlas database. Camera does
+not make a Fanmass request at capture, vetting, approval, or deletion time. It
+also does not create Fanmass queue records, upload photos to Fanmass, or accept
+Fanmass result callbacks. Fanmass independently reads the Camera source records
+and owns all queue, lease, analysis, result, and privacy-cleanup records in its
+own Atlas database. Fanmass never writes into Camera's database.
 
-**Auth**: `assertInternalFanmassSecret()` ([lib/fanmass/internal.ts](../lib/fanmass/internal.ts)) —
-same header pattern as messmass (`x-fanmass-secret` or Bearer), compared
-against `CAMERA_FANMASS_INTERNAL_SECRET`. This is a **different secret** from
-the messmass one — do not conflate them.
+**Database permissions**: Fanmass uses a least-privilege Atlas principal with
+read-only access to the Camera database and read/write access only to the
+Fanmass pipeline database (`fanmass_camera_pipeline` by default). No Camera
+application route, shared media queue, claim, receipt, or result callback is in
+the image-analysis data path. Change streams provide low-latency discovery;
+bounded resumable scans recover after downtime, lost resume tokens, or process
+restarts.
 
-### `GET /api/internal/fanmass/events?all=true`
-Lists partner events (active only unless `?all=true`), max 500, sorted by
-`eventDate` then `createdAt` descending.
-Response: `{ events: [{ eventId, name, partnerId, partnerName, messmassEventId,
-isActive, eventDate, mediaContractVersion }] }`. `mediaContractVersion` advertises
-`camera.fanmass.media-jobs.v1`; older builds omit it and continue using the
-cursor feed. `messmassEventId` falls back to `eventId` for
-events created directly in Camera (no messmass link); events provisioned by
-messmass (§1) carry a real `messmassEventId`.
+**One-photo contract**: each Camera submission Mongo `_id` creates one Fanmass
+queue identity; event links are metadata and cannot duplicate the job. A single
+global Atlas lease allows at most one source photo to be analyzed at a time.
+Fanmass rechecks source eligibility before fetching and before persisting the
+result, runs its full local analysis, stores normalized output and all boxes in
+Fanmass Atlas, then releases the lease. Lease fencing and idempotent source IDs
+prevent stale workers from publishing results; an interrupted photo may be
+recomputed safely.
 
-### `GET /api/internal/fanmass/events/{eventId}/media?afterAt=<ISO>&afterId=<capture-id>&limit=<n>`
-Incremental photo feed for one event, oldest first, so fanmass can advance a
-compound cursor and only re-pull new images. Matches on `{eventId}` or `{eventIds:
-eventId}` (Camera's legacy single-event / current multi-event submission
-linkage). `afterAt` is the availability timestamp and `afterId` is the stable
-submission id tie-breaker. This avoids losing two submissions with the same
-timestamp. The older `since=<ISO>` timestamp-only parameter remains available
-during rolling upgrades; new Fanmass clients should use the compound cursor.
-Returns only **original** fan submissions — `submissionKind !== 'tryon_result'`
-— never a stored try-on result of the removed try-on integration, because fanmass measures brand exposure on the fan as
-photographed, not on the branded output. This compatibility feed also applies
-Camera's shared public-visibility rules: it excludes archived, hidden, broken,
-consent-pending/expired, waiting-review, and rejected submissions. That is a
-conservative published-photo feed, not authorization for pre-vetting analysis.
-`limit` defaults to 200, capped at 500.
-Response: `{ eventId, media: [{ captureId, url, createdAt }] }`; use the pair
-`(createdAt, captureId)` as the next cursor only after the item is durably
-staged. Items are sorted by that same pair. On a failed fetch, stop at the first
-failure and retry it before advancing to later items.
+**Eligibility and privacy**: a submission must have recorded required consent,
+a real user identity, and a usable source image. If event vetting is required,
+it must be approved. Missing identity, pending/expired consent, pending
+24-hour erasure, erasing/erased, deleted, archived, hidden, broken, rejected,
+waiting, and generated/derived images are ineligible. Fanmass's source
+projection reduces identity to a boolean; it does not read or persist guest
+email, name, social-login details, or consent wording. Camera remains the
+retention authority. Fanmass's retryable cleanup process removes derived and
+local copies when a source is deleted or becomes ineligible.
 
-**Photo vetting (camera#270):** a photo of an event with vetting required is in the feed only once it is approved; waiting and rejected
-photos are not. `createdAt` in the answer, and the cursor cut, mean *when the photo became available to this feed*: the capture time for
-every photo from before vetting (unchanged), the approval time for a vetted photo, so a photo approved after fanmass moved its cursor
-still arrives on the next poll. An approved vetted photo's `url` is the approved picture (the plain photo is private and deleted after
-approval).
-
-`url` is a public image link — Vercel Blob (`*.public.blob.vercel-storage.com`)
-for photos stored since v12.2.14, imgbb (`i.ibb.co`) for older ones — fetched by
-fanmass **without** the shared secret — deliberate, so the secret is never
-exposed to a third-party host. Do not "fix" this by trying to authenticate the
-image fetch.
-
-### Durable photo intake (`camera.fanmass.media-jobs.v1`)
-
-Events that advertise this contract use the durable path instead of timestamp
-polling. The claim query applies the same eligibility rules as the legacy feed,
-then atomically leases at most one photo for ten minutes per claim (zero when
-no eligible photo is available). The server enforces this even if a caller asks
-for more; Fanmass also requests one. This keeps image fetch, durable staging,
-analysis queueing, and acknowledgement sequential on a photo-by-photo basis.
-Lease state is recorded per event because a submission can appear in more than
-one event. Claiming does not require a full-frame original for legacy
-approved records: it falls back to their already-published image URL. New
-submissions use the unframed original. Archived, hidden,
-broken, consent-pending/expired, waiting-review, rejected, and derived photos
-stay out. The response includes a capture ID, availability time, relative
-private fetch path, random lease token, and lease expiry; it contains no guest
-email, login identity, consent text, or public storage URL.
-
-- `POST /api/internal/fanmass/events/{eventId}/media/claim` with `{ limit? }`
-  returns zero or one job, regardless of the requested limit:
-  `{ contractVersion, eventId, jobs: [{ captureId, createdAt,
-  fetchPath, leaseToken, leaseUntil }] }`.
-- `GET /api/internal/fanmass/events/{eventId}/media/{captureId}` requires both
-  the service secret and `x-fanmass-lease`. Camera rechecks event visibility,
-  claim ownership, lease expiry, storage host, image MIME type and 32 MiB size
-  limit before returning image bytes with `Cache-Control: private, no-store`.
-- `POST /api/internal/fanmass/events/{eventId}/media/{captureId}/ack` with
-  `{ leaseToken, outcome: 'staged' | 'retry' | 'failed', errorCode? }` marks a photo
-  staged only after Fanmass has durably queued its analysis job. Fanmass derives
-  a stable job identity from the source, event batch, analysis depth, and sorted
-  capture filenames so a lost acknowledgement cannot enqueue that chunk twice.
-  Retry releases
-  the claim after an increasing backoff capped at 30 minutes; a lost worker lease expires and is claimable
-  again. Intake job identity includes the sorted capture IDs so a replay of the
-  same source chunk is deduplicated. Unsupported or oversized media receives a
-  terminal `failed` state instead of retrying forever; an operator must correct
-  the source or queue state before it can be reprocessed.
-
-This path still covers only photos eligible under the existing published-photo
-rules. It does not authorize analysis of a waiting/rejected photo or enable
-pre-vetting analysis. Deletion/withdrawal propagation to copies already staged
-in Fanmass remains a release gate before an event pilot.
-
-### Per-photo analysis return (`fanmass.camera.photo-analysis.v1`)
-
-After Fanmass has finished the one-photo analysis, it posts a compact snapshot
-back to Camera. The Camera route is service-authenticated with the same
-`CAMERA_FANMASS_INTERNAL_SECRET`; it accepts only a currently eligible original
-submission for the route's event and capture id, so a hidden, archived, expired,
-waiting, rejected, broken, or derived image cannot receive an analysis snapshot.
-It never changes the human `people` annotations, vetting decision, visibility,
-or email state.
-
-`POST /api/internal/fanmass/events/{eventId}/media/{captureId}/analysis` accepts
-`contractVersion`, matching `eventId`/`captureId`, Fanmass `batchId`/`imageId`,
-`status`, `analysisStage`, `analyzedAt`, a summary, and the separate `boxes`
-object. `boxes.people[]` carries AI person boxes plus the detected demographic
-attributes; `boxes.faces[]` carries face detector boxes. Each box uses normalized
-`x`, `y`, `w`, `h` coordinates in the 0–1 range, measured against the original
-image, so it renders at the correct position at any screen size. The Camera
-photo-analysis workbench displays these in a separate violet dashed overlay;
-human labels remain editable and stored independently. The completed-photo
-cards also show Fanmass's detected person count and analysis stage.
-
-Camera stores the latest snapshot in `submissions.fanmassAnalysis`, beside the
-photo. This also permits a controlled one-at-a-time sync of earlier Fanmass
-results that were analyzed before this return route existed, as long as Camera
-still considers the photo eligible. Fanmass retains its original full
-`batch_images.result`; its local
-`cameraAnalysisDelivery` state acts as an outbox (`pending`/`delivered`) and
-retries a failed result push before it claims another image. The API is
-idempotent and an older snapshot cannot overwrite a newer one. Results do not
-include guest contact fields, public image URLs, face embeddings, or the photo
-bytes. The persisted boxes are admin/service-only and are not returned from
-public photo/share routes.
+**Ownership and reporting**: Fanmass owns per-photo machine analysis and boxes.
+Messmass owns event reporting and receives normalized event summaries through
+its authenticated analysis-summary integration. Camera retains human vetting
+and human annotations; it does not store a second copy of Fanmass results. The
+full source schema, queue state machine, retries, privacy behavior, monitoring,
+and release checks are specified in Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md`.
 
 ## 2a. savetheworld → camera: pledge campaign
 
@@ -370,26 +289,24 @@ in Camera, not duplicated between the internal API and Camera's own feature.
   the fleet's email transport (POST /api/internal/email/send). Not inbound-only.
 - Camera does not know about `launchmass` — no code, config, or data path
   connects them.
-- Camera does not resolve the analytics fanmass produces; that data flows
-  fanmass → messmass directly (`messmass.fanmass.analytics-summary.v1`,
-  documented in the messmass repo), bypassing Camera entirely.
+- Camera does not resolve or store Fanmass analytics. Per-photo results and
+  boxes stay in Fanmass; event aggregates flow directly from Fanmass to
+  Messmass (`messmass.fanmass.analytics-summary.v1`).
 
 ## 5. Rate limiting
 
-All 8 §1-§3 routes are rate-limited via the shared token-bucket limiter
+All HTTP routes that declare a tier use the shared token-bucket limiter
 ([lib/api/rateLimiter.ts](../lib/api/rateLimiter.ts)); the §2a savetheworld
 routes list their tier per route:
 
-- `RATE_LIMITS.INTERNAL_READ` — 120 requests/minute (the three `GET` routes:
-  partners lookup, fanmass events, fanmass media)
+- `RATE_LIMITS.INTERNAL_READ` — 120 requests/minute (the partner lookup and
+  public Savetheworld read routes)
 - `RATE_LIMITS.INTERNAL_WRITE` — 60 requests/minute (the five `POST` routes:
   organizations, partners, events, sso-session, email send)
 
-These tiers exist to catch a misbehaving caller (retry storm, bad cron, buggy
-poll loop) — not to police untrusted public traffic, since every caller here
-is already secret-authenticated. A `429` on these routes means the *calling
-app* (messmass or fanmass) is retrying too aggressively, not that a rate limit
-config needs loosening for a legitimate one-off burst.
+These tiers exist to catch a misbehaving HTTP caller (retry storm or bad cron),
+not to police untrusted public traffic. Fanmass Atlas reads do not pass through
+Camera's HTTP limiter.
 
 ## 6. Data model / indexes
 
@@ -410,7 +327,7 @@ See `.env.example` for the full list; the integration-specific ones:
 | Var | Direction | Purpose |
 |---|---|---|
 | `CAMERA_MESSMASS_INTERNAL_SECRET` | messmass → camera **and** camera → messmass | Auth for §1 routes (including sso-session) and §3 (email); also the secret camera sends outbound in §4's `pushPartnerToMessmass`/`pushSsoSessionToMessmass` calls (same shared secret both directions) |
-| `CAMERA_FANMASS_INTERNAL_SECRET` | fanmass → camera | Auth for §2 routes and §3 (email) |
+| `CAMERA_FANMASS_INTERNAL_SECRET` | fanmass → camera | Auth for the shared email route only. It does not authorize image reads or queue operations. |
 | `CAMERA_SAVETHEWORLD_INTERNAL_SECRET` | savetheworld → camera | Auth for §2a routes |
 | `SAVETHEWORLD_APP_URL` | camera → savetheworld (browser) | Base URL for the default post-selfie CTA on newly provisioned savetheworld events (§2a); unset = no CTA |
 | `MESSMASS_BASE_URL` | camera → messmass | Base URL camera calls outbound for the §4 partner-push and sso-session-mint requests ([lib/messmassClient.ts](../lib/messmassClient.ts):14) |
@@ -445,11 +362,7 @@ curl -X POST http://localhost:3000/api/internal/messmass/organizations \
   -H "Content-Type: application/json" \
   -d '{"name":"Test Org"}'
 
-# 3. Pull events (fanmass side)
-curl http://localhost:3000/api/internal/fanmass/events \
-  -H "x-fanmass-secret: $CAMERA_FANMASS_INTERNAL_SECRET"
-
-# 4. Send an email (messmass or fanmass side)
+# 3. Send an email (messmass or fanmass side)
 curl -X POST http://localhost:3000/api/internal/email/send \
   -H "x-messmass-secret: $CAMERA_MESSMASS_INTERNAL_SECRET" \
   -H "Content-Type: application/json" \

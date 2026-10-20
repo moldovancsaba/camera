@@ -283,6 +283,15 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     // A vetted event needs to know who the guest is (the approval email goes there) and keeps the plain photo privately.
     const createdAt = new Date().toISOString();
     const consentExpiresAt = consentRefusal ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null;
+    // A capture can arrive before the guest completes login or the Who-are-you
+    // step. Persist it privately for 24 hours so a reload can resume, then erase
+    // it if no actual identity is attached. This is independent of consent and
+    // is never a Fanmass/analytics eligibility signal.
+    const hasUserIdentity = Boolean(
+      validatedUserInfo?.email ||
+      (session?.user?.id && session.user.id !== 'anonymous')
+    );
+    const retentionExpiresAt = hasUserIdentity ? null : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     // What the request and the event's setting make of the public gallery choice: `shareOptIn` (eligible for the wall) and the evidence of a ticked box.
     const wall = galleryChoice(gallerySetting, { shareOptIn, publicGalleryConsentVersion }, createdAt, galleryRequired);
     let identity: ReturnType<typeof guestIdentity> = null;
@@ -350,13 +359,16 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Public pledge-wall visibility: true only when shareOptIn === true in the request
       // (the capture UI's checkbox defaults to checked); false otherwise. May later be
       // bulk-set to true by publish-selfies (see the shareOptIn note above).
-      isShareVisible: vetted || consentRefusal ? false : wall.shareOptIn,
+      isShareVisible: vetted || consentRefusal || !hasUserIdentity ? false : wall.shareOptIn,
+      // Explicitly persist a successful consent path. Downstream consumers must
+      // never guess that a missing status means the user accepted.
+      consentStatus: consentRefusal ? 'pending' : 'received',
       ...(consentRefusal ? { consentShareOptIn: wall.shareOptIn } : {}),
       ...(consentRefusal ? {
-        consentStatus: 'pending',
         consentExpiresAt,
         consentPendingReason: consentRefusal === GALLERY_MISSING_MESSAGE ? 'gallery' : 'acceptance',
       } : {}),
+      ...(!hasUserIdentity ? { retentionStatus: 'pending_erasure', retentionExpiresAt } : {}),
       ...(wall.consent ? { publicGalleryConsent: wall.consent } : {}),
       // User info from onboarding pages (a social login gives the email without the page)
       ...(validatedUserInfo
@@ -383,7 +395,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         finalHeight: imageHeight || frame?.height || 1080,
         emailSent: false,
         compositionEngine: vetted ? 'camera_capture_pending' : 'camera_capture',
-        ...(!session?.user?.id ? { identityStatus: 'NO USER' } : { identityStatus: 'REGISTERED' }),
+        identityStatus: session?.user?.id && session.user.id !== 'anonymous'
+          ? 'REGISTERED'
+          : validatedUserInfo?.email
+            ? 'EMAIL'
+            : 'NO USER',
       },
       shareCount: 0,
       downloadCount: 0,

@@ -834,21 +834,6 @@ export interface Submission {
   reviewNotes?: string | null;
   approvedAt?: string | null;
   approvedBy?: string | null;
-  /** Fanmass's durable, per-event intake state for eligible originals; never holds guest contact data. */
-  fanmassIntakeByEvent?: Array<{
-    eventId: string;
-    status: 'claimed' | 'queued' | 'staged' | 'failed';
-    leaseToken?: string;
-    leaseUntil?: string;
-    claimedAt?: string;
-    stagedAt?: string;
-    retryAfter?: string;
-    attempts?: number;
-    lastErrorCode?: string;
-    updatedAt: string;
-  }>;
-  /** Last durable per-photo analysis snapshot received from Fanmass. This is never used by public photo routes. */
-  fanmassAnalysis?: FanmassPhotoAnalysis | null;
   // A photo of a vetted event while it waits (camera#266): the plain framed-size photo in an unlisted Blob object (never mirrored,
   // never returned by a public route), what approval needs to compose the real picture, and the history of the review. The
   // branded composite does not exist until approval; imageUrl and finalImageUrl are absent until then.
@@ -909,6 +894,10 @@ export interface Submission {
   consentExpiredAt?: string;
   consentPendingReason?: 'gallery' | 'acceptance';
   consentShareOptIn?: boolean;
+  /** Captures submitted without a user identity stay private and are erased after 24 hours. */
+  retentionStatus?: 'pending_erasure' | 'erasing' | 'erased';
+  retentionExpiresAt?: string;
+  retentionErasedAt?: string;
   
   // Comprehensive metadata for tracking and analytics
   metadata: {
@@ -1000,56 +989,6 @@ export interface Submission {
   // Timestamps
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
-}
-
-/**
- * Fanmass's per-photo result, stored beside the submission so an authorised
- * reviewer can reopen it later without asking the local Fanmass worker to be
- * online. Boxes use normalized 0–1 image coordinates and remain separate from
- * the human-curated `people` annotations.
- */
-export interface FanmassPhotoAnalysis {
-  contractVersion: 'fanmass.camera.photo-analysis.v1';
-  eventId: string;
-  captureId: string;
-  batchId: string;
-  imageId: string;
-  status: 'completed' | 'failed';
-  analysisStage: 'scanned' | 'demographics' | 'deep' | 'failed';
-  analyzedAt: string;
-  receivedAt: string;
-  summary: {
-    personCount: number;
-    realPersonCount: number;
-    displayPersonCount: number;
-    crowdEstimate: number;
-    sceneType: string;
-    demographics?: Record<string, unknown>;
-    moderation?: Record<string, unknown>;
-    sportsMerchandise?: Record<string, unknown>;
-    fashionBrands?: Record<string, unknown>;
-  };
-  boxes: {
-    people: Array<{
-      id: string;
-      box: { x: number; y: number; w: number; h: number };
-      gender: string;
-      estimatedAge: number | null;
-      emotion: string;
-      subjectType: string;
-      confidence: number | null;
-      smiling: boolean;
-      hasCap: boolean;
-      hasGlasses: boolean;
-    }>;
-    faces: Array<{
-      id: string;
-      box: { x: number; y: number; w: number; h: number };
-      confidence: number | null;
-      smiling: boolean;
-    }>;
-  };
-  errorCode?: string;
 }
 
 // ============================================================================

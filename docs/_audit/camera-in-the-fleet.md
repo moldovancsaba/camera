@@ -20,8 +20,12 @@ see `docs/TRYON_REMOVED.md`.)
   try-on repository is not touched; a rebuild will be a separate add-on.
 - **camera → image.direct (planned, never live, no longer planned in this form)**:
   the contract in `docs/IMAGE_DIRECT_INTEGRATION.md` is kept as a record only.
-- **camera → fanmass**: fanmass PULLS events + media from camera's
-  `/api/internal/fanmass/*` (camera does not call fanmass).
+- **camera data → fanmass**: Fanmass independently reads an allowlisted,
+  PII-minimized projection from Camera Atlas using a read-only source role.
+  Fanmass owns the queue/results in its separate pipeline database and analyzes
+  one source photo at a time. Camera creates no Fanmass work and exposes no
+  Fanmass media-feed or result-callback routes. Fanmass sends event summaries
+  directly to Messmass.
 - **camera ↔ savetheworld** (edge E7 in the fleet map): savetheworld calls
   camera's `/api/internal/savetheworld/*` with `x-savetheworld-secret`
   (`CAMERA_SAVETHEWORLD_INTERNAL_SECRET`) to list/create partners and events,

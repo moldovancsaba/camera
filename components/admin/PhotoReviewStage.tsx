@@ -130,12 +130,6 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
   const [busy, setBusy] = useState<'approve' | 'reject' | 'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
-  const [showFanmassBoxes, setShowFanmassBoxes] = useState(() => Boolean(
-    item.fanmassAnalysis?.boxes.people.length || item.fanmassAnalysis?.boxes.faces.length,
-  ));
-  useEffect(() => {
-    setShowFanmassBoxes(Boolean(item.fanmassAnalysis?.boxes.people.length || item.fanmassAnalysis?.boxes.faces.length));
-  }, [item.id, item.fanmassAnalysis?.analyzedAt]);
   const [reasons, setReasons] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const overlay = useRef<HTMLDivElement | null>(null);
@@ -241,13 +235,6 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
     const value = selected[group];
     return value ? [value] : [];
   };
-  const fanmassPeopleBoxes = item.fanmassAnalysis?.boxes.people ?? [];
-  const fanmassPersonBoxKeys = new Set(fanmassPeopleBoxes.map(({ box }) => `${box.x}:${box.y}:${box.w}:${box.h}`));
-  const fanmassFaceBoxes = (item.fanmassAnalysis?.boxes.faces ?? []).filter(({ box }) =>
-    !fanmassPersonBoxKeys.has(`${box.x}:${box.y}:${box.w}:${box.h}`),
-  );
-  const fanmassBoxCount = fanmassPeopleBoxes.length + fanmassFaceBoxes.length;
-
   return (
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: 1400 }} data-photo-review-stage>
       <div style={{ alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem', justifyContent: 'space-between' }}>
@@ -260,19 +247,6 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
         <p style={{ ...DIMMED, fontWeight: 600 }} data-analysis-vetting-status>
           Vetting status: {item.status === 'published' ? 'Published without vetting' : item.status === 'approved' ? 'Approved' : 'Rejected'}
         </p>
-      ) : null}
-      {item.fanmassAnalysis ? (
-        <section aria-label="Fanmass photo analysis" data-fanmass-analysis style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-          <span style={{ ...DIMMED, fontWeight: 600 }}>
-            Fanmass analysis: {item.fanmassAnalysis.status === 'failed' ? 'failed' : `${item.fanmassAnalysis.summary.personCount} people · ${item.fanmassAnalysis.analysisStage}`}
-          </span>
-          {item.fanmassAnalysis.status === 'failed' ? <span style={DIMMED}>The local analysis did not complete.</span> : null}
-          {fanmassBoxCount > 0 ? (
-            <Button type="button" variant={showFanmassBoxes ? 'filled' : 'light'} aria-pressed={showFanmassBoxes} onClick={() => setShowFanmassBoxes((visible) => !visible)} data-toggle-fanmass-boxes>
-              {showFanmassBoxes ? 'Hide Fanmass boxes' : `Show Fanmass boxes (${fanmassBoxCount})`}
-            </Button>
-          ) : item.fanmassAnalysis.status === 'completed' ? <span style={DIMMED}>No saved person boxes.</span> : null}
-        </section>
       ) : null}
       <p style={DIMMED} data-review-help>
         {analysisOnly ? 'Mark the people in this photo, or choose Nobody in this photo. Saving changes the analysis only; vetting, visibility, and email stay the same.' : markPeople
@@ -310,32 +284,6 @@ function PhotoWorkspace({ item, position, total, vocabulary, markPeople, analysi
                 onPointerCancel={onCancel}
                 style={{ cursor: markPeople && !busy ? 'crosshair' : 'default', inset: 0, position: 'absolute', touchAction: markPeople ? 'none' : 'auto' }}
               >
-                {showFanmassBoxes ? fanmassPeopleBoxes.map((person, index) => {
-                  const { x, y, w, h } = person.box;
-                  return (
-                    <div
-                      key={`fanmass-person-${person.id}`}
-                      data-fanmass-person-box={person.id}
-                      aria-label={`Fanmass AI person ${index + 1}`}
-                      style={{ position: 'absolute', left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%`, border: '2px dashed var(--mantine-color-violet-7)', boxSizing: 'border-box', boxShadow: '0 0 0 1px var(--mantine-color-white)', pointerEvents: 'none' }}
-                    >
-                      <span aria-hidden style={{ background: 'var(--mantine-color-violet-7)', borderRadius: '0.25rem', color: 'var(--mantine-color-white)', fontSize: '0.75rem', fontWeight: 700, left: 2, lineHeight: 1.3, padding: '0 0.3rem', position: 'absolute', top: 2 }}>
-                        AI {index + 1}
-                      </span>
-                    </div>
-                  );
-                }) : null}
-                {showFanmassBoxes ? fanmassFaceBoxes.map((face, index) => {
-                  const { x, y, w, h } = face.box;
-                  return (
-                    <div
-                      key={`fanmass-face-${face.id}`}
-                      data-fanmass-face-box={face.id}
-                      aria-label={`Fanmass AI face ${index + 1}`}
-                      style={{ position: 'absolute', left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%`, border: '1px dotted var(--mantine-color-orange-7)', boxSizing: 'border-box', pointerEvents: 'none' }}
-                    />
-                  );
-                }) : null}
                 {draft.people.map((person, index) => {
                   const colour = colourOf(index);
                   return (

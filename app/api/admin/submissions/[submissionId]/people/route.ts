@@ -37,6 +37,10 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
   const db = await connectToDatabase();
   const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: new ObjectId(submissionId) });
   if (!submission) throw apiNotFound('Submission');
+  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') {
+    throw apiError('This capture is scheduled for erasure and cannot be analyzed.', 409);
+  }
+  if (analysisOnly && submission.reviewStatus !== 'approved') throw apiError('This photo is no longer approved. Reload the Vetting list before editing its analysis.', 409);
 
   const event = await resolveEventForSubmission(db, submission);
   if (event) {

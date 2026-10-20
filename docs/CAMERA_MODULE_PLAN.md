@@ -52,7 +52,7 @@ Share of the camera image that survives `cover` into a frame:
 - New `reframe` record: `mode` (fill, fit, custom), `zoom`, crop box in source pixels, frame aspect, `mirrored`.
 - The original is uploaded directly from the browser to Vercel Blob through a small token route (event, size and type checked), because a full-resolution original plus the composite can exceed the 4.5 MB Vercel Functions request-body limit.
 - Originals skip the imgbb mirror (`uploadImage` always mirrors when a key is configured, `lib/imgbb/upload.ts:338`) and are never returned by public routes. The pledge wall already excludes them.
-- Readers of `originalImageUrl` that will start receiving the true original: the fanmass media feed (it asks for the raw fan photo), event exports, admin try-on moderation, the try-on email fallback.
+- Readers of `originalImageUrl` that need review before any source-image change: Fanmass's independent Atlas reader, event exports, and retained try-on records. Fanmass reads only after the Camera consent, identity, retention and vetting gates pass; Camera exposes no media-feed route.
 - Try-on keeps receiving the reframed, frame-free crop, so try-on and image.direct inputs do not change.
 - Public Blob URLs stay (unguessable path, not listed). Private Blob access would need an authenticated image proxy; revisit if wanted.
 

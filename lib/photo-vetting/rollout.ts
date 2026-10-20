@@ -5,7 +5,8 @@
  * recently are listed, because from the moment the run finishes their next photos wait for approval.
  *
  * Photos made before vetting are not touched: a missing review status already counts as approved (lib/submissions/visibility.ts), and
- * no `approvedAt` is written, so the fanmass feed does not re-send them.
+ * no `approvedAt` is written, so Fanmass's Atlas discovery does not treat the
+ * changed record as a newly eligible publication for analysis.
  */
 
 import type { Db } from 'mongodb';

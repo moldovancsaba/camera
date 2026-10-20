@@ -2,14 +2,13 @@ import { apiForbidden } from '@/lib/api';
 import { checkSharedSecret, logSharedSecretRejection } from '@/lib/security/safeEqual';
 
 /**
- * Service-to-service auth for the fanmass read API, in the style of
- * assertInternalMessmassSecret (lib/messmass/internal.ts). fanmass (a headless
- * server) polls these read-only endpoints with a shared secret; there is no
- * browser session, so this is the machine-auth path.
+ * Service-to-service auth for Fanmass's caller access to Camera's shared email
+ * sender only. Camera's image-analysis boundary is Atlas: Fanmass reads Camera
+ * source data independently, and Camera exposes no Fanmass media or result API.
  *
  * Accepts the secret via `x-fanmass-secret` or `Authorization: Bearer <secret>`.
  * Constant-time compare, fails closed when the env secret is unset, and every
- * rejection is a bare 403 "Forbidden"; the reason goes to the server log only
+ * Rejections are a bare 403 "Forbidden"; the reason goes to the server log only
  * (see lib/security/safeEqual.ts).
  */
 export function assertInternalFanmassSecret(request: Request): void {
