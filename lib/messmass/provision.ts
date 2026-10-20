@@ -175,7 +175,24 @@ export async function provisionEvent(input: {
     if (input.eventDate === null || input.eventDate === undefined || input.eventDate === '') {
       update.$unset = { eventDate: '' };
     }
-    await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: target._id }, update);
+    // Recheck ownership in the write filter as well as above. A concurrent
+    // link request must not let two Messmass events claim the same Camera event.
+    const allowedCurrentLinks: Record<string, unknown>[] = [
+      { messmassEventId: input.messmassEventId },
+      { messmassEventId: { $exists: false } },
+      { messmassEventId: null },
+      { messmassEventId: '' },
+    ];
+    if (input.replaceMessmassEventId) {
+      allowedCurrentLinks.push({ messmassEventId: input.replaceMessmassEventId });
+    }
+    const result = await db.collection(COLLECTIONS.EVENTS).updateOne(
+      { _id: target._id, partnerId: partner.partnerId, $or: allowedCurrentLinks },
+      update,
+    );
+    if (result.matchedCount !== 1) {
+      throw apiBadRequest('Camera event link changed while it was being saved; refresh and retry the exact event link');
+    }
     return { eventId: target.eventId, mongoId: String(target._id), partnerId: partner.partnerId, created: false };
   }
 
