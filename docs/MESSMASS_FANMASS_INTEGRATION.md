@@ -145,44 +145,45 @@ login is unaffected. Minting it needs the permission read to use Camera's own
 
 Camera writes its normal event and submission records, including consent,
 retention, and human vetting decisions, to Camera's Atlas database. Camera does
-not make a Fanmass request at capture, vetting, approval, or deletion time.
-Fanmass independently watches and scans Atlas. It creates its own queue and
-result records in a separate Fanmass-owned Atlas database; the Camera source
-database is never updated by Fanmass.
+not make a Fanmass request at capture, vetting, approval, or deletion time. It
+also does not create Fanmass queue records, upload photos to Fanmass, or accept
+Fanmass result callbacks. Fanmass independently reads the Camera source records
+and owns all queue, lease, analysis, result, and privacy-cleanup records in its
+own Atlas database. Fanmass never writes into Camera's database.
 
-**Database permissions**: configure the Fanmass Atlas database principal with
+**Database permissions**: Fanmass uses a least-privilege Atlas principal with
 read-only access to the Camera database and read/write access only to the
 Fanmass pipeline database (`fanmass_camera_pipeline` by default). No Camera
-application route, shared media queue, claim, receipt, or result callback is
-part of the data path. Fanmass change streams are a low-latency optimization;
-bounded resumable source and queue scans recover after downtime or lost resume
-tokens.
+application route, shared media queue, claim, receipt, or result callback is in
+the image-analysis data path. Change streams provide low-latency discovery;
+bounded resumable scans recover after downtime, lost resume tokens, or process
+restarts.
 
-**One-photo contract**: one queue identity is derived from each Camera
-submission Mongo `_id`; event links are metadata and never duplicate the
-analysis job. One global Atlas lease permits at most one active source-photo
-analysis. Fanmass rechecks eligibility before fetching and before saving the
-result, runs the complete local analysis, stores normalized output and
-person/face boxes in Fanmass Atlas, then releases the lease. Crash recovery is
-idempotent and fenced; a crash may recompute a photo but cannot publish a stale
-result.
+**One-photo contract**: each Camera submission Mongo `_id` creates one Fanmass
+queue identity; event links are metadata and cannot duplicate the job. A single
+global Atlas lease allows at most one source photo to be analyzed at a time.
+Fanmass rechecks source eligibility before fetching and before persisting the
+result, runs its full local analysis, stores normalized output and all boxes in
+Fanmass Atlas, then releases the lease. Lease fencing and idempotent source IDs
+prevent stale workers from publishing results; an interrupted photo may be
+recomputed safely.
 
-**Eligibility**: new records must have successful consent, a real user
-identity, and a usable original image. When Camera vetting is required, only
-approved submissions qualify. Missing identity, pending/expired consent,
-pending erasure, erasing/erased, deleted, archived, hidden, broken, rejected,
-waiting, and non-Camera generated images do not qualify. The source projection
-collapses identity to a boolean on Atlas; Fanmass does not receive the guest's
-email, name, social-login data, or consent wording. Camera's scheduled erasure
-remains authoritative; Fanmass removes its derived/local copies through its
-retryable privacy-cleanup queue when a source disappears or becomes ineligible.
+**Eligibility and privacy**: a submission must have recorded required consent,
+a real user identity, and a usable source image. If event vetting is required,
+it must be approved. Missing identity, pending/expired consent, pending
+24-hour erasure, erasing/erased, deleted, archived, hidden, broken, rejected,
+waiting, and generated/derived images are ineligible. Fanmass's source
+projection reduces identity to a boolean; it does not read or persist guest
+email, name, social-login details, or consent wording. Camera remains the
+retention authority. Fanmass's retryable cleanup process removes derived and
+local copies when a source is deleted or becomes ineligible.
 
-**Analysis ownership and reporting**: Fanmass owns machine analysis and
-per-photo boxes. Messmass owns event reporting and receives Fanmass's normalized
-event summary over its existing authenticated analysis-summary API. Camera does
-not receive or store a second Fanmass result copy. The full field, retry,
-privacy, monitoring, and release contracts are in the Fanmass repository's
-`docs/CAMERA_ATLAS_QUEUE_CONTRACT.md`.
+**Ownership and reporting**: Fanmass owns per-photo machine analysis and boxes.
+Messmass owns event reporting and receives normalized event summaries through
+its authenticated analysis-summary integration. Camera retains human vetting
+and human annotations; it does not store a second copy of Fanmass results. The
+full source schema, queue state machine, retries, privacy behavior, monitoring,
+and release checks are specified in Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md`.
 
 ## 2a. savetheworld → camera: pledge campaign
 

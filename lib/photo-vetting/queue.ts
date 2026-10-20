@@ -6,6 +6,7 @@
 
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { plainPhotoClause } from '@/lib/submissions/visibility';
 import { parsePeople, type PersonTag } from './people';
 import type { ResolvedVocabulary } from './vocabulary';
 
@@ -21,22 +22,32 @@ export interface PhotoQueueItem {
   createdAt: string;
   name: string;
   email: string | null;
+  identityLabel: string;
   /** An approval link was already sent successfully. */
   approvalEmailSent: boolean;
   /** The plain photo while waiting or rejected (private, for moderators only), the real picture once approved. */
   photoUrl: string | null;
+  /** The original, unframed picture used only by Analysis. Never falls back to the approved framed composite. */
+  analysisPhotoUrl: string | null;
   frameKind: 'generated' | 'own' | 'none';
   shareOptIn: boolean;
   last: { action: 'approve' | 'reject' | 'return_to_vetting'; by: string; at: string; reason: string | null } | null;
-  /** The people marked in the photo at vetting (issue 542), none when nobody looked or the saved list is not valid. */
+  /** The people marked in the photo (issue 542), none when nobody looked or the saved list is not valid. */
   people: PersonTag[];
   /** Someone marked the people (also when nobody was in the photo). */
   peopleMarked: boolean;
+  /** Who last saved the people analysis and when. */
+  analysisBy: string | null;
+  analysisAt: string | null;
   /** Why the photo was rejected, as keys of the `reject_reason` group of the event's vocabulary (issue 628); none for a photo that was not rejected or was rejected before reasons existed. */
   rejectReasons: string[];
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
+const emailOf = (doc: Document): string | null => {
+  const emails = [text(doc.userInfo?.email), text(doc.userInfoDraft?.email), text(doc.userEmail)];
+  return emails.find((email) => email && email !== 'anonymous@event' && email !== 'anonymous@event.com') ?? null;
+};
 
 /**
  * One photo of the queue. The people are read with the vocabulary of the **event** (issue 628): a custom option of the event would otherwise make a marked photo read as unmarked, and the
@@ -45,17 +56,24 @@ const text = (value: unknown): string | null => (typeof value === 'string' && va
 export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary): PhotoQueueItem {
   const status: QueueStatus = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : 'pending_review';
   const review = (doc.photoReview ?? {}) as Document;
+  const unframedCopies = Array.isArray(doc.imageCopies) ? (doc.imageCopies as Document[]) : [];
+  const verifiedUnframedCopy = unframedCopies.find((copy) => copy.role === 'unframed' && copy.state === 'verified' && typeof copy.url === 'string' && copy.url.trim());
   const history = Array.isArray(doc.reviewHistory) ? (doc.reviewHistory as Document[]) : [];
   const last = history[history.length - 1];
-  const name = text(doc.userInfo?.name) ?? text(doc.userName) ?? 'Guest';
+  const name = text(doc.userInfo?.name) ?? text(doc.userInfoDraft?.name) ?? text(doc.userName) ?? 'Guest';
+  const email = emailOf(doc);
+  const registered = typeof doc.userId === 'string' && Boolean(doc.userId) && doc.userId !== 'anonymous';
+  const peopleReview = (doc.peopleReview ?? {}) as Document;
   return {
     id: String(doc._id),
     status,
     createdAt: text(doc.createdAt) ?? '',
     name,
-    email: text(doc.userInfo?.email) ?? text(doc.userEmail),
+    email,
+    identityLabel: email ?? (registered ? 'REGISTERED · NO EMAIL' : 'NO USER'),
     approvalEmailSent: doc.metadata?.emailSentAfterSave === true || doc.metadata?.emailSent === true,
     photoUrl: status === 'approved' || (status === 'pending_review' && typeof review.returnedAt === 'string') ? text(doc.imageUrl) ?? text(review.photoUrl) : text(review.photoUrl),
+    analysisPhotoUrl: text(review.photoUrl) ?? text(verifiedUnframedCopy?.url),
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',
     shareOptIn: review.shareOptIn === true,
     people: (() => {
@@ -63,12 +81,110 @@ export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary):
       return checked.ok ? checked.value : [];
     })(),
     peopleMarked: Array.isArray(doc.people),
+    analysisBy: text(peopleReview.by),
+    analysisAt: text(peopleReview.at),
     rejectReasons: Array.isArray(doc.rejectReasons) ? doc.rejectReasons.filter((key): key is string => typeof key === 'string' && key.length > 0) : [],
     last:
       last && (last.action === 'approve' || last.action === 'reject' || last.action === 'return_to_vetting')
         ? { action: last.action, by: text(last.by) ?? 'unknown', at: text(last.at) ?? '', reason: text(last.reason) }
         : null,
   };
+}
+
+export type PhotoAnalysisTab = 'needs_analysis' | 'analysed';
+export type PhotoAnalysisDecision = 'approved' | 'rejected' | 'published';
+
+/** A photo available to the separate, analysis-only event workbench. */
+export interface PhotoAnalysisItem extends Omit<PhotoQueueItem, 'status'> {
+  /** `published` means it was not held for a vetting decision. */
+  status: PhotoAnalysisDecision;
+}
+
+/**
+ * The independent analysis queue includes completed vetting decisions and photos that were published without vetting.
+ * A photo still awaiting a decision is deliberately excluded so analysis cannot overlap with an active vetting decision.
+ */
+export function photoAnalysisEligibilityFilter(eventUuid: string): Document {
+  return {
+    $and: [
+      { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
+      { isArchived: { $ne: true } },
+      plainPhotoClause,
+      { 'mediaHealth.broken': { $ne: true } },
+      { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } },
+      { reviewStatus: { $ne: 'pending_review' } },
+      {
+        $or: [
+          { photoReview: { $exists: false } },
+          { photoReview: null },
+          { reviewStatus: { $in: ['approved', 'rejected'] } },
+        ],
+      },
+      {
+        $or: [
+          { imageUrl: { $type: 'string', $ne: '' } },
+          { finalImageUrl: { $type: 'string', $ne: '' } },
+          { previewImageUrl: { $type: 'string', $ne: '' } },
+          { 'photoReview.photoUrl': { $type: 'string', $ne: '' } },
+        ],
+      },
+    ],
+  };
+}
+
+/** Same eligibility rule as the queue, checked again before an analysis save. */
+export function photoAnalysisRecordEligible(doc: Document): boolean {
+  if (doc.isArchived === true || (doc.mediaHealth as Document | undefined)?.broken === true) return false;
+  if (doc.submissionKind != null && doc.submissionKind !== 'original') return false;
+  if (doc.consentStatus === 'pending' || doc.consentStatus === 'expiring' || doc.consentStatus === 'expired') return false;
+  if (doc.reviewStatus === 'pending_review') return false;
+  const reviewExists = doc.photoReview !== undefined && doc.photoReview !== null;
+  if (reviewExists && doc.reviewStatus !== 'approved' && doc.reviewStatus !== 'rejected') return false;
+  const review = (doc.photoReview ?? {}) as Document;
+  return Boolean(text(review.photoUrl) || text(doc.imageUrl) || text(doc.finalImageUrl) || text(doc.previewImageUrl));
+}
+
+/** Read one queue item without applying vetting's pending-by-default status to photos that were never vetted. */
+export function toPhotoAnalysisItem(doc: Document, vocabulary: ResolvedVocabulary): PhotoAnalysisItem {
+  const item = toPhotoQueueItem(doc, vocabulary);
+  const review = (doc.photoReview ?? {}) as Document;
+  const status: PhotoAnalysisDecision = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : 'published';
+  const photoUrl = status === 'rejected'
+    ? text(review.photoUrl) ?? text(doc.imageUrl) ?? text(doc.finalImageUrl) ?? text(doc.previewImageUrl)
+    : text(doc.imageUrl) ?? text(doc.finalImageUrl) ?? text(doc.previewImageUrl) ?? text(review.photoUrl);
+  return { ...item, status, photoUrl };
+}
+
+export function photoAnalysisQueueFilter(eventUuid: string, tab: PhotoAnalysisTab): Document {
+  return {
+    ...photoAnalysisEligibilityFilter(eventUuid),
+    people: tab === 'analysed' ? { $type: 'array' } : { $not: { $type: 'array' } },
+  };
+}
+
+export async function loadPhotoAnalysisQueue(
+  db: Db,
+  eventUuid: string,
+  tab: PhotoAnalysisTab,
+  vocabulary: ResolvedVocabulary,
+  limit = 60,
+  offset = 0,
+): Promise<PhotoAnalysisItem[]> {
+  const rows = await db
+    .collection(COLLECTIONS.SUBMISSIONS)
+    .find(photoAnalysisQueueFilter(eventUuid, tab))
+    .sort({ createdAt: tab === 'needs_analysis' ? 1 : -1, _id: tab === 'needs_analysis' ? 1 : -1 })
+    .skip(Math.max(0, offset))
+    .limit(limit)
+    .toArray();
+  return rows.map((row) => toPhotoAnalysisItem(row, vocabulary));
+}
+
+export async function countPhotoAnalysisQueue(db: Db, eventUuid: string): Promise<Record<PhotoAnalysisTab, number>> {
+  const counts = await Promise.all(
+    (['needs_analysis', 'analysed'] as const).map((tab) => db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(photoAnalysisQueueFilter(eventUuid, tab))),
+  );
+  return { needs_analysis: counts[0], analysed: counts[1] };
 }
 
 export function queueFilter(eventUuid: string, status: QueueStatus): Document {

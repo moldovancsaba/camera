@@ -9,7 +9,7 @@
  * tabs and the list always show what the server holds, also when an answer never arrives.
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -25,7 +25,6 @@ interface PhotoReviewQueueProps {
   status: QueueStatus;
   initialItems: PhotoQueueItem[];
   canReview: boolean;
-  eventId: string;
   /** The words of the event: the reasons of a rejection, and what a rejected card says. */
   vocabulary: ResolvedVocabulary;
   /**
@@ -43,6 +42,7 @@ interface Notice {
 
 interface ReviewAnswer {
   email?: 'sent' | 'skipped' | 'failed';
+  emailDeferred?: boolean;
 }
 
 const BULK_CONCURRENCY = 2;
@@ -84,12 +84,17 @@ async function review(id: string, action: 'approve' | 'reject' | 'return_to_vett
 
 const emailNote = (answers: ReviewAnswer[]): string => {
   const failed = answers.filter((answer) => answer.email === 'failed').length;
-  const skipped = answers.filter((answer) => answer.email === 'skipped').length;
-  const parts = [failed ? `${failed} email${failed === 1 ? '' : 's'} could not be sent` : '', skipped ? `${skipped} had no email to send to` : ''].filter(Boolean);
-  return parts.length ? ` (${parts.join(', ')})` : '';
+  const deferred = answers.filter((answer) => answer.emailDeferred === true).length;
+  const skipped = answers.filter((answer) => answer.email === 'skipped' && answer.emailDeferred !== true).length;
+  const parts = [
+    failed ? `${failed} email${failed === 1 ? '' : 's'} could not be sent` : '',
+    deferred ? `${deferred} will receive the email when they sign in or provide an email address` : '',
+    skipped ? `${skipped} email${skipped === 1 ? '' : 's'} were skipped (no recipient or event email setting)` : '',
+  ].filter(Boolean);
+  return parts.length ? parts.join('; ') : '';
 };
 
-export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, eventId, markPeopleEventId }: PhotoReviewQueueProps) {
+export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, markPeopleEventId }: PhotoReviewQueueProps) {
   const router = useRouter();
   // Photos decided here leave the list at once; everything else comes from the server (initialItems is fresh after each router.refresh()).
   const [decided, setDecided] = useState<string[]>([]);
@@ -101,14 +106,40 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
   const [rejectNote, setRejectNote] = useState('');
   const [progress, setProgress] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [newPhotosCount, setNewPhotosCount] = useState(0);
+  const previousPhotoIds = useRef<Set<string> | null>(null);
 
-  // The Waiting list asks the server for new photos by itself (camera#373), so an approver at the match does not have to reload the page.
+  // The Waiting list asks the server for new photos by itself (camera#373), including when an approver returns to this tab after it was in the background.
   useEffect(() => {
-    const timer = setInterval(() => {
+    const refreshIfReady = () => {
       if (shouldRefreshWaiting({ status, hidden: document.visibilityState === 'hidden', deciding: busy.length > 0, rejecting: rejecting !== null })) router.refresh();
-    }, WAITING_REFRESH_MS);
-    return () => clearInterval(timer);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshIfReady();
+    };
+    const onPageShow = () => refreshIfReady();
+    const timer = setInterval(refreshIfReady, WAITING_REFRESH_MS);
+    window.addEventListener('focus', refreshIfReady);
+    window.addEventListener('pageshow', onPageShow);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refreshIfReady);
+      window.removeEventListener('pageshow', onPageShow);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [status, busy.length, rejecting, router]);
+
+  // A refresh should be visible to the reviewer, especially when the one-at-a-time screen has an active photo open.
+  useEffect(() => {
+    const ids = new Set(initialItems.map((item) => item.id));
+    const previous = previousPhotoIds.current;
+    if (status === 'pending_review' && previous) {
+      const added = [...ids].filter((id) => !previous.has(id)).length;
+      if (added > 0) setNewPhotosCount((count) => count + added);
+    }
+    previousPhotoIds.current = ids;
+  }, [initialItems, status]);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const allIds = useMemo(() => items.map((item) => item.id), [items]);
@@ -156,7 +187,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
       });
     } else {
       const note = emailNote(answers);
-      setNotice({ severity: note ? 'warning' : 'success', title: done.length === 1 ? 'Photo approved' : `${done.length} photos approved`, message: `The user gets the link by email${note}.` });
+      setNotice({ severity: answers.some((answer) => answer.email === 'failed') ? 'warning' : 'success', title: done.length === 1 ? 'Photo approved' : `${done.length} photos approved`, message: note ? note : 'The user gets the link by email.' });
     }
   };
 
@@ -170,7 +201,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
       setReasons([]);
       setRejectNote('');
       const note = emailNote([answer]);
-      setNotice({ severity: note ? 'warning' : 'success', title: 'Photo rejected', message: `The user gets a short note${note}. The photo stays private.` });
+      setNotice({ severity: answer.email === 'failed' ? 'warning' : 'success', title: 'Photo rejected', message: `${note || 'The user gets a short note.'} The photo stays private.` });
     } catch (error) {
       setNotice({ severity: 'error', title: 'Not rejected', message: error instanceof Error ? error.message : 'The photo could not be rejected' });
     } finally {
@@ -259,6 +290,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
       ) : null}
 
       {notice ? <InlineAlert title={notice.title} message={notice.message} severity={notice.severity} /> : null}
+      {newPhotosCount > 0 && status === 'pending_review' ? <InlineAlert title="More photos are waiting" message={`${newPhotosCount} more ${newPhotosCount === 1 ? 'photo is' : 'photos are'} waiting for vetting.`} severity="success" /> : null}
 
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))' }}>
         {items.map((item) => {
@@ -268,7 +300,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
             { id: 'when', label: 'Taken', value: formatDateTime(item.createdAt), tone: 'muted' },
             { id: 'frame', label: 'Frame', value: FRAME_LABEL[item.frameKind], tone: 'muted' },
           ];
-          if (item.email) metadata.unshift({ id: 'email', label: 'Email', value: item.email });
+          metadata.unshift({ id: item.email ? 'email' : 'identity', label: item.email ? 'Email' : 'Identity', value: item.identityLabel });
           // The buttons show their fixed labels, so the card itself says that a decision is being made (it can take a few seconds).
           if (isBusy) metadata.push({ id: 'working', label: 'Now', value: isRejecting ? 'Rejecting…' : 'Approving… please wait', tone: 'warning' });
           if (item.status !== 'approved') metadata.push({ id: 'wall', label: 'Wall', value: item.shareOptIn ? 'shown' : 'private', tone: 'muted' });
@@ -322,9 +354,6 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
               );
             }
             actions.push(
-              <Link key="analysis" href={`/admin/events/${eventId}/vetting/review?analysis=${item.id}`} style={{ textDecoration: 'none' }}>
-                <SemanticButton action="photo-review:update-analysis" size="xs" variant="secondary">Update analysis</SemanticButton>
-              </Link>,
               <Link key="view" href={`/share/${item.id}`} style={{ textDecoration: 'none' }}>
                 <SemanticButton action="photo-review:view-photo" size="xs" variant="secondary">View</SemanticButton>
               </Link>

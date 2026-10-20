@@ -20,8 +20,8 @@ test('the context comes from the path: an event, a partner, or the main menu', (
 
 test('a global admin and a partner user see the same items of the event menu, Analytics included (issue 521: the numbers of the event are for its managers)', () => {
   const labels = (access: AdminNavigationAccess) => adminContextMenu({ kind: 'event', id: ID }, `/admin/events/${ID}`, access).items.map((item) => item.label);
-  assert.deepEqual(labels(GLOBAL_ADMIN), ['Overview', 'Edit', 'Pages of the user journey', 'Vetting', 'Vetting words', 'Gallery', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
-  assert.deepEqual(labels(PARTNER_USER), ['Overview', 'Edit', 'Pages of the user journey', 'Vetting', 'Vetting words', 'Gallery', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
+  assert.deepEqual(labels(GLOBAL_ADMIN), ['Overview', 'Edit', 'Pages of the user journey', 'Vetting', 'Photo analysis', 'Vetting words', 'Gallery', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
+  assert.deepEqual(labels(PARTNER_USER), ['Overview', 'Edit', 'Pages of the user journey', 'Vetting', 'Photo analysis', 'Vetting words', 'Gallery', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
 });
 
 test('the partner menu has its own pages', () => {
@@ -39,6 +39,7 @@ test('exactly one item is active, and the overview is active only on its own add
   assert.deepEqual(activeLabels(`/admin/events/${ID}/logos`), ['Logos']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/gallery`), ['Gallery']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/vetting`), ['Vetting']);
+  assert.deepEqual(activeLabels(`/admin/events/${ID}/analysis`), ['Photo analysis']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/annotation-words`), ['Vetting words']);
   assert.deepEqual(activeLabels(`/admin/partners/${ID}/annotation-words`, 'partner'), ['Vetting words']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/edit`), ['Edit']);

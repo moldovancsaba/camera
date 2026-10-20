@@ -2,7 +2,7 @@
 
 > **Written before the try-on removal (issue 557, 2026-10-10).** Where this document mentions try-on, it describes the app as it was on its date; the integration has been removed from the app, see [TRYON_REMOVED.md](TRYON_REMOVED.md). Read those places as history.
 
-Status 2026-10-11: **built and live.** Packages V1 to V10 are merged and the rollout was made on 2026-10-06 (238 of 238 events then; every new event starts with vetting on; RUNBOOK, "Photo vetting"); "inert until V10" below is history. What came later is at the end (marking the people at vetting, the big view, reopening a decision, and analysis-only updates). Original status: plan, decisions confirmed by the owner on 2026-10-06 (below); work packages not started. Related: `docs/DEFAULT_FRAME_PLAN.md` (the frames), `RUNBOOK.md` ("How the photo is taken, and what is kept").
+Status 2026-10-16: **built and live.** Packages V1 to V10 are merged and the rollout was made on 2026-10-06 (238 of 238 events then; every new event starts with vetting on; RUNBOOK, "Photo vetting"); "inert until V10" below is history. What came later is at the end (marking the people at vetting, the big view, reopening a decision, and the independent Photo analysis page). Original status: plan, decisions confirmed by the owner on 2026-10-06 (below); work packages not started. Related: `docs/DEFAULT_FRAME_PLAN.md` (the frames), `RUNBOOK.md` ("How the photo is taken, and what is kept").
 
 ## The request
 
@@ -152,15 +152,35 @@ A vetting person describes each photo before deciding: who is in it (gender and 
 - **Stored with the photo:** `Submission.people` = a list of `{ id, box: { x, y, w, h } in percent of the photo, gender, age, emotion?, merch? }` where the values are the **keys** of the options; `peopleReview = { by, at, vocabulary }` (the version of the list the marks were made with); `Submission.rejectReasons` (keys) on a rejection, and the reasons in the review history. **An empty list means looked, nobody marked; a missing field means nobody looked.** Saved by `PUT /api/admin/submissions/<id>/people` (the rights of the review: global admins and the event's Events managers; at most 40 people; every key checked against the list offered now). Approving a rejected photo again removes its reasons.
 - **On for every event, a switch per event to turn it off (owner answer 264, "everywhere"):** `Event.markPeopleInVetting` is read as **on unless it is `false`** (`markPeopleOn`; global admins switch it off on the Vetting tab). Off, the screen is the big photo, the reasons for a rejection and the decision.
 - **For the analytics and messmass:** `summarizePeople` counts people, photos looked at, gender, age, emotion and items; the card **People marked in the photos** on the Vetting tab shows it in the words of the event's list. The `camera_` counters for messmass (whole running totals; `camera_gender_female` is how many female people were counted over all annotated photos of the event) are built and **off** until the owner switches the push on.
-- **Not done:** a keyboard way to draw (the buttons work with a keyboard, drawing needs a mouse or a finger), a second reviewer on a sample and an "unsure" mark for the training quality, a phone check by the owner (the sticky decision bar and drawing on a touch screen were checked in an emulated phone only). Approved-photo people analysis can now be corrected through **Update analysis** below.
+- **Not done:** a keyboard way to draw (the buttons work with a keyboard, drawing needs a mouse or a finger), a second reviewer on a sample and an "unsure" mark for the training quality, a phone check by the owner (the sticky decision bar and drawing on a touch screen were checked in an emulated phone only).
 
 ## Reopen a decision and correct analysis
 
 - **Back to vetting:** an event manager can reopen an approved photo from the event Gallery, or an approved/rejected photo from the Vetting lists. The photo returns to Waiting and follows the ordinary one-at-a-time review process; rejected photos can be corrected the same way. The update is conditional on the status the moderator saw, so a concurrent decision wins only once.
 - **Guest link while reopened:** the share token resolves to a bilingual further-review notice, never the photo or its preview. The page refreshes until the final decision. Its English and Hungarian title and message are editable in the event's Public result page settings. Reopening a photo that was publicly visible sends a further-review email with the existing link; reopening an already-hidden rejected photo sends no email.
 - **Finish the review:** the existing framed image is reused if its private source file was already cleaned up. The normal approval/rejection messages are sent when the decision restores or changes visibility; a second rejection of an already-hidden reopened photo does not send a duplicate decline email. A first-time rejection keeps its existing notification behavior.
-- **Analysis-only correction:** the Approved list has **Update analysis**. It lets a manager update the people boxes and tags through `PUT /api/admin/submissions/<id>/people`. It does not call the decision endpoint, so status, public visibility and guest email are unchanged.
+- **Analysis-only correction:** use the event's separate **Photo analysis** page, linked from the event overview at `/admin/events/<id>/analysis`. It lets a manager update saved people boxes and tags through `PUT /api/admin/submissions/<id>/people`. It does not call the decision endpoint, so vetting status, public visibility and guest email are unchanged.
 - **Visibility rule:** public surfaces continue to use the shared `isPubliclyVisible` rule. Pending/rejected records remain excluded from the gallery, downloads, link previews, and slideshow feeds while a review is open.
+
+## Identity collected after capture and decision emails (2026-10-16)
+
+The live guest flow uploads the photo as soon as the guest confirms it, then may ask for social login or contact details on later pages. The submission is created with `userId: 'anonymous'` and the non-deliverable placeholder `userEmail: 'anonymous@event'` when no identity was available at upload time. A moderator can therefore approve or reject before an email address is attached.
+
+- A missing recipient is recorded as a deferred approval or rejection email. It is never sent to `anonymous@event` or to the moderator. If the guest never provides an address, no email can be sent.
+- The existing post-capture login callback links the same submission id to the social account; the typed contact page writes `userInfo.email`. Either identity handoff retries a pending decision email after the write.
+- Approval uses the photo's opaque `shareToken` URL. The generic after-save email path skips every record with `photoReview`, so it cannot send a database-id URL for a vetted photo.
+- An atomic, short-lived claim prevents a repeated login callback from sending the same decision email twice. A missing address keeps the pending state; a provider error is recorded as a failure. Approved emails can also be retried through the existing approval retry action.
+- The submission list displays a known `userInfo.email`, otherwise labels the placeholder as **NO USER**.
+
+## Separate Photo analysis work (owner decision, 2026-10-16)
+
+- Vetting and people analysis are independent jobs. Vetting remains on its own page and owns approve/reject decisions. **Photo analysis** is a separate event page and uses the same one-photo drawing and labeling workbench, with Save and Skip actions and no vetting controls.
+- If an event requires vetting, photos enter the analysis queue only after approval or rejection. A photo whose analysis was required during vetting is already complete and does not appear in the outstanding queue. If people marking was switched off during vetting, the finalized photo appears in Photo analysis for later work.
+- If vetting is off, photos that were published without a vetting record enter Photo analysis directly. Previously vetted, finalized photos remain eligible too.
+- Photos still awaiting a vetting decision, awaiting required consent, archived, known broken, or not a plain photo are excluded. A rejected photo is shown from its private review image, so it remains available to event managers without becoming public.
+- The page shows outstanding and completed counts. Saving one photo removes it from "Needs analysis" and opens the next oldest eligible photo. Completed analysis is available in a paginated list for corrections.
+- Analysis eligibility is checked again when saving. If another moderator has returned a vetted photo to the pending queue, the stale analysis save is refused. An analysis update changes only `people` and `peopleReview`; it never changes `reviewStatus`, visibility, approval email, or rejection email.
+- `Submission.people` being absent means analysis is outstanding; `people: []` means the photo was checked and nobody was marked. Analysis is therefore required as an eventual event task, while the event's `markPeopleInVetting` setting controls whether it blocks an individual vetting decision.
 
 ## Open questions
 

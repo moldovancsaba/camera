@@ -306,6 +306,27 @@ The search is intentionally broad: matches can be repeated lines, theme preview 
 
 **Exit criteria:** every admin style match is classified; no undefined token references remain; shared shell and components render correctly in every supported theme; approved exceptions are documented and narrow; GDS checks catch representative violations.
 
+## Follow-up delivery order reviewed 2026-10-16
+
+The requested analytics measures and the admin UX audit are documented and implemented in the merged work described below. The project board is the delivery-state source of truth; this section records why the remaining work is ordered this way. It avoids reopening work already delivered.
+
+| Order | Board item | Recommended delivery | Reason and dependency |
+|---:|---|---|---|
+| 1 | [#693](https://github.com/moldovancsaba/camera/issues/693) | Reconcile historical approval-email candidates against provider delivery records, reconcile consent state, then resend only messages confirmed undelivered. | The current approval flow is fixed in #691 and the owner confirmed new messages work. A missing app marker alone is not proof of non-delivery; this is an operational backfill that depends on production admin and provider-log access. |
+| 2 | [#535](https://github.com/moldovancsaba/camera/issues/535) | Fix journey-page move actions to identify the row by stable page ID, then verify order persistence and guest runtime order after save/reload. | #655 delivered reorder controls. The follow-up page-ID fix was in #660, which closed without merging. The reported reorder defect is therefore not confirmed fixed. |
+| 3 | [#692](https://github.com/moldovancsaba/camera/issues/692) | Verify the live Partner/Event text editor exposes the long capture message as `capture.loading`; preserve event-specific wording while migrating any legacy `Event.loadingText` values. Remove the fallback only after the data audit. | #677, #683, and #688 split the capture, event-data, and photo-upload messages. The compatibility alias remains to protect existing records, and the owner has not confirmed the exact text is editable in the live partner/event editor. |
+| 4 | [#694](https://github.com/moldovancsaba/camera/issues/694) | Verify the camera-ready prompt on desktop and mobile and make its instruction copy reflect the actual event permissions and configured next step. | #688 improved styling but had no browser walkthrough. This closes the reported desktop-visibility and misleading-editing-copy gap. |
+| 5 | [#628](https://github.com/moldovancsaba/camera/issues/628) | Complete the live/phone acceptance of the vetting flow and make operator actions, including “Nobody in this photo,” visually clear, accessible, and distinguishable. | The planned audit names this as a high-risk operator task; code-level delivery does not replace the owner’s real-device acceptance. |
+| 6 | [#521](https://github.com/moldovancsaba/camera/issues/521) | Continue the broader service-activity audit and Analytics menu work; validate the Messmass counters with known event totals before enabling any sync. | The specifically requested approvals, rejection reasons, flow time, CTA clicks, login mix, returning/new share, and deletion outcomes are covered by #669, #670, and #680. The broader analytics scope remains open and Camera-to-Messmass counter sending is off by default. |
+| 7 | [#415](https://github.com/moldovancsaba/camera/issues/415) | After operational issues, build the shared admin kit, strengthen the GDS/style gate, and migrate the highest-traffic admin screens. | This audit was requested as documentation only. The implementation steps are future work and should not precede the live-flow and operator-facing fixes above. |
+
+### Decisions and limitations
+
+- Do not perform cross-event identity profiling until its purpose, separate consent wording, and retention period are explicitly approved. The KYC recommendations are documented; profiling is not implemented.
+- The #680 deletion tombstone preserves future manual and automatic deletion outcomes. Permanently deleted images from before that tracking existed cannot be reconstructed into historical analytics.
+- The one-time email backfill is separate from the now-working approval path. Do not resend based only on a missing database marker, and do not resend records whose delivery or consent state is ambiguous.
+- The bundled implementation in #660 is obsolete as a unit because its upload/SSO work was superseded by #664–#668. Its stable-page-ID reorder change remains needed and is tracked in #535.
+
 ## Validation and success measures
 
 Run moderated task sessions with event organisers and internal reviewers. Measure task completion, time, backtracking, and help requests for:

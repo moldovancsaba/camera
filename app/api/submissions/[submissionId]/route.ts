@@ -35,9 +35,10 @@ import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
 import { recordManualPhotoDeletion } from '@/lib/analytics/photo-deletion';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { safeLinkUrl } from '@/lib/events/consent';
+import { isValidEmail } from '@/lib/photo-vetting/pending';
 
 interface FinalizeSubmissionBody {
-  action?: 'update_user_info' | 'append_consents' | 'link_account' | 'finalize';
+  action?: 'update_user_info' | 'save_user_info_draft' | 'append_consents' | 'link_account' | 'finalize';
   userInfo?: {
     name?: string;
     email?: string;
@@ -63,6 +64,15 @@ function normalizeUserInfoInput(input?: FinalizeSubmissionBody['userInfo']): { n
   return { name, email };
 }
 
+/** Keep the exact partial values a guest has typed while the saved photo is still on the contact step. */
+function normalizeUserInfoDraft(input?: FinalizeSubmissionBody['userInfo']): { name?: string; email?: string } | null {
+  if (!input || typeof input !== 'object') return null;
+  const name = typeof input.name === 'string' ? input.name.trim().slice(0, 200) : undefined;
+  const email = typeof input.email === 'string' ? input.email.trim().slice(0, 254) : undefined;
+  if (name === undefined && email === undefined) return null;
+  return { ...(name !== undefined ? { name } : {}), ...(email !== undefined ? { email } : {}) };
+}
+
 async function applySubmissionMetadataPatch(
   db: Db,
   submissionId: ObjectId,
@@ -83,6 +93,17 @@ async function applySubmissionMetadataPatch(
     { _id: submissionId },
     { $set: sanitized }
   );
+}
+
+function schedulePendingVettingEmail(db: Db, submissionId: ObjectId) {
+  runAfterResponse(async () => {
+    try {
+      const { sendPendingVettingEmailAfterIdentity } = await import('@/lib/photo-vetting/review');
+      await sendPendingVettingEmailAfterIdentity(db, submissionId);
+    } catch (error) {
+      console.warn('[photo-vetting] Deferred decision email could not be completed', error instanceof Error ? error.message : error);
+    }
+  });
 }
 
 export const DELETE = withErrorHandler(async (
@@ -216,14 +237,17 @@ export const PATCH = withErrorHandler(async (
   const payload = (await request.json().catch(() => ({}))) as FinalizeSubmissionBody;
   const action = payload.action ?? 'update_user_info';
   const shouldFinalize = action === 'finalize';
+  const shouldSaveUserInfoDraft = action === 'save_user_info_draft';
   const shouldAppendConsents = action === 'append_consents';
   const shouldLinkAccount = action === 'link_account';
   const normalizedUserInfo = normalizeUserInfoInput(payload.userInfo);
+  const normalizedUserInfoDraft = normalizeUserInfoDraft(payload.userInfo);
   const consents = Array.isArray(payload.consents) ? payload.consents : null;
 
-  if (!shouldFinalize && !shouldAppendConsents && !shouldLinkAccount && !normalizedUserInfo) {
+  if (!shouldFinalize && !shouldSaveUserInfoDraft && !shouldAppendConsents && !shouldLinkAccount && !normalizedUserInfo) {
     throw apiBadRequest('Invalid request payload');
   }
+  if (shouldSaveUserInfoDraft && !normalizedUserInfoDraft) throw apiBadRequest('Invalid contact draft');
   if (shouldAppendConsents && (!consents || consents.length === 0 || consents.some((item) => {
     if (!item || typeof item !== 'object') return true;
     const record = item as Record<string, unknown>;
@@ -253,22 +277,58 @@ export const PATCH = withErrorHandler(async (
     throw apiNotFound('Submission not found');
   }
 
+  const isAdmin = Boolean(session && (session.appRole === 'admin' || session.appRole === 'superadmin'));
+
+  if (shouldSaveUserInfoDraft) {
+    if (submission.userInfo?.collectedAt && !isAdmin) {
+      // A repeat-photo flow can render the contact page again after creating this
+      // photo with the guest's already-finalized contact. Its autosave is only a
+      // convenience draft and must not turn that harmless revisit into an error.
+      // Do not mutate finalized contact data here; the explicit update below still
+      // validates that the submitted contact matches the finalized value.
+      return apiSuccess({ submissionId, action, draftSaved: false, alreadyFinalized: true });
+    }
+    const now = new Date().toISOString();
+    const draftName = normalizedUserInfoDraft?.name ?? submission.userInfoDraft?.name ?? '';
+    const draftEmail = normalizedUserInfoDraft?.email ?? submission.userInfoDraft?.email ?? '';
+    const set: Record<string, unknown> = {
+      userInfoDraft: { name: draftName, email: draftEmail, updatedAt: now },
+      updatedAt: now,
+    };
+    if (normalizedUserInfoDraft && Object.hasOwn(normalizedUserInfoDraft, 'name')) {
+      set.userName = draftName || 'NO USER';
+    }
+    if (normalizedUserInfoDraft && Object.hasOwn(normalizedUserInfoDraft, 'email')) {
+      set.userEmail = isValidEmail(draftEmail) ? sanitizeEmail(draftEmail) : 'anonymous@event';
+    }
+    const draftFilter = isAdmin
+      ? { _id: objectId }
+      : { _id: objectId, 'userInfo.collectedAt': { $exists: false } };
+    const saved = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(draftFilter, { $set: set });
+    if (saved.matchedCount !== 1) throw apiForbidden('This submission has already been finalized.');
+    if (isValidEmail(draftEmail)) schedulePendingVettingEmail(db, objectId);
+    return apiSuccess({ submissionId, action, draftSaved: true });
+  }
+
   if (shouldLinkAccount) {
     if (!session?.user?.id) throw apiForbidden('Sign-in is required to link this photo');
     if (submission.userId !== 'anonymous' && submission.userId !== session.user.id) {
       throw apiForbidden('This photo belongs to another account');
     }
     const now = new Date().toISOString();
-    const email = session.user.email || submission.userInfo?.email || '';
-    const name = session.user.name || submission.userInfo?.name || email || 'REGISTERED USER';
+    const typedDraftEmail = isValidEmail(submission.userInfoDraft?.email) ? sanitizeEmail(submission.userInfoDraft.email) : '';
+    const email = submission.userInfo?.email || typedDraftEmail || session.user.email || '';
+    const name = submission.userInfo?.name || submission.userInfoDraft?.name || session.user.name || email || 'REGISTERED USER';
     const userInfo = email ? { name, email, collectedAt: now } : null;
     const linked = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
       {
         _id: objectId,
-        userId: 'anonymous',
-        $or: [
-          { retentionStatus: { $exists: false } },
-          { retentionStatus: 'pending_erasure', retentionExpiresAt: { $gt: now } },
+        $and: [
+          { $or: [{ userId: 'anonymous' }, { userId: session.user.id }] },
+          { $or: [
+            { retentionStatus: { $exists: false } },
+            { retentionStatus: 'pending_erasure', retentionExpiresAt: { $gt: now } },
+          ] },
         ],
       },
       {
@@ -280,10 +340,11 @@ export const PATCH = withErrorHandler(async (
           'metadata.identityStatus': 'REGISTERED',
           updatedAt: now,
         },
-        $unset: { retentionStatus: '', retentionExpiresAt: '' },
+        $unset: { retentionStatus: '', retentionExpiresAt: '', userInfoDraft: '' },
       },
     );
     if (linked.matchedCount !== 1) throw apiError('The capture can no longer be linked because its erasure deadline has passed.', 409);
+    schedulePendingVettingEmail(db, objectId);
     if (email) {
       runAfterResponse(async () => {
         try {
@@ -340,13 +401,26 @@ export const PATCH = withErrorHandler(async (
           await sendApprovedLinkAfterConsent(db, objectId);
         });
       }
+      if (consentUpdate.modifiedCount === 1 && submission.reviewStatus === 'rejected') schedulePendingVettingEmail(db, objectId);
     }
     return apiSuccess({ submissionId, action, appendedConsents: next.length });
   }
 
   const alreadyFinalized = Boolean((submission as Submission).userInfo?.collectedAt);
-  const isAdmin = Boolean(session && (session.appRole === 'admin' || session.appRole === 'superadmin'));
   if (alreadyFinalized && !isAdmin) {
+    const savedUserInfo = (submission as Submission).userInfo;
+    const sameFinalizedContact = Boolean(
+      action === 'update_user_info' && normalizedUserInfo && savedUserInfo &&
+      normalizedUserInfo.name.trim() === savedUserInfo.name?.trim() &&
+      normalizedUserInfo.email.toLowerCase() === savedUserInfo.email?.trim().toLowerCase(),
+    );
+    if (sameFinalizedContact) {
+      // The capture journey carries a guest's contact into each new photo. Saving
+      // that same contact after the photo pages are revisited is an idempotent
+      // confirmation, not an attempt to rewrite finalized identity data.
+      schedulePendingVettingEmail(db, objectId);
+      return apiSuccess({ submissionId, action, unchanged: true });
+    }
     throw apiForbidden('This submission has already been finalized.');
   }
 
@@ -361,6 +435,9 @@ export const PATCH = withErrorHandler(async (
       : null;
 
   if (userInfoPayload) {
+    const preserveVettingMissingRecipient = Boolean(
+      submission.photoReview && submission.metadata?.emailSent === false && submission.metadata?.emailSkipReason === 'missing_recipient',
+    );
     const savedIdentity = await db
       .collection<Submission>(COLLECTIONS.SUBMISSIONS)
       .updateOne(
@@ -374,17 +451,18 @@ export const PATCH = withErrorHandler(async (
         {
           $set: {
             userInfo: userInfoPayload,
+            // Preserve the address entered by a guest in the fields used by admin lists
+            // and legacy email flows. A logged-in account remains the primary identity.
+            userEmail: userInfoPayload.email,
+            userName: userInfoPayload.name,
             ...(session?.user?.id ? {
               userId: session.user.id,
-              userEmail: session.user.email || userInfoPayload.email,
-              userName: session.user.name || userInfoPayload.name,
               'metadata.identityStatus': 'REGISTERED',
             } : {}),
           },
           $unset: {
-            retentionStatus: '',
-            retentionExpiresAt: '',
-            'metadata.emailSkipReason': '',
+            userInfoDraft: '',
+            ...(preserveVettingMissingRecipient ? {} : { 'metadata.emailSkipReason': '' }),
             'metadata.emailSentAfterSave': '',
             'metadata.emailSentAfterRelatedPhotos': '',
             'metadata.emailFailedAt': '',
@@ -394,6 +472,7 @@ export const PATCH = withErrorHandler(async (
         }
       );
     if (savedIdentity.matchedCount !== 1) throw apiError('The capture can no longer be identified because its erasure deadline has passed.', 409);
+    schedulePendingVettingEmail(db, objectId);
   }
 
   let emailResult: Awaited<ReturnType<typeof dispatchPendingSubmissionEmailForSubmission>> | null = null;

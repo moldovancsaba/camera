@@ -1,12 +1,12 @@
 /**
  * PUT /api/admin/submissions/[submissionId]/people (issue 542, docs/PHOTO_VETTING_PLAN.md, lib/photo-vetting/people.ts)
  *
- * Saves the people the reviewer marked in a photo of an event: per person a rectangle in percent of the photo, one gender and one age, an optional emotion and optional items, all as keys of
+ * Saves the people the reviewer marked in a photo of an event, either during vetting or later on Photo analysis: per person a rectangle in percent of the photo, one gender and one age, an optional emotion and optional items, all as keys of
  * the options the event offers now (the event's vocabulary, lib/photo-vetting/vocabulary-load.ts, issue 628). The list replaces what was saved (an empty list says "looked, nobody marked");
  * who saved it, when, and the version of the list of words it was made with are kept. Allowed for global admins and the event's partner Events managers, like the review itself. Marking
  * changes nothing about whether the photo is approved or rejected: that stays the review route.
  *
- * Body: { people: PersonTag[] }
+ * Body: { people: PersonTag[], analysisOnly?: boolean }. Analysis-only saves are limited to eligible finalized photos and never change vetting/publication or email state.
  */
 
 import { NextRequest } from 'next/server';
@@ -18,6 +18,7 @@ import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/l
 import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
 import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
 import { parsePeople } from '@/lib/photo-vetting/people';
+import { photoAnalysisRecordEligible } from '@/lib/photo-vetting/queue';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 
 const MARK_RATE_LIMIT = { max: 120, windowMs: 60 * 1000, message: 'Too many saves. Please wait a minute and try again.' };
@@ -48,17 +49,28 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: { par
     throw apiForbidden('This photo belongs to no event; only a global admin can mark the people in it');
   }
 
+  // The separate analysis workbench accepts approved/rejected vetted photos and published photos that never entered vetting.
+  // Pending decisions, photos awaiting consent, archived/broken files, and non-photo submissions are never analysable here.
+  if (analysisOnly && !photoAnalysisRecordEligible(submission as unknown as Record<string, unknown>)) {
+    throw apiError('This photo is no longer available for analysis. Reload the Photo analysis page.', 409);
+  }
+
   // The keys are checked against the list this event offers now (a custom option is valid, a hidden one is not), and the version of that list is recorded with the marks.
   const vocabulary = await loadEventVocabulary(db, event);
   const checked = parsePeople(body?.people, vocabulary, { forSave: true });
   if (!checked.ok) throw apiBadRequest(checked.reason);
 
   const peopleReview = { by: session.user.email ?? session.user.id ?? null, at: generateTimestamp(), vocabulary: vocabulary.version };
+  const analysisStatusGuard = analysisOnly
+    ? submission.reviewStatus === 'approved' || submission.reviewStatus === 'rejected'
+      ? { reviewStatus: submission.reviewStatus }
+      : { reviewStatus: { $ne: 'pending_review' }, $or: [{ photoReview: { $exists: false } }, { photoReview: null }] }
+    : {};
   const saved = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: new ObjectId(submissionId), ...(analysisOnly ? { reviewStatus: 'approved' } : {}) },
+    { _id: new ObjectId(submissionId), ...analysisStatusGuard },
     { $set: { people: checked.value, peopleReview } }
   );
-  if (analysisOnly && saved.matchedCount === 0) throw apiError('This photo is no longer approved. Reload the Vetting list before editing its analysis.', 409);
+  if (analysisOnly && saved.matchedCount === 0) throw apiError('This photo is no longer available for analysis. Reload the Photo analysis page.', 409);
   // The counters for messmass read the people: ask for a push after the response (nothing happens while the counters are off).
   scheduleCounterSync(db, event);
   return apiSuccess({ submissionId, people: checked.value, peopleReview });

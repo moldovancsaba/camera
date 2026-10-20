@@ -81,7 +81,7 @@ test('nobody marked is saved too (looked at, nobody in it), and a second save re
 });
 
 test('analysis updates on an approved photo leave its status and visibility untouched', async (t) => {
-  const calls = setup(t, { submission: { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'approved', isShareVisible: true } });
+  const calls = setup(t, { submission: { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'approved', isShareVisible: true, imageUrl: 'https://example.com/photo.jpg' } });
   const { PUT } = await importRoute('analysis-only');
   assert.equal((await PUT(put({ people: [person()], analysisOnly: true }), params)).status, 200);
   const update = calls.updates[0].update as { $set: Record<string, unknown> };

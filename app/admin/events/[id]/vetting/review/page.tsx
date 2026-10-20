@@ -49,7 +49,16 @@ export default async function EventVettingReviewPage({ params, searchParams }: {
         <span aria-hidden> / </span>
         <span>Review</span>
       </nav>
-      <PhotoReviewStage eventId={id} items={items} vocabulary={vocabulary} markPeople={analysisOnly || markPeopleOn(event as { markPeopleInVetting?: unknown })} analysisOnly={analysisOnly} />
+      <PhotoReviewStage
+        eventId={id}
+        items={items}
+        vocabulary={vocabulary}
+        markPeople={analysisOnly || markPeopleOn(event as { markPeopleInVetting?: unknown })}
+        analysisOnly={analysisOnly}
+        completionHref={analysisOnly ? `/admin/events/${id}/vetting?photos=approved` : undefined}
+        backHref={`/admin/events/${id}/vetting`}
+        backLabel="Back to Vetting"
+      />
     </div>
   );
 }

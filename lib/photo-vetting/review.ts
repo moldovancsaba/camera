@@ -74,11 +74,11 @@ export const defaultReviewDeps: ReviewDeps = {
 export type ReviewFailure = 'not_reviewable' | 'no_photo' | 'compose_failed';
 
 export type ApproveResult =
-  | { ok: true; email: 'sent' | 'skipped' | 'failed' }
+  | { ok: true; email: 'sent' | 'skipped' | 'failed'; emailDeferred?: true }
   | { ok: false; reason: ReviewFailure; message: string };
 
 export type RejectResult =
-  | { ok: true; email: 'sent' | 'skipped' | 'failed' }
+  | { ok: true; email: 'sent' | 'skipped' | 'failed'; emailDeferred?: true }
   | { ok: false; reason: ReviewFailure; message: string };
 
 export type ReturnToVettingResult =
@@ -137,6 +137,13 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
     }
   }
 
+  const consentStillPending = submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired';
+  const approvedSubmission = { ...submission, reviewStatus: 'approved' as const, isShareVisible: review.shareOptIn === true };
+  const shouldAttemptApprovalEmail = Boolean(
+    submission.shareToken && !consentStillPending &&
+    (reopeningExistingImage || submission.metadata?.emailSentAfterSave !== true) &&
+    isPubliclyVisible(visibilityInputOf(approvedSubmission)),
+  );
   const at = deps.now();
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
     { _id: submission._id, reviewStatus: { $in: ['pending_review', 'rejected'] }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
@@ -158,6 +165,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
         approvedAt: at,
         approvedBy: actorName(actor),
         isShareVisible: review.shareOptIn === true,
+        ...(shouldAttemptApprovalEmail ? { 'metadata.approvalEmailPending': true } : {}),
         updatedAt: at,
       },
       // A photo that was rejected and is approved again is not a rejected photo any more: its reject reasons go (they stay in the review history).
@@ -174,30 +182,18 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
     logWarn('screen_picture.not_scheduled', 'The screen picture could not be scheduled', { submissionId: String(submission._id), error: errorMessage(error) });
   }
 
-  const event = await resolveEventForSubmission(db, submission).catch(() => null);
-
   let email: 'sent' | 'skipped' | 'failed' = 'skipped';
-  const consentStillPending = submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired';
-  // MongoDB does not mutate the document read above when the approval update succeeds. Check the state that was just saved,
-  // rather than the stale pending_review document, or every first-time approval is mistaken for a private photo and skips email.
-  const approvedSubmission = { ...submission, reviewStatus: 'approved', isShareVisible: review.shareOptIn === true };
-  if (submission.shareToken && !consentStillPending && isPubliclyVisible(visibilityInputOf(approvedSubmission)) && (reopeningExistingImage || submission.metadata?.emailSentAfterSave !== true)) {
-    const shareUrl = approvedShareUrl(submission.shareToken);
-    try {
-      const result = await deps.sendApproved(approvedSubmission, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
-      const patch = buildEmailMetadataPatch(result, shareUrl);
-      email = patch.sent ? 'sent' : patch.shouldRetry ? 'failed' : 'skipped';
-      await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: patch.metadataPatch });
-    } catch (error) {
-      email = 'failed';
-      logWarn('photo_vetting.approval_email_failed', 'The approval email could not be sent', { submissionId: String(submission._id), error: errorMessage(error) });
-    }
+  let emailDeferred = false;
+  if (shouldAttemptApprovalEmail) {
+    const result = await sendApprovedLinkForSubmission(db, { ...approvedSubmission, _id: submission._id }, deps, reopeningExistingImage);
+    emailDeferred = result === 'deferred';
+    email = result === 'deferred' ? 'skipped' : result;
   }
 
   // The plain photo is not deleted here (issue 509): it is the only unframed copy of the user's picture until its ImgBB copy is verified. The follow-up work makes that copy after the answer and
   // deletes the Blob file only then (variant B); a failure there never touches the approval, and until then `photoReview.photoUrl` keeps pointing at the file so deleting the submission deletes it.
   try {
-    if (!photo || !review.photoUrl) return { ok: true, email };
+    if (!photo || !review.photoUrl) return { ok: true, email, ...(emailDeferred ? { emailDeferred: true as const } : {}) };
     deps.imageCopies?.(db, {
       submissionId: submission._id,
       composed: {
@@ -211,27 +207,69 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
     logWarn('image_copy.not_scheduled', 'The copies of the approved photo could not be scheduled', { submissionId: String(submission._id), error: errorMessage(error) });
   }
 
-  return { ok: true, email };
+  return { ok: true, email, ...(emailDeferred ? { emailDeferred: true } : {}) };
 }
 
-async function sendApprovedLinkForSubmission(db: Db, submission: Submission | null, deps: ReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
-  if (!submission || submission.reviewStatus !== 'approved' || !isPubliclyVisible(visibilityInputOf({ ...submission })) || !submission.shareToken || !submission.imageUrl || submission.metadata?.emailSentAfterSave === true || submission.metadata?.emailSent === true) {
-    return 'skipped';
-  }
+type DecisionEmailStatus = 'sent' | 'skipped' | 'failed' | 'deferred';
 
-  const event = await resolveEventForSubmission(db, submission).catch(() => null);
-  const shareUrl = approvedShareUrl(submission.shareToken);
+function decisionEmailClaimFilter(submissionId: ObjectId, reviewStatus: 'approved' | 'rejected', claimAt: string): Document {
+  const parsedClaimAt = Date.parse(claimAt);
+  const staleBefore = new Date((Number.isFinite(parsedClaimAt) ? parsedClaimAt : Date.now()) - 5 * 60_000).toISOString();
+  return {
+    _id: submissionId,
+    reviewStatus,
+    $or: [
+      { 'metadata.decisionEmailSending': { $ne: true } },
+      { 'metadata.decisionEmailSendingAt': { $lt: staleBefore } },
+    ],
+  };
+}
+
+async function sendApprovedLinkForSubmission(db: Db, submission: Submission | null, deps: ReviewDeps, force = false): Promise<DecisionEmailStatus> {
+  if (!submission?._id) return 'skipped';
+  const submissionId = submission._id as ObjectId;
+  const initial = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+  if (!initial || initial.reviewStatus !== 'approved') return 'skipped';
+
+  const claimAt = deps.now();
+  const claimFilter = decisionEmailClaimFilter(submissionId, 'approved', claimAt);
+  if (!force) {
+    claimFilter['metadata.emailSentAfterSave'] = { $ne: true };
+    claimFilter['metadata.emailSent'] = { $ne: true };
+  }
+  const claimed = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+    claimFilter,
+    { $set: { 'metadata.decisionEmailSending': true, 'metadata.decisionEmailSendingAt': claimAt } },
+  );
+  if (!claimed.matchedCount) return 'skipped';
+
   try {
-    const result = await deps.sendApproved(submission, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
+    const current = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+    if (!current || current.reviewStatus !== 'approved' || !isPubliclyVisible(visibilityInputOf({ ...current })) || !current.shareToken || !current.imageUrl || (!force && (current.metadata?.emailSentAfterSave === true || current.metadata?.emailSent === true))) {
+      return 'skipped';
+    }
+
+    const event = await resolveEventForSubmission(db, current).catch(() => null);
+    const shareUrl = approvedShareUrl(current.shareToken);
+    const result = await deps.sendApproved(current, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
     const patch = buildEmailMetadataPatch(result, shareUrl);
+    const emailDeferred = patch.metadataPatch['metadata.emailSkipReason'] === 'missing_recipient';
     await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submission._id, reviewStatus: 'approved', 'metadata.emailSentAfterSave': { $ne: true } },
-      { $set: patch.metadataPatch },
+      { _id: submissionId, reviewStatus: 'approved', 'metadata.decisionEmailSending': true },
+      {
+        $set: { ...patch.metadataPatch, ...(emailDeferred ? { 'metadata.approvalEmailPending': true } : {}) },
+        ...(!emailDeferred ? { $unset: { 'metadata.approvalEmailPending': '' } } : {}),
+      },
     );
-    return patch.sent ? 'sent' : patch.shouldRetry ? 'failed' : 'skipped';
+    return patch.sent ? 'sent' : emailDeferred ? 'deferred' : patch.shouldRetry ? 'failed' : 'skipped';
   } catch (error) {
-    logWarn('photo_vetting.approval_email_failed', 'The approval email could not be sent', { submissionId: String(submission._id), error: errorMessage(error) });
+    logWarn('photo_vetting.approval_email_failed', 'The approval email could not be sent', { submissionId: String(submissionId), error: errorMessage(error) });
     return 'failed';
+  } finally {
+    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+      { _id: submissionId, 'metadata.decisionEmailSending': true },
+      { $unset: { 'metadata.decisionEmailSending': '', 'metadata.decisionEmailSendingAt': '' } },
+    ).catch((error) => logWarn('photo_vetting.approval_email_claim_release_failed', 'The approval email claim could not be released', { submissionId: String(submissionId), error: errorMessage(error) }));
   }
 }
 
@@ -239,14 +277,103 @@ async function sendApprovedLinkForSubmission(db: Db, submission: Submission | nu
 export async function sendApprovedLinkAfterConsent(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
   const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
   if (!submission || submission.consentStatus !== 'received' || submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') return 'skipped';
-  return sendApprovedLinkForSubmission(db, submission, deps);
+  const result = await sendApprovedLinkForSubmission(db, submission, deps);
+  return result === 'deferred' ? 'skipped' : result;
+}
+
+/**
+ * The camera uploads as soon as the guest confirms the photo, before any post-capture login or contact page. A moderator can therefore
+ * decide first. When that decision had no recipient, finish the decision e-mail as soon as the guest's identity is linked or entered.
+ */
+async function sendRejectedNoteForSubmission(db: Db, submissionId: ObjectId, deps: ReviewDeps): Promise<DecisionEmailStatus> {
+  const claimAt = deps.now();
+  const claim = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+    { ...decisionEmailClaimFilter(submissionId, 'rejected', claimAt), 'metadata.rejectionEmailPending': true },
+    { $set: { 'metadata.decisionEmailSending': true, 'metadata.decisionEmailSendingAt': claimAt } },
+  );
+  if (!claim.matchedCount) return 'skipped';
+
+  try {
+    const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+    if (!submission || submission.reviewStatus !== 'rejected' || submission.metadata?.rejectionEmailPending !== true) return 'skipped';
+    const event = await resolveEventForSubmission(db, submission).catch(() => null);
+    const result = await deps.sendNotApproved(
+      submission,
+      event,
+      takeAnotherPhotoUrl(String(submission.eventId ?? event?._id ?? ''), undefined, event),
+      undefined,
+      await themeOf(db, event),
+      await textsOf(db, event),
+      await legalOf(db, event),
+    );
+    const at = deps.now();
+    const missingRecipient = !result.sent && result.skipped && result.reason === 'missing_recipient';
+    const providerFailed = !result.sent && !result.skipped;
+    await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+      { _id: submissionId, reviewStatus: 'rejected', 'metadata.decisionEmailSending': true },
+      {
+        $set: {
+          'metadata.rejectionEmailSent': result.sent,
+          'metadata.rejectionEmailAt': at,
+          'metadata.rejectionEmailSkipReason': result.sent ? null : result.skipped ? result.reason : null,
+          ...(result.sent ? {
+            'metadata.rejectionEmailRecipient': result.recipientEmail,
+            'metadata.rejectionEmailProvider': result.provider,
+            'metadata.rejectionEmailMessageId': result.messageId,
+            'metadata.rejectionEmailError': null,
+          } : providerFailed ? { 'metadata.rejectionEmailError': result.error } : {}),
+          ...(missingRecipient ? { 'metadata.rejectionEmailPending': true } : {}),
+        },
+        ...(!missingRecipient ? { $unset: { 'metadata.rejectionEmailPending': '' } } : {}),
+      },
+    );
+    return result.sent ? 'sent' : missingRecipient ? 'deferred' : providerFailed ? 'failed' : 'skipped';
+  } catch (error) {
+    logWarn('photo_vetting.rejection_email_failed', 'The not-approved email could not be sent', { submissionId: String(submissionId), error: errorMessage(error) });
+    return 'failed';
+  } finally {
+    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+      { _id: submissionId, 'metadata.decisionEmailSending': true },
+      { $unset: { 'metadata.decisionEmailSending': '', 'metadata.decisionEmailSendingAt': '' } },
+    ).catch((error) => logWarn('photo_vetting.rejection_email_claim_release_failed', 'The rejection email claim could not be released', { submissionId: String(submissionId), error: errorMessage(error) }));
+  }
+}
+
+export async function sendPendingVettingEmailAfterIdentity(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<DecisionEmailStatus> {
+  let submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+  if (!submission) return 'skipped';
+
+  const olderApprovalWasSkippedForMissingRecipient = submission.reviewStatus === 'approved' && submission.metadata?.emailSent === false && submission.metadata?.emailSkipReason === 'missing_recipient';
+  if (olderApprovalWasSkippedForMissingRecipient && submission.metadata?.approvalEmailPending !== true) {
+    await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+      { _id: submissionId, reviewStatus: 'approved', 'metadata.emailSent': false, 'metadata.emailSkipReason': 'missing_recipient' },
+      { $set: { 'metadata.approvalEmailPending': true } },
+    );
+    submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+    if (!submission) return 'skipped';
+  }
+
+  if (submission.reviewStatus === 'approved' && submission.metadata?.approvalEmailPending === true) {
+    return sendApprovedLinkForSubmission(db, submission, deps);
+  }
+
+  const olderRejectionWasSkipped = submission.reviewStatus === 'rejected' && submission.metadata?.rejectionEmailSent === false && Boolean(submission.metadata?.rejectionEmailAt);
+  if (olderRejectionWasSkipped && submission.metadata?.rejectionEmailPending !== true) {
+    await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+      { _id: submissionId, reviewStatus: 'rejected', 'metadata.rejectionEmailSent': false, 'metadata.rejectionEmailAt': { $exists: true } },
+      { $set: { 'metadata.rejectionEmailPending': true } },
+    );
+  }
+  if (submission.reviewStatus !== 'rejected' || (submission.metadata?.rejectionEmailPending !== true && !olderRejectionWasSkipped)) return 'skipped';
+  return sendRejectedNoteForSubmission(db, submissionId, deps);
 }
 
 /** Let an event manager retry a missed approval email for an already-approved, public photo. */
 export async function retryApprovedPhotoEmail(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
   const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
   if (submission?.retentionStatus === 'pending_erasure' || submission?.retentionStatus === 'erasing' || submission?.retentionStatus === 'erased') return 'skipped';
-  return sendApprovedLinkForSubmission(db, submission, deps);
+  const result = await sendApprovedLinkForSubmission(db, submission, deps);
+  return result === 'deferred' ? 'skipped' : result;
 }
 
 /**
@@ -257,6 +384,7 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
   if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased' || submission.reviewStatus !== 'pending_review') {
     return { ok: false, reason: 'not_reviewable', message: 'This photo is not waiting for a decision' };
   }
+  const shouldSendRejectionEmail = !(submission.photoReview?.returnedAt && submission.photoReview.returnedWasPubliclyVisible !== true);
   const at = deps.now();
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
     { _id: submission._id, reviewStatus: 'pending_review', retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
@@ -266,6 +394,7 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
         reviewNotes: reason,
         rejectReasons: [...reasons],
         isShareVisible: false,
+        ...(shouldSendRejectionEmail ? { 'metadata.rejectionEmailPending': true } : {}),
         updatedAt: at,
       },
       $push: { reviewHistory: { action: 'reject', by: actorName(actor), at, reason, ...(reasons.length > 0 ? { reasons: [...reasons] } : {}) } } as Document,
@@ -274,18 +403,13 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
   if (won.matchedCount === 0) return { ok: false, reason: 'not_reviewable', message: 'Someone else already decided on this photo' };
 
   let email: 'sent' | 'skipped' | 'failed' = 'skipped';
-  try {
-    // An already-hidden photo rejected again keeps the same visibility and gets no duplicate email. If it was public before reopening, the guest does get the final decline result.
-    if (submission.photoReview?.returnedAt && submission.photoReview.returnedWasPubliclyVisible !== true) return { ok: true, email };
-    const event = await resolveEventForSubmission(db, submission).catch(() => null);
-    const result = await deps.sendNotApproved(submission, event, takeAnotherPhotoUrl(String(submission.eventId ?? event?._id ?? ''), undefined, event), undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
-    email = result.sent ? 'sent' : 'skipped' in result && result.skipped ? 'skipped' : 'failed';
-    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { 'metadata.rejectionEmailSent': result.sent, 'metadata.rejectionEmailAt': at } });
-  } catch (error) {
-    email = 'failed';
-    logWarn('photo_vetting.rejection_email_failed', 'The not-approved email could not be sent', { submissionId: String(submission._id), error: errorMessage(error) });
+  let emailDeferred = false;
+  if (shouldSendRejectionEmail) {
+    const result = await sendRejectedNoteForSubmission(db, submission._id, deps);
+    emailDeferred = result === 'deferred';
+    email = result === 'deferred' ? 'skipped' : result;
   }
-  return { ok: true, email };
+  return { ok: true, email, ...(emailDeferred ? { emailDeferred: true } : {}) };
 }
 
 /** Reopens an approved or rejected photo for the normal one-at-a-time review flow. */

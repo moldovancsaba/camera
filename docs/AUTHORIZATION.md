@@ -168,7 +168,7 @@ and a photo that belongs to no event is global-admin only. Changing the event se
 What a visitor may see of a saved photo is decided by one rule, `lib/submissions/visibility.ts` (`isPubliclyVisible`): not archived,
 not hidden from every event it belongs to, not pending or rejected (a vetted photo that is waiting or rejected is shown a notice, never the photo, and only when reached by its share token), and only a plain photo (`submissionKind` missing or `original`): a stored try-on result of the removed try-on integration is never public. It is applied to `/share/[id]` and its link preview, `/api/share/[id]/download`, `/api/slideshows/[id]/next-candidate`
 and `/users/[name]` (admins excepted). The slideshow playlist (pinned photos included), the savetheworld wall, its "people involved" count and
-publish-selfies, the savetheworld private lookup of a photo (empty until approved), the fanmass feed, the generic "after save" email path
+publish-selfies, the savetheworld private lookup of a photo (empty until approved), Fanmass's independent Atlas read, the generic "after save" email path
 and the manual email script follow the same rule for waiting and rejected photos (camera#270). The admin gallery and partner gallery do not
 list them (they are reviewed in the event's Vetting tab), and the global submissions list marks them.
 

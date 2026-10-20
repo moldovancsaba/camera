@@ -39,6 +39,28 @@ Written for owner decision 243 (2026-10-10, issue 521 phase 2): **stop storing t
 
 The Analytics all-events repeat cohort groups existing photo submitter account/e-mail values in memory for a report and returns only counts to global admins. It does not create a stored cross-event identity map or join identities to anonymous Journey rows. The source slug is a narrow attribution field on the submission and should be included in the photo's normal deletion lifecycle.
 
+## Camera → Fanmass image analysis
+
+Camera remains the authority for consent, identity, retention, and human
+vetting. It does not create a Fanmass queue record, call Fanmass, transfer image
+bytes through a Camera API, or store Fanmass's machine-analysis result. Fanmass
+independently reads eligible Camera Atlas records with a least-privilege
+read-only source role, then owns its queue, local image copy, analysis, boxes,
+retry state, and privacy cleanup in its own pipeline database.
+
+Only identified, consented submissions with a usable image can be discovered.
+If the event requires vetting, the submission must be approved first. A
+submission awaiting required identity is marked for 24-hour erasure and is
+excluded from vetting, publication, and Fanmass analysis. Consent withdrawal,
+source deletion, retention expiry, or later ineligibility must be reconciled by
+Fanmass and remove its per-photo result and derived/local copies. That cleanup
+is implemented in Fanmass, but production operation still requires the
+least-privilege Atlas configuration and a verified end-to-end deletion run;
+the Camera Atlas/Fanmass processing path must not be treated as live until that
+operational gate is complete. See [the integration contract](MESSMASS_FANMASS_INTEGRATION.md)
+and the Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md` for the exact source
+projection, queue, privacy, and recovery contract.
+
 ## The IP address, everywhere it still appears
 
 - **The rate limiter** (`lib/api/rateLimiter.ts`) uses the IP address to count requests. It keeps it **in the memory of the server instance** (a bucket per path and address, cleared after an hour) or, when Upstash is configured, **as a SHA-256 hash** (`lib/api/upstash-rate-limit.ts`). It is not written to the database.

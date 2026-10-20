@@ -190,9 +190,10 @@ export interface DecisionNotice {
  * The notice after a decision, from what the review route answers about the e-mail (`sent`, `skipped` when there was nobody to send to, `failed`): it never says the user gets a message that
  * did not go. A missing answer reads as sent (an old server).
  */
-export function decisionNotice(action: 'approve' | 'reject', email: unknown): DecisionNotice {
+export function decisionNotice(action: 'approve' | 'reject', email: unknown, emailDeferred = false): DecisionNotice {
   const done = action === 'approve' ? 'Photo approved' : 'Photo rejected';
   const what = action === 'approve' ? 'the e-mail with the link' : 'the note';
+  if (emailDeferred) return { text: `${done}. The e-mail will be sent when the guest signs in or provides an e-mail address.`, warning: false };
   if (email === 'failed') return { text: `${done}, but ${what} to the user could not be sent.`, warning: true };
   if (email === 'skipped') return { text: `${done}. No e-mail was sent to the user.`, warning: false };
   return { text: action === 'approve' ? 'Photo approved. The user gets the link by email.' : 'Photo rejected. The user gets a short note.', warning: false };
