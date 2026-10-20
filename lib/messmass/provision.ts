@@ -72,7 +72,20 @@ export async function upsertPartner(input: { messmassPartnerId?: string; name: s
   let partner = input.messmassPartnerId
     ? await db.collection(COLLECTIONS.PARTNERS).findOne({ messmassPartnerId: input.messmassPartnerId })
     : null;
-  if (!partner && name) partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ name: ci(name) });
+  if (!partner && name) {
+    // A display-name match is safe only for an unlinked legacy partner. Two
+    // Messmass partners may share a name; never steal a partner linked to a
+    // different Messmass id.
+    const nameQuery = ci(name);
+    partner = await db.collection(COLLECTIONS.PARTNERS).findOne(input.messmassPartnerId
+      ? {
+          $and: [
+            { name: nameQuery },
+            { $or: [{ messmassPartnerId: { $exists: false } }, { messmassPartnerId: null }, { messmassPartnerId: '' }] },
+          ],
+        }
+      : { name: nameQuery });
+  }
   if (partner) {
     const set: Record<string, unknown> = { updatedAt: now };
     if (input.messmassPartnerId) set.messmassPartnerId = input.messmassPartnerId;
@@ -106,26 +119,67 @@ export async function findPartners(query: { name?: string; messmassPartnerId?: s
   return docs.map((p) => ({ partnerId: p.partnerId, name: p.name, messmassPartnerId: p.messmassPartnerId ?? null, organizationId: p.organizationId ?? null }));
 }
 
-export async function provisionEvent(input: { messmassEventId: string; messmassPartnerId?: string; partnerId?: string; eventName: string; eventDate?: string }) {
+export async function provisionEvent(input: {
+  messmassEventId: string;
+  messmassPartnerId?: string;
+  partnerId?: string;
+  eventName: string;
+  eventDate?: string | null;
+  cameraEventId?: string;
+  replaceMessmassEventId?: string;
+}) {
   const db = await connectToDatabase();
   const now = generateTimestamp();
   if (!input.messmassEventId) {
     throw apiBadRequest('messmassEventId is required');
-  }
-  // Idempotent: one camera event per messmass event.
-  const existing = await db.collection(COLLECTIONS.EVENTS).findOne({ messmassEventId: input.messmassEventId });
-  if (existing) {
-    return { eventId: existing.eventId, mongoId: String(existing._id), partnerId: existing.partnerId, created: false };
   }
   let partner = input.partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: input.partnerId }) : null;
   if (!partner && input.messmassPartnerId) partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ messmassPartnerId: input.messmassPartnerId });
   if (!partner) {
     throw apiNotFound('camera partner (provision the partner first)');
   }
+
+  // Idempotent: exactly one Camera event per Messmass event. Existing mirrors
+  // are refreshed from Messmass's canonical title, date, and partner mapping.
+  const existing = await db.collection(COLLECTIONS.EVENTS).findOne({ messmassEventId: input.messmassEventId });
+  if (existing && input.cameraEventId && existing.eventId !== input.cameraEventId) {
+    throw apiBadRequest('Messmass event is already linked to a different Camera event');
+  }
+  let target = existing;
+  if (input.cameraEventId) {
+    target = await db.collection(COLLECTIONS.EVENTS).findOne({ eventId: input.cameraEventId });
+    if (!target) throw apiNotFound('camera event to link');
+    const currentMessmassEventId = String(target.messmassEventId || '');
+    if (currentMessmassEventId && currentMessmassEventId !== input.messmassEventId && currentMessmassEventId !== input.replaceMessmassEventId) {
+      throw apiBadRequest('Camera event is already linked to a different Messmass event');
+    }
+  }
+
+  const eventName = typeof input.eventName === 'string' && input.eventName.length ? input.eventName : 'Untitled event';
+  const canonicalFields: Record<string, unknown> = {
+    messmassEventId: input.messmassEventId,
+    name: eventName,
+    partnerId: partner.partnerId,
+    partnerName: partner.name,
+    source: 'messmass',
+    updatedAt: now,
+  };
+  if (input.eventDate !== null && input.eventDate !== undefined && input.eventDate !== '') {
+    canonicalFields.eventDate = input.eventDate;
+  }
+  if (target) {
+    const update: Record<string, unknown> = { $set: canonicalFields };
+    if (input.eventDate === null || input.eventDate === undefined || input.eventDate === '') {
+      update.$unset = { eventDate: '' };
+    }
+    await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: target._id }, update);
+    return { eventId: target.eventId, mongoId: String(target._id), partnerId: partner.partnerId, created: false };
+  }
+
   const defaults = await inheritPartnerDefaults(partner.partnerId);
   const doc: Record<string, unknown> = {
     eventId: generateId(),
-    name: String(input.eventName || '').trim() || 'Untitled event',
+    name: eventName,
     partnerId: partner.partnerId,
     partnerName: partner.name,
     eventDate: input.eventDate || undefined,

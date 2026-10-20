@@ -4,10 +4,10 @@ import { assertInternalMessmassSecret } from '@/lib/messmass/internal';
 import { provisionEvent } from '@/lib/messmass/provision';
 
 // POST /api/internal/messmass/events
-//   { messmassEventId, eventName, eventDate?, messmassPartnerId? | partnerId? }
-// Idempotently create a camera event for the partner, inheriting the partner's
-// default design (brand colors / frames / logos), and stamp the messmass id.
-// The frame images of a new event are rendered after the response.
+//   { messmassEventId, eventName, eventDate?, messmassPartnerId? | partnerId?, cameraEventId?, replaceMessmassEventId? }
+// Create a Camera mirror or refresh/link an explicitly selected existing event.
+// Existing event submissions and design are preserved when its canonical
+// Messmass metadata is refreshed.
 export const maxDuration = 60;
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
@@ -20,6 +20,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     partnerId: body.partnerId,
     eventName: body.eventName,
     eventDate: body.eventDate,
+    cameraEventId: body.cameraEventId,
+    replaceMessmassEventId: body.replaceMessmassEventId,
   });
   return apiSuccess({ event }, event.created ? 201 : 200);
 });
