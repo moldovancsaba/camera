@@ -24,7 +24,7 @@ Written for owner decision 243 (2026-10-10, issue 521 phase 2): **stop storing t
 | The unframed photo (the crop the user saved, before the frame) | a private file in the Blob store (`pending/<event>/…`, an unlisted address, never returned by a public route) until its copy on ImgBB is verified, then **only on ImgBB** (a public third-party image host: the file has an address that anybody who knows it can open, and ImgBB's terms let it remove files without notice; owner decisions 295 and "variant B"). Both are named on the photo in `imageCopies`; the Blob entry stays as a `deleted` row | **since issue 509 the Blob file is kept after the photo is approved until ImgBB holds a verified copy, then deleted** (it used to be deleted at approval); a copy that cannot be verified leaves the Blob file in place. A waiting or rejected photo keeps its Blob file. Owner answer 226: ImgBB's copy is kept **90 days after the event, then deleted on request**. **That deletion is not built: nothing deletes it automatically yet**, so today it is kept until the photo is removed. Deleting a photo deletes the Blob file (if it is still there) and requests the deletion of the ImgBB file through its stored link (best effort: a failed request is logged with the file's address, and the file is then removed by hand). The admin Image safety card can make the ImgBB copy and delete the Blob file for approved photos where the approval could not (waiting and rejected photos are never copied) |
 | The framed picture | `submissions` (`imageUrl`), in the Blob store and, when the mirror worked, on ImgBB (its address and delete link are now recorded in `imageCopies`); the Image safety card also makes a second copy of a picture that existed in one place only (an extra file in our store under `rescue/`, or an ImgBB upload) | the picture the public sees (the frame is on it) | until the photo is removed (every recorded copy is deleted with it) |
 | What the vetting person marked in the photo (issue 628) | on the photo: `people`, `peopleReview`, `rejectReasons` | for each person in the picture a rectangle and the words chosen from the list of the event (gender and age as the person looks in the photo, how they look, what they wear or hold), who marked it (the reviewer's e-mail) and when, the version of the list used; for a rejected photo the reasons from a fixed list and the optional note. **These are a reviewer's reading of the picture, not facts about the person, and are kept with the photo; no name, e-mail or identity of the people in the picture is added.** Counted per event for the Analytics (and, once the owner switches it on, as `camera_` totals for messmass: counts only, never a person). **Rejected photos are marked too** and stay private (never shown to anyone but the vetting person). Not exported and not used to train anything; whether the terms the user accepted cover that is a question for legal ([AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md](AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md)) | with the photo |
-| Consents | on the photo, `consents[]` | the page, the exact text and link, the sentence read, accepted, the time. Only acceptances exist | with the photo |
+| Consents | on the photo, `consents[]` | the page, exact checkbox text and link, the sentence read, whether it was accepted (including an optional checkbox left unticked), and the time | with the photo while consent remains valid |
 | Registration | `email_registrations` | the event, e-mail, name, first and last seen, whether the welcome e-mail went (only for events that send it) | until removed |
 | The anonymous journey | `journey_daily`, `journey_events` | fixed event/key counts, anonymous step transitions, upload outcome/duration bands and coarse device/method categories; no IP address, retained user agent, account identity or photo | raw rows 30 days; daily counts and completed-duration sum/sample aggregates indefinitely |
 | SSO completion analytics | `journey_daily`, `journey_events` | provider and bounded callback outcome category only; no account, token, raw error or provider response | raw rows 30 days; aggregate counts indefinitely |
@@ -60,6 +60,16 @@ the Camera Atlas/Fanmass processing path must not be treated as live until that
 operational gate is complete. See [the integration contract](MESSMASS_FANMASS_INTEGRATION.md)
 and the Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md` for the exact source
 projection, queue, privacy, and recovery contract.
+
+Camera treats a missing or unverifiable consent audit as **no consent**. A
+status-less legacy submission is reconciled to `received` only when it has a
+complete, timestamped consent record that satisfies the event's required
+checkboxes. Otherwise it stays out of vetting, publication, analytics
+processing, and Fanmass for the 24-hour hold, then the scheduled cleanup deletes
+its stored image copies and removes its contact, consent, review, and analysis
+data. The database keeps a minimal `expired` tombstone to count the automatic
+deletion; it does not keep the user's identity. Failed file deletion remains
+private and is retried by the cleanup job.
 
 ## The IP address, everywhere it still appears
 
