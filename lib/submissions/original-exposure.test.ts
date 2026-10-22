@@ -23,6 +23,7 @@ const ALLOWED: Record<string, string> = {
   'lib/savetheworld/publishSelfies.ts': 'query that decides which submissions to publish; reads no URL out',
   'lib/savetheworld/wall.ts': 'only documents that the original is excluded from the public wall projection',
   'lib/photo-vetting/review.ts': 'approval stores the composite in the field, as for any photo without a distinct original; no URL is read out',
+  'lib/photo-vetting/queue.ts': 'event-manager-authorized vetting cards use the private original only when the private moderation crop is missing; it is delivered only to the signed-in reviewer and not to a public surface',
   'lib/fanmass/photo-results.ts': 'admin-only, event-manager-authorized Fanmass review page uses the private unframed photo for per-photo analysis; the URL is sent only to that signed-in reviewer and never to a public surface',
   'lib/screen/welcome-photo.ts': 'reads it only for an editor\'s own gallery upload (`metadata.adminGalleryUpload`), whose plain upload is kept there, never for a guest\'s private original; the picture is drawn into the welcome page screen and no URL is returned to a public response (the admin picker list is behind an admin session)',
   'lib/submissions/delete-files.ts': 'reads the URL only to delete the file with the submission; returns counts, never a URL',
