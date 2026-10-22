@@ -381,8 +381,8 @@ export default function EventGallery({
         ) : null}
         <StateBlock
           variant="empty"
-          title="No submissions yet"
-          description="Upload images above or open the public capture page for guests."
+          title="No photos to show"
+          description="Photos appear here when an image is available and guest consent and event vetting requirements are met. Upload an image above or open the public capture page for guests."
           action={
             <Link href={`/capture/${eventId}`} style={{ textDecoration: 'none' }}>
               <SemanticButton action="event-gallery:start-capturing">Start Capturing</SemanticButton>
