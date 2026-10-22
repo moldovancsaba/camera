@@ -17,6 +17,7 @@ import {
 } from '@/lib/email/submission-template-defaults';
 import { DEFAULT_UI_LANGUAGE, normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
 import { loadEventTexts, withEffectiveLanguage, type TextOverrides } from '@/lib/i18n/overrides';
+import { guestContactOf } from '@/lib/submissions/guest-contact';
 
 export interface SubmissionEmailPolicy {
   enabled: boolean;
@@ -72,16 +73,18 @@ export function resolveSubmissionResultEmailRecipient(submission: {
   userInfo?: { name?: string; email?: string } | null;
   userEmail?: string;
   userName?: string | null;
+  userId?: string;
+  userInfoDraft?: { name?: string; email?: string } | null;
+  guestContact?: { status?: string; source?: string | null; name?: string | null; email?: string | null; updatedAt?: string | null; completedAt?: string | null };
 }): SubmissionEmailRecipient {
+  const contact = guestContactOf(submission);
   // "there" when no name is known: the sender puts the word of the event's language in its place (camera#352).
-  const name = readString(submission.userInfo?.name) || readString(submission.userName) || translate(DEFAULT_UI_LANGUAGE, 'email.nameFallback');
-  const candidateEmail =
-    readString(submission.userInfo?.email) ||
-    (submission.userEmail && submission.userEmail !== 'anonymous@event' ? submission.userEmail : null);
+  const name = contact.name || readString(submission.userInfo?.name) || readString(submission.userName) || translate(DEFAULT_UI_LANGUAGE, 'email.nameFallback');
+  const candidateEmail = contact.status === 'complete' ? contact.email : null;
 
   return {
     name,
-    email: sanitizeEmail(candidateEmail || ''),
+    email: candidateEmail ? sanitizeEmail(candidateEmail) : null,
   };
 }
 

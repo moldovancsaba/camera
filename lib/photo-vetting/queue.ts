@@ -7,6 +7,7 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { CONSENT_ELIGIBLE_FILTER, CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER } from '@/lib/events/consent-eligibility';
+import { guestContactOf, processingContactMongoFilter } from '@/lib/submissions/guest-contact';
 
 export type QueueStatus = 'pending_review' | 'rejected' | 'approved';
 
@@ -33,19 +34,15 @@ export interface PhotoQueueItem {
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
-const emailOf = (doc: Document): string | null => {
-  const emails = [text(doc.userInfo?.email), text(doc.userInfoDraft?.email), text(doc.userEmail)];
-  return emails.find((email) => email && email !== 'anonymous@event' && email !== 'anonymous@event.com') ?? null;
-};
-
 /** Read one photo card for moderation. Analytics results are loaded from the linked Fanmass per-photo result, never from legacy annotations. */
 export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
   const status: QueueStatus = doc.reviewStatus === 'approved' ? 'approved' : doc.reviewStatus === 'rejected' ? 'rejected' : 'pending_review';
   const review = (doc.photoReview ?? {}) as Document;
   const history = Array.isArray(doc.reviewHistory) ? (doc.reviewHistory as Document[]) : [];
   const last = history[history.length - 1];
-  const name = text(doc.userInfo?.name) ?? text(doc.userInfoDraft?.name) ?? text(doc.userName) ?? 'Guest';
-  const email = emailOf(doc);
+  const contact = guestContactOf(doc);
+  const name = contact.name ?? text(doc.userInfoDraft?.name) ?? text(doc.userName) ?? 'Guest';
+  const email = contact.email;
   const registered = typeof doc.userId === 'string' && Boolean(doc.userId) && doc.userId !== 'anonymous';
   return {
     id: String(doc._id),
@@ -71,6 +68,7 @@ export function queueFilter(eventUuid: string, status: QueueStatus): Document {
     $and: [
       { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
       CONSENT_ELIGIBLE_FILTER,
+      processingContactMongoFilter,
       {
         photoReview: { $exists: true },
         reviewStatus: status,
@@ -122,6 +120,7 @@ export async function countWaitingPhotos(db: Db, eventUuids: readonly string[] |
           reviewStatus: 'pending_review',
           isArchived: { $ne: true },
           ...CONSENT_ELIGIBLE_FILTER,
+          ...processingContactMongoFilter,
           retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
           eventId: eventUuids ? { $in: [...eventUuids] } : { $type: 'string' },
         },

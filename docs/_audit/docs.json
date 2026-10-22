@@ -46,6 +46,7 @@
   {"file": "docs/GDS_COMPONENT_RULES.md", "title": "Camera GDS Component Rules"},
   {"file": "docs/GDS_EXCEPTION_STANDARD.md", "title": "GDS Exception Standard"},
   {"file": "docs/GDS_RELEASE_GATE.md", "title": "Camera GDS Release Gate"},
+  {"file": "docs/GUEST_CONTACT_AND_ERASURE.md", "title": "Participant contact, eligibility, and erasure"},
   {"file": "docs/IMAGE_DIRECT_INTEGRATION.md", "title": "Camera \u2194 image.direct rendering contract"},
   {"file": "docs/JOURNEY_DEFAULT_PAGES.md", "title": "Default pages of the user flow and the global switch"},
   {"file": "docs/JOURNEY_DESIGN_PLAN.md", "title": "Event design on the guest journey (plan)"},

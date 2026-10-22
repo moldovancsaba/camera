@@ -35,8 +35,8 @@ function buildSubmission(finalized: boolean) {
   return {
     _id: submissionObjectId,
     submissionId: 'sub-1',
-    userId: 'user-1',
-    userEmail: 'user@example.com',
+    userId: finalized ? 'user-1' : 'anonymous',
+    userEmail: finalized ? 'user@example.com' : 'anonymous@event',
     frameId: 'frame-1',
     eventIds: [],
     originalImageUrl: 'https://example.com/original.jpg',

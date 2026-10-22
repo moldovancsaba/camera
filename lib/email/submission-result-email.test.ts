@@ -66,6 +66,24 @@ test('a guest without a name is "there" to the sender, as before', () => {
   assert.equal(resolveSubmissionResultEmailRecipient({ userInfo: { email: 'ann@example.com' } }).name, 'there');
 });
 
+test('email routing uses the canonical finalized contact and never sends a draft or moderator-side anonymous address', () => {
+  assert.deepEqual(resolveSubmissionResultEmailRecipient({
+    guestContact: { status: 'complete', source: 'typed_email', name: 'Ann', email: 'ann@example.com' },
+    userInfo: { name: 'Stale name', email: 'stale@example.com' },
+    userEmail: 'moderator@example.com',
+    userId: 'anonymous',
+  }), { name: 'Ann', email: 'ann@example.com' });
+  assert.equal(resolveSubmissionResultEmailRecipient({
+    guestContact: { status: 'draft', source: 'typed_email', name: 'Ann', email: 'ann@example.com' },
+    userInfo: { name: 'Old', email: 'old@example.com' },
+    userEmail: 'moderator@example.com',
+    userId: 'anonymous',
+  }).email, null);
+  assert.equal(resolveSubmissionResultEmailRecipient({ userId: 'anonymous', userEmail: 'moderator@example.com' }).email, null);
+  assert.equal(resolveSubmissionResultEmailRecipient({ userId: 'anonymous', userEmail: 'anonymous@event.com' }).email, null);
+  assert.equal(resolveSubmissionResultEmailRecipient({ userId: 'anonymous', userInfo: { email: 'typed@example.com' } }).email, 'typed@example.com');
+});
+
 test('an event with no language of its own is read with its partner\'s, so its e-mails go out in that language; an event with its own keeps it; the wordings of the levels are read for the e-mails', async () => {
   const { fakeDb } = await import('@/lib/library/fake-db');
   const { resolveEventForSubmission, textsOf } = await import('./submission-result-email');

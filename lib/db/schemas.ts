@@ -785,6 +785,15 @@ export interface Submission {
   userId: string;                    // User ID from SSO
   userEmail: string;                 // User email from SSO
   userName?: string | null;          // Cached display name used by share/profile/admin surfaces
+  /** Canonical contact lifecycle. userInfo/userEmail remain compatibility mirrors for older routes and deployments. */
+  guestContact?: {
+    status: 'awaiting_contact' | 'draft' | 'complete' | 'erased';
+    source: 'typed_email' | 'social_login' | 'legacy' | null;
+    name: string | null;
+    email: string | null;
+    updatedAt: string | null;
+    completedAt: string | null;
+  };
   frameId: string;                   // Reference to frame used
   
   // Partner/Event context for gallery organization

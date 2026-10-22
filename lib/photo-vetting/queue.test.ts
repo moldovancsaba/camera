@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
 import { CONSENT_ELIGIBLE_FILTER } from '@/lib/events/consent-eligibility';
+import { processingContactMongoFilter } from '@/lib/submissions/guest-contact';
 import { countPhotoQueue, countWaitingPhotos, isQueueStatus, loadPhotoQueue, queueFilter, toPhotoQueueItem } from './queue';
 
 const base = () => ({
@@ -35,11 +36,16 @@ test('an approved photo shows the real picture and the last decision', () => {
   assert.deepEqual(item.last, { action: 'approve', by: 'mod@example.com', at: 't2', reason: null });
 });
 
-test('approval email retry status accepts the actual successful send markers and an older address field', () => {
-  const needsRetry = toPhotoQueueItem({ ...base(), reviewStatus: 'approved', userInfo: undefined, userEmail: 'legacy@example.com' });
+test('approval email retry status accepts the actual successful send markers and a registered legacy account address', () => {
+  const needsRetry = toPhotoQueueItem({ ...base(), reviewStatus: 'approved', userId: 'member-1', userInfo: undefined, userEmail: 'legacy@example.com' });
   const sent = toPhotoQueueItem({ ...base(), reviewStatus: 'approved', metadata: { emailSentAfterSave: true } });
   assert.deepEqual([needsRetry.email, needsRetry.approvalEmailSent], ['legacy@example.com', false]);
   assert.equal(sent.approvalEmailSent, true);
+});
+
+test('an anonymous submission never displays a reviewer-side top-level email as the participant contact', () => {
+  const item = toPhotoQueueItem({ ...base(), userId: 'anonymous', userInfo: undefined, userEmail: 'moderator@example.com' });
+  assert.equal(item.email, null);
 });
 
 test('a returned approved photo uses its published composite when the private source is gone', () => {
@@ -71,6 +77,7 @@ test('the queue covers photos that went through vetting for one event, not archi
     $and: [
       { $or: [{ eventId: 'e1' }, { eventIds: { $in: ['e1'] } }] },
       CONSENT_ELIGIBLE_FILTER,
+      processingContactMongoFilter,
       {
         photoReview: { $exists: true },
         reviewStatus: 'pending_review',

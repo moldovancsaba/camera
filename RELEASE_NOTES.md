@@ -1,5 +1,15 @@
 # RELEASE_NOTES.md
 
+## Unreleased — unify participant contact and 24-hour erasure (2026-10-22)
+
+- **Added:** a canonical `guestContact` lifecycle (`awaiting_contact`, `draft`, `complete`, `erased`) alongside compatibility mirrors. A login ID without a usable e-mail does not count as a deliverable contact.
+- **Held:** photos without finalized participant contact are excluded from Camera vetting, gallery, Photo analysis results, and the Fanmass result-review API. They stay on a 24-hour erasure deadline.
+- **Fixed:** legacy queue displays no longer treat an anonymous record's top-level `userEmail` as the participant address; only finalized `userInfo.email` or a valid non-anonymous account address can be used.
+- **Fanmass boundary:** Atlas calculates a single contact-eligibility boolean before source projection. Name and e-mail are never sent in its task or analysis record.
+- **Erasure:** the scheduled cleanup derives deadlines for legacy anonymous records, marks erased contact state, and removes identity, consent, and image references as it deletes stored files. Missing/unverifiable consent audit remains an immediate no-consent cleanup condition.
+- **Documentation:** [GUEST_CONTACT_AND_ERASURE.md](docs/GUEST_CONTACT_AND_ERASURE.md) now defines the live flow; the old identity timing description in the vetting plan is explicitly historical.
+- **Not done:** no production cleanup/backfill or cross-cluster database move was run. Private offsite image backup and Messmass's migration remain blocked on verified backup/copy infrastructure and data reconciliation.
+
 ## Unreleased — unify vetting and per-photo Fanmass analysis; retain image sources (2026-10-22)
 
 - **Security:** update Next.js to 16.4.2 (patched for current 16.4.0-and-earlier advisories) and `follow-redirects` to 1.16.1; `npm audit` reports zero vulnerabilities.
