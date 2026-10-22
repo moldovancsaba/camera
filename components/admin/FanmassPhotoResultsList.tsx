@@ -90,6 +90,7 @@ export default function FanmassPhotoResultsList({ eventId, items }: { eventId: s
           { id: 'pose-count', label: 'Pose detections', value: result ? String(asCount(result.analysis.poseCount)) : '—', tone: 'muted' },
           { id: 'object-person-count', label: 'Object-model person detections', value: result ? String(asCount(asRecord(asRecord(result.analysis.detection)?.objects)?.personCount)) : '—', tone: 'muted' },
           { id: 'brand-appearances', label: 'Brand appearances', value: result ? String(resultMetricCount(result, 'brandMentions', 'fashionBrands')) : '—', tone: 'muted' },
+          { id: 'brand-region-boxes', label: 'Brand region boxes', value: result ? String(result.boxes.brandRegions.length) : '—', tone: 'muted' },
           { id: 'club-appearances', label: 'Club appearances', value: result ? String(resultMetricCount(result, 'clubMentions', 'sportsMerchandise', (entry) => String(entry.entityType ?? '').toLowerCase() === 'club')) : '—', tone: 'muted' },
           { id: 'merchandise-detections', label: 'Merchandise detections', value: result ? String(resultMetricCount(result, 'merchandiseCounts', 'sportsMerchandise')) : '—', tone: 'muted' },
           { id: 'safety-status', label: 'Content safety', value: result ? moduleState(result.summary.moderation) : '—', tone: result && asRecord(result.summary.moderation)?.flagged === true ? 'warning' : 'muted' },

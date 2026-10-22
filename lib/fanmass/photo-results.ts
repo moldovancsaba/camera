@@ -38,10 +38,22 @@ export interface FanmassFaceBox {
   smiling: boolean;
 }
 
+export interface FanmassBrandRegionBox {
+  id: string;
+  box: FanmassBox;
+  brandType: string;
+  shortName: string;
+  visibleText: string;
+  itemType: string;
+  confidence: number | null;
+  detail: string;
+  source: string;
+}
+
 export interface FanmassEditableResult {
   summary: FanmassPhotoResultView['summary'];
   analysis: Record<string, unknown>;
-  boxes: { people: FanmassPersonBox[]; faces: FanmassFaceBox[] };
+  boxes: { people: FanmassPersonBox[]; faces: FanmassFaceBox[]; brandRegions: FanmassBrandRegionBox[] };
 }
 
 export interface FanmassHumanCorrection extends FanmassEditableResult {
@@ -71,7 +83,7 @@ export interface FanmassPhotoResultView {
   };
   /** Allowlisted, identity-free per-photo analysis modules exactly as Fanmass persisted them. */
   analysis: Record<string, unknown>;
-  boxes: { people: FanmassPersonBox[]; faces: FanmassFaceBox[] };
+  boxes: { people: FanmassPersonBox[]; faces: FanmassFaceBox[]; brandRegions: FanmassBrandRegionBox[] };
 }
 
 export interface FanmassEventPhoto {
@@ -180,9 +192,9 @@ function fanmassEligiblePhotoFilter(eventId: string, event: Document): Document 
         : { partnerId: { $exists: true, $nin: [null, ''] } },
       {
         $or: [
-          { originalImageUrl: { $type: 'string', $ne: '' } },
-          { imageUrl: { $type: 'string', $ne: '' } },
-          { finalImageUrl: { $type: 'string', $ne: '' } },
+          { 'photoReview.photoUrl': { $type: 'string', $ne: '' } },
+          { imageCopies: { $elemMatch: { role: 'unframed', state: 'verified', url: { $type: 'string', $ne: '' } } } },
+          { originalImageUrl: { $type: 'string', $ne: '' }, reframe: { $type: 'object' } },
         ],
       },
     ],
@@ -239,6 +251,28 @@ function safeFaceBoxes(value: unknown): FanmassFaceBox[] {
   });
 }
 
+function safeBrandRegionBoxes(value: unknown): FanmassBrandRegionBox[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry, index) => {
+    const row = record(entry);
+    const box = normalizeBox(row?.box);
+    if (!row || !box) return [];
+    const confidence = row.confidence;
+    return [{
+      ...jsonRecord(row),
+      id: text(row.id) ?? 'brand-' + (index + 1),
+      box,
+      brandType: text(row.brandType) ?? 'unknown',
+      shortName: text(row.shortName) ?? 'Unknown',
+      visibleText: text(row.visibleText) ?? '',
+      itemType: text(row.itemType) ?? 'other',
+      confidence: typeof confidence === 'number' && Number.isFinite(confidence) ? confidence : null,
+      detail: text(row.detail) ?? '',
+      source: text(row.source) ?? '',
+    }];
+  });
+}
+
 function resultView(doc: Document | undefined, queue: Document): FanmassPhotoResultView | null {
   if (!doc || doc.status !== 'completed') return null;
   if (doc.sourceRevision !== queue.sourceRevision || Number(doc.leaseGeneration ?? 0) !== Number(queue.leaseGeneration ?? 0)) return null;
@@ -262,7 +296,11 @@ function resultView(doc: Document | undefined, queue: Document): FanmassPhotoRes
       fashionBrands: jsonRecord(summary.fashionBrands),
     },
     analysis: jsonRecord(doc.analysis) ?? jsonRecord(record(doc.photoResult)?.analysis) ?? {},
-    boxes: { people: safePersonBoxes(boxes.people), faces: safeFaceBoxes(boxes.faces) },
+    boxes: {
+      people: safePersonBoxes(boxes.people),
+      faces: safeFaceBoxes(boxes.faces),
+      brandRegions: safeBrandRegionBoxes(boxes.brandRegions),
+    },
   };
 }
 
@@ -287,7 +325,11 @@ function correctionView(review: Document | null, result: FanmassPhotoResultView 
       fashionBrands: jsonRecord(summary.fashionBrands),
     },
     analysis,
-    boxes: { people: safePersonBoxes(boxes.people), faces: safeFaceBoxes(boxes.faces) },
+    boxes: {
+      people: safePersonBoxes(boxes.people),
+      faces: safeFaceBoxes(boxes.faces),
+      brandRegions: safeBrandRegionBoxes(boxes.brandRegions),
+    },
     correctedAt: iso(saved.correctedAt) ?? '',
     correctedBy: text(saved.correctedBy) ?? 'event reviewer',
     sourceRevision: result.sourceRevision,
@@ -295,11 +337,15 @@ function correctionView(review: Document | null, result: FanmassPhotoResultView 
   };
 }
 
-function publicImageUrl(submission: Document): string | null {
+export function fanmassAnalysisImageUrl(submission: Document): string | null {
   const reviewPhoto = record(submission.photoReview)?.photoUrl;
   const copies = Array.isArray(submission.imageCopies) ? submission.imageCopies as Document[] : [];
-  const unframed = copies.find((copy) => copy.role === 'unframed' && copy.state === 'verified')?.url;
-  return text(submission.originalImageUrl) ?? text(reviewPhoto) ?? text(unframed) ?? text(submission.imageUrl) ?? text(submission.finalImageUrl);
+  const unframed = copies.find((copy) => copy.role === 'unframed' && copy.state === 'verified' && typeof copy.url === 'string')?.url;
+  if (text(reviewPhoto)) return text(reviewPhoto);
+  if (text(unframed)) return text(unframed);
+  // Legacy originalImageUrl values can contain the framed composite. Camera's
+  // reframe record proves that the URL is a separate, unframed camera original.
+  return record(submission.reframe) ? text(submission.originalImageUrl) : null;
 }
 
 function isConfirmed(review: unknown, result: FanmassPhotoResultView | null): boolean {
@@ -334,7 +380,7 @@ function imageAndReviewFields(doc: Document, queue: Document | undefined, result
   return {
     id: String(doc._id),
     submissionId: text(doc.submissionId) ?? String(doc._id),
-    photoUrl: publicImageUrl(doc),
+    photoUrl: fanmassAnalysisImageUrl(doc),
     createdAt: iso(doc.createdAt),
     queueStatus,
     queueUpdatedAt: iso(queue?.updatedAt),
@@ -392,7 +438,7 @@ export async function loadFanmassEventAnalysisPage(
     submissions.find(eligibleFilter, { projection: { _id: 1 } }).toArray(),
     submissions.find(eligibleFilter, {
       projection: {
-        _id: 1, submissionId: 1, originalImageUrl: 1, imageUrl: 1, finalImageUrl: 1, photoReview: 1, imageCopies: 1,
+        _id: 1, submissionId: 1, originalImageUrl: 1, photoReview: 1, imageCopies: 1, reframe: 1,
         createdAt: 1, fanmassAnalysisReview: 1,
       },
       sort: { createdAt: -1, _id: -1 },
@@ -517,7 +563,7 @@ export async function loadFanmassEventPhoto(
   const eligibleFilter = fanmassEligiblePhotoFilter(eventId, event);
   const source = await cameraDb.collection(COLLECTIONS.SUBMISSIONS).findOne(
     { $and: [eligibleFilter, { _id: submissionObjectId }] },
-    { projection: { _id: 1, submissionId: 1, originalImageUrl: 1, imageUrl: 1, finalImageUrl: 1, photoReview: 1, imageCopies: 1, createdAt: 1, fanmassAnalysisReview: 1 } },
+    { projection: { _id: 1, submissionId: 1, originalImageUrl: 1, photoReview: 1, imageCopies: 1, reframe: 1, createdAt: 1, fanmassAnalysisReview: 1 } },
   );
   if (!source) return null;
   const pipelineDb = await connectToDatabaseByName(PIPELINE_DATABASE);
@@ -581,6 +627,7 @@ export async function confirmFanmassEventPhoto(
         fanmassAnalysisReview: {
           status: 'confirmed',
           confirmedAt,
+          updatedAt: confirmedAt,
           confirmedBy,
           sourceRevision: item.result.sourceRevision,
           analysisGeneration: item.result.analysisGeneration,
@@ -598,12 +645,13 @@ function editableResult(value: unknown): FanmassEditableResult | null {
   const summary = jsonRecord(row?.summary);
   const analysis = jsonRecord(row?.analysis);
   const boxes = record(row?.boxes);
-  if (!summary || !analysis || !boxes || !Array.isArray(boxes.people) || !Array.isArray(boxes.faces)) return null;
+  if (!summary || !analysis || !boxes || !Array.isArray(boxes.people) || !Array.isArray(boxes.faces) || (boxes.brandRegions !== undefined && !Array.isArray(boxes.brandRegions))) return null;
   const serialized = JSON.stringify({ summary, analysis, boxes });
   if (serialized.length > 250_000 || boxes.people.length > 300 || boxes.faces.length > 300) return null;
   const people = safePersonBoxes(boxes.people);
   const faces = safeFaceBoxes(boxes.faces);
-  if (people.length !== boxes.people.length || faces.length !== boxes.faces.length) return null;
+  const brandRegions = safeBrandRegionBoxes(boxes.brandRegions ?? []);
+  if (people.length !== boxes.people.length || faces.length !== boxes.faces.length || brandRegions.length !== (boxes.brandRegions ?? []).length) return null;
   const countFields = ['personCount', 'realPersonCount', 'displayPersonCount', 'crowdEstimate'];
   for (const key of countFields) {
     if (typeof summary[key] !== 'number' || !Number.isFinite(summary[key]) || (summary[key] as number) < 0) return null;
@@ -623,7 +671,7 @@ function editableResult(value: unknown): FanmassEditableResult | null {
       fashionBrands: jsonRecord(summary.fashionBrands),
     },
     analysis,
-    boxes: { people, faces },
+    boxes: { people, faces, brandRegions },
   };
 }
 
@@ -657,6 +705,7 @@ export async function saveFanmassEventPhotoCorrection(
       $set: {
         fanmassAnalysisReview: {
           status: 'corrected',
+          updatedAt: correctedAt,
           correction,
         },
       },

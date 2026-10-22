@@ -289,6 +289,7 @@ export default function FanmassPhotoResultReview({
   const displayResult = result ? { ...result, ...(correction ?? {}) } : null;
   const people = displayResult?.boxes.people ?? [];
   const faces = displayResult?.boxes.faces ?? [];
+  const brandRegions = displayResult?.boxes.brandRegions ?? [];
   const draftBoxes = draftResult?.boxes && typeof draftResult.boxes === 'object' && !Array.isArray(draftResult.boxes)
     ? draftResult.boxes as { [key: string]: EditableJson }
     : {};
@@ -521,6 +522,7 @@ export default function FanmassPhotoResultReview({
                 <div aria-label={editing && !rawJsonMode ? 'Editable detection boxes' : 'Fanmass result boxes'} style={{ inset: 0, position: 'absolute' }}>
                   {photoPeople.map((person, index) => <PercentBox key={`person-${person.id}`} {...person.box} label={`Person ${index + 1}`} colour="var(--mantine-color-yellow-5)" interactive={editing && !rawJsonMode && !drawMode} onPointerDown={(event) => beginBoxInteraction(event, 'people', index)} onResizePointerDown={(event) => beginBoxInteraction(event, 'people', index, true)} />)}
                   {photoFaces.map((face, index) => <PercentBox key={`face-${face.id}`} {...face.box} label={`Face ${index + 1}`} colour="var(--mantine-color-blue-5)" interactive={editing && !rawJsonMode && !drawMode} onPointerDown={(event) => beginBoxInteraction(event, 'faces', index)} onResizePointerDown={(event) => beginBoxInteraction(event, 'faces', index, true)} />)}
+                  {brandRegions.map((region, index) => <PercentBox key={`brand-${region.id}`} {...region.box} label={region.shortName || `Brand ${index + 1}`} colour="var(--mantine-color-violet-5)" />)}
                   {previewBox ? <PercentBox {...previewBox} label={drawMode === 'faces' ? 'New face' : 'New person'} colour={drawMode === 'faces' ? 'var(--mantine-color-blue-5)' : 'var(--mantine-color-yellow-5)'} /> : null}
                 </div>
               ) : null}
@@ -588,6 +590,7 @@ export default function FanmassPhotoResultReview({
                 <div><Text size="sm" c="dimmed">People estimate · model</Text><Text fw={700}>{displayResult.summary.personCount}</Text></div>
                 <div><Text size="sm" c="dimmed">Individual person boxes</Text><Text fw={700}>{people.length}</Text></div>
                 <div><Text size="sm" c="dimmed">Face boxes</Text><Text fw={700}>{faces.length}</Text></div>
+                <div><Text size="sm" c="dimmed">Brand region boxes</Text><Text fw={700}>{brandRegions.length}</Text></div>
                 <div><Text size="sm" c="dimmed">Pose detections</Text><Text fw={700}>{typeof analysis.poseCount === 'number' ? analysis.poseCount : 'Not returned'}</Text></div>
                 <div><Text size="sm" c="dimmed">Object-model person detections</Text><Text fw={700}>{typeof objectDetection.personCount === 'number' ? objectDetection.personCount : 'Not returned'}</Text></div>
                 <div><Text size="sm" c="dimmed">Crowd estimate</Text><Text fw={700}>{displayResult.summary.crowdEstimate}</Text></div>
