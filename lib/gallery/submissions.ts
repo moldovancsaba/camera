@@ -6,13 +6,28 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { getInactiveUserEmails } from '@/lib/db/sso';
-import { plainPhotoClause } from '@/lib/submissions/visibility';
+import { CONSENT_ELIGIBLE_FILTER } from '@/lib/events/consent-eligibility';
+import { notWaitingOrRejectedClause, plainPhotoClause } from '@/lib/submissions/visibility';
 
 export { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
 import { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
 
 export async function galleryFilter(eventUuid: string): Promise<Document> {
   const inactiveEmails = await getInactiveUserEmails();
+  // Editor-uploaded assets do not represent a guest capture and have no guest
+  // consent audit. Every selfie, including legacy records, must carry a valid
+  // audit and still have its image before it can appear in the event gallery.
+  const hasDisplayImage = {
+    $or: [
+      { imageUrl: { $type: 'string', $ne: '' } },
+      { finalImageUrl: { $type: 'string', $ne: '' } },
+      { previewImageUrl: { $type: 'string', $ne: '' } },
+    ],
+  };
+  const notErasedOrDeleted = {
+    retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+    analyticsDeletion: { $nin: ['manual', 'automatic_no_login', 'automatic_other'] },
+  };
   return {
     $and: [
       { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
@@ -21,9 +36,20 @@ export async function galleryFilter(eventUuid: string): Promise<Document> {
       plainPhotoClause,
       // A picture that is gone is not shown, in any gallery (lib/media/broken.ts); the page says how many it hides.
       { 'mediaHealth.broken': { $ne: true } },
-      // A photo of a vetted event that is waiting or rejected is handled under Photos, not shown in the gallery (camera#268).
-      { $or: [{ photoReview: { $exists: false } }, { reviewStatus: 'approved' }] },
+      // Waiting and rejected photos stay on Vetting. Requiring a status check
+      // also keeps an erased tombstone with photoReview removed out of gallery.
+      notWaitingOrRejectedClause,
+      { $or: [{ photoReview: { $exists: false } }, { reviewStatus: 'approved' }, { 'metadata.adminGalleryUpload': true }] },
       { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: [eventUuid] } }] },
+      {
+        $or: [
+          // An editor supplied this asset; no guest-consent record applies.
+          { $and: [{ 'metadata.adminGalleryUpload': true }, hasDisplayImage, notErasedOrDeleted] },
+          // Guest photos need a complete timestamped audit. `expired` and
+          // unknown consent cannot appear, even if a prior review decision remains.
+          { $and: [CONSENT_ELIGIBLE_FILTER, hasDisplayImage, notErasedOrDeleted] },
+        ],
+      },
       {
         $and: [
           { $or: [{ userEmail: { $nin: Array.from(inactiveEmails) } }, { userId: 'anonymous' }] },

@@ -54,7 +54,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <Title order={2}>Event Gallery</Title>
           <Text c="dimmed" mt="xs">
-            Photos visible in the event&apos;s slideshows ({total}{total > submissions.length ? `, the ${submissions.length} newest are shown` : ''})
+            Available photos ({total}{total > submissions.length ? `, the ${submissions.length} newest are shown` : ''}). Guest photos need verified consent; vetted photos also need approval.
           </Text>
         </div>
         <EventGallery
