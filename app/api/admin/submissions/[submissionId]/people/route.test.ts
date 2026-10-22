@@ -5,6 +5,7 @@ import { ObjectId } from 'mongodb';
 import type { Session } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { resolveVocabulary } from '@/lib/photo-vetting/vocabulary';
+import { CONSENT_ELIGIBLE_FILTER } from '@/lib/events/consent-eligibility';
 
 const apiReal = await import('@/lib/api');
 const authorizationReal = await import('@/lib/partners/authorization');
@@ -13,6 +14,7 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 const id = new ObjectId().toHexString();
 const eventId = new ObjectId();
+const CONSENT_AUDIT = [{ pageId: 'consent', pageType: 'accept', checkboxText: 'I accept the privacy notice', accepted: true, acceptedAt: '2026-10-10T10:00:00.000Z' }];
 const admin = { user: { id: 'u1', email: 'admin@example.com' }, appRole: 'admin', appAccess: true } as unknown as Session;
 const manager = { user: { id: 'u2', email: 'manager@example.com' }, appRole: 'none', appAccess: true } as unknown as Session;
 const person = (extra: Record<string, unknown> = {}) => ({ id: 'a', box: { x: 10, y: 20, w: 30, h: 40 }, gender: 'female', age: 'adult', emotion: 'happy', merch: ['cap'], ...extra });
@@ -30,9 +32,9 @@ interface Options {
 function setup(t: TestContext, options: Options = {}) {
   const calls = { access: [] as Array<{ id: string; role: unknown }>, updates: [] as Array<{ filter: unknown; update: Record<string, unknown> }> };
   const submission = options.submission === undefined
-    ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review', consentStatus: 'received' }
+    ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review', consentStatus: 'received', consents: CONSENT_AUDIT }
     : options.submission && !('consentStatus' in options.submission)
-      ? { ...options.submission, consentStatus: 'received' }
+      ? { ...options.submission, consentStatus: 'received', consents: CONSENT_AUDIT }
       : options.submission;
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
@@ -92,7 +94,7 @@ test('analysis updates on an approved photo leave its status and visibility unto
   assert.deepEqual(calls.updates[0].filter, {
     $and: [
       { _id: new ObjectId(id), reviewStatus: 'approved' },
-      { consentStatus: 'received' },
+      CONSENT_ELIGIBLE_FILTER,
     ],
   });
   assert.deepEqual(Object.keys(update.$set).sort(), ['people', 'peopleReview']);
