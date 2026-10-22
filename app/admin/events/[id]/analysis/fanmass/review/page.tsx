@@ -50,7 +50,7 @@ export default async function FanmassPhotoResultReviewPage({
       <WorkspaceHeader
         eyebrow="Photo analysis"
         title={`${String(event.name ?? 'Event')} — Fanmass result`}
-        description="Review this photo’s result and detection boxes. Confirming records a human check in Camera and leaves the Fanmass result unchanged."
+        description="Edit Fanmass detections and analysis values by hand, then save your correction in Camera against this exact result revision. The original Fanmass output remains available for comparison."
         status={item.queueStatus === 'completed' ? 'Ready for review' : item.queueStatus}
       />
       <FanmassPhotoResultReview eventId={id} item={item} previousId={neighbors.previousId} nextId={neighbors.nextId} />

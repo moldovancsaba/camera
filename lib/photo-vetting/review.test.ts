@@ -12,6 +12,7 @@ const PHOTO_URL = 'https://store.test/pending/e1/abc-xyz.jpg';
 const VARIANT_URL = 'https://store.test/frames/generated/e1/key.png';
 const OWN_FRAME_URL = 'https://store.test/own-frame.png';
 const AT = '2026-10-06T12:00:00.000Z';
+const CONSENT_AUDIT = [{ pageId: 'consent', pageType: 'accept', checkboxText: 'I accept the privacy notice', accepted: true, acceptedAt: AT }];
 
 type Doc = Record<string, unknown>;
 
@@ -34,6 +35,7 @@ function pendingSubmission(extra: Doc = {}): Doc {
     userId: 'anonymous',
     reviewStatus: 'pending_review',
     consentStatus: 'received',
+    consents: CONSENT_AUDIT,
     shareToken: 'tok123',
     userInfo: { name: 'Ann', email: 'ann@example.com', collectedAt: AT },
     frameVariant: { index: 0, message: 'Go', imageUrl: VARIANT_URL },

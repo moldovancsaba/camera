@@ -64,12 +64,16 @@ projection, queue, privacy, and recovery contract.
 Camera treats a missing or unverifiable consent audit as **no consent**. A
 status-less legacy submission is reconciled to `received` only when it has a
 complete, timestamped consent record that satisfies the event's required
-checkboxes. Otherwise it stays out of vetting, publication, analytics
-processing, and Fanmass for the 24-hour hold, then the scheduled cleanup deletes
-its stored image copies and removes its contact, consent, review, and analysis
-data. The database keeps a minimal `expired` tombstone to count the automatic
-deletion; it does not keep the user's identity. Failed file deletion remains
-private and is retried by the cleanup job.
+checkboxes. A submission marked `received` with a missing or malformed audit is
+treated the same way. Otherwise it stays out of vetting, publication, analytics
+processing, and Fanmass; the next cleanup pass erases it without a 24-hour
+wait. A new submission with no saved consent audit is immediately due for that
+cleanup. The separate 24-hour deadline applies only when the submission has an
+explicit pending-consent state. Cleanup deletes the image copies and removes
+contact, consent, review, and analysis data. The database keeps a minimal
+`expired` tombstone to count the automatic deletion; it does not keep the user's
+identity. Failed file deletion remains private and is retried by the cleanup
+job.
 
 ## The IP address, everywhere it still appears
 

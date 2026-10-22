@@ -280,9 +280,18 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
     }
 
+    // A successful status without a saved, timestamped consent record is not
+    // auditable. Keep it private and make it immediately due for the erasure
+    // job; only an explicit, recorded consent-pending state gets the 24-hour hold.
+    if (!consentRefusal && validatedConsents.length === 0) {
+      consentRefusal = 'consent-audit-missing';
+    }
+
     // A vetted event needs to know who the guest is (the approval email goes there) and keeps the plain photo privately.
     const createdAt = new Date().toISOString();
-    const consentExpiresAt = consentRefusal ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null;
+    const consentExpiresAt = consentRefusal === 'consent-audit-missing'
+      ? createdAt
+      : consentRefusal ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null;
     // A capture can arrive before the guest completes login or the Who-are-you
     // step. Persist it privately for 24 hours so a reload can resume, then erase
     // it if no actual identity is attached. This is independent of consent and
@@ -366,7 +375,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       ...(consentRefusal ? { consentShareOptIn: wall.shareOptIn } : {}),
       ...(consentRefusal ? {
         consentExpiresAt,
-        consentPendingReason: consentRefusal === GALLERY_MISSING_MESSAGE ? 'gallery' : 'acceptance',
+        consentPendingReason: consentRefusal === GALLERY_MISSING_MESSAGE
+          ? 'gallery'
+          : consentRefusal === 'consent-audit-missing'
+            ? 'audit'
+            : 'acceptance',
       } : {}),
       ...(!hasUserIdentity ? { retentionStatus: 'pending_erasure', retentionExpiresAt } : {}),
       ...(wall.consent ? { publicGalleryConsent: wall.consent } : {}),

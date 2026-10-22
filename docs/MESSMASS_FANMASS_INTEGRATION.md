@@ -179,11 +179,17 @@ retention authority. Fanmass's retryable cleanup process removes derived and
 local copies when a source is deleted or becomes ineligible.
 
 **Ownership and reporting**: Fanmass owns per-photo machine analysis and boxes.
-Messmass owns event reporting and receives normalized event summaries through
-its authenticated analysis-summary integration. Camera retains human vetting
-and human annotations; it does not store a second copy of Fanmass results. The
-full source schema, queue state machine, retries, privacy behavior, monitoring,
-and release checks are specified in Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md`.
+Fanmass delivers each normalized single-photo result, with its Camera partner,
+event, and photo IDs, to Messmass through the authenticated per-photo endpoint.
+Messmass stores those rows and mechanically rebuilds event-level roll-ups;
+Messmass no longer consumes an event summary from Fanmass. Camera reads the
+Fanmass queue and result store for its per-photo operator view, and stores any
+human correction as an overlay on the source submission tied to the exact
+result revision; Fanmass's original result stays unchanged. That correction is
+currently Camera-only and is not included in Messmass roll-ups. Camera does not
+enqueue work or write to Fanmass's result store. The full source schema, queue state
+machine, retries, privacy behavior, monitoring, and release checks are specified
+in Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md`.
 
 ## 2a. savetheworld → camera: pledge campaign
 

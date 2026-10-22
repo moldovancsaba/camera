@@ -423,7 +423,11 @@ async function savedWith(t: TestContext, caseId: string, event: Record<string, u
   try {
     const h = mockDeps(t, goodHead, { event, partner });
     const { POST } = await importRouteModule(caseId);
-    assert.equal((await POST(submissionRequest(body))).status, 201);
+    assert.equal((await POST(submissionRequest({
+      ...body,
+      // These scenarios cover public-gallery choices, so provide the independent consent audit needed for an eligible photo.
+      consents: body.consents ?? [{ pageId: 'consent', pageType: 'accept', checkboxText: 'I accept the privacy notice', accepted: true, acceptedAt: '2026-10-10T10:00:00.000Z' }],
+    }))).status, 201);
     return h.inserted[0] as Record<string, unknown> & { publicGalleryConsent?: { version: number; grantedAt: string } };
   } finally {
     quiet();
@@ -586,7 +590,12 @@ test('the public gallery permission set to required: upload proceeds privately w
     assert.equal(refused.inserted[0].consentStatus, 'pending');
     assert.equal(refused.inserted[0].isShareVisible, false);
   }
-  const saved = await run('gallery-required-ticked', event, null, { userInfo: GUEST, shareOptIn: true, publicGalleryConsentVersion: 1 });
+  const saved = await run('gallery-required-ticked', event, null, {
+    userInfo: GUEST,
+    shareOptIn: true,
+    publicGalleryConsentVersion: 1,
+    consents: [{ pageId: 'consent', pageType: 'accept', checkboxText: 'I accept the privacy notice', accepted: true, acceptedAt: '2026-10-10T10:00:00.000Z' }],
+  });
   assert.equal(saved.status, 201);
   const doc = saved.inserted[0] as unknown as { isShareVisible: boolean; publicGalleryConsent: { version: number; required?: boolean } };
   assert.equal(doc.isShareVisible, true);

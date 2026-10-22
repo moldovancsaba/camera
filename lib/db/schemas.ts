@@ -857,13 +857,22 @@ export interface Submission {
   people?: PersonTag[];
   /** Who marked the people and when; `vocabulary` is the version of the list of words the marks were made with (lib/photo-vetting/vocabulary.ts), so marks made with different lists can be told apart. */
   peopleReview?: { by: string | null; at: string; vocabulary?: string };
-  /** Human confirmation of one exact Fanmass result revision; Fanmass remains the immutable result source. */
+  /** Human review and optional correction of one exact Fanmass result revision; Fanmass remains the immutable source. */
   fanmassAnalysisReview?: {
-    status: 'confirmed';
-    confirmedAt: string;
-    confirmedBy: string;
-    sourceRevision: string;
-    analysisGeneration: number;
+    status: 'corrected' | 'confirmed';
+    confirmedAt?: string;
+    confirmedBy?: string;
+    sourceRevision?: string;
+    analysisGeneration?: number;
+    correction?: {
+      correctedAt: string;
+      correctedBy: string;
+      sourceRevision: string;
+      analysisGeneration: number;
+      summary: Record<string, unknown>;
+      analysis: Record<string, unknown>;
+      boxes: { people: Array<Record<string, unknown>>; faces: Array<Record<string, unknown>> };
+    };
   };
   /** Why the photo was rejected, as keys of the `reject_reason` group of the vocabulary (issue 628); the free text of the decision stays in the review history. Missing on a photo that was not rejected (or rejected before reasons existed). */
   rejectReasons?: string[];

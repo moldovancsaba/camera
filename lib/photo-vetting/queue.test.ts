@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
+import { CONSENT_ELIGIBLE_FILTER } from '@/lib/events/consent-eligibility';
 import { countPhotoQueue, countWaitingPhotos, isQueueStatus, loadPhotoQueue, queueFilter, toPhotoAnalysisItem, toPhotoQueueItem } from './queue';
 import { STANDARD_VOCABULARY as V, resolveVocabulary } from './vocabulary';
 
@@ -10,6 +11,7 @@ const base = () => ({
   userInfo: { name: 'Ann', email: 'ann@example.com' },
   reviewStatus: 'pending_review',
   consentStatus: 'received',
+  consents: [{ pageId: 'accept', pageType: 'accept', checkboxText: 'I agree', accepted: true, required: true, acceptedAt: '2026-10-06T12:00:00.000Z' }],
   frameVariant: { index: 0, message: 'Go', imageUrl: 'https://s/x.png' },
   photoReview: { photoUrl: 'https://s/pending/e/abc.jpg', shareOptIn: true },
   reviewHistory: [],
@@ -106,7 +108,7 @@ test('the queue covers photos that went through vetting for one event, not archi
   assert.deepEqual(queueFilter('e1', 'pending_review'), {
     $and: [
       { $or: [{ eventId: 'e1' }, { eventIds: { $in: ['e1'] } }] },
-      { consentStatus: 'received' },
+      CONSENT_ELIGIBLE_FILTER,
       {
         photoReview: { $exists: true },
         reviewStatus: 'pending_review',
