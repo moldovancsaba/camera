@@ -35,6 +35,8 @@ export interface PhotoQueueItem {
   last: { action: 'approve' | 'reject' | 'return_to_vetting'; by: string; at: string; reason: string | null } | null;
   /** The people marked in the photo (issue 542), none when nobody looked or the saved list is not valid. */
   people: PersonTag[];
+  /** The saved analysis count, or null when the stored list cannot be read safely. */
+  peopleCount: number | null;
   /** Someone marked the people (also when nobody was in the photo). */
   peopleMarked: boolean;
   /** Who last saved the people analysis and when. */
@@ -65,6 +67,7 @@ export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary):
   const email = emailOf(doc);
   const registered = typeof doc.userId === 'string' && Boolean(doc.userId) && doc.userId !== 'anonymous';
   const peopleReview = (doc.peopleReview ?? {}) as Document;
+  const peopleCheck = parsePeople(doc.people ?? [], vocabulary);
   return {
     id: String(doc._id),
     status,
@@ -77,10 +80,8 @@ export function toPhotoQueueItem(doc: Document, vocabulary: ResolvedVocabulary):
     analysisPhotoUrl: text(review.photoUrl) ?? text(verifiedUnframedCopy?.url),
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',
     shareOptIn: review.shareOptIn === true,
-    people: (() => {
-      const checked = parsePeople(doc.people ?? [], vocabulary);
-      return checked.ok ? checked.value : [];
-    })(),
+    people: peopleCheck.ok ? peopleCheck.value : [],
+    peopleCount: Array.isArray(doc.people) && peopleCheck.ok ? peopleCheck.value.length : null,
     peopleMarked: Array.isArray(doc.people),
     analysisBy: text(peopleReview.by),
     analysisAt: text(peopleReview.at),

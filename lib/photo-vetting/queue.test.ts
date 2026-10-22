@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
-import { countPhotoQueue, countWaitingPhotos, isQueueStatus, loadPhotoQueue, queueFilter, toPhotoQueueItem } from './queue';
+import { countPhotoQueue, countWaitingPhotos, isQueueStatus, loadPhotoQueue, queueFilter, toPhotoAnalysisItem, toPhotoQueueItem } from './queue';
 import { STANDARD_VOCABULARY as V, resolveVocabulary } from './vocabulary';
 
 const base = () => ({
@@ -62,9 +62,9 @@ test('the people of a photo are read with the vocabulary of the event: a custom 
   const people = [{ id: 'a', box: { x: 10, y: 10, w: 20, h: 20 }, gender: 'female', age: 'adult', merch: ['poncho'] }];
   const event = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'poncho', label: 'Poncho', custom: true }] } });
   const withEventList = toPhotoQueueItem({ ...base(), people }, event);
-  assert.deepEqual([withEventList.peopleMarked, withEventList.people.length, withEventList.people[0].merch], [true, 1, ['poncho']]);
+  assert.deepEqual([withEventList.peopleMarked, withEventList.people.length, withEventList.peopleCount, withEventList.people[0].merch], [true, 1, 1, ['poncho']]);
   const withStandardList = toPhotoQueueItem({ ...base(), people }, V);
-  assert.deepEqual([withStandardList.peopleMarked, withStandardList.people.length], [true, 0], 'marked, but the list does not know the item: the people do not read');
+  assert.deepEqual([withStandardList.peopleMarked, withStandardList.people.length, withStandardList.peopleCount], [true, 0, null], 'a vocabulary mismatch is not reported as a valid zero');
   const hiddenLater = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'scarf', hidden: true }] } });
   assert.equal(toPhotoQueueItem({ ...base(), people: [{ ...people[0], merch: ['scarf'] }] }, hiddenLater).people.length, 1, 'an option hidden since still reads in the photo it was given to');
 });
@@ -75,6 +75,24 @@ test('the queue reads the people of every photo with the vocabulary it is given'
   const event = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'poncho', label: 'Poncho', custom: true }] } });
   assert.equal((await loadPhotoQueue(db, 'e1', 'pending_review', event))[0].people.length, 1);
   assert.equal((await loadPhotoQueue(db, 'e1', 'pending_review', V))[0].people.length, 0);
+});
+
+test('the completed analysis card data keeps the unframed source and the saved people count, including zero', () => {
+  const person = { id: 'a', box: { x: 10, y: 10, w: 20, h: 20 }, gender: 'female', age: 'adult', merch: [] };
+  const onePerson = toPhotoAnalysisItem({
+    ...base(),
+    reviewStatus: 'approved',
+    imageUrl: 'https://s/framed.jpg',
+    people: [person],
+    photoReview: { photoUrl: 'https://s/unframed.jpg', shareOptIn: true },
+  }, V);
+  const nobody = toPhotoAnalysisItem({ ...base(), people: [] }, V);
+
+  assert.equal(onePerson.analysisPhotoUrl, 'https://s/unframed.jpg');
+  assert.equal(onePerson.peopleCount, 1);
+  assert.equal(nobody.peopleCount, 0, 'a saved empty array means analysis was completed and nobody was marked');
+  const unreadable = toPhotoAnalysisItem({ ...base(), people: [{ not: 'a person tag' }] }, V);
+  assert.equal(unreadable.peopleCount, null, 'malformed saved data needs review instead of looking like zero people');
 });
 
 test('the reject reasons of a rejected photo are on its item: the keys, none for a photo rejected before reasons existed, and only text keys are kept', () => {
