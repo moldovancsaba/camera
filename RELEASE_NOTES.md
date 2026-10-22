@@ -6297,3 +6297,4 @@ See ROADMAP.md for complete future planning.
 - **Fixed:** legacy records marked `expired` without a verifiable consent audit are now included in the scheduled erasure pass.
 - **Fixed:** an ImgBB 404 is treated as already deleted only after the public image URL is verified unavailable.
 - **Fixed:** consent erasures are prioritized ahead of identity-only retries so a full retry batch cannot delay deletion of photos without consent evidence.
+- **Fixed:** rejected-photo cards fall back to the saved original when a legacy moderation URL is absent.
