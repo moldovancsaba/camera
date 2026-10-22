@@ -6294,3 +6294,5 @@ See ROADMAP.md for complete future planning.
 - **Changed:** the admin gallery's View action opens the stored image directly while a photo's consent is pending, so an editor can inspect it without making the public share page available.
 - **Verified:** unit checks and GitHub Verify.
 - **Not done:** no exact historical consent text or timestamp is reconstructed for previously affected submissions.
+- **Fixed:** legacy records marked `expired` without a verifiable consent audit are now included in the scheduled erasure pass.
+- **Fixed:** an ImgBB 404 is treated as already deleted only after the public image URL is verified unavailable.

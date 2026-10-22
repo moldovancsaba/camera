@@ -23,6 +23,7 @@ import type { Db, Document } from 'mongodb';
 import { apiError } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { deleteImage } from '@/lib/imgbb/upload';
+import { isRenderableImgbbImageUrl } from '@/lib/imgbb/url';
 import { logWarn } from '@/lib/observability/logger';
 import { blobStoreHostFromToken } from '@/lib/submissions/original-image';
 
@@ -35,7 +36,7 @@ export interface SubmissionFilesDeps {
   /** Public host of this project's Blob store, or null when no token is configured. */
   storeHost: string | null;
   del: (urls: string[]) => Promise<void>;
-  deleteImage: (url: string) => Promise<boolean>;
+  deleteImage: (url: string, publicImageUrl?: string | null) => Promise<boolean>;
   /** Which of `urls` is still referenced by a submission other than `selfId`. */
   referencedElsewhere: (urls: string[], selfId: unknown) => Promise<Set<string>>;
 }
@@ -101,11 +102,29 @@ function inStore(url: string, storeHost: string | null): boolean {
   }
 }
 
+function publicImageUrlForDeleteLink(submission: Document, link: string): string | null {
+  const copy = copiesOf(submission).find((entry) => entry.deleteUrl === link);
+  if (copy?.url && isRenderableImgbbImageUrl(copy.url)) return copy.url;
+
+  const tryOn = (submission.tryOnRequest ?? {}) as Document;
+  if (text(tryOn.sourceDeleteUrl) === link) {
+    const sourceUrl = text(tryOn.sourceImageUrl);
+    return sourceUrl && isRenderableImgbbImageUrl(sourceUrl) ? sourceUrl : null;
+  }
+  if (text(submission.deleteUrl) === link) {
+    for (const candidate of [submission.imageUrl, submission.finalImageUrl, submission.originalImageUrl, submission.previewImageUrl, submission.screenImageUrl, (submission.photoReview as Document | undefined)?.photoUrl]) {
+      const url = text(candidate);
+      if (url && isRenderableImgbbImageUrl(url)) return url;
+    }
+  }
+  return null;
+}
+
 export function defaultDeps(db: Db): SubmissionFilesDeps {
   return {
     storeHost: blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN),
     del: (urls) => del(urls),
-    deleteImage,
+    deleteImage: (url, publicImageUrl) => deleteImage(url, publicImageUrl),
     referencedElsewhere: async (urls, selfId) => {
       const projection = Object.fromEntries(SHARED_URL_FIELDS.map((field) => [field, 1]));
       const others = await db
@@ -151,14 +170,16 @@ export async function deleteSubmissionFiles(
   const imgbbNotDeleted: string[] = [];
   const recorded = new Map(copiesOf(submission).filter((copy) => copy.deleteUrl).map((copy) => [copy.deleteUrl as string, copy]));
   for (const link of imgbbDeleteLinks) {
-    if (await deps.deleteImage(link)) continue;
+    const publicImageUrl = publicImageUrlForDeleteLink(submission, link);
+    if (await deps.deleteImage(link, publicImageUrl)) continue;
     imgbbFailed += 1;
     const copy = recorded.get(link);
-    if (copy?.url) imgbbNotDeleted.push(copy.url);
+    const unresolvedUrl = copy?.url ?? publicImageUrl;
+    if (unresolvedUrl) imgbbNotDeleted.push(unresolvedUrl);
     logWarn('submission_files.imgbb_not_deleted', 'An imgbb file could not be deleted with its submission; it may still be online and must be removed by hand', {
       submissionId: String(submission._id),
       role: copy?.role ?? 'framed picture',
-      url: copy?.url ?? null,
+      url: unresolvedUrl ?? null,
     });
   }
   if (imgbbFailed) {
