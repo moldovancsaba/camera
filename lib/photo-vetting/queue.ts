@@ -52,7 +52,11 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
     email,
     identityLabel: email ?? (registered ? 'REGISTERED · NO EMAIL' : 'NO USER'),
     approvalEmailSent: doc.metadata?.emailSentAfterSave === true || doc.metadata?.emailSent === true,
-    photoUrl: status === 'approved' || (status === 'pending_review' && typeof review.returnedAt === 'string') ? text(doc.imageUrl) ?? text(review.photoUrl) : text(review.photoUrl),
+    photoUrl: status === 'approved' || (status === 'pending_review' && typeof review.returnedAt === 'string')
+      ? text(doc.imageUrl) ?? text(review.photoUrl)
+      // Older rejected records may have lost the nested moderation address
+      // while retaining the original and its backup copies.
+      : text(review.photoUrl) ?? text(doc.originalImageUrl) ?? text(doc.imageUrl) ?? text(doc.finalImageUrl),
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',
     shareOptIn: review.shareOptIn === true,
     rejectReasons: Array.isArray(doc.rejectReasons) ? doc.rejectReasons.filter((key): key is string => typeof key === 'string' && key.length > 0) : [],

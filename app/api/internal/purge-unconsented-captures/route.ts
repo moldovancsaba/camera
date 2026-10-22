@@ -1,7 +1,7 @@
 /** Erase captures after identity retention expires, missing required consent, or an unverifiable consent audit. */
 
 import { NextRequest } from 'next/server';
-import { ObjectId, type Db, type Document } from 'mongodb';
+import { ObjectId, type Db, type Document, type WithId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
@@ -11,6 +11,7 @@ import { eventGetsDefaults, getDefaultsRollout, type DefaultsRolloutSettings } f
 import { CONSENT_AUDIT_ERASURE_STATUSES, CONSENT_AUDIT_VALID_FILTER, CONSENT_UNKNOWN_FILTER, hasVerifiableConsentAudit, requiresConsentAuditErasure } from '@/lib/events/consent-eligibility';
 import { missingRequiredConsent } from '@/lib/events/consent-guard';
 import { anonymousWithoutFinalContactMongoFilter, hasFinalizedGuestContact, incompleteContactErasure } from '@/lib/submissions/guest-contact';
+import { prioritizeErasureCandidates } from '@/lib/submissions/erasure-batch';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -113,8 +114,25 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
     ],
   };
-  const due = await submissions.find({ $or: [identityDueFilter, legacyNoContactDueFilter, consentDueFilter, unknownConsentFilter, unverifiedConsentAuditFilter] })
+  // Run consent erasure before identity-only retries. A large, repeatedly
+  // failing identity backlog must not occupy every batch and starve photos
+  // that have no valid consent evidence.
+  const consentPriorityFilter = { $or: [consentDueFilter, unknownConsentFilter, unverifiedConsentAuditFilter] };
+  const consentPriorityDue = await submissions.find(consentPriorityFilter)
     .sort({ retentionExpiresAt: 1, consentExpiresAt: 1, createdAt: 1 }).limit(BATCH_SIZE).toArray();
+  let lowerPriorityDue: WithId<Document>[] = [];
+  if (consentPriorityDue.length < BATCH_SIZE) {
+    const remainingCapacity = BATCH_SIZE - consentPriorityDue.length;
+    const lowerPriorityFilter = {
+      $and: [
+        { $or: [identityDueFilter, legacyNoContactDueFilter] },
+        ...(consentPriorityDue.length ? [{ _id: { $nin: consentPriorityDue.map((submission) => submission._id) } }] : []),
+      ],
+    };
+    lowerPriorityDue = await submissions.find(lowerPriorityFilter)
+      .sort({ retentionExpiresAt: 1, consentExpiresAt: 1, createdAt: 1 }).limit(remainingCapacity).toArray();
+  }
+  const due = prioritizeErasureCandidates(consentPriorityDue, lowerPriorityDue, BATCH_SIZE);
   let deleted = 0;
   let erasedNoIdentity = 0;
   let erasedNoConsent = 0;

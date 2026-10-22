@@ -36,6 +36,17 @@ test('an approved photo shows the real picture and the last decision', () => {
   assert.deepEqual(item.last, { action: 'approve', by: 'mod@example.com', at: 't2', reason: null });
 });
 
+test('a rejected photo falls back to its saved original when the moderation address is absent', () => {
+  const item = toPhotoQueueItem({
+    ...base(),
+    reviewStatus: 'rejected',
+    imageUrl: 'https://s/framed.jpg',
+    originalImageUrl: 'https://s/original.jpg',
+    photoReview: { photoUrl: null, shareOptIn: false },
+  });
+  assert.equal(item.photoUrl, 'https://s/original.jpg');
+});
+
 test('approval email retry status accepts the actual successful send markers and a registered legacy account address', () => {
   const needsRetry = toPhotoQueueItem({ ...base(), reviewStatus: 'approved', userId: 'member-1', userInfo: undefined, userEmail: 'legacy@example.com' });
   const sent = toPhotoQueueItem({ ...base(), reviewStatus: 'approved', metadata: { emailSentAfterSave: true } });
