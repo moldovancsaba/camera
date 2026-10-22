@@ -28,7 +28,7 @@ interface Options {
 
 function setup(t: TestContext, options: Options = {}) {
   const calls = { access: [] as Array<{ id: string; role: unknown }>, approve: [] as unknown[][], reject: [] as unknown[][], reopen: [] as unknown[][], retryEmail: [] as unknown[][] };
-  const submission = options.submission === undefined ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review', peopleReview: { by: 'u1', at: '2026-10-10T10:00:00.000Z' } } : options.submission;
+  const submission = options.submission === undefined ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review' } : options.submission;
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
     exports: {
@@ -190,30 +190,14 @@ test('a picture that could not be made is a 502 and the message says the photo s
   assert.match(JSON.stringify(await response.json()), /stays pending/);
 });
 
-test('marking the people comes first, for a rejection too (issue 542, answers 263, 267 and 453): a waiting photo nobody looked at is refused with a 409 and nothing is decided; looked at (also "nobody in it") it goes through', async (t) => {
+test('vetting decisions do not depend on a separate manual analytics record', async (t) => {
   const calls = setup(t, { submission: { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review' } });
-  const { POST } = await importRoute('unmarked');
-  for (const action of ['approve', 'reject']) {
-    const response = await POST(post({ action, reasons: ['nudity'] }), params);
-    assert.equal(response.status, 409, action);
-    assert.match(String((await response.json() as { error?: string }).error), /Mark the people/);
-  }
-  assert.equal(calls.approve.length + calls.reject.length, 0, 'nothing was decided');
-});
-
-test('the marking rule does not apply when the event turned marking off, or to a photo decided before (a rejected photo can be approved again)', async (t) => {
-  const off = setup(t, { submission: { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review' }, event: { _id: eventId, markPeopleInVetting: false } });
-  const { POST } = await importRoute('marking-off');
-  assert.equal((await POST(post({ action: 'approve' }), params)).status, 200);
-  assert.equal(off.approve.length, 1);
-});
-
-test('an event that does not mark people can reject without marks, but the reason is still required', async (t) => {
-  const calls = setup(t, { submission: { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review' }, event: { _id: eventId, markPeopleInVetting: false } });
   const { POST } = await importRoute('marking-off-reject');
   assert.equal((await POST(post({ action: 'reject' }), params)).status, 400);
   assert.equal((await POST(post({ action: 'reject', reasons: ['poor_quality'] }), params)).status, 200);
+  assert.equal((await POST(post({ action: 'approve' }), params)).status, 200);
   assert.deepEqual(calls.reject.map((call) => call[4]), [['poor_quality']]);
+  assert.equal(calls.approve.length, 1);
 });
 
 test('a rejected photo with no marks can be approved again', async (t) => {

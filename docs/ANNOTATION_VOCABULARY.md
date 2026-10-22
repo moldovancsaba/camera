@@ -1,41 +1,34 @@
-# The words of the annotation: a list with three levels (issue 628)
+# Rejection reason vocabulary
 
-Owner request 2026-10-12. The vetting person describes each person in a photo (gender, age, emotion, items) and, for a rejected photo, says why. The words used for that are **a configurable list, with create, read, update and delete at General, Partner and Event level, like every other function of the service**, in plain text (no emoji). Code: `lib/photo-vetting/vocabulary.ts` (pure), `vocabulary-load.ts` (database), `vocabulary-edit.ts` and `vocabulary-level.ts` (the editors' steps and rights), `people.ts` (what a photo stores).
+**Current status, 2026-10-22:** this editor configures only structured reasons for rejecting a photo from publication. Gender, age, emotion, and merchandise were part of a former manual annotation system that has been retired. Per-photo image analytics now come from Fanmass and are reviewed, corrected, or confirmed in Camera's Photo analysis page; they do not use this vocabulary. See [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md).
 
-## What the annotation is for (owner, 2026-10-12)
-1. **Feed messmass analytics:** the people and reasons are counted per event and pushed to messmass as `camera_` counters (below).
-2. **Collect the picture together with its annotation, so that software can later do it automatically.** The stable keys, the recorded list version and the structured reasons are what make the labels usable. What a training set may hold, and what legal must decide, is in [AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md](AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md); nothing is exported.
+## Current behavior
 
-## The groups and the standard list
-| Group | Asked | One or several | Needed | Standard options (key: words) |
-|---|---|---|---|---|
-| `gender` | Gender, as the person looks in the photo | one | to save a person | `female` Female, `male` Male, `unsure` Not sure |
-| `age` | Age, as the person looks in the photo | one | to save a person | `kid` Child (about 0 to 12), `young` Young (about 13 to 24), `adult` Adult (about 25 to 59), `old` Senior (about 60 and over) |
-| `emotion` | How the person looks | one | no | `happy` Happy, `neutral` Neutral, `sad` Sad, `angry` Angry, `unamused` Unamused. **Off until switched on:** `excited` Excited, cheering; `surprised` Surprised |
-| `merch` | What the person wears or holds | several | no | `jersey` Jersey or shirt, `scarf` Scarf, `cap` Cap or hat, `flag` Flag. **Off until switched on:** `face_paint` Face paint, `banner` Banner or sign |
-| `reject_reason` | Why the photo is rejected | several | to reject (at least one) | `offensive_gesture`, `nudity`, `alcohol`, `forbidden`, `violence`, `hate`, `drugs`, `competitor_brand`, `political`, `poor_quality`, `spam_test`, `other` |
+The rejection reason list inherits from the standard vocabulary to the general, partner, and event levels. The nearest saved level takes precedence; unchanged options continue to inherit. Global admins edit the general list, partner managers edit a partner's list, and event managers edit an event's list through `components/admin/AnnotationVocabularyEditor.tsx` and `GET/PUT /api/annotation-vocabulary?level=&id=`.
 
-The keys of the first four groups are the ones stored since issue 542, so every photo marked before keeps its meaning. `unsure` and `neutral` are real options: **a blank is "not marked", never "neutral"**.
+Each reason has a stable key and editable label. A photo stores selected reason keys in `Submission.rejectReasons` and the review history. A rejected photo must have at least one currently offered reason. Reopening or approving a previously rejected photo removes its current reason selection while preserving the historical decision entry. Reasons explain publication moderation; they do not label people or train Fanmass.
 
-## Three levels, nearest wins, nothing copied down
-The standard list sits under **General** (a global admin; the `admin_settings` document `annotation-vocabulary`), then **Partner** (`Partner.annotationVocabulary`) and **Event** (`Event.annotationVocabulary`). A level stores only what its editor changed; a missing value means "follow the level above". An option a partner adds is offered to all its events; an event's own option only to that event.
-- **Create:** a custom option, with a key made from its name (`vasas_scarf`), unique in its group, also against the keys a level below already uses.
-- **Read:** the editor shows each option with where its value comes from (Standard, General, Partner, Event, Added here).
-- **Update:** label, order, offered or hidden; "Follow the level above" removes this level's override.
-- **Delete:** a custom option is **hidden for good** (listed under "Show deleted", can be restored). The standard options can be hidden and relabelled, never deleted or given another meaning. **Nothing is ever removed from the data**: a photo marked with a hidden or deleted option keeps its key, still reads, and still counts. A group that is needed (gender, age, reasons) cannot be left with nothing offered. Labels are 1 to 60 characters and cannot hold emoji, `<`, `>` or control characters.
-- **Where:** General at **Settings > Vetting words** (global admins); the partner's menu; the event's menu, next to Vetting. All three open the same editor (`components/admin/AnnotationVocabularyEditor.tsx`), saved through `GET/PUT /api/annotation-vocabulary?level=&id=`; event and partner need the manager role; saves are in the activity log; last write wins, like the other level editors.
+The standard reason keys are:
 
-## What a photo stores
-`Submission.people[]` carries **keys** (`gender`, `age`, `emotion?`, `merch?[]`) and a rectangle in percent; `peopleReview = { by, at, vocabulary }` where `vocabulary` is the **version** of the list (a short code of the active keys: the same list, the same version; hiding or adding an option changes it, a new label does not), so annotations made with different lists can be told apart; `Submission.rejectReasons[]` holds the keys of the reasons of a rejection. When saving, only options offered now are accepted; when reading, a hidden option still reads.
+| Key | Default label |
+|---|---|
+| `offensive_gesture` | Offensive hand gesture |
+| `nudity` | Nudity or sexual content |
+| `alcohol` | Alcohol |
+| `forbidden` | Other forbidden content |
+| `violence` | Violence or weapons |
+| `hate` | Hate symbol or offensive text |
+| `drugs` | Drugs or smoking |
+| `competitor_brand` | Competitor or unwanted brand |
+| `political` | Political message |
+| `poor_quality` | Unusable: blurry, dark or no face |
+| `spam_test` | Test, spam or not a selfie |
+| `other` | Other (write it in the note) |
 
-## The counters for messmass: the `camera_` prefix
-**Every variable camera introduces in messmass starts with `camera_`** (messmass holds variables from other sources, such as `female`, `male`, `scarf`, `approvedImages` and the fanmass ones, and existing data must not be harmed), in lower case with underscores. The name of an option counter is `camera_<group>_<key>`: `camera_gender_female`, `camera_age_kid`, `camera_emotion_happy`, `camera_merch_scarf`, and for reasons `camera_rejected_nudity` (`counterKey`, `lib/photo-vetting/vocabulary.ts`).
-- **A counter is a whole running total over every annotated photo of the event** (approved, rejected or still waiting; not removed, picture present), never a day's change, so a repeated push changes nothing. Example: three annotated photos with two female and one male person in all give `camera_gender_female` 2, `camera_gender_male` 1, `camera_images_annotated` 3, `camera_people_total` 3.
-- **Coverage:** `camera_images_annotated` says how many photos were counted. None of the annotation counters is sent before a photo is annotated (never a zero that says "nobody" when nobody was counted); once one is, every option offered now is sent (0 when nobody has it) and so is any other key found in the data.
-- **The list:** `camera_images_taken`, `_approved`, `_rejected`, `_shown_on_slideshow`, `camera_consents_accepted`, `camera_images_decided`, `camera_vetting_seconds_total`, `camera_journey_opens`, `camera_journeys_completed`, `camera_permission_denied`, `camera_retakes`, `camera_consents_abandoned`, `camera_shares`, `camera_downloads`; the annotations: `camera_images_annotated`, `_with_people`, `_no_people`, `_one_person`, `_group`, `camera_people_total`, `camera_people_with_merch`; per option the four groups above; and `camera_rejected_<reason>` with `camera_images_rejected_no_reason`. **No average is ever sent** (the partner and organisation reports in messmass add every number up): the average vetting time is `camera_vetting_seconds_total` divided by `camera_images_decided`, and people per image is `camera_people_total` divided by `camera_images_annotated`, in a messmass formula. The rules every name and value must pass (prefix, at most 300 names, whole numbers, labels up to 80 characters) are in `lib/analytics/counters-contract.ts`, checked before sending and again by messmass.
-- **Switched off:** the push stays OFF (setting `messmass-counters`) until the owner switches it on; with it off camera reads nothing else and sends nothing. When it is on, `requestCounterSync` (`lib/analytics/counters-trigger.ts`) asks for a push after a vetting decision and after the people were saved: the first call of a burst pushes at once and one more push runs when the 15 second window ends, so the last decision is always in the totals.
-- **In messmass** (messmass PR 481): the route `POST /api/integrations/camera/events/<id>/photo-stats` writes `stats.camera_...` and registers each name in the variable catalog (category Camera, never overwriting an entry, not editable by hand); the merge console does not touch the `camera_` namespace; `[camera_gender_female]` works in a report formula. The mapping to the older variables is in messmass `docs/features/features-camera-photo-counters.md`.
-- **Known limits (messmass side):** the Google Sheets sync rewrites the whole stats of a sheet-linked event (daily 04:30 and on Pull), which removes `camera_*` there until camera's next push; the partner and organisation reports add every numeric stat (which is why no average is sent); two older hashtag routes read `camera_*` as 0.
+Camera's Messmass counter for a structured reason is `camera_rejected_<key>` (for example, `camera_rejected_nudity`). It counts current rejected photos carrying that reason. A photo with several selected reasons appears in each relevant total. No counter is sent for reason values when the event has no currently rejected photos. See [ANALYTICS.md](ANALYTICS.md).
 
-## Not done
-A keyboard way to draw a rectangle; correcting the people of an already approved photo; a second reviewer on a sample and an "unsure about this photo" mark (for training quality); a daily catch-up push (needs `CRON_SECRET`, issue 529); the consent flag of a training set (the owner says the terms already manage it, to be confirmed by legal).
+## Legacy configuration
+
+The shared vocabulary parser still recognizes legacy `gender`, `age`, `emotion`, and `merch` option groups so old documents can be read without corrupting unrelated event configuration. The current editor does not render those groups, the current API does not write manual per-photo annotations, Camera analytics do not count those keys, and Fanmass results do not derive from them. Legacy option configuration is not a supported way to change Fanmass labels.
+
+Legacy `Submission.people` and `Submission.peopleReview` photo data is not part of the current TypeScript model or runtime analytics flow. Production deletion of any such residual fields must be verified separately against an authenticated database inventory; do not assume a missing schema type proves the live database is clean.

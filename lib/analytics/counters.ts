@@ -5,14 +5,14 @@
  * **Every name starts with `camera_`** (lower case snake case, `COUNTER_NAME_PATTERN`): messmass already holds variables of other sources (female, male, jersey, approvedImages, ...), and camera's
  * names must never meet them. The key of a definition is the messmass name.
  *
- * Where the numbers come from: photos, consent, tracked source links and their saved photo submissions; the journey recording (saved/finished flows, time sums and samples, step reach, transitions, CTA,
- * SSO outcomes and upload outcomes/durations, **once the event has any journey record**); the users identified from saved photos; the current review queue; and what the vetting person marked: the
- * people in each photo (gender, age, emotion, items, in the words of the event's vocabulary, lib/photo-vetting/vocabulary.ts) and why a photo was declined. A counter
- * that cannot be counted is **never sent as a zero** (a zero would say "nobody" when the truth is "nobody counted"): an event with no journey record sends no journey counter, an event where no photo
- * is marked sends no annotation counter, and an event with no declined photo sends no reason counter. **Nothing waits any more**: the list below is everything the data can give.
+ * Where the numbers come from: photo lifecycle and consent state, tracked source links, saved photo submissions, aggregate repeat-user counts, the current review queue, and the journey recording
+ * (saved/finished flows, time sums and samples, step reach, transitions, CTA, SSO outcomes and upload outcomes/durations, **once the event has any journey record**). Per-photo image analysis is owned by Fanmass
+ * and is reviewed on the same Camera result; these legacy event counters do not duplicate Fanmass properties or detections.
+ * A value that cannot be counted is **never sent as zero** (a zero would say "nobody" when the truth is "nobody counted"): an event with no journey record sends no journey counter, and an event with no
+ * declined photo sends no rejection-reason counter. **Nothing waits any more**: the list below is everything this feed can compute.
  *
  * What a counter is, so it can be checked against messmass: a **total** is a whole running total for the event (every photo ever counted, never a day's change), so a repeat of the same push changes
- * nothing; an **average** is not additive and is sent as a whole value that messmass must store as it is, with no baseline. Each name has a readable label ("Camera: gender, Female"). The visits of
+ * nothing; an **average** is not additive and is sent as a whole value that messmass must store as it is, with no baseline. Each name has a readable label (for example, "Camera: rejected, Poor quality"). The visits of
  * the tracked links already go to messmass through their own channel (lib/short-links/sync.ts) and are not part of this list. Pure and DOM-free; unit-tested in counters.test.ts.
  */
 
@@ -25,7 +25,7 @@ import { counterKey, optionLabel, optionsOf, type ResolvedVocabulary, type Vocab
 export type CounterKind = 'total' | 'average';
 
 /** Where a counter comes from, for the preview. */
-export type CounterSource = 'photos' | 'journey' | 'annotations' | 'reasons';
+export type CounterSource = 'photos' | 'journey' | 'reasons';
 
 export interface CounterDefinition {
   /** The name in messmass: `camera_` and lower case snake case, the same string as the key in `projects.stats` and in the variable catalog (docs/ANALYTICS_AUDIT.md section 6). */
@@ -60,14 +60,6 @@ export const COMPUTABLE_COUNTERS: readonly CounterDefinition[] = [
   total('camera_consents_abandoned', 'journey', 'Camera: consents abandoned', 'Visits that were shown the consent and did not accept it (shown minus accepted, for the consent page and for the box on the Who-are-you page).'),
   total('camera_shares', 'journey', 'Camera: shares', 'Presses of a share button (copy the link, Facebook, X, LinkedIn, WhatsApp) on the page after the photo was saved.'),
   total('camera_downloads', 'journey', 'Camera: downloads', 'Downloads of the photo from its public page.'),
-  // From what the vetting person marked: sent once at least one photo is marked, over every marked photo of the event (approved, declined or still waiting).
-  total('camera_images_annotated', 'annotations', 'Camera: images annotated', 'Photos a reviewer looked at and marked (even when nobody is in them): the coverage of every counter about the people.'),
-  total('camera_images_with_people', 'annotations', 'Camera: images with people', 'Of those, the photos with at least one person marked.'),
-  total('camera_images_no_people', 'annotations', 'Camera: images with no people', 'Of those, the photos the reviewer marked as having nobody in them.'),
-  total('camera_images_one_person', 'annotations', 'Camera: images with one person', 'Of those, the photos with exactly one person.'),
-  total('camera_images_group', 'annotations', 'Camera: images with a group', 'Of those, the photos with two or more people.'),
-  total('camera_people_total', 'annotations', 'Camera: people marked', 'People marked in all the annotated photos together.'),
-  total('camera_people_with_merch', 'annotations', 'Camera: people with merchandise', 'People with at least one item (a scarf, a jersey, ...).'),
   // Why photos were declined: sent once the event has a declined photo.
   total('camera_images_rejected_no_reason', 'reasons', 'Camera: images rejected with no reason', 'Declined photos that carry no reason from the list (declined before the reasons existed).'),
 ];
@@ -75,7 +67,7 @@ export const COMPUTABLE_COUNTERS: readonly CounterDefinition[] = [
 /** The counters made from a list of the vocabulary: one for each option, named from its key. */
 export interface CounterFamily {
   group: VocabGroup;
-  /** `camera_gender_`: what every name of the family starts with. */
+  /** `camera_rejected_`: the stable prefix of rejection-reason counters. */
   prefix: string;
   source: CounterSource;
   /** The name of the placeholder row while the family has no counter yet. */
@@ -85,21 +77,14 @@ export interface CounterFamily {
   word: string;
 }
 
-/** The word of a group in a counter's name and label: gender, age, emotion, merch, rejected. */
+/** The word of the rejection-reason group in a counter's name and label. */
 const wordOf = (group: VocabGroup): string => counterKey(group, '').slice('camera_'.length, -1);
 
-const family = (group: VocabGroup, definition: string): CounterFamily => ({ group, prefix: counterKey(group, ''), source: group === 'reject_reason' ? 'reasons' : 'annotations', placeholder: `${counterKey(group, '')}<option>`, definition, word: wordOf(group) });
+const family = (group: VocabGroup, definition: string): CounterFamily => ({ group, prefix: counterKey(group, ''), source: 'reasons', placeholder: `${counterKey(group, '')}<option>`, definition, word: wordOf(group) });
 
 export const COUNTER_FAMILIES: readonly CounterFamily[] = [
-  family('gender', 'People marked with this gender, over all annotated photos. One counter for every option offered now (0 when nobody has it) and for every other key found in the data.'),
-  family('age', 'People marked with this age, over all annotated photos. One counter for every option offered now (0 when nobody has it) and for every other key found in the data.'),
-  family('emotion', 'People marked with this emotion, over all annotated photos. One counter for every option offered now (0 when nobody has it) and for every other key found in the data.'),
-  family('merch', 'People marked with this item, over all annotated photos (a person with two items is in two counters). One counter for every option offered now (0 when nobody has it) and for every other key found in the data.'),
   family('reject_reason', 'Declined photos that carry this reason (a photo with several reasons is in each). One counter for every reason offered now (0 when none) and for every other key found in the data.'),
 ];
-
-/** The lists that describe a person in a photo; the reasons describe the photo. */
-const PERSON_GROUPS = ['gender', 'age', 'emotion', 'merch'] as const;
 
 export interface WaitingCounter {
   key: string;
@@ -209,20 +194,6 @@ export function buildCounters(report: EventReport, journey?: JourneySummary | nu
     put('camera_vetting_seconds_total', whole(report.vetting.timeToFirstDecision.totalSeconds));
   }
 
-  // What the vetting person marked: nothing at all until a photo is marked (a zero would say nobody, when nobody was counted).
-  const { summary } = report.people;
-  if (summary.photos > 0) {
-    put('camera_images_annotated', summary.photos);
-    put('camera_images_with_people', summary.photosWithPeople);
-    put('camera_images_no_people', summary.photos - summary.photosWithPeople);
-    put('camera_images_one_person', report.people.photosWithOnePerson);
-    put('camera_images_group', report.people.photosWithGroup);
-    put('camera_people_total', summary.people);
-    put('camera_people_with_merch', summary.withMerch);
-    const counts = { gender: summary.byGender, age: summary.byAge, emotion: summary.byEmotion, merch: summary.byMerch };
-    for (const group of PERSON_GROUPS) for (const key of keysFor(vocabulary, group, counts[group])) putOption(group, key, counts[group][key] ?? 0);
-  }
-
   // Why photos were declined: sent once the event has a declined photo.
   if (report.photos.rejected > 0) {
     const byReason = Object.fromEntries(report.vetting.rejectReasons.map((row) => [row.id, row.count]));
@@ -269,7 +240,7 @@ export interface CounterRow {
   kind: CounterKind;
   source: CounterSource;
   definition: string;
-  /** The value that would be sent; null when there is none yet (an average before any decision, a family before any marked photo). */
+  /** The value that would be sent; null when this family has no rejection reason to count yet. */
   value: number | null;
 }
 
@@ -291,8 +262,6 @@ export function counterRows(set: CounterSet): CounterRow[] {
   };
   addFixed('photos');
   addFixed('journey');
-  addFixed('annotations');
-  addFamilies(PERSON_GROUPS);
   addFamilies(['reject_reason']);
   addFixed('reasons');
   const fixedNames = new Set(rows.map((row) => row.key));

@@ -21,7 +21,7 @@ export default function MessmassSection({ state, timeZone }: { state: CounterSta
       <CountersSwitch enabled={state.enabled} updatedAt={state.updatedAt} updatedBy={state.updatedBy} timeZone={timeZone} />
       <Metrics
         items={[
-          { label: 'Sending to messmass', value: state.enabled ? 'On' : 'Off', description: state.enabled ? 'Switched on. After a vetting decision or a saved marking the numbers below are sent: one push at once and one more when 15 seconds have passed, so the last decision is always in.' : 'Off, as it is by default. Nothing is sent from this page or by any process.' },
+          { label: 'Sending to messmass', value: state.enabled ? 'On' : 'Off', description: state.enabled ? 'Switched on. After a new submission, vetting decision, or Journey update, the aggregate operational counters below are sent with a coalescing delay.' : 'Off, as it is by default. Nothing is sent from this page or by any process.' },
           { label: 'Linked to messmass', value: state.linked ? 'Yes' : 'No', description: state.linked ? 'The event has a messmass event to send to.' : 'The event has no messmass event, so there is nowhere to send to.' },
           { label: 'Last push', value: state.lastPushAt ? formatDateTime(state.lastPushAt, timeZone) : 'Never', description: state.lastPushAt ? 'The numbers of that push are in the last column below.' : 'Nothing was ever sent for this event.' },
         ]}

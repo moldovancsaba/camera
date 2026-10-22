@@ -153,13 +153,6 @@ test('e-mails: sent, failed, skipped with the reason, the arrived mail and the d
   assert.equal(photoFactsOf(vetted({ metadata: { rejectionEmailSent: false } }))?.emails.declined, 'not_sent');
 });
 
-test('the people of the photo are passed on untouched, with who marked them and when', () => {
-  const facts = photoFactsOf(vetted({ people: [], peopleReview: { by: 'ann@club.test', at: '2026-10-16T18:01:00.000Z' } }));
-  assert.deepEqual(facts?.people, []);
-  assert.equal(facts?.peopleBy, 'ann@club.test');
-  assert.equal(photoFactsOf(vetted())?.people, undefined, 'nobody looked');
-});
-
 test('the projection never asks for a field and its parent together (a path collision is an error in MongoDB)', () => {
   const paths = Object.keys(PHOTO_PROJECTION);
   for (const path of paths) {

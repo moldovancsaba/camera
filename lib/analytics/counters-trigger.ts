@@ -1,5 +1,5 @@
 /**
- * The way a live path asks for the counters of an event to be pushed to messmass (issue 628): a vetting decision, a saved marking of the people. One call, `requestCounterSync(db, event)`, that is
+ * The way a live path asks for the counters of an event to be pushed to messmass: a submission, a vetting decision, or a Journey batch. One call, `requestCounterSync(db, event)`, that is
  * **fire-and-forget**: it never throws, and it never makes the caller wait (do not await it in a request; wrap it in `after()`: the promise it returns always resolves).
  *
  * The order is the safe one. First the setting (lib/analytics/counters-setting.ts): **while it is off nothing else is read or written**, so the call costs one read of one small document and
@@ -94,7 +94,7 @@ export function syncedEventOf(event: Record<string, unknown> | null | undefined)
 }
 
 /**
- * What a live path calls after it saved something the counters read (a decision, the people of a photo): it asks for the push **after the response** (`after()`), so the reviewer never waits.
+ * What a live path calls after it saved something the counters read (a submission or decision): it asks for the push **after the response** (`after()`), so the guest or reviewer never waits.
  * Outside a request nothing is scheduled; while the counters are off the scheduled call reads one setting and stops.
  */
 export function scheduleCounterSync(db: Db, event: Record<string, unknown> | null | undefined): void {

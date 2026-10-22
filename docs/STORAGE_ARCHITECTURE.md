@@ -1,6 +1,10 @@
 # Storage architecture: how we never lose an image
 
+> **Current source status (2026-10-22):** this document's “Built” section and the earlier ImgBB-only/variant-B instructions are historical and are not the behavior of the current source. Current approval and Image safety copy jobs retain source files and only add/verify copies; no copy-repair job deletes a source or changes the submission's image URL. The Image safety page excludes photos without a verifiable consent audit. ImgBB is public and Vercel Blob is not an independent provider, so a Blob+ImgBB pair is only copy redundancy—not a private, independently credentialed disaster-recovery backup. There is no claim here that every production photo has two healthy copies: run the current Image safety count and address probe, reconcile failures, and preserve the output before reporting coverage. The private R2/B2 manifest, retry queue, scheduled verification, practiced restore, and retention workflow below are proposals, not deployed features. Current implementation notes: [PRIVACY_DATA.md](PRIVACY_DATA.md), [RUNBOOK.md](RUNBOOK.md).
+
 Research and recommendation of 2026-10-09 (owner question 222, issue 509). Everything marked "verified" was read in the code, in the real data (read-only) or in the vendors' own documents; what could not be verified is listed in section 11.
+
+> **Historical design notes below:** statements about approval deleting Blob after ImgBB verification, ImgBB being the final location, and Image safety deleting a private crop describe an earlier implementation. Do not use them as operational instructions. The source-status notice above describes current code.
 
 ## Owner decision of 2026-10-10 (answer 295)
 

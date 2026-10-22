@@ -4,10 +4,9 @@
  * Approval is where the picture is made: the plain photo and the frame image the photo recorded (the generated frame variant, or the
  * event's own frame) are composed on the server, stored, and only then does the photo become visible. A photo whose frame cannot be
  * fetched or composed stays pending: the brand's frame is never skipped silently. A reopened approved photo reuses its composed image if its private source is gone. The user gets the share link by email. The private plain
- * photo (the unframed crop) is NOT deleted here any more (issue 509, "never lose an image": that left the framed picture as the only copy). After the
- * answer is sent a copy of it goes to ImgBB (owner decision 295), every copy that exists is recorded and read back (`Submission.imageCopies`,
- * lib/storage/image-copies.ts), and **only when the ImgBB copy is verified is the private Blob file deleted** (owner decision "variant B"; `photoReview.photoUrl` then becomes null).
- * If the ImgBB copy fails, times out or has another size, the Blob file stays, so there is always at least one copy. The 90 days after the event that ImgBB keeps it (owner answer 226) is a later step.
+ * photo (the unframed crop) is retained in Blob. After the answer is sent, a copy may be mirrored to ImgBB and each copy is recorded and read back
+ * (`Submission.imageCopies`, lib/storage/image-copies.ts). The mirror is additive: neither source copy is deleted during approval or copy repair.
+ * A failed or unverifiable mirror leaves the Blob source untouched. Retention and deletion are handled only by the submission erasure flow.
  * (A try-on request held with the photo was queued here until the try-on integration was removed, issue 557.) Rejection keeps the photo private and makes no picture.
  *
  * Every state change is one conditional update on the review status, so two moderators acting at once cannot both win.
@@ -199,8 +198,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
     email = result === 'deferred' ? 'skipped' : result;
   }
 
-  // The plain photo is not deleted here (issue 509): it is the only unframed copy of the user's picture until its ImgBB copy is verified. The follow-up work makes that copy after the answer and
-  // deletes the Blob file only then (variant B); a failure there never touches the approval, and until then `photoReview.photoUrl` keeps pointing at the file so deleting the submission deletes it.
+  // Keep the plain photo in Blob after approval. Follow-up mirroring is additive and cannot delete this source; `photoReview.photoUrl` remains available for review and erasure.
   try {
     if (!photo || !review.photoUrl) return { ok: true, email, ...(emailDeferred ? { emailDeferred: true as const } : {}) };
     deps.imageCopies?.(db, {

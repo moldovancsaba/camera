@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * The editor of the words the reviewer describes a photo with (issue 628, lib/photo-vetting/vocabulary.ts): the same screen at the three levels, the general level, a partner and an event.
- * Per group (gender, age, emotion, items, reasons for a rejection) it lists the options as this level sees them, and a row can change its words, offer or hide the option, move it up or down,
+ * The editor for photo rejection reasons (lib/photo-vetting/vocabulary.ts), at the general, partner and event levels. Per reason it lists the options as this level sees them, and a row can
+ * change its words, offer or hide the option, move it up or down,
  * follow the level above again, or, for an option this level added, delete it (which hides it for good: it keeps its key and can be restored). The key behind a word never changes: it is what
  * is stored with the photo and what the counters for the analytics are named from, so only the words, the order and whether it is offered can be edited.
  *
@@ -148,7 +148,7 @@ export default function AnnotationVocabularyEditor({ level, id, initial }: Annot
       </MetadataText>
       {actionBar}
 
-      {VOCAB_GROUPS.map((group) => {
+      {VOCAB_GROUPS.filter((group) => group === 'reject_reason').map((group) => {
         const info = GROUPS[group];
         const inGroup = resolved.options.filter((option) => option.group === group);
         const main = inGroup.filter((option) => !isDeletedHere(ctx, option));

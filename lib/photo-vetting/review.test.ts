@@ -469,7 +469,6 @@ const BLOB_COMPOSED = 'https://abc123.public.blob.vercel-storage.com/submission-
 /** The real copies work with fakes for the hosts, run after the approval and awaited by the test (in the app it runs after the response). */
 function withRealCopies(photo: Buffer, frame: Buffer, mode: 'works' | 'fails' | 'hangs' | 'wrong-size', copiesDb: Db) {
   const done: Array<Promise<ImageCopy[]>> = [];
-  const blobDeleted: string[] = [];
   const hostFiles: Record<string, number> = { [BLOB_PHOTO]: photo.length };
   const fetchImpl = (async (input: unknown) => {
     const size = hostFiles[String(input)];
@@ -485,7 +484,6 @@ function withRealCopies(photo: Buffer, frame: Buffer, mode: 'works' | 'fails' | 
       return { imageUrl, deleteUrl: 'https://ibb.co/u/delete', imageId: 'u1' };
     },
     deleteFromImgbb: async () => true,
-    deleteBlob: async (url) => void blobDeleted.push(url),
     now: () => AT,
     readBackAttempts: 1,
     readBackDelayMs: 0,
@@ -502,16 +500,16 @@ function withRealCopies(photo: Buffer, frame: Buffer, mode: 'works' | 'fails' | 
     // The approval is checked against the submission fake of this file; the follow-up work gets a database of its own (the shared in-memory one, which knows the array updates it makes).
     imageCopies: (_database, input) => void done.push(recordApprovalCopies(copiesDb, input, copyDeps)),
   });
-  return { ...base, done, blobDeleted };
+  return { ...base, done };
 }
 
-test('with the real copies work: the approval stays approved whatever ImgBB does; the private crop is deleted only when its ImgBB copy is verified, and kept when ImgBB fails, times out or has another size', async () => {
+test('with the real copies work: approval stays approved and the private source is retained whether the ImgBB mirror verifies or fails', async () => {
   const { photo, frame } = await fixtures();
   for (const mode of ['works', 'fails', 'hangs', 'wrong-size'] as const) {
     const submission = pendingSubmission({ photoReview: { photoUrl: BLOB_PHOTO, photoSize: photo.length, photoMime: 'image/jpeg', shareOptIn: true, submittedAt: AT, tryOn: null } });
     const { db } = fakeDb(submission);
     const copies = libraryFakeDb({ submissions: [{ _id: submission._id, photoReview: { photoUrl: BLOB_PHOTO }, imageCopies: [] }] });
-    const { deps: d, done, blobDeleted } = withRealCopies(photo, frame, mode, copies.db);
+    const { deps: d, done } = withRealCopies(photo, frame, mode, copies.db);
     const result = await approvePhoto(db, submission as never, ACTOR, d);
     assert.deepEqual(result, { ok: true, email: 'sent' }, `${mode}: the approval answer`);
     assert.equal(submission.reviewStatus, 'approved');
@@ -524,11 +522,11 @@ test('with the real copies work: the approval stays approved whatever ImgBB does
     assert.equal(state('unframed', 'imgbb'), mode === 'works' ? 'verified' : 'failed', `${mode}: unframed imgbb`);
     const photoUrl = (copies.data.submissions[0].photoReview as { photoUrl: string | null }).photoUrl;
     if (mode === 'works') {
-      assert.equal(state('unframed', 'blob'), 'deleted', 'works: the crop is recorded as deleted');
-      assert.deepEqual([blobDeleted, photoUrl], [[BLOB_PHOTO], null], 'works: the Blob crop is deleted and the address is null');
+      assert.equal(state('unframed', 'blob'), 'verified', 'works: the Blob source remains verified');
+      assert.equal(photoUrl, BLOB_PHOTO, 'works: the Blob crop and its address are retained');
     } else {
       assert.equal(state('unframed', 'blob'), 'verified', `${mode}: the crop is kept`);
-      assert.deepEqual([blobDeleted, photoUrl], [[], BLOB_PHOTO], `${mode}: nothing deleted, the address is kept`);
+      assert.equal(photoUrl, BLOB_PHOTO, `${mode}: the source address is kept`);
     }
   }
 });

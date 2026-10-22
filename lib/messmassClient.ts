@@ -214,7 +214,7 @@ const PHOTO_STATS_TIMEOUT_MS = 5000;
 export type PhotoStatsPayload = CounterPayload;
 
 /**
- * Sends the photo, vetting and annotation counters of an event to messmass (POST /api/integrations/camera/events/[id]/photo-stats, issues 521 and 628): the sibling of the link stats, with the
+ * Sends the photo lifecycle, journey, and rejection-reason counters of an event to messmass (POST /api/integrations/camera/events/[id]/photo-stats, issues 521 and 628): the sibling of the link stats, with the
  * same secret, the same timeout and the same rule. The body is `{ totals, averages, labels }` after the contract check of counters-contract.ts: a name that does not match `camera_[a-z0-9_]+`
  * is dropped and logged and never sent, at most 300 names go, totals are whole numbers from 0 to 1e9, averages are finite. **The messmass route is built by its own stream** and nothing in camera calls
  * this function before the owner has chosen the first event to watch (the setting of lib/analytics/counters-setting.ts is off); it answers false, like any refusal, until the route answers. True

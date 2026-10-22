@@ -7,11 +7,9 @@
  *   not made or could not be verified. The groups use `Submission.imageCopies` (lib/storage/image-copies.ts): a picture counts as
  *   held by a store when its stored address is there or a `verified` copy is.
  * - **The address check (`probeImageSafety`) writes nothing either.** A bounded batch of one-byte range requests to the addresses the photos name; it lists the ones that did not answer.
- * - **The run (`runImageSafetyBatch`) adds, and deletes one thing.** One bounded batch per call, one kind at a time: `rescue` copies a picture that exists only on ImgBB into our Blob store
- *   (`rescue/<event>/<submission>.<ext>`, the bytes unchanged), `mirror` copies a picture that exists only on Blob to ImgBB, `unframed` copies an approved photo's private crop to ImgBB,
- *   reads the copy back and **only then deletes the private Blob crop** (owner decision "variant B": the same helper as the approval's follow-up work, `makeUnframedFinal`; a copy that cannot be
- *   verified leaves the Blob crop in place). Every copy is read back before it counts (lib/storage/image-copies.ts). The submission's stored picture address is never changed and nothing else is
- *   deleted. A copy that fails is reported with its reason and recorded as `failed` on the submission; running again does only what is still missing, so a repeat is safe and the walk always ends (it goes by id).
+ * - **The run (`runImageSafetyBatch`) only adds or repairs copies.** One bounded batch per call, one kind at a time: `rescue` copies a composed picture from ImgBB to Blob, `mirror` copies a composed picture from Blob to ImgBB,
+ *   `unframed` mirrors an approved crop from Blob to ImgBB, and `unframed-rescue` restores a historical crop from ImgBB to Blob. No source file or submission address is deleted. Every copy is read back before it counts.
+ *   Only submissions with a structurally valid consent audit are eligible for this repair workflow; consent-pending, unknown, expired, or erasure-state photos are excluded.
  */
 
 import { put } from '@vercel/blob';
@@ -19,6 +17,7 @@ import type { Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import sharp from 'sharp';
 import { COLLECTIONS, type ImageCopy } from '@/lib/db/schemas';
+import { hasVerifiableConsentAudit } from '@/lib/events/consent-eligibility';
 import { isAllowedLogoUrl } from '@/lib/frame/logo';
 import { detectImageProvider } from '@/lib/imgbb/url';
 import { isMissingImagePlaceholder } from '@/lib/media/placeholder';
@@ -35,8 +34,8 @@ import {
   type ImageCopyDeps,
 } from '@/lib/storage/image-copies';
 
-export type SafetyKind = 'rescue' | 'mirror' | 'unframed';
-export const SAFETY_KINDS: readonly SafetyKind[] = ['rescue', 'mirror', 'unframed'];
+export type SafetyKind = 'rescue' | 'mirror' | 'unframed' | 'unframed-rescue';
+export const SAFETY_KINDS: readonly SafetyKind[] = ['rescue', 'mirror', 'unframed', 'unframed-rescue'];
 
 const PAGE = 200;
 /** The fields of a submission that the classification needs, nothing more (the walk reads every photo). */
@@ -50,6 +49,8 @@ const PROJECTION = {
   reviewStatus: 1,
   deleteUrl: 1,
   imageId: 1,
+  consentStatus: 1,
+  consents: 1,
 };
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
@@ -68,8 +69,7 @@ const verified = (doc: Document, role: ImageCopy['role'], store: ImageCopy['stor
 
 export type ComposedState = 'imgbb-only' | 'blob-only' | 'both' | 'other' | 'none';
 /**
- * The private unframed crop of an approved photo: `blob-only` (in our store, no verified ImgBB copy), `imgbb-only` (final: the Blob file is deleted and ImgBB holds a verified copy), `both`
- * (in our store and on ImgBB: the delete is still to do), or `none`. `waiting` and `rejected` photos keep their crop in our store (it is copied when they are approved).
+ * The unframed crop of an approved photo: `blob-only`, `imgbb-only` (a historical single copy that needs restoring), `both`, or `none`. Waiting and rejected photos stay out of the public mirror workflow.
  */
 export type UnframedState = 'none' | 'blob-only' | 'imgbb-only' | 'both' | 'waiting' | 'rejected';
 
@@ -78,7 +78,7 @@ export interface Classified {
   /** `blob-only`, and an old ImgBB copy exists whose address was never kept (the photo has an old mirror record): it is made again so it can be read back. */
   oldMirrorRecord: boolean;
   unframed: UnframedState;
-  /** An approved photo whose crop is still in our store although an ImgBB copy was made: that copy could not be verified (ImgBB may have changed the file), so nothing was deleted. */
+  /** An approved photo whose crop is still in Blob although its ImgBB copy was not verified. */
   cropKeptUnverified: boolean;
   /** Copies that were not made (no address). */
   notMade: number;
@@ -114,7 +114,10 @@ export function classify(doc: Document): Classified {
 /** Is this submission one that a run of `kind` has something to do for? */
 export function needs(kind: SafetyKind, doc: Document): boolean {
   const c = classify(doc);
-  return kind === 'rescue' ? c.composed === 'imgbb-only' : kind === 'mirror' ? c.composed === 'blob-only' : c.unframed === 'blob-only' || c.unframed === 'both';
+  if (kind === 'rescue') return c.composed === 'imgbb-only';
+  if (kind === 'mirror') return c.composed === 'blob-only';
+  if (kind === 'unframed') return c.unframed === 'blob-only';
+  return c.unframed === 'imgbb-only';
 }
 
 /** Walks the submissions that can have a picture, by id, a page at a time. A stored try-on result is left out. */
@@ -135,9 +138,11 @@ export interface ImageSafetyPlan {
   pictures: number;
   /** Stored try-on results of the removed integration: kept as they are, never copied. */
   tryOnResults: number;
+  /** Photos with no structurally valid consent audit. They are never probed or copied by this repair tool. */
+  consentExcluded: number;
   /** Where the framed picture is held. `blobOnlyOldMirror` is the part of `blobOnly` that has an old ImgBB mirror record without an address. */
   composed: { imgbbOnly: number; blobOnly: number; blobOnlyOldMirror: number; both: number; other: number };
-  /** The private unframed crop of vetted photos: approved photos by where it is (our store only, ImgBB only = final, both), the photos waiting or rejected (the crop stays in our store until they are approved), and `keptUnverified`, the part of `blobOnly` whose ImgBB copy could not be verified. */
+  /** Unframed crops: approved photos by where a verified copy exists, plus waiting and rejected crops. */
   unframed: { blobOnly: number; imgbbOnly: number; both: number; waiting: number; rejected: number; keptUnverified: number };
   /** Recorded copies that are not good: `notMade` (no file), `couldNotVerify` (a file that was written but whose read-back did not confirm it), and the photos that have one of either. */
   copies: { notMade: number; couldNotVerify: number; photosWithAProblem: number };
@@ -150,15 +155,18 @@ export async function planImageSafety(db: Db): Promise<ImageSafetyPlan> {
   const plan: ImageSafetyPlan = {
     pictures: 0,
     tryOnResults: await db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ submissionKind: 'tryon_result' }),
+    consentExcluded: 0,
     composed: { imgbbOnly: 0, blobOnly: 0, blobOnlyOldMirror: 0, both: 0, other: 0 },
     unframed: { blobOnly: 0, imgbbOnly: 0, both: 0, waiting: 0, rejected: 0, keptUnverified: 0 },
     copies: { notMade: 0, couldNotVerify: 0, photosWithAProblem: 0 },
-    toDo: { rescue: 0, mirror: 0, unframed: 0 },
+    toDo: { rescue: 0, mirror: 0, unframed: 0, 'unframed-rescue': 0 },
   };
   for await (const rows of pages(db)) {
     for (const row of rows) {
       const c = classify(row);
       if (c.composed !== 'none') plan.pictures += 1;
+      const consentEligible = row.consentStatus === 'received' && hasVerifiableConsentAudit(row.consents);
+      if (c.composed !== 'none' && !consentEligible) plan.consentExcluded += 1;
       if (c.composed === 'imgbb-only') plan.composed.imgbbOnly += 1;
       else if (c.composed === 'blob-only') {
         plan.composed.blobOnly += 1;
@@ -174,7 +182,7 @@ export async function planImageSafety(db: Db): Promise<ImageSafetyPlan> {
       plan.copies.notMade += c.notMade;
       plan.copies.couldNotVerify += c.couldNotVerify;
       if (c.notMade + c.couldNotVerify > 0) plan.copies.photosWithAProblem += 1;
-      for (const kind of SAFETY_KINDS) if (needs(kind, row)) plan.toDo[kind] += 1;
+      for (const kind of SAFETY_KINDS) if (consentEligible && needs(kind, row)) plan.toDo[kind] += 1;
     }
   }
   return plan;
@@ -214,7 +222,7 @@ function addressesOf(doc: Document): Array<{ what: 'framed picture' | 'copy' | '
   add('framed picture', primaryPicture(doc));
   const review = text((doc.photoReview as Document | undefined)?.photoUrl);
   for (const copy of copiesOf(doc)) {
-    // A crop deleted on purpose (variant B) is not an address that should answer.
+    // A historical deleted-copy row is not an address that should answer.
     if (copy.state === 'deleted') continue;
     const url = text(copy.url);
     if (url && url === review) add('unframed crop', url);
@@ -237,7 +245,7 @@ export async function probeImageSafety(
   let reachedEnd = true;
   for await (const rows of pages(db, options.after)) {
     for (const row of rows) {
-      if (addressesOf(row).length === 0) continue;
+      if (addressesOf(row).length === 0 || row.consentStatus !== 'received' || !hasVerifiableConsentAudit(row.consents)) continue;
       picked.push(row);
       if (picked.length >= limit) break;
     }
@@ -302,7 +310,7 @@ export const defaultSafetyDeps: SafetyDeps = {
   downloadMs: DOWNLOAD_MS,
 };
 
-export type ItemOutcome = { ok: true; bytes: number; deletedBlob?: boolean } | { ok: false; reason: string; url: string | null };
+export type ItemOutcome = { ok: true; bytes: number } | { ok: false; reason: string; url: string | null };
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const safeSegment = (value: unknown) => (typeof value === 'string' ? value.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64) : '') || 'event';
@@ -370,31 +378,62 @@ async function mirrorOne(db: Db, row: Document, deps: SafetyDeps): Promise<ItemO
   return copy.state === 'verified' ? { ok: true, bytes: file.buffer.length } : { ok: false, reason: copy.error ?? 'the copy could not be read back', url: copy.url };
 }
 
-/**
- * An approved photo's private unframed crop: copied to ImgBB, the copy read back, and only when it is verified the private Blob file deleted (owner decision "variant B"; the same helper as the approval's
- * follow-up work). A crop whose ImgBB copy is already verified (`both`) is not downloaded again: only the delete is left. A copy that cannot be verified leaves the Blob file in place.
- */
+/** An approved photo's unframed crop is mirrored to ImgBB and both sources are retained. */
 async function unframedOne(db: Db, row: Document, deps: SafetyDeps): Promise<ItemOutcome> {
   const id = row._id as ObjectId;
   const url = text((row.photoReview as Document | undefined)?.photoUrl) as string;
-  let buffer: Buffer | null = null;
-  if (classify(row).unframed !== 'both') {
-    try {
-      buffer = (await download(url, deps)).buffer;
-    } catch (error) {
-      const reason = `the private photo could not be read: ${message(error)}`;
-      await recordFailure(db, id, { role: 'unframed', store: 'imgbb', bytes: null, error: reason }, deps);
-      return { ok: false, reason, url: null };
-    }
+  let buffer: Buffer;
+  try {
+    buffer = (await download(url, deps)).buffer;
+  } catch (error) {
+    const reason = `the source photo could not be read: ${message(error)}`;
+    await recordFailure(db, id, { role: 'unframed', store: 'imgbb', bytes: null, error: reason }, deps);
+    return { ok: false, reason, url: null };
   }
   const result = await makeUnframedFinal(db, { submissionId: id, url, buffer }, deps);
-  const imgbbVerified = buffer === null || result.made.some((copy) => copy.store === 'imgbb' && copy.state === 'verified');
-  if (!imgbbVerified) return { ok: false, reason: result.reason ?? 'the ImgBB copy could not be verified; the private photo stays in our store', url: null };
-  // The ImgBB copy is verified; a crop that could not be deleted is still in our store and is the next run's business (`both`).
-  return { ok: true, bytes: buffer?.length ?? 0, deletedBlob: result.deleted };
+  if (!result.mirrored) return { ok: false, reason: result.reason ?? 'the ImgBB copy could not be verified; the source stays in our store', url: null };
+  return { ok: true, bytes: buffer.length };
 }
 
-const WORKERS: Record<SafetyKind, (db: Db, row: Document, deps: SafetyDeps) => Promise<ItemOutcome>> = { rescue: rescueOne, mirror: mirrorOne, unframed: unframedOne };
+/** Restore an approved historical crop from its verified ImgBB backup into Blob without deleting the ImgBB source. */
+async function unframedRescueOne(db: Db, row: Document, deps: SafetyDeps): Promise<ItemOutcome> {
+  const id = row._id as ObjectId;
+  const source = copiesOf(row).find((copy) => copy.role === 'unframed' && copy.store === 'imgbb' && copy.state === 'verified' && text(copy.url));
+  const url = text(source?.url);
+  if (!url) return { ok: false, reason: 'the verified ImgBB crop address is missing', url: null };
+  let file: { buffer: Buffer; format: string };
+  try {
+    file = await download(url, deps);
+  } catch (error) {
+    const reason = `the ImgBB crop could not be read: ${message(error)}`;
+    await recordFailure(db, id, { role: 'unframed', store: 'blob', bytes: null, error: reason }, deps);
+    return { ok: false, reason, url };
+  }
+  const extension = file.format === 'jpeg' ? 'jpg' : file.format;
+  let stored: { url: string };
+  try {
+    stored = await deps.putBlob(`pending/${safeSegment(row.eventId ?? (Array.isArray(row.eventIds) ? row.eventIds[0] : undefined))}/${String(id)}.${extension}`, file.buffer, `image/${file.format}`);
+  } catch (error) {
+    const reason = `the crop could not be restored to our store: ${message(error)}`;
+    await recordFailure(db, id, { role: 'unframed', store: 'blob', bytes: file.buffer.length, error: reason }, deps);
+    return { ok: false, reason, url };
+  }
+  const copy = await verifyAndRecord(db, id, { role: 'unframed', store: 'blob', url: stored.url, bytes: file.buffer.length }, deps);
+  if (copy.state !== 'verified') return { ok: false, reason: copy.error ?? 'the restored crop could not be verified', url: stored.url };
+  // Restore the source only if the submission is still approved and the crop field is still empty.
+  await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+    { _id: id, reviewStatus: 'approved', 'photoReview.photoUrl': { $in: [null, ''] } },
+    { $set: { 'photoReview.photoUrl': stored.url } }
+  );
+  return { ok: true, bytes: file.buffer.length };
+}
+
+const WORKERS: Record<SafetyKind, (db: Db, row: Document, deps: SafetyDeps) => Promise<ItemOutcome>> = {
+  rescue: rescueOne,
+  mirror: mirrorOne,
+  unframed: unframedOne,
+  'unframed-rescue': unframedRescueOne,
+};
 
 export interface RunBatch {
   kind: SafetyKind;
@@ -402,8 +441,8 @@ export interface RunBatch {
   processed: number;
   /** Photos looked at on the way. */
   scanned: number;
-  /** `copied`: the missing copy exists and is verified. `deleted`: private Blob crops deleted after their ImgBB copy was verified (the `unframed` kind only). `failed`: the copy was not made or could not be verified. */
-  counts: { copied: number; deleted: number; failed: number };
+  /** `copied`: the missing copy exists and is verified. `failed`: the copy was not made or could not be verified. */
+  counts: { copied: number; failed: number };
   bytes: number;
   /** The photos whose copy was not made, with the reason (at most 20 per call; the rest are only counted). The private unframed crop is never named by its address. */
   failures: Array<{ id: string; reason: string; url: string | null }>;
@@ -428,7 +467,7 @@ export async function runImageSafetyBatch(
   for await (const rows of pages(db, options.after)) {
     for (const row of rows) {
       scanned += 1;
-      if (needs(options.kind, row)) picked.push(row);
+      if (row.consentStatus === 'received' && hasVerifiableConsentAudit(row.consents) && needs(options.kind, row)) picked.push(row);
       if (picked.length >= limit) break;
     }
     if (picked.length >= limit) {
@@ -436,7 +475,7 @@ export async function runImageSafetyBatch(
       break;
     }
   }
-  const result: RunBatch = { kind: options.kind, processed: 0, scanned, counts: { copied: 0, deleted: 0, failed: 0 }, bytes: 0, failures: [], next: null };
+  const result: RunBatch = { kind: options.kind, processed: 0, scanned, counts: { copied: 0, failed: 0 }, bytes: 0, failures: [], next: null };
   let last: Document | null = null;
   for (let i = 0; i < picked.length; i += RUN_CONCURRENT) {
     if (i > 0 && Date.now() > deadline) {
@@ -458,7 +497,6 @@ export async function runImageSafetyBatch(
       result.processed += 1;
       if (outcome.ok) {
         result.counts.copied += 1;
-        if (outcome.deletedBlob) result.counts.deleted += 1;
         result.bytes += outcome.bytes;
       } else {
         result.counts.failed += 1;

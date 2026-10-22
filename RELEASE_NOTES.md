@@ -1,5 +1,15 @@
 # RELEASE_NOTES.md
 
+## Unreleased — unify vetting and per-photo Fanmass analysis; retain image sources (2026-10-22)
+
+- **Retired:** standalone manual people-box annotations, their vetting controls, schema fields, list page, and manual-analysis counters. Vetting now records publication decisions/rejection reasons; Fanmass remains the per-photo analysis source. The legacy people write endpoint returns `410 Gone`.
+- **Unified review:** Camera reviewers edit or confirm the Fanmass result for that same photo and exact source revision. Fanmass consumes matching review evidence and refreshes that photo's result delivery to Messmass; there is no parallel Camera manual analytics dataset.
+- **Fixed:** approved and rejected vetting cards paginate rather than silently stopping at 60.
+- **Image copies:** approval mirroring and Image safety repairs retain source files. The Image safety count/probe and copy jobs skip photos without verifiable consent evidence. This adds redundancy but does not implement an independent private offsite backup.
+- **Atlas:** retain the existing AtlasAdmin credential as requested. Camera and Fanmass use the same cluster, but Messmass still points to another cluster. A target `messmass` database exists on the Camera/Fanmass cluster and differs from the current Messmass database in four collections. No production cutover is included in this change.
+- **Production audit:** 337 MTK submission records; 150 have verifiable required-consent audit (97 approved and 53 rejected). The other 187 are expired for lack of consent; all have had image URLs and copy manifests removed from Camera, and 110 are specifically marked as missing consent audit. Of the 337, 229 carry the exact Camera event UUID; the other 108 have no event link but are all expired and have no image URLs. The linked Messmass project points back to the exact Camera event and Mongo event ID. All 97 currently eligible approved photos have completed Fanmass analysis and Messmass delivery. No submission contains legacy `people` or `peopleReview` fields. All 347 unique stored image addresses across the 150 consent-eligible photos returned an image response to a one-byte range probe. Of those 150, 101 have verified Blob and ImgBB copies, two have verified Blob copy metadata only, and 47 have no copy manifest; the latter 49 have only one recorded Blob location and are not proven to have an independent second copy. ImgBB is public and not an independent private backup.
+- **Not verified here:** source-address reachability for every image, production database cutover/parity, and three-copy private disaster-recovery coverage. No claim of a complete production backup is made by this source change.
+
 ## Unreleased — show people counts on analysed photo cards
 
 - **Added:** each card in the event's Analysed photo list displays the number of people saved in its analysis, including an explicit zero-person result. Malformed or vocabulary-incompatible saved data is flagged for review instead of being presented as zero.

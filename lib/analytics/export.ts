@@ -5,7 +5,6 @@
  * sentence) or a reviewer's name for a formula; a cell with a comma, a quote or a line break is quoted. Times are as stored (ISO, UTC); days are the days of the chosen clock.
  */
 
-import { optionLabel } from '@/lib/photo-vetting/vocabulary';
 import { isRecorded, type JourneySummary } from './journey';
 import type { EventReport } from './report';
 import type { SourcesReport } from './sources';
@@ -72,21 +71,6 @@ export function analyticsRows(report: EventReport, sources?: SourcesReport, jour
   add('decline reasons from the list', 'declined photos with no reason from the list', vetting.rejectedWithoutReasons);
   tallies('decline reasons from the list', vetting.rejectReasons);
   for (const reason of vetting.rejectReasons) add('decline reason share', reason.label, photos.rejected > 0 ? Math.round((reason.count / photos.rejected) * 1000) / 1000 : null);
-
-  const people = report.people.summary;
-  const { vocabulary } = report;
-  add('people', 'photos looked at', people.photos);
-  add('people', 'photos with somebody in them', people.photosWithPeople);
-  add('people', 'photos with one person', report.people.photosWithOnePerson);
-  add('people', 'photos with a group (two or more)', report.people.photosWithGroup);
-  add('people', 'people', people.people);
-  // The words of the event's vocabulary; the key of an option that is gone from the list reads as its key made readable.
-  for (const [key, count] of Object.entries(people.byGender)) add('people gender', optionLabel(vocabulary, 'gender', key), count);
-  for (const [key, count] of Object.entries(people.byAge)) add('people age', optionLabel(vocabulary, 'age', key), count);
-  for (const [key, count] of Object.entries(people.byEmotion)) add('people emotion', optionLabel(vocabulary, 'emotion', key), count);
-  add('people items', 'people with any', people.withMerch);
-  for (const [key, count] of Object.entries(people.byMerch)) add('people items', optionLabel(vocabulary, 'merch', key), count);
-  tallies('people marked by', report.people.markers);
 
   const { users } = report;
   add('users', 'different users', users.distinct);

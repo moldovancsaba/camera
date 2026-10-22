@@ -8,7 +8,7 @@
 
 import { useId } from 'react';
 import { Button, TextInput } from '@/components/gds/PublicPrimitives';
-import { MAX_NOTE_LENGTH } from '@/lib/photo-vetting/review-state';
+import { MAX_NOTE_LENGTH } from '@/lib/photo-vetting/rejection';
 import { optionsOf, type ResolvedVocabulary } from '@/lib/photo-vetting/vocabulary';
 
 const CHIP_STYLES = { root: { height: 'auto', minHeight: '2.5rem', paddingBlock: '0.375rem', paddingInline: '0.75rem' }, label: { lineHeight: 1.3, textAlign: 'left', whiteSpace: 'normal' } } as const;

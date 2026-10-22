@@ -1,18 +1,9 @@
 /**
- * The words the vetting person describes a photo with (issue 628, owner request 2026-10-12): who is in it (gender, age), how they look (emotion), what they wear or hold (items) and, for a
- * photo that is rejected, why. Plain words, no emoji. The list is **configurable at three levels, like every other function of the service**: the standard list below (in code), then the
- * **general** level (a global admin), the **partner** and the **event**; the nearest level wins and nothing is copied down (the brick model, docs/BUILDING_BRICKS.md). A level stores only what
- * its editor changed.
+ * Shared vocabulary model. Current product behavior exposes only `reject_reason` in Camera: human publication review records why a photo was rejected. Gender, age, emotion, and merchandise
+ * groups remain readable for legacy configuration compatibility, but are not rendered, written by a photo-analysis workflow, or used for current analytics. Per-photo analysis is Fanmass data.
  *
- * What a level can do (the CRUD): **create** an option of its own (a custom option, with a key made from its name), **read** the list as the level sees it, **update** a label or the order, hide
- * or restore any option, and **delete** a custom option, which hides it for good. Nothing is ever removed from the data: a photo marked with an option keeps its key, so a hidden or deleted
- * option still counts in the analytics and still reads in the photo it was given to. The standard options can be hidden and relabelled but never deleted or given another meaning.
- *
- * Why keys: the **key** is the meaning (`female`, `scarf`, `nudity`). It never changes, it is what is stored with the photo, what the counters for messmass are named from
- * (`camera_gender_female`) and what any later training set will be labelled with. The label is only the words on the screen. Each annotation records the **version** of the list it was made with
- * (`vocabularyVersion`: the active keys), so annotations made with different lists can be told apart.
- *
- * Pure and free of the database and of the browser; unit-tested (vocabulary.test.ts). The database side is vocabulary-load.ts.
+ * Keys are stable identifiers; labels are editable words. Configuration inherits from general to partner to event. This pure module has no database or browser access; vocabulary-load.ts reads
+ * and saves the level configuration.
  */
 
 export const VOCAB_GROUPS = ['gender', 'age', 'emotion', 'merch', 'reject_reason'] as const;

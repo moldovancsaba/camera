@@ -5,11 +5,10 @@
  *      **Reads the database only, writes nothing, asks no host.**
  * GET  /api/admin/image-safety?probe=1&after=<id>&limit=<n>     -> one bounded batch of the address check: one-byte range requests to the addresses the photos name; lists the ones that did not answer.
  *      **Reads only, writes nothing, marks nothing** (hiding a gone picture is the Broken pictures card's job). Repeat with `next` until it is null.
- * POST /api/admin/image-safety  { confirm: true, kind: 'rescue' | 'mirror' | 'unframed', after?, limit? } -> one bounded batch of the run (6 photos by default, 12 at most, no new work after 30 seconds),
- *      walking the photos by id from `after`; repeat with `next` until it is null. `rescue` copies a picture that exists only on ImgBB into our Blob store, `mirror` copies a picture that exists only
- *      on Blob to ImgBB, `unframed` copies an approved photo's private crop to ImgBB, reads the copy back and only then deletes the private Blob crop (owner decision "variant B"; a copy that cannot be
- *      verified leaves the crop in place). It names what it works on by kind and cursor, **never "all"**; a body without `confirm: true` is refused. It adds files and fields (`Submission.imageCopies`),
- *      changes no stored picture address, and deletes nothing but that private crop. A repeat does only what is still missing; a copy that fails is reported with its reason.
+ * POST /api/admin/image-safety  { confirm: true, kind: 'rescue' | 'mirror' | 'unframed' | 'unframed-rescue', after?, limit? } -> one bounded batch,
+ *      walking photos by id from `after`; repeat with `next` until it is null. Each kind makes or restores a missing copy and verifies it. Source files and addresses are retained; these repair jobs never delete a photo.
+ *      It names what it works on by kind and cursor, **never "all"**; a body without `confirm: true` is refused. It adds files and fields (`Submission.imageCopies`). A repeat does only what is still missing;
+ *      a copy that fails is reported with its reason.
  */
 
 import { NextRequest } from 'next/server';

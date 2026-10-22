@@ -6,7 +6,6 @@
  */
 
 import Link from 'next/link';
-import PeopleSummaryCard from '@/components/admin/PeopleSummaryCard';
 import { formatCount, formatDateTime, formatDay, formatHour, formatRate, formatShare } from '@/lib/analytics/format';
 import { NOT_MEASURED, type EventReport, type EventsTableRow } from '@/lib/analytics/report';
 import type { SourcesReport } from '@/lib/analytics/sources';
@@ -16,7 +15,7 @@ import { Bars, Columns, Metrics, Note, Panel, Table } from './ui';
 const plural = (count: number, one: string, many = `${one}s`) => `${formatCount(count)} ${count === 1 ? one : many}`;
 
 export function OverviewSection({ report, sources, table }: { report: EventReport; sources?: SourcesReport; table?: EventsTableRow[] }) {
-  const { photos, users, vetting, screens, emails, consents, people } = report;
+  const { photos, users, vetting, screens, emails, consents } = report;
   const days = report.activity.days;
   const hours = report.activity.hours;
   return (
@@ -40,7 +39,6 @@ export function OverviewSection({ report, sources, table }: { report: EventRepor
           { label: 'Time to first decision', value: formatDuration(vetting.timeToFirstDecision.avgSeconds), description: vetting.timeToFirstDecision.count > 0 ? `Median ${formatDuration(vetting.timeToFirstDecision.medianSeconds)}, over ${plural(vetting.timeToFirstDecision.count, 'decided photo')}` : 'No photo has been decided yet' },
           { label: 'Plays on the screens', value: formatCount(screens.plays), description: `${plural(screens.photosShown, 'photo')} shown, ${formatShare(screens.eligibleShown, screens.eligible)} of those that may be shown` },
           { label: 'Photo link e-mails sent', value: formatCount(emails.photoLink.sent), description: `${formatCount(emails.photoLink.failed)} failed, ${formatCount(emails.photoLink.skipped)} skipped` },
-          { label: 'People marked', value: formatCount(people.summary.people), description: `In ${plural(people.summary.photos, 'photo')} that a reviewer looked at` },
           { label: 'Consents given', value: formatCount(consents.photosWithConsent), description: `${plural(consents.photosWithoutConsent, 'photo')} with no consent record (older ones)` },
           ...(sources ? [{ label: 'Link and QR visits', value: formatCount(sources.totals.visits), description: `${formatCount(sources.totals.qr)} through QR codes, ${formatCount(sources.totals.link)} through links` }] : []),
         ]}
@@ -168,7 +166,7 @@ export function PhotosSection({ report }: { report: EventReport }) {
 }
 
 export function VettingSection({ report }: { report: EventReport }) {
-  const { photos, vetting, people } = report;
+  const { photos, vetting } = report;
   const time = vetting.timeToFirstDecision;
   return (
     <>
@@ -233,19 +231,6 @@ export function VettingSection({ report }: { report: EventReport }) {
         </Note>
       </Panel>
 
-      <Panel title="People marked in the photos" description="Who is in the picture, as the reviewers marked them at vetting: the mix of age and gender, the emotions and the merchandise.">
-        {people.summary.photos > 0 ? <PeopleSummaryCard summary={people.summary} vocabulary={report.vocabulary} /> : <Note>No reviewer has marked the people in a photo yet.</Note>}
-        <Table
-          caption="Photos marked by person"
-          rows={people.markers}
-          getKey={(row) => row.id}
-          empty="Nobody has marked the people in a photo yet."
-          columns={[
-            { key: 'by', header: 'Marked by', rowHeader: true, render: (row) => row.label },
-            { key: 'photos', header: 'Photos', numeric: true, render: (row) => formatCount(row.count) },
-          ]}
-        />
-      </Panel>
     </>
   );
 }

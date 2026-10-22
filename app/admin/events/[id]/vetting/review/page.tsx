@@ -6,19 +6,18 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
-import { markPeopleOn } from '@/lib/photo-vetting/people';
-import { loadPhotoQueue, toPhotoQueueItem } from '@/lib/photo-vetting/queue';
+import { loadPhotoQueue } from '@/lib/photo-vetting/queue';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
-import { CONSENT_ELIGIBLE_FILTER } from '@/lib/events/consent-eligibility';
 
 export const dynamic = 'force-dynamic';
 
-// WHAT: The one-at-a-time review screen of an event as a page of its own (issue 542, issue 628, docs/PHOTO_VETTING_PLAN.md): the photos that wait for approval, oldest first, one at a time, large.
-// The same screen is the Waiting list of the Vetting tab; this route stays for the Review button of a card of the list view (`?photo=<id>` opens that photo first) and for old links.
+/** One-at-a-time publication vetting. All analytics review stays on the unified Fanmass result. */
 export default async function EventVettingReviewPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ photo?: string; analysis?: string }> }) {
   const { id } = await params;
   const { photo, analysis } = await searchParams;
   if (!ObjectId.isValid(id)) notFound();
+  if (analysis) redirect(`/admin/events/${id}/analysis?photos=analysed`);
+
   const session = await getSession();
   const db = await connectToDatabase();
   const access = await getPartnerScopedAccessForEvent(db, id, session!, 'manager');
@@ -26,28 +25,10 @@ export default async function EventVettingReviewPage({ params, searchParams }: {
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) });
   if (!event) notFound();
 
-  // The words of the event: the photos are read with them and the screen offers them.
   const vocabulary = await loadEventVocabulary(db, event);
-  const analysisOnly = typeof analysis === 'string' && ObjectId.isValid(analysis);
-  const queue = analysisOnly
-    ? []
-    : await loadPhotoQueue(db, String(event.eventId ?? ''), 'pending_review', vocabulary, 50);
-  const analysisDoc = analysisOnly
-    ? await db.collection(COLLECTIONS.SUBMISSIONS).findOne({
-        $and: [
-          {
-            _id: new ObjectId(analysis),
-            $or: [{ eventId: String(event.eventId ?? '') }, { eventIds: { $in: [String(event.eventId ?? '')] } }],
-            photoReview: { $exists: true }, reviewStatus: 'approved', isArchived: { $ne: true },
-          },
-          CONSENT_ELIGIBLE_FILTER,
-        ],
-      })
-    : null;
-  // Review on a card of the Vetting tab opens the photo that was pressed first (issue 542, owner answer 267); the others follow, oldest first. A photo that is not waiting any more (decided meanwhile) is simply not found.
-  const chosen = analysisDoc ? toPhotoQueueItem(analysisDoc, vocabulary) : typeof photo === 'string' ? queue.find((item) => item.id === photo) : undefined;
-  if (analysisOnly && !chosen) notFound();
-  const items = chosen ? [chosen, ...queue.filter((item) => item !== chosen)] : queue;
+  const queue = await loadPhotoQueue(db, String(event.eventId ?? ''), 'pending_review', 50);
+  const chosen = typeof photo === 'string' ? queue.find((item) => item.id === photo) : undefined;
+  const items = chosen ? [chosen, ...queue.filter((item) => item.id !== chosen.id)] : queue;
   return (
     <div style={{ display: 'grid', gap: '1rem' }}>
       <nav aria-label="Breadcrumb">
@@ -55,16 +36,7 @@ export default async function EventVettingReviewPage({ params, searchParams }: {
         <span aria-hidden> / </span>
         <span>Review</span>
       </nav>
-      <PhotoReviewStage
-        eventId={id}
-        items={items}
-        vocabulary={vocabulary}
-        markPeople={analysisOnly || markPeopleOn(event as { markPeopleInVetting?: unknown })}
-        analysisOnly={analysisOnly}
-        completionHref={analysisOnly ? `/admin/events/${id}/vetting?photos=approved` : undefined}
-        backHref={`/admin/events/${id}/vetting`}
-        backLabel="Back to Vetting"
-      />
+      <PhotoReviewStage eventId={id} items={items} vocabulary={vocabulary} backHref={`/admin/events/${id}/vetting`} backLabel="Back to Vetting" />
     </div>
   );
 }

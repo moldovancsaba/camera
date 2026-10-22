@@ -27,7 +27,7 @@ const TABS: TabDefinition[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'journey', label: 'Journey' },
   { id: 'photos', label: 'Photos and users' },
-  { id: 'vetting', label: 'Vetting and people' },
+  { id: 'vetting', label: 'Vetting' },
   { id: 'screens', label: 'Screens' },
   { id: 'sources', label: 'Sources' },
   { id: 'emails', label: 'E-mails and consent' },
