@@ -406,14 +406,35 @@ export async function uploadImage(
  * @param deleteUrl - Delete URL from upload response
  * @returns True if deletion successful
  */
-export async function deleteImage(deleteUrl: string): Promise<boolean> {
+export async function deleteImage(deleteUrl: string, publicImageUrl?: string | null): Promise<boolean> {
   try {
     await axios.get(deleteUrl, { timeout: 10000 });
     console.log('✓ imgbb image deleted successfully');
     return true;
   } catch (error) {
+    const status = error instanceof AxiosError ? error.response?.status : undefined;
+    // ImgBB's delete link returns 404 when the image is already gone. Verify
+    // the public mirror itself is unavailable before treating that as success;
+    // a stale/invalid delete link must not erase the only remaining evidence.
+    if ((status === 404 || status === 410) && publicImageUrl && isRenderableImgbbImageUrl(publicImageUrl)) {
+      try {
+        const response = await axios.head(publicImageUrl, { timeout: 10000, validateStatus: () => true });
+        if (imgbbDeletionIsComplete(status, response.status)) {
+          console.log('✓ imgbb mirror was already unavailable');
+          return true;
+        }
+      } catch {
+        // A network error cannot prove deletion, so retain and retry the record.
+      }
+    }
     console.error('✗ imgbb image deletion failed:', error);
     return false;
   }
+}
+
+/** A failed delete link counts as complete only when the public copy is confirmed gone. */
+export function imgbbDeletionIsComplete(deleteStatus: number | undefined, publicImageStatus: number): boolean {
+  return (deleteStatus === 404 || deleteStatus === 410)
+    && (publicImageStatus === 404 || publicImageStatus === 410);
 }
 

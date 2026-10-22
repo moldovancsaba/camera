@@ -31,6 +31,8 @@ Consent and contact are independent gates. A contact-complete photo without veri
 
 Vercel Cron calls `/api/internal/purge-unconsented-captures` every 15 minutes. It requires `CRON_SECRET`; when that secret is not configured, the route fails closed and cleanup is disabled. The route atomically claims due records, deletes recorded stored image copies, removes contact/consent/photo-review identity data, and records an erasure state. Failed external-file deletions stay retryable; a retry is required before Camera marks that image erase complete. `analyticsDeletion` distinguishes `automatic_no_login` from `automatic_other` and manual deletion.
 
+For ImgBB, a 404 from the delete link is only treated as complete when a follow-up `HEAD` confirms the public image URL also returns 404 or 410. An invalid delete link while the image is still reachable remains a retryable deletion failure.
+
 The current path controls application visibility and durable deletion requests. It does not make public Blob or ImgBB URLs access-controlled before deletion completes. ImgBB is public and does not count as a private disaster-recovery copy.
 
 ## Operator checks

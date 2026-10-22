@@ -23,6 +23,14 @@ export function hasConsentEvidenceForProcessing(submission: Record<string, unkno
   return submission.consentStatus === 'received' && hasVerifiableConsentAudit(submission.consents);
 }
 
+export const CONSENT_AUDIT_ERASURE_STATUSES = ['received', 'expired'] as const;
+
+/** A received or expired legacy status without its proof must be erased, not trusted. */
+export function requiresConsentAuditErasure(submission: Record<string, unknown>): boolean {
+  return (CONSENT_AUDIT_ERASURE_STATUSES as readonly unknown[]).includes(submission.consentStatus)
+    && !hasVerifiableConsentAudit(submission.consents);
+}
+
 /** Mongo check for a structurally usable, timestamped consent audit on every recorded consent row. */
 export const CONSENT_AUDIT_VALID_FILTER: Document = {
   $expr: {

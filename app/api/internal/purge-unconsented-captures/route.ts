@@ -8,7 +8,7 @@ import { apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
 import { checkSharedSecret, logSharedSecretRejection } from '@/lib/security/safeEqual';
 import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
 import { eventGetsDefaults, getDefaultsRollout, type DefaultsRolloutSettings } from '@/lib/admin/defaults-rollout';
-import { CONSENT_AUDIT_VALID_FILTER, CONSENT_UNKNOWN_FILTER, hasVerifiableConsentAudit } from '@/lib/events/consent-eligibility';
+import { CONSENT_AUDIT_ERASURE_STATUSES, CONSENT_AUDIT_VALID_FILTER, CONSENT_UNKNOWN_FILTER, hasVerifiableConsentAudit, requiresConsentAuditErasure } from '@/lib/events/consent-eligibility';
 import { missingRequiredConsent } from '@/lib/events/consent-guard';
 import { anonymousWithoutFinalContactMongoFilter, hasFinalizedGuestContact, incompleteContactErasure } from '@/lib/submissions/guest-contact';
 
@@ -99,8 +99,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
     ],
   };
-  const unverifiedReceivedConsentFilter = {
-    consentStatus: 'received',
+  const unverifiedConsentAuditFilter = {
+    consentStatus: { $in: [...CONSENT_AUDIT_ERASURE_STATUSES] },
     $nor: [CONSENT_AUDIT_VALID_FILTER],
     retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
   };
@@ -113,7 +113,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
     ],
   };
-  const due = await submissions.find({ $or: [identityDueFilter, legacyNoContactDueFilter, consentDueFilter, unknownConsentFilter, unverifiedReceivedConsentFilter] })
+  const due = await submissions.find({ $or: [identityDueFilter, legacyNoContactDueFilter, consentDueFilter, unknownConsentFilter, unverifiedConsentAuditFilter] })
     .sort({ retentionExpiresAt: 1, consentExpiresAt: 1, createdAt: 1 }).limit(BATCH_SIZE).toArray();
   let deleted = 0;
   let erasedNoIdentity = 0;
@@ -149,12 +149,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     let noConsentAudit = submission.metadata?.consentAuditMissing === true;
     let unknownConsentAlreadyClaimed = false;
 
-    if (submission.consentStatus === 'received' && !hasVerifiableConsentAudit(submission.consents)) {
-      // Older deployments could mark a capture as received even when the
-      // evidence array was absent. Revoke that eligibility and erase the file.
+    if (requiresConsentAuditErasure(submission)) {
+      // Older deployments could retain either a received or expired status
+      // without its evidence array. Neither status is proof; erase the photo.
       const claim = await submissions.updateOne({
         _id: submission._id,
-        consentStatus: 'received',
+        consentStatus: submission.consentStatus,
         $nor: [CONSENT_AUDIT_VALID_FILTER],
         retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
       }, {

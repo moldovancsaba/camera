@@ -15,11 +15,11 @@ function submission(extra: Record<string, unknown> = {}) {
 }
 
 function makeDeps(overrides: Partial<SubmissionFilesDeps> = {}) {
-  const calls = { del: [] as string[][], images: [] as string[], lookups: 0 };
+  const calls = { del: [] as string[][], images: [] as string[], imageUrls: [] as Array<string | null>, lookups: 0 };
   const deps: SubmissionFilesDeps = {
     storeHost: STORE,
     del: async (urls) => void calls.del.push(urls),
-    deleteImage: async (url) => (calls.images.push(url), true),
+    deleteImage: async (url, imageUrl) => (calls.images.push(url), calls.imageUrls.push(imageUrl ?? null), true),
     referencedElsewhere: async () => (calls.lookups++, new Set<string>()),
     ...overrides,
   };
@@ -85,13 +85,18 @@ test('a failed file delete answers 502, names no URL, and leaves the imgbb mirro
 });
 
 test('requests the imgbb delete link, counts a failure, and never blocks on it', async () => {
-  const { deps, calls } = makeDeps({ deleteImage: async () => false });
+  let attemptedLink = '';
+  let attemptedImageUrl: string | null | undefined;
+  const { deps, calls } = makeDeps({ deleteImage: async (link, imageUrl) => { attemptedLink = link; attemptedImageUrl = imageUrl; return false; } });
 
-  const result = await deleteSubmissionFiles(db, submission({ deleteUrl: 'https://ibb.co/AbC/hash' }), deps);
+  const result = await deleteSubmissionFiles(db, submission({ deleteUrl: 'https://ibb.co/AbC/hash', imageUrl: IBB_COMPOSED }), deps);
 
   assert.equal(result.imgbbRequested, 1);
   assert.equal(result.imgbbFailed, 1);
   assert.deepEqual(calls.del, [[composite, original]]);
+  assert.equal(attemptedLink, 'https://ibb.co/AbC/hash');
+  assert.equal(attemptedImageUrl, IBB_COMPOSED);
+  assert.deepEqual(calls.imageUrls, []);
 });
 
 test('only imgbb hosts are ever requested as delete links', () => {
