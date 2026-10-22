@@ -2,6 +2,7 @@
 
 ## Unreleased — unify vetting and per-photo Fanmass analysis; retain image sources (2026-10-22)
 
+- **Security:** update Next.js to 16.4.2 (patched for current 16.4.0-and-earlier advisories) and `follow-redirects` to 1.16.1; `npm audit` reports zero vulnerabilities.
 - **Retired:** standalone manual people-box annotations, their vetting controls, schema fields, list page, and manual-analysis counters. Vetting now records publication decisions/rejection reasons; Fanmass remains the per-photo analysis source. The legacy people write endpoint returns `410 Gone`.
 - **Unified review:** Camera reviewers edit or confirm the Fanmass result for that same photo and exact source revision. Fanmass consumes matching review evidence and refreshes that photo's result delivery to Messmass; there is no parallel Camera manual analytics dataset.
 - **Fixed:** approved and rejected vetting cards paginate rather than silently stopping at 60.
