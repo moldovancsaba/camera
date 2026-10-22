@@ -25,6 +25,7 @@ import { effectiveCheckboxes } from '@/lib/events/checkbox-settings';
 import { GALLERY_MISSING_MESSAGE, mayRefuse, missingRequiredConsent, type GuardEvent } from '@/lib/events/consent-guard';
 import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
 import { guestIdentity, newShareToken, storePendingPhoto } from '@/lib/photo-vetting/pending';
+import { awaitingGuestContact, finalizedGuestContact, guestEmailOf, incompleteContactErasure } from '@/lib/submissions/guest-contact';
 import {
   COLLECTIONS,
   SubmissionMethod,
@@ -236,12 +237,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     // If userInfo is provided from 'who-are-you' page, validate structure
     let validatedUserInfo = undefined;
     if (userInfo) {
-      if (!userInfo.name || !userInfo.email) {
-        throw apiBadRequest('userInfo must include both name and email');
-      }
+      const email = guestEmailOf(userInfo.email);
+      if (typeof userInfo.name !== 'string' || !userInfo.name.trim() || !email) throw apiBadRequest('userInfo must include a name and valid e-mail address');
       validatedUserInfo = {
         name: userInfo.name.trim(),
-        email: userInfo.email.trim(),
+        email,
         collectedAt: new Date().toISOString(),
       };
     }
@@ -296,17 +296,25 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     // step. Persist it privately for 24 hours so a reload can resume, then erase
     // it if no actual identity is attached. This is independent of consent and
     // is never a Fanmass/analytics eligibility signal.
-    const hasUserIdentity = Boolean(
-      validatedUserInfo?.email ||
-      (session?.user?.id && session.user.id !== 'anonymous')
-    );
-    const retentionExpiresAt = hasUserIdentity ? null : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const contactCandidate = guestIdentity(validatedUserInfo, session);
+    // A login id without an address cannot receive a decision e-mail and is not a
+    // finalized contact. Keep that photo private under the same 24-hour erasure rule.
+    const hasFinalizedContact = contactCandidate !== null;
+    const retention = incompleteContactErasure(createdAt);
+    const guestContact = contactCandidate
+      ? finalizedGuestContact({
+          name: contactCandidate.name ?? validatedUserInfo?.name ?? '',
+          email: contactCandidate.email,
+          source: validatedUserInfo?.email ? 'typed_email' : 'social_login',
+          at: createdAt,
+        })
+      : awaitingGuestContact(createdAt);
     // What the request and the event's setting make of the public gallery choice: `shareOptIn` (eligible for the wall) and the evidence of a ticked box.
     const wall = galleryChoice(gallerySetting, { shareOptIn, publicGalleryConsentVersion }, createdAt, galleryRequired);
     let identity: ReturnType<typeof guestIdentity> = null;
     let pendingPhoto: Awaited<ReturnType<typeof storePendingPhoto>> | null = null;
     if (vetted) {
-      identity = guestIdentity(validatedUserInfo, session);
+      identity = contactCandidate;
       try {
         pendingPhoto = await storePendingPhoto(imageData, String(vettingEvent?._id ?? 'event'), { put: (pathname, body, options) => blobPut(pathname, body, options) });
       } catch (storeError) {
@@ -321,8 +329,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Keep the guest-provided contact on the legacy top-level fields too. Admin queues
       // and older email integrations still read these fields; writing only userInfo.email
       // made real guest addresses appear as anonymous@event.
-      userEmail: validatedUserInfo?.email || session?.user?.email || 'anonymous@event',
-      userName: validatedUserInfo?.name || session?.user?.name || session?.user?.email || (session?.user?.id ? 'REGISTERED USER' : 'NO USER'),
+      userEmail: guestContact.email ?? 'anonymous@event',
+      userName: guestContact.name || session?.user?.name || session?.user?.email || (session?.user?.id ? 'REGISTERED USER' : 'NO USER'),
+      guestContact,
       // Frame data (null if no frame assigned to event)
       frameId: frame?.frameId || null,
       frameName: frame?.name || null,
@@ -368,7 +377,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Public pledge-wall visibility: true only when shareOptIn === true in the request
       // (the capture UI's checkbox defaults to checked); false otherwise. May later be
       // bulk-set to true by publish-selfies (see the shareOptIn note above).
-      isShareVisible: vetted || consentRefusal || !hasUserIdentity ? false : wall.shareOptIn,
+      isShareVisible: vetted || consentRefusal || !hasFinalizedContact ? false : wall.shareOptIn,
       // Explicitly persist a successful consent path. Downstream consumers must
       // never guess that a missing status means the user accepted.
       consentStatus: consentRefusal ? 'pending' : 'received',
@@ -381,7 +390,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
             ? 'audit'
             : 'acceptance',
       } : {}),
-      ...(!hasUserIdentity ? { retentionStatus: 'pending_erasure', retentionExpiresAt } : {}),
+      ...(!hasFinalizedContact ? { retentionStatus: retention.status, retentionExpiresAt: retention.retentionExpiresAt } : {}),
       ...(wall.consent ? { publicGalleryConsent: wall.consent } : {}),
       // User info from onboarding pages (a social login gives the email without the page)
       ...(validatedUserInfo

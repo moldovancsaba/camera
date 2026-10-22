@@ -7,6 +7,7 @@ import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { CONSENT_ELIGIBLE_FILTER } from '@/lib/events/consent-eligibility';
+import { processingContactMongoFilter } from '@/lib/submissions/guest-contact';
 import { notWaitingOrRejectedClause, plainPhotoClause } from '@/lib/submissions/visibility';
 
 export { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
@@ -32,6 +33,7 @@ export async function galleryFilter(eventUuid: string): Promise<Document> {
     $and: [
       { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
       { isArchived: { $ne: true } },
+      processingContactMongoFilter,
       // A plain photo: a stored try-on result of the removed integration is not a photo of the event (issue 557).
       plainPhotoClause,
       // A picture that is gone is not shown, in any gallery (lib/media/broken.ts); the page says how many it hides.

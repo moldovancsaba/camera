@@ -23,6 +23,7 @@ import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
 import { approvePhoto, rejectPhoto, returnPhotoToVetting, retryApprovedPhotoEmail, type ReviewFailure } from '@/lib/photo-vetting/review';
 import { offeredReasons } from '@/lib/photo-vetting/rejection';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
+import { hasFinalizedGuestContact } from '@/lib/submissions/guest-contact';
 
 const REVIEW_RATE_LIMIT = {
   max: 120,
@@ -62,6 +63,9 @@ export const POST = withErrorHandler(async (
     .findOne({ _id: new ObjectId(submissionId) });
   if (!submission) {
     throw apiNotFound('Submission');
+  }
+  if (!hasFinalizedGuestContact(submission)) {
+    throw apiError('This photo is on the 24-hour contact hold and cannot be vetted until the participant contact is completed.', 409);
   }
 
   const event = await resolveEventForSubmission(db, submission);

@@ -18,6 +18,7 @@ const manager = { user: { id: 'u2', email: 'manager@example.com' }, appRole: 'no
 interface Options {
   session?: Session;
   submission?: Record<string, unknown> | null;
+  contactComplete?: boolean;
   event?: Record<string, unknown> | null;
   deny?: boolean;
   outcome?: Record<string, unknown>;
@@ -28,7 +29,10 @@ interface Options {
 
 function setup(t: TestContext, options: Options = {}) {
   const calls = { access: [] as Array<{ id: string; role: unknown }>, approve: [] as unknown[][], reject: [] as unknown[][], reopen: [] as unknown[][], retryEmail: [] as unknown[][] };
-  const submission = options.submission === undefined ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review' } : options.submission;
+  const baseSubmission = options.submission === undefined ? { _id: new ObjectId(id), eventId: 'event-uuid', reviewStatus: 'pending_review' } : options.submission;
+  const submission = baseSubmission && options.contactComplete !== false
+    ? { ...baseSubmission, guestContact: { status: 'complete', source: 'typed_email', name: 'Fan', email: 'fan@example.com' } }
+    : baseSubmission;
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => options.session ?? admin, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
     exports: {
@@ -77,6 +81,15 @@ test('an admin approves a photo; the event access check asks for the manager rol
   assert.deepEqual(calls.access, [{ id: eventId.toString(), role: 'manager' }]);
   assert.equal(calls.approve.length, 1);
   assert.deepEqual(calls.approve[0][2], { email: 'admin@example.com', id: 'u1' });
+});
+
+test('a photo without a finalized participant contact cannot enter vetting', async (t) => {
+  const calls = setup(t, { contactComplete: false });
+  const { POST } = await importRoute('no-final-contact');
+  const response = await POST(post({ action: 'approve' }), params);
+  assert.equal(response.status, 409);
+  assert.equal(calls.access.length, 0);
+  assert.equal(calls.approve.length + calls.reject.length, 0);
 });
 
 test('a manager returns a decided photo to vetting', async (t) => {

@@ -4,7 +4,7 @@
 
 Status 2026-10-16: **built and live.** Packages V1 to V10 are merged and the rollout was made on 2026-10-06 (238 of 238 events then; every new event starts with vetting on; RUNBOOK, "Photo vetting"); "inert until V10" below is history. What came later is at the end (marking the people at vetting, the big view, reopening a decision, and the independent Photo analysis page). Original status: plan, decisions confirmed by the owner on 2026-10-06 (below); work packages not started. Related: `docs/DEFAULT_FRAME_PLAN.md` (the frames), `RUNBOOK.md` ("How the photo is taken, and what is kept").
 
-> **Current workflow (2026-10-22):** manual people-box annotations and the standalone `Submission.people` / `peopleReview` system were retired. Vetting approves or rejects publication and stores rejection reasons. Fanmass is the one source of per-photo analytics; Camera's Photo analysis page reviews, corrects and confirms the Fanmass result. See [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md) and [MESSMASS_FANMASS_INTEGRATION.md](MESSMASS_FANMASS_INTEGRATION.md). The manual-marking and separate-analysis descriptions below are historical and must not be followed as current operator instructions.
+> **Current workflow (2026-10-22):** manual people-box annotations and the standalone `Submission.people` / `peopleReview` system were retired. Vetting approves or rejects publication and stores rejection reasons. Participant contact is one canonical lifecycle; awaiting/draft contact is held from vetting, galleries and analysis, then erased after 24 hours if it is not completed. Fanmass is the one source of per-photo analytics; Camera's Photo analysis page reviews, corrects and confirms the Fanmass result. See [GUEST_CONTACT_AND_ERASURE.md](GUEST_CONTACT_AND_ERASURE.md), [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md), and [MESSMASS_FANMASS_INTEGRATION.md](MESSMASS_FANMASS_INTEGRATION.md). The manual-marking and separate-analysis descriptions below are historical and must not be followed as current operator instructions.
 
 ## The request
 
@@ -166,15 +166,11 @@ A vetting person describes each photo before deciding: who is in it (gender and 
 - **Fanmass analysis:** use the event's **Photo analysis** page at `/admin/events/<id>/analysis`. It displays the current per-photo Fanmass result and image-relative boxes. An authorized reviewer can correct or confirm the same Fanmass result without changing publication status, public visibility, or guest decision email. The correction is tied to the exact Fanmass source revision and analysis generation; see [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md).
 - **Visibility rule:** public surfaces continue to use the shared `isPubliclyVisible` rule. Pending/rejected records remain excluded from the gallery, downloads, link previews, and slideshow feeds while a review is open.
 
-## Identity collected after capture and decision emails (2026-10-16)
+## Historical identity/email behavior before the contact hold (2026-10-16)
 
-The live guest flow uploads the photo as soon as the guest confirms it, then may ask for social login or contact details on later pages. The submission is created with `userId: 'anonymous'` and the non-deliverable placeholder `userEmail: 'anonymous@event'` when no identity was available at upload time. A moderator can therefore approve or reject before an email address is attached.
+> This behavior was superseded on 2026-10-22. It describes the earlier gap where a photo could be vetted before the participant's contact was finalized. Follow [GUEST_CONTACT_AND_ERASURE.md](GUEST_CONTACT_AND_ERASURE.md) for the current rule.
 
-- A missing recipient is recorded as a deferred approval or rejection email. It is never sent to `anonymous@event` or to the moderator. If the guest never provides an address, no email can be sent.
-- The existing post-capture login callback links the same submission id to the social account; the typed contact page writes `userInfo.email`. Either identity handoff retries a pending decision email after the write.
-- Approval uses the photo's opaque `shareToken` URL. The generic after-save email path skips every record with `photoReview`, so it cannot send a database-id URL for a vetted photo.
-- An atomic, short-lived claim prevents a repeated login callback from sending the same decision email twice. A missing address keeps the pending state; a provider error is recorded as a failure. Approved emails can also be retried through the existing approval retry action.
-- The submission list displays a known `userInfo.email`, otherwise labels the placeholder as **NO USER**.
+The old flow could create an anonymous photo first and collect contact later, so moderators could decide it before an e-mail existed. The current flow keeps the same post-capture journey but marks contact as awaiting/draft, retains the photo only for up to 24 hours, and blocks vetting, gallery publication, and Fanmass processing until a deliverable participant contact is finalized. Decision mail is addressed only to the finalized participant e-mail; `anonymous@event` is a display placeholder, never a recipient.
 
 ## Historical implementation: separate manual Photo analysis (retired 2026-10-22)
 

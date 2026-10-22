@@ -2,6 +2,7 @@ import type { Db, Document, ObjectId } from 'mongodb';
 import { connectToDatabaseByName } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { CONSENT_ELIGIBLE_FILTER, CONSENT_EXPIRED_FILTER, CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER } from '@/lib/events/consent-eligibility';
+import { processingContactMongoFilter } from '@/lib/submissions/guest-contact';
 
 const PIPELINE_DATABASE = process.env.CAMERA_PIPELINE_DATABASE?.trim() || 'fanmass_camera_pipeline';
 const QUEUE_COLLECTION = 'fanmass_camera_analysis_queue';
@@ -186,6 +187,7 @@ function fanmassEligiblePhotoFilter(eventId: string, event: Document): Document 
       { method: { $in: [null, 'camera_capture'] } },
       { hiddenFromEvents: { $nin: [eventId] } },
       CONSENT_ELIGIBLE_FILTER,
+      processingContactMongoFilter,
       vettingRequired ? { reviewStatus: 'approved' } : { reviewStatus: { $in: [null, '', 'approved'] } },
       partnerId
         ? { $or: [{ partnerId }, { partnerId: { $exists: false } }, { partnerId: null }, { partnerId: '' }] }

@@ -10,6 +10,7 @@ import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
 import { eventGetsDefaults, getDefaultsRollout, type DefaultsRolloutSettings } from '@/lib/admin/defaults-rollout';
 import { CONSENT_AUDIT_VALID_FILTER, CONSENT_UNKNOWN_FILTER, hasVerifiableConsentAudit } from '@/lib/events/consent-eligibility';
 import { missingRequiredConsent } from '@/lib/events/consent-guard';
+import { anonymousWithoutFinalContactMongoFilter, hasFinalizedGuestContact, incompleteContactErasure } from '@/lib/submissions/guest-contact';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -68,6 +69,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const rollout = await getDefaultsRollout(db);
   const eventCache = new Map<string, { event: Document | null; partner: Document | null }>();
   const now = new Date().toISOString();
+  const contactRetentionCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const staleErasureBefore = new Date(Date.now() - STALE_ERASURE_AFTER_MS).toISOString();
   const consentDueFilter = {
     $or: [
@@ -102,7 +104,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     $nor: [CONSENT_AUDIT_VALID_FILTER],
     retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
   };
-  const due = await submissions.find({ $or: [identityDueFilter, consentDueFilter, unknownConsentFilter, unverifiedReceivedConsentFilter] })
+  // Legacy anonymous captures predate the explicit 24-hour marker. Derive the
+  // same deadline from createdAt, while excluding finalized contacts and admin uploads.
+  const legacyNoContactDueFilter = {
+    $and: [
+      anonymousWithoutFinalContactMongoFilter,
+      { createdAt: { $lte: contactRetentionCutoff } },
+      { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+    ],
+  };
+  const due = await submissions.find({ $or: [identityDueFilter, legacyNoContactDueFilter, consentDueFilter, unknownConsentFilter, unverifiedReceivedConsentFilter] })
     .sort({ retentionExpiresAt: 1, consentExpiresAt: 1, createdAt: 1 }).limit(BATCH_SIZE).toArray();
   let deleted = 0;
   let erasedNoIdentity = 0;
@@ -111,6 +122,26 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   let retried = 0;
 
   for (const submission of due) {
+    const legacyNoContactDue = (submission.userId === 'anonymous' || !submission.userId)
+      && submission.metadata?.adminGalleryUpload !== true
+      && !hasFinalizedGuestContact(submission)
+      && !['pending_erasure', 'erasing', 'erased'].includes(String(submission.retentionStatus || ''))
+      && typeof submission.createdAt === 'string'
+      && submission.createdAt <= contactRetentionCutoff;
+    if (legacyNoContactDue) {
+      const retention = incompleteContactErasure(submission.createdAt);
+      const claim = await submissions.updateOne({
+        _id: submission._id,
+        $and: [
+          anonymousWithoutFinalContactMongoFilter,
+          { createdAt: { $lte: contactRetentionCutoff } },
+          { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+        ],
+      }, { $set: { retentionStatus: retention.status, retentionExpiresAt: retention.retentionExpiresAt, updatedAt: now } });
+      if (claim.modifiedCount !== 1) continue;
+      submission.retentionStatus = retention.status;
+      submission.retentionExpiresAt = retention.retentionExpiresAt;
+    }
     const isConsentUnknown = submission.consentStatus !== 'pending'
       && submission.consentStatus !== 'expiring'
       && submission.consentStatus !== 'received'
@@ -217,10 +248,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
               isSlideshowEligible: false,
               'metadata.identityStatus': 'NO USER',
               'metadata.retentionErasedAt': now,
+              guestContact: { status: 'erased', source: null, name: null, email: null, updatedAt: now, completedAt: null },
               updatedAt: now,
             },
             $unset: {
-              userInfo: '', consents: '', publicGalleryConsent: '', consentShareOptIn: '', consentExpiresAt: '', consentPendingReason: '',
+              userInfo: '', userInfoDraft: '', consents: '', publicGalleryConsent: '', consentShareOptIn: '', consentExpiresAt: '', consentPendingReason: '',
               imageUrl: '', finalImageUrl: '', originalImageUrl: '', previewImageUrl: '', screenImageUrl: '',
               deleteUrl: '', imageId: '', imageCopies: '', photoReview: '', shareToken: '',
               people: '', peopleReview: '', reviewHistory: '', rejectReasons: '', reviewNotes: '', reviewedAt: '', reviewedBy: '', approvedAt: '', approvedBy: '',
@@ -285,6 +317,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
             consentStatus: 'expired',
             consentExpiredAt: completedAt,
             analyticsDeletion: 'automatic_other',
+            retentionStatus: 'erased',
+            retentionErasedAt: completedAt,
+            guestContact: { status: 'erased', source: null, name: null, email: null, updatedAt: completedAt, completedAt: null },
             userId: 'anonymous',
             userEmail: 'anonymous@event',
             userName: 'NO USER',
