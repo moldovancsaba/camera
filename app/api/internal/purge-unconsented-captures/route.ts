@@ -1,4 +1,4 @@
-/** Erase captures with no identity, missing required consent, or an unverifiable consent audit after 24 hours. */
+/** Erase captures after identity retention expires, missing required consent, or an unverifiable consent audit. */
 
 import { NextRequest } from 'next/server';
 import { ObjectId, type Db, type Document } from 'mongodb';
@@ -8,7 +8,7 @@ import { apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
 import { checkSharedSecret, logSharedSecretRejection } from '@/lib/security/safeEqual';
 import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
 import { eventGetsDefaults, getDefaultsRollout, type DefaultsRolloutSettings } from '@/lib/admin/defaults-rollout';
-import { CONSENT_UNKNOWN_FILTER } from '@/lib/events/consent-eligibility';
+import { CONSENT_AUDIT_VALID_FILTER, CONSENT_UNKNOWN_FILTER, hasVerifiableConsentAudit } from '@/lib/events/consent-eligibility';
 import { missingRequiredConsent } from '@/lib/events/consent-guard';
 
 export const dynamic = 'force-dynamic';
@@ -16,24 +16,14 @@ export const maxDuration = 60;
 
 const BATCH_SIZE = 40;
 const STALE_ERASURE_AFTER_MS = 30 * 60 * 1000;
-const CONSENT_HOLD_MS = 24 * 60 * 60 * 1000;
 
-/** A status-less row is consented only when its saved, timestamped audit satisfies the event's current required-consent rules. */
 async function hasVerifiedConsentAudit(
   db: Db,
   submission: Document,
   rollout: DefaultsRolloutSettings,
   eventCache: Map<string, { event: Document | null; partner: Document | null }>,
 ): Promise<boolean> {
-  if (!Array.isArray(submission.consents) || submission.consents.length === 0 || typeof submission.eventId !== 'string') return false;
-  const records = submission.consents as Document[];
-  if (!records.every((record) => typeof record.pageId === 'string'
-    && record.pageId.length > 0
-    && typeof record.checkboxText === 'string'
-    && record.checkboxText.trim().length > 0
-    && typeof record.accepted === 'boolean'
-    && typeof record.acceptedAt === 'string'
-    && Number.isFinite(Date.parse(record.acceptedAt)))) return false;
+  if (!hasVerifiableConsentAudit(submission.consents) || typeof submission.eventId !== 'string') return false;
 
   let config = eventCache.get(submission.eventId);
   if (!config) {
@@ -78,7 +68,6 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const rollout = await getDefaultsRollout(db);
   const eventCache = new Map<string, { event: Document | null; partner: Document | null }>();
   const now = new Date().toISOString();
-  const consentHoldCutoff = new Date(Date.now() - CONSENT_HOLD_MS).toISOString();
   const staleErasureBefore = new Date(Date.now() - STALE_ERASURE_AFTER_MS).toISOString();
   const consentDueFilter = {
     $or: [
@@ -108,7 +97,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
     ],
   };
-  const due = await submissions.find({ $or: [identityDueFilter, consentDueFilter, unknownConsentFilter] })
+  const unverifiedReceivedConsentFilter = {
+    consentStatus: 'received',
+    $nor: [CONSENT_AUDIT_VALID_FILTER],
+    retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+  };
+  const due = await submissions.find({ $or: [identityDueFilter, consentDueFilter, unknownConsentFilter, unverifiedReceivedConsentFilter] })
     .sort({ retentionExpiresAt: 1, consentExpiresAt: 1, createdAt: 1 }).limit(BATCH_SIZE).toArray();
   let deleted = 0;
   let erasedNoIdentity = 0;
@@ -124,7 +118,30 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     let noConsentAudit = submission.metadata?.consentAuditMissing === true;
     let unknownConsentAlreadyClaimed = false;
 
-    if (isConsentUnknown) {
+    if (submission.consentStatus === 'received' && !hasVerifiableConsentAudit(submission.consents)) {
+      // Older deployments could mark a capture as received even when the
+      // evidence array was absent. Revoke that eligibility and erase the file.
+      const claim = await submissions.updateOne({
+        _id: submission._id,
+        consentStatus: 'received',
+        $nor: [CONSENT_AUDIT_VALID_FILTER],
+        retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+      }, {
+        $set: {
+          consentStatus: 'expiring',
+          'metadata.consentErasureStartedAt': now,
+          'metadata.consentAuditMissing': true,
+          isShareVisible: false,
+          isSlideshowEligible: false,
+          updatedAt: now,
+        },
+      });
+      if (claim.modifiedCount !== 1) continue;
+      submission.consentStatus = 'expiring';
+      submission.metadata = { ...(submission.metadata ?? {}), consentAuditMissing: true };
+      noConsentAudit = true;
+      unknownConsentAlreadyClaimed = true;
+    } else if (isConsentUnknown) {
       if (await hasVerifiedConsentAudit(db, submission, rollout, eventCache)) {
         const reconciled = await submissions.updateOne({
           _id: submission._id,
@@ -136,12 +153,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         continue;
       }
 
-      const createdAtMs = typeof submission.createdAt === 'string' ? Date.parse(submission.createdAt) : Number.NaN;
-      const objectIdCreatedAtMs = submission._id instanceof ObjectId ? submission._id.getTimestamp().getTime() : Number.NaN;
-      const effectiveCreatedAtMs = Number.isFinite(createdAtMs) ? createdAtMs : objectIdCreatedAtMs;
-      const olderThanHold = !Number.isFinite(effectiveCreatedAtMs) || effectiveCreatedAtMs <= Date.parse(consentHoldCutoff);
-      if (!olderThanHold) continue;
-
+      // A missing or unverifiable audit is not pending consent. Keep it private
+      // and erase it on this cleanup pass; the separate 24-hour deadline applies
+      // only to submissions explicitly saved as pending required consent.
       const claim = await submissions.updateOne({
         _id: submission._id,
         $and: [

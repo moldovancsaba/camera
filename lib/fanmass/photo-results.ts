@@ -38,12 +38,26 @@ export interface FanmassFaceBox {
   smiling: boolean;
 }
 
+export interface FanmassEditableResult {
+  summary: FanmassPhotoResultView['summary'];
+  analysis: Record<string, unknown>;
+  boxes: { people: FanmassPersonBox[]; faces: FanmassFaceBox[] };
+}
+
+export interface FanmassHumanCorrection extends FanmassEditableResult {
+  correctedAt: string;
+  correctedBy: string;
+  sourceRevision: string;
+  analysisGeneration: number;
+}
+
 export interface FanmassPhotoResultView {
   analyzedAt: string | null;
   analysisStage: string;
   sourceRevision: string;
   analysisGeneration: number;
   summary: {
+    /** Fanmass image-level model estimate; it can differ from returned boxes. */
     personCount: number;
     realPersonCount: number;
     displayPersonCount: number;
@@ -53,6 +67,7 @@ export interface FanmassPhotoResultView {
     moderation: Record<string, unknown> | null;
     sportsMerchandise: Record<string, unknown> | null;
     fashionBrands: Record<string, unknown> | null;
+    [key: string]: unknown;
   };
   /** Allowlisted, identity-free per-photo analysis modules exactly as Fanmass persisted them. */
   analysis: Record<string, unknown>;
@@ -68,6 +83,7 @@ export interface FanmassEventPhoto {
   queueUpdatedAt: string | null;
   errorCode: string | null;
   result: FanmassPhotoResultView | null;
+  correction: FanmassHumanCorrection | null;
   confirmed: boolean;
   confirmedAt: string | null;
   confirmedBy: string | null;
@@ -77,6 +93,9 @@ export type FanmassQueueCounts = Record<'queued' | 'leased' | 'processing' | 're
 
 export interface FanmassEventAnalysisPage {
   totalCameraSubmissions: number;
+  deletedManually: number;
+  deletedAutomaticallyNoLogin: number;
+  deletedAutomaticallyOther: number;
   approvedPhotos: number;
   approvedWithConsent: number;
   approvedConsentExpired: number;
@@ -188,6 +207,7 @@ function safePersonBoxes(value: unknown): FanmassPersonBox[] {
     const age = row.estimatedAge;
     const confidence = row.confidence;
     return [{
+      ...jsonRecord(row),
       id: text(row.id) ?? `person-${index + 1}`,
       box,
       gender: text(row.gender) ?? 'unknown',
@@ -210,6 +230,7 @@ function safeFaceBoxes(value: unknown): FanmassFaceBox[] {
     if (!row || !box) return [];
     const confidence = row.confidence;
     return [{
+      ...jsonRecord(row),
       id: text(row.id) ?? `face-${index + 1}`,
       box,
       confidence: typeof confidence === 'number' && Number.isFinite(confidence) ? confidence : null,
@@ -229,6 +250,7 @@ function resultView(doc: Document | undefined, queue: Document): FanmassPhotoRes
     sourceRevision: text(doc.sourceRevision) ?? '',
     analysisGeneration: finiteNumber(doc.leaseGeneration),
     summary: {
+      ...(jsonRecord(summary) ?? {}),
       personCount: finiteNumber(summary.personCount),
       realPersonCount: finiteNumber(summary.realPersonCount),
       displayPersonCount: finiteNumber(summary.displayPersonCount),
@@ -244,6 +266,35 @@ function resultView(doc: Document | undefined, queue: Document): FanmassPhotoRes
   };
 }
 
+function correctionView(review: Document | null, result: FanmassPhotoResultView | null): FanmassHumanCorrection | null {
+  const saved = record(review?.correction);
+  if (!result || !saved || saved.sourceRevision !== result.sourceRevision || Number(saved.analysisGeneration) !== result.analysisGeneration) return null;
+  const summary = jsonRecord(saved.summary);
+  const analysis = jsonRecord(saved.analysis);
+  const boxes = record(saved.boxes);
+  if (!summary || !analysis || !boxes) return null;
+  return {
+    summary: {
+      ...summary,
+      personCount: finiteNumber(summary.personCount),
+      realPersonCount: finiteNumber(summary.realPersonCount),
+      displayPersonCount: finiteNumber(summary.displayPersonCount),
+      crowdEstimate: finiteNumber(summary.crowdEstimate),
+      sceneType: text(summary.sceneType) ?? 'unknown',
+      demographics: jsonRecord(summary.demographics),
+      moderation: jsonRecord(summary.moderation),
+      sportsMerchandise: jsonRecord(summary.sportsMerchandise),
+      fashionBrands: jsonRecord(summary.fashionBrands),
+    },
+    analysis,
+    boxes: { people: safePersonBoxes(boxes.people), faces: safeFaceBoxes(boxes.faces) },
+    correctedAt: iso(saved.correctedAt) ?? '',
+    correctedBy: text(saved.correctedBy) ?? 'event reviewer',
+    sourceRevision: result.sourceRevision,
+    analysisGeneration: result.analysisGeneration,
+  };
+}
+
 function publicImageUrl(submission: Document): string | null {
   const reviewPhoto = record(submission.photoReview)?.photoUrl;
   const copies = Array.isArray(submission.imageCopies) ? submission.imageCopies as Document[] : [];
@@ -253,7 +304,7 @@ function publicImageUrl(submission: Document): string | null {
 
 function isConfirmed(review: unknown, result: FanmassPhotoResultView | null): boolean {
   const data = record(review);
-  return Boolean(result && data?.sourceRevision === result.sourceRevision && Number(data.analysisGeneration ?? -1) === result.analysisGeneration);
+  return Boolean(result && data?.status === 'confirmed' && data.sourceRevision === result.sourceRevision && Number(data.analysisGeneration ?? -1) === result.analysisGeneration);
 }
 
 function statusFor(queue: Document | undefined, result: FanmassPhotoResultView | null): FanmassQueueStatus {
@@ -278,6 +329,7 @@ function cleanQueueCountRows(rows: Document[]): FanmassQueueCounts {
 function imageAndReviewFields(doc: Document, queue: Document | undefined, result: FanmassPhotoResultView | null): FanmassEventPhoto {
   const review = record(doc.fanmassAnalysisReview);
   const confirmed = isConfirmed(review, result);
+  const correction = correctionView(review, result);
   const queueStatus = statusFor(queue, result);
   return {
     id: String(doc._id),
@@ -288,6 +340,7 @@ function imageAndReviewFields(doc: Document, queue: Document | undefined, result
     queueUpdatedAt: iso(queue?.updatedAt),
     errorCode: text(queue?.lastErrorCode),
     result,
+    correction,
     confirmed,
     confirmedAt: confirmed ? iso(review?.confirmedAt) : null,
     confirmedBy: confirmed ? text(review?.confirmedBy) : null,
@@ -312,8 +365,11 @@ export async function loadFanmassEventAnalysisPage(
   const deliveries = pipelineDb.collection(DELIVERY_COLLECTION);
   const submissions = cameraDb.collection(COLLECTIONS.SUBMISSIONS);
 
-  const [totalCameraSubmissions, approvedPhotos, approvedWithConsent, approvedConsentExpired, rejectedPhotos, rejectedWithConsent, approvedAwaitingConsent, rejectedAwaitingConsent, rejectedConsentExpired, approvedConsentUnknown, rejectedConsentUnknown, consentBlockedDecisions, consentPendingPhotos, consentExpiredPhotos, consentUnknownPhotos, welcomeRows, eligiblePhotos, statusRows, deliveryRows, resultTotals, sourceDocs] = await Promise.all([
+  const [totalCameraSubmissions, deletedManually, deletedAutomaticallyNoLogin, deletedAutomaticallyOther, approvedPhotos, approvedWithConsent, approvedConsentExpired, rejectedPhotos, rejectedWithConsent, approvedAwaitingConsent, rejectedAwaitingConsent, rejectedConsentExpired, approvedConsentUnknown, rejectedConsentUnknown, consentBlockedDecisions, consentPendingPhotos, consentExpiredPhotos, consentUnknownPhotos, welcomeRows, eligiblePhotos, eligibleSourceDocs, sourceDocs] = await Promise.all([
     submissions.countDocuments(eventFilter),
+    submissions.countDocuments({ $and: [eventFilter, { analyticsDeletion: 'manual' }] }),
+    submissions.countDocuments({ $and: [eventFilter, { analyticsDeletion: 'automatic_no_login' }] }),
+    submissions.countDocuments({ $and: [eventFilter, { analyticsDeletion: 'automatic_other' }] }),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }] }),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_ELIGIBLE_FILTER] }),
     submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_EXPIRED_FILTER] }),
@@ -333,10 +389,29 @@ export async function loadFanmassEventAnalysisPage(
       { $group: { _id: null, count: { $sum: '$count' } } },
     ]).toArray(),
     submissions.countDocuments(eligibleFilter),
-    queue.aggregate([{ $match: fanmassEventFilter(eventId) }, { $group: { _id: '$status', count: { $sum: 1 } } }]).toArray(),
-    deliveries.aggregate([{ $match: fanmassEventFilter(eventId) }, { $group: { _id: '$status', count: { $sum: 1 } } }]).toArray(),
+    submissions.find(eligibleFilter, { projection: { _id: 1 } }).toArray(),
+    submissions.find(eligibleFilter, {
+      projection: {
+        _id: 1, submissionId: 1, originalImageUrl: 1, imageUrl: 1, finalImageUrl: 1, photoReview: 1, imageCopies: 1,
+        createdAt: 1, fanmassAnalysisReview: 1,
+      },
+      sort: { createdAt: -1, _id: -1 },
+      skip: offset,
+      limit: pageSize,
+    }).toArray(),
+  ]);
+
+  // Progress counts must share the exact consent/vetting eligibility boundary
+  // used for the photo list, otherwise erased or unapproved work looks live.
+  const eligibleSourceIds = eligibleSourceDocs.map((doc) => doc._id);
+  const eligibleQueueMatch: Document = {
+    $and: [fanmassEventFilter(eventId), { sourceMongoId: { $in: eligibleSourceIds } }],
+  };
+  const [statusRows, deliveryRows, resultTotals] = await Promise.all([
+    queue.aggregate([{ $match: eligibleQueueMatch }, { $group: { _id: '$status', count: { $sum: 1 } } }]).toArray(),
+    deliveries.aggregate([{ $match: { $and: [fanmassEventFilter(eventId), { cameraPhotoId: { $in: eligibleSourceIds.map(String) } }] } }, { $group: { _id: '$status', count: { $sum: 1 } } }]).toArray(),
     queue.aggregate([
-      { $match: { $and: [fanmassEventFilter(eventId), { status: 'completed' }] } },
+      { $match: { $and: [eligibleQueueMatch, { status: 'completed' }] } },
       {
         $lookup: {
           from: RESULT_COLLECTION,
@@ -359,15 +434,6 @@ export async function loadFanmassEventAnalysisPage(
       { $unwind: '$currentResult' },
       { $group: { _id: null, completedResults: { $sum: 1 }, peopleEstimates: { $sum: { $ifNull: ['$currentResult.summary.personCount', 0] } }, peopleBoxes: { $sum: { $size: { $ifNull: ['$currentResult.boxes.people', []] } } } } },
     ]).toArray(),
-    submissions.find(eligibleFilter, {
-      projection: {
-        _id: 1, submissionId: 1, originalImageUrl: 1, imageUrl: 1, finalImageUrl: 1, photoReview: 1, imageCopies: 1,
-        createdAt: 1, fanmassAnalysisReview: 1,
-      },
-      sort: { createdAt: -1, _id: -1 },
-      skip: offset,
-      limit: pageSize,
-    }).toArray(),
   ]);
 
   const statusCounts = cleanQueueCountRows(statusRows);
@@ -379,9 +445,7 @@ export async function loadFanmassEventAnalysisPage(
   const resultTotal = resultTotals[0] ?? {};
   const welcomeToCameraTransitions = finiteNumber(welcomeRows[0]?.count);
   const completedResults = finiteNumber(resultTotal.completedResults);
-  const queueCoverage = Object.entries(statusCounts)
-    .filter(([status]) => status !== 'cancelled')
-    .reduce((sum, [, count]) => sum + count, 0);
+  const queueCoverage = Object.values(statusCounts).reduce((sum, count) => sum + count, 0);
   const awaitingDiscovery = Math.max(0, eligiblePhotos - queueCoverage);
 
   const sourceIds = sourceDocs.map((doc) => doc._id as ObjectId);
@@ -410,6 +474,9 @@ export async function loadFanmassEventAnalysisPage(
 
   return {
     totalCameraSubmissions,
+    deletedManually,
+    deletedAutomaticallyNoLogin,
+    deletedAutomaticallyOther,
     approvedPhotos,
     approvedWithConsent,
     approvedConsentExpired,
@@ -517,10 +584,84 @@ export async function confirmFanmassEventPhoto(
           confirmedBy,
           sourceRevision: item.result.sourceRevision,
           analysisGeneration: item.result.analysisGeneration,
+          ...(item.correction ? { correction: item.correction } : {}),
         },
       },
     },
   );
   if (saved.matchedCount !== 1) return { item: null, result: item.result };
   return { item: await loadFanmassEventPhoto(cameraDb, eventId, event, submissionObjectId), result: item.result };
+}
+
+function editableResult(value: unknown): FanmassEditableResult | null {
+  const row = record(value);
+  const summary = jsonRecord(row?.summary);
+  const analysis = jsonRecord(row?.analysis);
+  const boxes = record(row?.boxes);
+  if (!summary || !analysis || !boxes || !Array.isArray(boxes.people) || !Array.isArray(boxes.faces)) return null;
+  const serialized = JSON.stringify({ summary, analysis, boxes });
+  if (serialized.length > 250_000 || boxes.people.length > 300 || boxes.faces.length > 300) return null;
+  const people = safePersonBoxes(boxes.people);
+  const faces = safeFaceBoxes(boxes.faces);
+  if (people.length !== boxes.people.length || faces.length !== boxes.faces.length) return null;
+  const countFields = ['personCount', 'realPersonCount', 'displayPersonCount', 'crowdEstimate'];
+  for (const key of countFields) {
+    if (typeof summary[key] !== 'number' || !Number.isFinite(summary[key]) || (summary[key] as number) < 0) return null;
+  }
+  if (typeof summary.sceneType !== 'string' || !summary.sceneType.trim()) return null;
+  return {
+    summary: {
+      ...summary,
+      personCount: summary.personCount as number,
+      realPersonCount: summary.realPersonCount as number,
+      displayPersonCount: summary.displayPersonCount as number,
+      crowdEstimate: summary.crowdEstimate as number,
+      sceneType: summary.sceneType,
+      demographics: jsonRecord(summary.demographics),
+      moderation: jsonRecord(summary.moderation),
+      sportsMerchandise: jsonRecord(summary.sportsMerchandise),
+      fashionBrands: jsonRecord(summary.fashionBrands),
+    },
+    analysis,
+    boxes: { people, faces },
+  };
+}
+
+/** Save a human correction in Camera, tied to the exact immutable Fanmass result revision. */
+export async function saveFanmassEventPhotoCorrection(
+  cameraDb: Db,
+  eventId: string,
+  event: Document,
+  submissionObjectId: ObjectId,
+  correctedBy: string,
+  correctedAt: string,
+  expected: { sourceRevision: string; analysisGeneration: number; result: unknown },
+): Promise<{ item: FanmassEventPhoto | null; error?: 'stale' | 'invalid' }> {
+  const item = await loadFanmassEventPhoto(cameraDb, eventId, event, submissionObjectId);
+  if (!item?.result || item.queueStatus !== 'completed') return { item: null };
+  if (item.result.sourceRevision !== expected.sourceRevision || item.result.analysisGeneration !== expected.analysisGeneration) {
+    return { item: null, error: 'stale' };
+  }
+  const corrected = editableResult(expected.result);
+  if (!corrected) return { item: null, error: 'invalid' };
+  const correction: FanmassHumanCorrection = {
+    ...corrected,
+    correctedAt,
+    correctedBy,
+    sourceRevision: item.result.sourceRevision,
+    analysisGeneration: item.result.analysisGeneration,
+  };
+  const saved = await cameraDb.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+    { _id: submissionObjectId, $and: [fanmassEligiblePhotoFilter(eventId, event)] },
+    {
+      $set: {
+        fanmassAnalysisReview: {
+          status: 'corrected',
+          correction,
+        },
+      },
+    },
+  );
+  if (saved.matchedCount !== 1) return { item: null };
+  return { item: await loadFanmassEventPhoto(cameraDb, eventId, event, submissionObjectId) };
 }

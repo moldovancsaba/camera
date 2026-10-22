@@ -17,52 +17,91 @@ import { loadFanmassEventAnalysisPage, type FanmassEventAnalysisPage } from '@/l
 export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 60;
-type AnalysisPageTab = PhotoAnalysisTab;
-const TABS: readonly AnalysisPageTab[] = ['needs_analysis', 'analysed'];
-const isAnalysisTab = (value: string | undefined): value is AnalysisPageTab => Boolean(value && TABS.includes(value as AnalysisPageTab));
+type AnalysisPageTab = PhotoAnalysisTab | 'fanmass' | 'camera_marked';
+const TABS: readonly AnalysisPageTab[] = ['needs_analysis', 'fanmass', 'camera_marked'];
+const analysisTab = (value: string | undefined): AnalysisPageTab => {
+  if (value === 'analysed' || value === 'fanmass') return 'fanmass';
+  if (value === 'camera_marked') return 'camera_marked';
+  return 'needs_analysis';
+};
 
 function FanmassStatusSummary({ data }: { data: FanmassEventAnalysisPage }) {
-  const working = data.queueCounts.queued + data.queueCounts.leased + data.queueCounts.processing + data.queueCounts.retry;
-  const failed = data.queueCounts.failed + data.queueCounts.cancelled + data.missingResults;
-  const cards = [
-    ['Camera submission records', data.totalCameraSubmissions],
-    ['Journeys reached camera (not saved-photo count)', data.welcomeToCameraTransitions],
-    ['Approved decisions', data.approvedPhotos],
-    ['Approved · consent received', data.approvedWithConsent],
-    ['Approved · consent pending', data.approvedAwaitingConsent],
-    ['Approved · consent expired and erased', data.approvedConsentExpired],
-    ['Approved · consent status missing', data.approvedConsentUnknown],
-    ['Rejected decisions · not sent to AI', data.rejectedPhotos],
-    ['Rejected · consent received', data.rejectedWithConsent],
-    ['Rejected · consent pending', data.rejectedAwaitingConsent],
-    ['Rejected · consent expired and erased', data.rejectedConsentExpired],
-    ['Rejected · consent status missing', data.rejectedConsentUnknown],
-    ['Decisions blocked from Fanmass by consent status', data.consentBlockedDecisions],
-    ['Photos currently on consent hold', data.consentPendingPhotos],
-    ['Photos erased after consent expired', data.consentExpiredPhotos],
-    ['Photos with missing consent status · held', data.consentUnknownPhotos],
-    ['Eligible for Fanmass', data.eligiblePhotos],
-    ['Waiting for Fanmass discovery', data.awaitingDiscovery],
-    ['Fanmass analysed', data.completedResults],
-    ['Queued / working / retrying', working],
-    ['Failed / cancelled / missing result', failed],
-    ['People estimate total', data.peopleEstimates],
-    ['Individual people boxes', data.peopleBoxes],
-    ['Delivered to Messmass', data.deliveries.delivered ?? 0],
+  const groups = [
+    {
+      title: 'Photo processing',
+      cards: [
+        ['Eligible for Fanmass', data.eligiblePhotos],
+        ['Waiting for Fanmass discovery', data.awaitingDiscovery],
+        ['Queued', data.queueCounts.queued],
+        ['Starting · leased', data.queueCounts.leased],
+        ['In progress now', data.queueCounts.processing],
+        ['Retrying', data.queueCounts.retry],
+        ['Fanmass analysed', data.completedResults],
+        ['Completed but result missing', data.missingResults],
+        ['Failed', data.queueCounts.failed],
+        ['Cancelled', data.queueCounts.cancelled],
+      ],
+    },
+    {
+      title: 'Delivery to Messmass',
+      cards: [
+        ['Queued', data.deliveries.queued ?? 0],
+        ['Sending', data.deliveries.sending ?? 0],
+        ['Retrying', data.deliveries.retry ?? 0],
+        ['Results delivered to Messmass', data.deliveries.delivered ?? 0],
+        ['Failed deliveries', data.deliveries.failed ?? 0],
+      ],
+    },
+    {
+      title: 'Vetting and consent',
+      cards: [
+        ['Camera submission records (includes erasure tombstones)', data.totalCameraSubmissions],
+        ['Deleted manually', data.deletedManually],
+        ['Deleted automatically · no login', data.deletedAutomaticallyNoLogin],
+        ['Deleted automatically · no consent / other', data.deletedAutomaticallyOther],
+        ['Journeys reached camera (not saved-photo count)', data.welcomeToCameraTransitions],
+        ['Approved decisions', data.approvedPhotos],
+        ['Approved · consent received', data.approvedWithConsent],
+        ['Approved · consent pending', data.approvedAwaitingConsent],
+        ['Approved · consent expired and erased', data.approvedConsentExpired],
+        ['Approved · consent status missing', data.approvedConsentUnknown],
+        ['Rejected decisions · not sent to AI', data.rejectedPhotos],
+        ['Rejected · consent received', data.rejectedWithConsent],
+        ['Rejected · consent pending', data.rejectedAwaitingConsent],
+        ['Rejected · consent expired and erased', data.rejectedConsentExpired],
+        ['Rejected · consent status missing', data.rejectedConsentUnknown],
+        ['Decisions blocked by consent status', data.consentBlockedDecisions],
+        ['Photos currently on consent hold', data.consentPendingPhotos],
+        ['Photos erased after consent expired', data.consentExpiredPhotos],
+        ['Photos with missing consent status · held', data.consentUnknownPhotos],
+      ],
+    },
+    {
+      title: 'Analysis signals from completed photos',
+      cards: [
+        ['People estimate · Fanmass model', data.peopleEstimates],
+        ['Individual people boxes · returned', data.peopleBoxes],
+      ],
+    },
   ] as const;
   return (
     <Card>
       <Stack gap="sm">
         <Text fw={700}>Fanmass per-photo status</Text>
-        <Text size="sm" c="dimmed">Fanmass processes one eligible photo at a time. Journey transitions count people reaching the camera step; submission records count persisted submissions and may remain after their image is erased for missing consent. A transition can happen without a photo being saved. The consent breakdown below reconciles approved and rejected decisions, and photos waiting for consent, expired consent, or missing consent proof stay outside the AI queue. This status refreshes every 10 seconds while the page is open.</Text>
-        <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 11rem), 1fr))' }}>
-          {cards.map(([label, value]) => (
-            <div key={label} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
-              <Text size="xs" c="dimmed">{label}</Text>
-              <Text fw={700}>{value}</Text>
+        <Text size="sm" c="dimmed">Fanmass processes one eligible photo at a time. Starting, processing, waiting, retrying, completed, and failed states are shown separately. Queue counts are scoped to photos that currently pass Camera’s consent, retention, image-health, and vetting rules. Camera submission totals can include minimal deletion tombstones, so the deletion counts are broken out below. This status refreshes every 10 seconds while the page is open.</Text>
+        {groups.map((group) => (
+          <section key={group.title} aria-label={group.title} style={{ display: 'grid', gap: '0.5rem' }}>
+            <Text fw={600} size="sm">{group.title}</Text>
+            <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 11rem), 1fr))' }}>
+              {group.cards.map(([label, value]) => (
+                <div key={label} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
+                  <Text size="xs" c="dimmed">{label}</Text>
+                  <Text fw={700}>{value}</Text>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </section>
+        ))}
       </Stack>
     </Card>
   );
@@ -78,8 +117,9 @@ export default async function EventPhotoAnalysisPage({
   const { id } = await params;
   if (!ObjectId.isValid(id)) notFound();
   const query = await searchParams;
-  // Keep any in-development Fanmass link pointed at the existing Analysed workbench.
-  const tab: AnalysisPageTab = query.photos === 'fanmass' ? 'analysed' : isAnalysisTab(query.photos) ? query.photos : 'needs_analysis';
+  // Keep old ?photos=analysed links pointed at Fanmass results. Camera's
+  // manually saved people markings have a separate tab and count.
+  const tab = analysisTab(query.photos);
   const requestedPage = Number.parseInt(query.page ?? '1', 10);
   const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const requestedFanmassPage = Number.parseInt(query.fanmassPage ?? (query.photos === 'fanmass' ? query.page : undefined) ?? '1', 10);
@@ -96,7 +136,7 @@ export default async function EventPhotoAnalysisPage({
   const [counts, vocabulary] = await Promise.all([countPhotoAnalysisQueue(db, eventUuid), loadEventVocabulary(db, event)]);
   let fanmassPage: FanmassEventAnalysisPage | null = null;
   let fanmassUnavailable = false;
-  if (tab === 'analysed') {
+  if (tab === 'fanmass') {
     try {
       fanmassPage = await loadFanmassEventAnalysisPage(db, eventUuid, event, { page: fanmassPageNumber, pageSize: PAGE_SIZE });
     } catch {
@@ -105,7 +145,7 @@ export default async function EventPhotoAnalysisPage({
   }
   const pages = Math.max(1, Math.ceil(counts.analysed / PAGE_SIZE));
   const currentPage = Math.min(page, pages);
-  const items = tab === 'analysed' ? await loadPhotoAnalysisQueue(db, eventUuid, tab, vocabulary, PAGE_SIZE, (currentPage - 1) * PAGE_SIZE) : [];
+  const items = tab === 'camera_marked' ? await loadPhotoAnalysisQueue(db, eventUuid, 'analysed', vocabulary, PAGE_SIZE, (currentPage - 1) * PAGE_SIZE) : [];
 
   return (
     <Stack gap="lg" data-event-photo-analysis>
@@ -118,14 +158,18 @@ export default async function EventPhotoAnalysisPage({
       <WorkspaceHeader
         eyebrow="Events"
         title={`${String(event.name ?? 'Event')} — Photo analysis`}
-        description="Analyse photos after their vetting decision, or analyse every eligible photo when vetting is off. Saving analysis never changes vetting, publication, or email."
+        description="Review Fanmass results, perform Camera's manual people analysis, or see saved Camera markings. These are separate workflows; none changes vetting, publication, or email."
         status={event.isActive === false ? 'Inactive' : 'Active'}
       />
 
       <nav aria-label="Photo analysis status" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
         {TABS.map((current) => {
           const active = tab === current;
-          const label = current === 'needs_analysis' ? `Needs analysis (${counts.needs_analysis})` : `Analysed (${counts.analysed})`;
+          const label = current === 'needs_analysis'
+            ? `Needs manual analysis (${counts.needs_analysis})`
+            : current === 'fanmass'
+              ? `Fanmass results${fanmassPage ? ` (${fanmassPage.completedResults} complete)` : ''}`
+              : `Camera markings (${counts.analysed})`;
           return (
             <Link
               key={current}
@@ -165,12 +209,12 @@ export default async function EventPhotoAnalysisPage({
             </Stack>
           </Card>
         )
-      ) : (
+      ) : tab === 'fanmass' ? (
         <Stack gap="xl">
           <section aria-labelledby="fanmass-results-heading" style={{ display: 'grid', gap: '1rem' }}>
             <div>
               <Text fw={700} id="fanmass-results-heading">Fanmass results by photo</Text>
-              <Text size="sm" c="dimmed">Each card shows the source image, one-photo queue status, people detected, and whether a human reviewer confirmed the exact result.</Text>
+              <Text size="sm" c="dimmed">Each card shows the source image and one-photo queue status. Open a photo to inspect its structured Fanmass fields and saved boxes, then confirm that exact result.</Text>
             </div>
             {fanmassUnavailable ? (
               <Card>
@@ -183,9 +227,9 @@ export default async function EventPhotoAnalysisPage({
                 <FanmassPhotoResultsList eventId={id} items={fanmassPage.items} />
                 {fanmassPage.pages > 1 ? (
                   <nav aria-label="Fanmass photos pages" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                    {fanmassPage.page > 1 ? <Link href={`/admin/events/${id}/analysis?photos=analysed&fanmassPage=${fanmassPage.page - 1}`}>Previous Fanmass photos</Link> : <span />}
+                    {fanmassPage.page > 1 ? <Link href={`/admin/events/${id}/analysis?photos=fanmass&fanmassPage=${fanmassPage.page - 1}`}>Previous Fanmass photos</Link> : <span />}
                     <Text size="sm" c="dimmed">Fanmass page {fanmassPage.page} of {fanmassPage.pages}</Text>
-                    {fanmassPage.page < fanmassPage.pages ? <Link href={`/admin/events/${id}/analysis?photos=analysed&fanmassPage=${fanmassPage.page + 1}`}>Next Fanmass photos</Link> : <span />}
+                    {fanmassPage.page < fanmassPage.pages ? <Link href={`/admin/events/${id}/analysis?photos=fanmass&fanmassPage=${fanmassPage.page + 1}`}>Next Fanmass photos</Link> : <span />}
                   </nav>
                 ) : null}
                 <FanmassStatusAutoRefresh />
@@ -193,10 +237,13 @@ export default async function EventPhotoAnalysisPage({
             ) : null}
           </section>
 
+        </Stack>
+      ) : (
+        <Stack gap="lg">
           <section aria-labelledby="camera-analysis-heading" style={{ display: 'grid', gap: '1rem' }}>
             <div>
-              <Text fw={700} id="camera-analysis-heading">Human photo analysis</Text>
-              <Text size="sm" c="dimmed">This existing list records the people markings made in Camera.</Text>
+              <Text fw={700} id="camera-analysis-heading">Camera manual people markings</Text>
+              <Text size="sm" c="dimmed">These are people markings saved manually in Camera. They are separate from Fanmass AI results.</Text>
             </div>
             {counts.analysed === 0 ? (
               <Card>
@@ -207,15 +254,15 @@ export default async function EventPhotoAnalysisPage({
               <>
                 <Card>
                   <Text size="sm" c="dimmed">
-                    Showing {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, counts.analysed)} of {counts.analysed} human-analysed photos.
+                    Showing {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, counts.analysed)} of {counts.analysed} Camera-marked photos.
                   </Text>
                 </Card>
                 <PhotoAnalysisCompletedList eventId={id} items={items} />
                 {pages > 1 ? (
                   <nav aria-label="Human-analysed photos pages" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                    {currentPage > 1 ? <Link href={`/admin/events/${id}/analysis?photos=analysed&page=${currentPage - 1}`}>Previous human-analysed photos</Link> : <span />}
+                    {currentPage > 1 ? <Link href={`/admin/events/${id}/analysis?photos=camera_marked&page=${currentPage - 1}`}>Previous Camera markings</Link> : <span />}
                     <Text size="sm" c="dimmed">Page {currentPage} of {pages}</Text>
-                    {currentPage < pages ? <Link href={`/admin/events/${id}/analysis?photos=analysed&page=${currentPage + 1}`}>Next human-analysed photos</Link> : <span />}
+                    {currentPage < pages ? <Link href={`/admin/events/${id}/analysis?photos=camera_marked&page=${currentPage + 1}`}>Next Camera markings</Link> : <span />}
                   </nav>
                 ) : null}
               </>

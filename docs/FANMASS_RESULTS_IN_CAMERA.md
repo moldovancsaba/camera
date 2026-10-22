@@ -1,16 +1,16 @@
 # Fanmass results in Camera
 
-The event’s **Photo analysis → Analysed** page (`/admin/events/<eventId>/analysis?photos=analysed`) shows Fanmass results by source photo above Camera’s existing human-marking list.
+The event’s **Photo analysis → Fanmass results** page (`/admin/events/<eventId>/analysis?photos=fanmass`) is the Camera workbench for Fanmass photo results. The older `?photos=analysed` URL remains an alias to this page. Camera manual people markings are on their own **Camera markings** tab.
 
 ## Ownership and workflow
 
 1. Camera owns the submission, event/partner linkage, consent, retention, publication, and vetting decision.
 2. Fanmass independently discovers eligible source photos in Atlas and processes one photo at a time. Camera does not enqueue, lease, retry, or send image bytes to Fanmass.
 3. Fanmass owns queue state and the immutable analysis result, including normalized image-relative face and person boxes. It delivers one result for one photo to Messmass.
-4. Camera reads Fanmass queue/results for the authorized event review UI. A reviewer can confirm the exact source revision and analysis generation in Camera. Confirmation does not approve/reject the photo, alter the Fanmass result, or send a second analytics payload to Messmass.
+4. Camera reads Fanmass queue/results for the authorized event review UI. A reviewer can edit any returned summary, analysis property, or person/face box in the one-photo review. Camera stores the human correction against the exact source revision and analysis generation, preserves the original Fanmass output, and requires confirmation again after edits. Confirmation does not approve/reject the photo or send a second analytics payload to Messmass.
 5. Messmass owns the event report and mechanically aggregates the photo results delivered by Fanmass.
 
-The Fanmass area refreshes every 10 seconds while visible. Each card shows the source photo, queue state, the Fanmass person estimate, the number of individual person boxes, and whether a reviewer confirmed the current result. **Review Fanmass result** opens one image with the original unframed photo, detection boxes, complete Fanmass fields, and previous/next photo navigation.
+The Fanmass area refreshes every 10 seconds while visible. Its event summary separates currently eligible source photos, waiting/discovered/active/completed/failed work, delivery to Messmass, vetting and consent counts, and analysis signal totals. Queue and delivery counts use the same current eligibility gate as the displayed photo list, so erased or ineligible rows do not look like active work. Each photo card shows the source image, queue state, Fanmass people-count field, returned person and face boxes, other summary counts, and whether a reviewer confirmed or corrected the current result. **Review / edit Fanmass analysis** opens one image with the original photo, image-relative detection boxes, all structured summary and analysis properties, saved box data, and previous/next photo navigation. The reviewer can edit every returned field through a structured editor for `summary`, `analysis`, and `boxes`, including adding/removing detections and changing person/face attributes. People and face boxes can be drawn, moved, and resized directly on the photo. Camera stores this correction in the submission’s `fanmassAnalysisReview.correction` field with reviewer, timestamp, source revision, and generation; stale revisions cannot be edited. Editing clears the prior confirmation. The screen displays corrected values and retains the original Fanmass result for comparison. This Camera correction is not sent back to Fanmass or Messmass by the current integration.
 
 ## State labels
 
@@ -22,13 +22,13 @@ The Fanmass area refreshes every 10 seconds while visible. Each card shows the s
 | Retrying | Fanmass will retry a transient failure. |
 | Fanmass analysed | The current queue generation has a completed result. |
 | Result missing / Failed / Cancelled | The result cannot be reviewed as a successful current analysis. |
-| Needs review / Confirmed | Whether an event reviewer has checked this exact source revision and analysis generation. A new result generation needs a new confirmation. |
+| Needs review / Confirmed | Whether an event reviewer has checked this exact source revision and analysis generation. A new result generation needs a new confirmation. Confirmation does not modify the immutable Fanmass result. |
 
 Rejected photos, photos with incomplete consent, photos pending erasure, and other ineligible submissions do not enter Fanmass’s analysis queue. The page shows these counts separately where useful; it never treats an unreadable Fanmass database as a successful or failed analysis.
 
 ## Per-photo fields Fanmass currently returns to Camera
 
-Camera reads the identity-free result envelope stored by Fanmass. The review page exposes the complete allowlisted `analysis` object as JSON as well as the common fields and boxes:
+Camera reads the identity-free result envelope stored by Fanmass. The review page presents the returned summary and analysis properties in labeled, structured sections, with an explicit raw JSON diagnostic view and saved boxes:
 
 - **Photo-level summary:** person count, real-person count, display-person count, approximate crowd estimate, scene type, smiling count, and smiling percentage.
 - **Face detections:** each face’s normalized image-relative box, ID, confidence, and smile indicator.
