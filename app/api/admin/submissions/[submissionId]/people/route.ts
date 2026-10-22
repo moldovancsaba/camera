@@ -1,81 +1,13 @@
 /**
- * PUT /api/admin/submissions/[submissionId]/people (issue 542, docs/PHOTO_VETTING_PLAN.md, lib/photo-vetting/people.ts)
- *
- * Saves the people the reviewer marked in a photo of an event, either during vetting or later on Photo analysis: per person a rectangle in percent of the photo, one gender and one age, an optional emotion and optional items, all as keys of
- * the options the event offers now (the event's vocabulary, lib/photo-vetting/vocabulary-load.ts, issue 628). The list replaces what was saved (an empty list says "looked, nobody marked");
- * who saved it, when, and the version of the list of words it was made with are kept. Allowed for global admins and the event's partner Events managers, like the review itself. Marking
- * changes nothing about whether the photo is approved or rejected: that stays the review route.
- *
- * Body: { people: PersonTag[], analysisOnly?: boolean }. Analysis-only saves are limited to eligible finalized photos and never change vetting/publication or email state.
+ * Retired compatibility endpoint. Standalone manual annotations split the
+ * image-analysis record from Fanmass and could drift from its boxes/results.
+ * Human corrections now save to the same per-photo Fanmass result instead.
  */
 
 import { NextRequest } from 'next/server';
-import { ObjectId } from 'mongodb';
-import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS, generateTimestamp, type Submission } from '@/lib/db/schemas';
-import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound, apiForbidden, apiError, checkRateLimit } from '@/lib/api';
-import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
-import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
-import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
-import { parsePeople } from '@/lib/photo-vetting/people';
-import { photoAnalysisRecordEligible } from '@/lib/photo-vetting/queue';
-import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
-import { CONSENT_ELIGIBLE_FILTER, hasConsentEvidenceForProcessing } from '@/lib/events/consent-eligibility';
+import { withErrorHandler, requireAuth, apiError } from '@/lib/api';
 
-const MARK_RATE_LIMIT = { max: 120, windowMs: 60 * 1000, message: 'Too many saves. Please wait a minute and try again.' };
-
-export const PUT = withErrorHandler(async (request: NextRequest, context?: { params?: Promise<{ submissionId: string }> }) => {
-  const session = await requireAuth(request);
-  await checkRateLimit(request, MARK_RATE_LIMIT);
-
-  const { submissionId } = await context!.params!;
-  if (!ObjectId.isValid(submissionId)) throw apiBadRequest('Invalid submission ID format');
-
-  const body = (await request.json().catch(() => null)) as { people?: unknown; analysisOnly?: unknown } | null;
-  if (body?.analysisOnly !== undefined && typeof body.analysisOnly !== 'boolean') throw apiBadRequest('analysisOnly must be a boolean');
-  const analysisOnly = body?.analysisOnly === true;
-
-  const db = await connectToDatabase();
-  const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: new ObjectId(submissionId) });
-  if (!submission) throw apiNotFound('Submission');
-  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') {
-    throw apiError('This capture is scheduled for erasure and cannot be analyzed.', 409);
-  }
-  if (!hasConsentEvidenceForProcessing(submission as unknown as Record<string, unknown>)) {
-    throw apiError('This photo is on hold until the required consent is recorded and cannot be analyzed.', 409);
-  }
-  if (analysisOnly && submission.reviewStatus !== 'approved') throw apiError('This photo is no longer approved. Reload the Vetting list before editing its analysis.', 409);
-
-  const event = await resolveEventForSubmission(db, submission);
-  if (event) {
-    await assertGlobalAdminOrPartnerEventAccess(db, session, event._id.toString(), 'manager');
-  } else if (!isGlobalAdminSession(session)) {
-    throw apiForbidden('This photo belongs to no event; only a global admin can mark the people in it');
-  }
-
-  // The separate analysis workbench accepts approved/rejected vetted photos and published photos that never entered vetting.
-  // Pending decisions, photos awaiting consent, archived/broken files, and non-photo submissions are never analysable here.
-  if (analysisOnly && !photoAnalysisRecordEligible(submission as unknown as Record<string, unknown>)) {
-    throw apiError('This photo is no longer available for analysis. Reload the Photo analysis page.', 409);
-  }
-
-  // The keys are checked against the list this event offers now (a custom option is valid, a hidden one is not), and the version of that list is recorded with the marks.
-  const vocabulary = await loadEventVocabulary(db, event);
-  const checked = parsePeople(body?.people, vocabulary, { forSave: true });
-  if (!checked.ok) throw apiBadRequest(checked.reason);
-
-  const peopleReview = { by: session.user.email ?? session.user.id ?? null, at: generateTimestamp(), vocabulary: vocabulary.version };
-  const analysisStatusGuard = analysisOnly
-    ? submission.reviewStatus === 'approved' || submission.reviewStatus === 'rejected'
-      ? { reviewStatus: submission.reviewStatus }
-      : { reviewStatus: { $ne: 'pending_review' }, $or: [{ photoReview: { $exists: false } }, { photoReview: null }] }
-    : {};
-  const saved = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { $and: [{ _id: new ObjectId(submissionId), ...analysisStatusGuard }, CONSENT_ELIGIBLE_FILTER] },
-    { $set: { people: checked.value, peopleReview } }
-  );
-  if (analysisOnly && saved.matchedCount === 0) throw apiError('This photo is no longer available for analysis. Reload the Photo analysis page.', 409);
-  // The counters for messmass read the people: ask for a push after the response (nothing happens while the counters are off).
-  scheduleCounterSync(db, event);
-  return apiSuccess({ submissionId, people: checked.value, peopleReview });
+export const PUT = withErrorHandler(async (request: NextRequest) => {
+  await requireAuth(request);
+  throw apiError('Standalone photo annotations are retired. Open the photo in Fanmass analysis review to edit its result.', 410);
 });

@@ -21,8 +21,7 @@ import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/l
 import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
 import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
 import { approvePhoto, rejectPhoto, returnPhotoToVetting, retryApprovedPhotoEmail, type ReviewFailure } from '@/lib/photo-vetting/review';
-import { markPeopleOn } from '@/lib/photo-vetting/people';
-import { offeredReasons } from '@/lib/photo-vetting/review-state';
+import { offeredReasons } from '@/lib/photo-vetting/rejection';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 
 const REVIEW_RATE_LIMIT = {
@@ -79,12 +78,6 @@ export const POST = withErrorHandler(async (
     const unknown = chosen.filter((key) => !offered.includes(key));
     if (unknown.length > 0) throw apiBadRequest(`These reasons are not offered for this event: ${unknown.join(', ')}.`);
     reasons = offered.filter((key) => chosen.includes(key));
-  }
-
-  // Marking the people is required before the first decision of a waiting photo, a rejection too (issue 542, owner answers 263, 267 and 453): when it is on for the event and nobody looked yet (`peopleReview` is
-  // saved by the big view, also for "nobody in this photo"), the decision is refused, so the quick buttons of an old page cannot skip it. A photo decided before (Rejected list) can be approved again.
-  if (event && markPeopleOn(event) && submission.reviewStatus === 'pending_review' && !submission.peopleReview) {
-    throw apiError('Mark the people in this photo first (or say nobody is in it): open it with Review.', 409);
   }
 
   const actor = { email: session.user.email ?? null, id: session.user.id ?? null };

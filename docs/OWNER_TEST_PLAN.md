@@ -1,4 +1,6 @@
-# Owner test and task plan: MTK x Vasas, Friday 16 October 2026
+# Historical owner rehearsal plan: MTK x Vasas, Friday 16 October 2026
+
+> **Archived 2026-10-22.** This was a pre-match checklist for the 16 October 2026 event, written against an earlier Camera release. It is not a current operator guide. The manual people-marking steps (T14–T17, T33, T56–T57, and the former vocabulary/counter steps) are obsolete: Camera now uses Fanmass as the only per-photo analytics source. Follow [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md) for the current analysis workflow and the current release notes for tested behavior. Do not use this checklist to change a live event.
 
 > Written on 11 and 12 October 2026 against version 12.3.42 of the app, for the owner. It is a list to follow and answer, not a description of the code. The same content feeds the interactive checklist page. The approver steps and the last two steps are written for camera pull request 629 and need it live (see Read this first).
 

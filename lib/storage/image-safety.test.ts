@@ -11,6 +11,7 @@ const STORE = 'abc123.public.blob.vercel-storage.com';
 const blob = (path: string) => `https://${STORE}/${path}`;
 const ibb = (path: string) => `https://i.ibb.co/${path}`;
 const AT = '2026-10-12T10:00:00.000Z';
+const eligible = <T extends Doc>(doc: T): T & Doc => ({ consentStatus: 'received', consents: [{ pageId: 'accept', pageType: 'accept', checkboxText: 'Terms', accepted: true, required: true, acceptedAt: AT }], ...doc });
 
 type Doc = Record<string, unknown>;
 const copy = (role: ImageCopy['role'], store: ImageCopy['store'], state: ImageCopy['state'], url: string | null = `https://i.ibb.co/c/${role}.jpg`): ImageCopy => ({ role, store, state, url, bytes: 10, verifiedAt: state === 'verified' ? AT : null, recordedAt: AT });
@@ -31,7 +32,7 @@ const S = {
   tryOn: { _id: ids[8], eventId: 'evt1', submissionKind: 'tryon_result', imageUrl: blob('tryon.jpg') },
   rejected: { _id: ids[9], eventId: 'evt1', reviewStatus: 'rejected', photoReview: { photoUrl: blob('pending/e/r.jpg') } },
   unverified: { _id: ids[10], eventId: 'evt1', imageUrl: blob('s11.jpg'), imageCopies: [copy('composed', 'imgbb', 'unverified')] },
-  // Final: the Blob crop was deleted after the ImgBB copy was verified.
+  // Historical fixture: a Blob crop was deleted after the ImgBB copy was verified.
   imgbbFinal: { _id: ids[11], eventId: 'evt1', reviewStatus: 'approved', imageUrl: blob('s12.jpg'), photoReview: { photoUrl: null }, imageCopies: [copy('composed', 'imgbb', 'verified'), { ...copy('unframed', 'blob', 'deleted', blob('pending/e/gone.jpg')), deletedAt: AT }, copy('unframed', 'imgbb', 'verified')] },
   // ImgBB answered with another size: nothing was deleted, the crop stays in our store.
   keptUnverified: { _id: ids[12], eventId: 'evt1', reviewStatus: 'approved', imageUrl: blob('s13.jpg'), photoReview: { photoUrl: blob('pending/e/k.jpg') }, imageCopies: [copy('composed', 'imgbb', 'verified'), { ...copy('unframed', 'imgbb', 'failed'), error: 'wrong size: 10 bytes were written, the host reports 17' }] },
@@ -48,19 +49,20 @@ test('where a photo is held comes from its stored address and its verified copie
   assert.deepEqual([S.waiting, S.blobCrop, S.cropBoth, S.imgbbFinal, S.rejected, S.blobOnly].map((doc) => classify(doc).unframed), ['waiting', 'blob-only', 'both', 'imgbb-only', 'rejected', 'none']);
   assert.deepEqual([classify(S.blobCrop).notMade, classify(S.blobCrop).couldNotVerify, classify(S.unverified).couldNotVerify, classify(S.keptUnverified).couldNotVerify, classify(S.keptUnverified).notMade], [1, 0, 1, 1, 0]);
   assert.deepEqual([classify(S.keptUnverified).cropKeptUnverified, classify(S.blobCrop).cropKeptUnverified, classify(S.imgbbFinal).cropKeptUnverified], [true, false, false]);
-  assert.deepEqual([needs('rescue', S.imgbbOnly), needs('mirror', S.imgbbOnly), needs('mirror', S.blobOnly), needs('unframed', S.blobCrop), needs('unframed', S.cropBoth), needs('unframed', S.imgbbFinal), needs('unframed', S.waiting)], [true, false, true, true, true, false, false]);
+  assert.deepEqual([needs('rescue', S.imgbbOnly), needs('mirror', S.imgbbOnly), needs('mirror', S.blobOnly), needs('unframed', S.blobCrop), needs('unframed', S.cropBoth), needs('unframed', S.imgbbFinal), needs('unframed-rescue', S.imgbbFinal), needs('unframed', S.waiting)], [true, false, true, true, false, false, true, false]);
 });
 
 test('the count (dry run) groups every photo, the unframed crops (our store only, ImgBB only, both), the crops kept because their copy could not be verified, the copies not made or not verified, leaves a try-on result out, and writes nothing', async () => {
-  const { db, calls } = fakeDb({ submissions: Object.values(S) });
+  const { db, calls } = fakeDb({ submissions: Object.values(S).map(eligible) });
   const plan = await planImageSafety(db);
   assert.deepEqual(plan, {
     pictures: 10,
     tryOnResults: 1,
+    consentExcluded: 0,
     composed: { imgbbOnly: 1, blobOnly: 3, blobOnlyOldMirror: 1, both: 5, other: 1 },
     unframed: { blobOnly: 2, imgbbOnly: 1, both: 1, waiting: 1, rejected: 1, keptUnverified: 1 },
     copies: { notMade: 1, couldNotVerify: 2, photosWithAProblem: 3 },
-    toDo: { rescue: 1, mirror: 3, unframed: 3 },
+    toDo: { rescue: 1, mirror: 3, unframed: 2, 'unframed-rescue': 1 },
   });
   assert.deepEqual(calls.filter((call) => call.op !== 'find'), [], 'no write of any kind');
 });
@@ -79,12 +81,11 @@ function clone<T>(value: T): T {
 }
 
 async function setup(seed: Doc[], options: { source?: Record<string, Buffer | Error>; imgbb?: 'works' | 'fails' | 'wrong-size'; blobFiles?: Record<string, number>; budgetMs?: number } = {}) {
-  const fx = fakeDb({ submissions: clone(seed) });
+  const fx = fakeDb({ submissions: clone(seed.map(eligible)) });
   const picture = await jpeg();
   const source = options.source ?? {};
   const hostFiles: Record<string, number> = { ...(options.blobFiles ?? {}) };
   const downloads: string[] = [];
-  const blobDeleted: string[] = [];
   const writes: Array<{ path: string; bytes: number; type: string }> = [];
   const uploads: string[] = [];
   const deleted: string[] = [];
@@ -101,10 +102,6 @@ async function setup(seed: Doc[], options: { source?: Record<string, Buffer | Er
       return result;
     },
     deleteFromImgbb: async (link) => (deleted.push(link), true),
-    deleteBlob: async (url) => {
-      blobDeleted.push(url);
-      delete hostFiles[url];
-    },
     now: () => AT,
     readBackAttempts: 1,
     readBackDelayMs: 0,
@@ -130,13 +127,13 @@ async function setup(seed: Doc[], options: { source?: Record<string, Buffer | Er
   const row = (id: ObjectId) => fx.data.submissions.find((doc) => String(doc._id) === String(id)) as Doc;
   const copies = (id: ObjectId) => (row(id).imageCopies as ImageCopy[] | undefined) ?? [];
   const state = (id: ObjectId, role: string, store: string) => copies(id).find((c) => c.role === role && c.store === store)?.state;
-  return { ...fx, deps, writes, uploads, deleted, blobDeleted, downloads, picture, row, copies, state, hostFiles };
+  return { ...fx, deps, writes, uploads, deleted, downloads, picture, row, copies, state, hostFiles };
 }
 
 test('rescue copies a picture that is only on ImgBB into our store, verified, without changing the stored address, and deletes nothing', async () => {
   const t = await setup([S.imgbbOnly, S.blobOnly]);
   const result = await runImageSafetyBatch(t.db, { kind: 'rescue' }, t.deps);
-  assert.deepEqual([result.processed, result.counts, result.failures, result.next], [1, { copied: 1, deleted: 0, failed: 0 }, [], null]);
+  assert.deepEqual([result.processed, result.counts, result.failures, result.next], [1, { copied: 1, failed: 0 }, [], null]);
   assert.deepEqual(t.writes.map((w) => [w.path, w.type]), [[`rescue/evt1/${String(ids[0])}.jpg`, 'image/jpeg']]);
   assert.equal(t.state(ids[0], 'composed', 'blob'), 'verified');
   assert.equal(t.state(ids[0], 'composed', 'imgbb'), 'verified');
@@ -153,14 +150,14 @@ test('rescue copies a picture that is only on ImgBB into our store, verified, wi
 });
 
 test('rescue reports the reason when the source is gone, is not a picture or is the host\'s stand-in, records it, and goes on with the next photo', async () => {
-  const gone = { _id: ids[0], eventId: 'evt1', imageUrl: ibb('a/gone.jpg') };
-  const standIn = { _id: ids[1], eventId: 'evt1', imageUrl: ibb('a/standin.png') };
-  const text = { _id: ids[2], eventId: 'evt1', imageUrl: ibb('a/text.jpg') };
-  const fine = { _id: ids[3], eventId: 'evt1', imageUrl: ibb('a/fine.jpg') };
+  const gone = eligible({ _id: ids[0], eventId: 'evt1', imageUrl: ibb('a/gone.jpg') });
+  const standIn = eligible({ _id: ids[1], eventId: 'evt1', imageUrl: ibb('a/standin.png') });
+  const text = eligible({ _id: ids[2], eventId: 'evt1', imageUrl: ibb('a/text.jpg') });
+  const fine = eligible({ _id: ids[3], eventId: 'evt1', imageUrl: ibb('a/fine.jpg') });
   const placeholder = await sharp({ create: { width: 180, height: 180, channels: 3, background: { r: 255, g: 255, b: 255 } } }).png().toBuffer();
   const t = await setup([gone, standIn, text, fine], { source: { [ibb('a/gone.jpg')]: new Error('Failed to fetch image asset: 404 Not Found'), [ibb('a/standin.png')]: placeholder, [ibb('a/text.jpg')]: Buffer.from('<html>nope</html>') } });
   const result = await runImageSafetyBatch(t.db, { kind: 'rescue' }, t.deps);
-  assert.deepEqual([result.processed, result.counts], [4, { copied: 1, deleted: 0, failed: 3 }]);
+  assert.deepEqual([result.processed, result.counts], [4, { copied: 1, failed: 3 }]);
   const reasons = Object.fromEntries(result.failures.map((f) => [f.id, f.reason]));
   assert.match(reasons[String(ids[0])], /could not be read from ImgBB: Failed to fetch image asset: 404/);
   assert.match(reasons[String(ids[1])], /"image not found" picture/);
@@ -192,52 +189,43 @@ test('mirror copies a picture that is only on Blob to ImgBB, verified, with its 
 test('mirror when ImgBB fails: reported with the reason, recorded as failed, the photo is still to do and nothing else is harmed', async () => {
   const t = await setup([S.blobOnly], { imgbb: 'fails' });
   const result = await runImageSafetyBatch(t.db, { kind: 'mirror' }, t.deps);
-  assert.deepEqual(result.counts, { copied: 0, deleted: 0, failed: 1 });
+  assert.deepEqual(result.counts, { copied: 0, failed: 1 });
   assert.match(result.failures[0].reason, /upload to imgbb failed: imgbb answered 500/);
   assert.equal(t.state(ids[1], 'composed', 'imgbb'), 'failed');
   assert.equal(t.row(ids[1]).imageUrl, blob('s2.jpg'));
   assert.equal((await planImageSafety(t.db)).toDo.mirror, 1);
 });
 
-test('unframed copies the crop to ImgBB, reads it back and only then deletes the private Blob crop; a crop whose ImgBB copy is already verified is not downloaded again, only deleted; waiting and rejected photos are left alone', async () => {
+test('unframed mirrors an approved crop and keeps its Blob source and address; already mirrored crops are left alone', async () => {
   const cropBothUrl = blob('pending/e/t.jpg');
-  const t = await setup([S.waiting, S.blobCrop, S.cropBoth, S.rejected, S.imgbbFinal], { blobFiles: { [cropBothUrl]: 10 } });
+  const t = await setup([S.waiting, S.blobCrop, S.cropBoth, S.rejected], { blobFiles: { [cropBothUrl]: 10 } });
   const result = await runImageSafetyBatch(t.db, { kind: 'unframed' }, t.deps);
-  assert.deepEqual([result.processed, result.counts.copied, result.counts.deleted, result.counts.failed], [2, 2, 2, 0]);
-  assert.deepEqual(t.uploads, [`unframed-${String(ids[6])}`], 'only the crop with no ImgBB copy is uploaded');
-  assert.deepEqual(t.downloads, [blob('pending/e/o.jpg')], 'the crop whose copy is verified is not downloaded again');
-  assert.deepEqual(t.blobDeleted.sort(), [blob('pending/e/o.jpg'), cropBothUrl].sort());
-  // The photo that got its copy now: verified on ImgBB, deleted in our store, address null.
+  assert.deepEqual([result.processed, result.counts.copied, result.counts.failed], [1, 1, 0]);
+  assert.deepEqual(t.uploads, [`unframed-${String(ids[6])}`], 'only the crop without a verified ImgBB copy is uploaded');
+  assert.deepEqual(t.downloads, [blob('pending/e/o.jpg')]);
   assert.equal(t.state(ids[6], 'unframed', 'imgbb'), 'verified');
-  assert.equal(t.state(ids[6], 'unframed', 'blob'), 'deleted');
-  assert.equal((t.row(ids[6]).photoReview as Doc).photoUrl, null);
-  assert.equal(t.copies(ids[6]).length, 3, 'the failed entry was replaced, not added to');
-  assert.equal(classify(t.row(ids[6])).unframed, 'imgbb-only');
-  // The photo whose copy was already verified: only the delete.
-  assert.equal(t.state(ids[7], 'unframed', 'blob'), 'deleted');
-  assert.equal((t.row(ids[7]).photoReview as Doc).photoUrl, null);
-  // Waiting and rejected photos keep their crop and get no entry.
+  assert.equal(t.state(ids[6], 'unframed', 'blob'), 'verified');
+  assert.equal((t.row(ids[6]).photoReview as Doc).photoUrl, blob('pending/e/o.jpg'));
+  assert.equal(classify(t.row(ids[6])).unframed, 'both');
+  assert.equal(t.state(ids[7], 'unframed', 'blob'), undefined, 'a crop already verified in both places is not touched');
+  assert.equal((t.row(ids[7]).photoReview as Doc).photoUrl, cropBothUrl);
   for (const id of [ids[5], ids[9]]) assert.deepEqual([t.row(id).imageCopies, (t.row(id).photoReview as Doc).photoUrl !== null], [undefined, true]);
-  assert.equal(JSON.stringify(result).includes('pending/'), false, 'the answer never names the private file');
-  // A repeat has nothing to do.
+  assert.equal(JSON.stringify(result).includes('pending/'), false);
   assert.equal((await runImageSafetyBatch(t.db, { kind: 'unframed' }, t.deps)).processed, 0);
-  assert.equal((await planImageSafety(t.db)).unframed.imgbbOnly, 3, 'three crops are final now');
 });
 
 test('unframed with an ImgBB copy that fails, or has another size, keeps the private Blob crop, reports the reason, and the plan shows the crop as kept because its copy could not be verified', async () => {
   const failing = await setup([S.blobCrop], { imgbb: 'fails' });
   const failed = await runImageSafetyBatch(failing.db, { kind: 'unframed' }, failing.deps);
-  assert.deepEqual([failed.counts.copied, failed.counts.deleted, failed.counts.failed], [0, 0, 1]);
+  assert.deepEqual([failed.counts.copied, failed.counts.failed], [0, 1]);
   assert.match(failed.failures[0].reason, /upload to imgbb failed: imgbb answered 500/);
-  assert.deepEqual(failing.blobDeleted, [], 'never lose the only copy');
   assert.equal((failing.row(ids[6]).photoReview as Doc).photoUrl, blob('pending/e/o.jpg'));
   assert.equal(failing.state(ids[6], 'unframed', 'blob'), 'verified');
 
   const changed = await setup([S.blobCrop], { imgbb: 'wrong-size' });
   const wrong = await runImageSafetyBatch(changed.db, { kind: 'unframed' }, changed.deps);
-  assert.deepEqual([wrong.counts.copied, wrong.counts.deleted, wrong.counts.failed], [0, 0, 1]);
+  assert.deepEqual([wrong.counts.copied, wrong.counts.failed], [0, 1]);
   assert.match(wrong.failures[0].reason, /wrong size/);
-  assert.deepEqual(changed.blobDeleted, []);
   assert.equal(changed.state(ids[6], 'unframed', 'imgbb'), 'failed');
   const plan = await planImageSafety(changed.db);
   assert.deepEqual([plan.unframed.keptUnverified, plan.unframed.blobOnly, plan.copies.couldNotVerify], [1, 1, 1], 'the case is its own count in the dry run');
@@ -245,7 +233,7 @@ test('unframed with an ImgBB copy that fails, or has another size, keeps the pri
 });
 
 test('a batch is bounded: at most `limit` photos, the cursor goes on from the last one, and every photo is worked on exactly once', async () => {
-  const seed = Array.from({ length: 5 }, (_, i) => ({ _id: ids[i], eventId: 'evt1', imageUrl: ibb(`a/${i}.jpg`) }));
+  const seed = Array.from({ length: 5 }, (_, i) => eligible({ _id: ids[i], eventId: 'evt1', imageUrl: ibb(`a/${i}.jpg`) }));
   const t = await setup(seed);
   const seen: string[] = [];
   let after: ObjectId | undefined;
@@ -268,7 +256,7 @@ test('a batch is bounded: at most `limit` photos, the cursor goes on from the la
 });
 
 test('a call stops starting new work when its time is used and says where to go on from', async () => {
-  const seed = Array.from({ length: 9 }, (_, i) => ({ _id: ids[i], eventId: 'evt1', imageUrl: ibb(`c/${i}.jpg`) }));
+  const seed = Array.from({ length: 9 }, (_, i) => eligible({ _id: ids[i], eventId: 'evt1', imageUrl: ibb(`c/${i}.jpg`) }));
   const t = await setup(seed, { budgetMs: -1 });
   const batch = await runImageSafetyBatch(t.db, { kind: 'rescue', limit: 12 }, t.deps);
   assert.equal(batch.processed, 3, 'one chunk of three is always done, so the walk makes progress');
@@ -278,8 +266,8 @@ test('a call stops starting new work when its time is used and says where to go 
 // ---- the address check (reads only) -----------------------------------------------------------------------------------------------------------------------------
 
 test('the address check asks every address a photo names with a one-byte range request, lists the ones that are gone, never names the private crop, and writes nothing', async () => {
-  const photo = { _id: ids[0], eventId: 'evt1', imageUrl: ibb('a/ok.jpg'), reviewStatus: 'approved', photoReview: { photoUrl: blob('pending/e/gone.jpg') }, imageCopies: [copy('composed', 'blob', 'verified', blob('rescue/evt1/x.jpg')), copy('unframed', 'imgbb', 'verified', ibb('u/gone.jpg'))] };
-  const slow = { _id: ids[1], eventId: 'evt1', imageUrl: blob('slow.jpg') };
+  const photo = eligible({ _id: ids[0], eventId: 'evt1', imageUrl: ibb('a/ok.jpg'), reviewStatus: 'approved', photoReview: { photoUrl: blob('pending/e/gone.jpg') }, imageCopies: [copy('composed', 'blob', 'verified', blob('rescue/evt1/x.jpg')), copy('unframed', 'imgbb', 'verified', ibb('u/gone.jpg'))] });
+  const slow = eligible({ _id: ids[1], eventId: 'evt1', imageUrl: blob('slow.jpg') });
   const { db, calls } = fakeDb({ submissions: [photo, slow] });
   const asked: string[] = [];
   const fetchImpl = (async (input: unknown, init?: { headers?: Record<string, string> }) => {
@@ -300,7 +288,7 @@ test('the address check asks every address a photo names with a one-byte range r
 });
 
 test('the address check is bounded and continues from a cursor', async () => {
-  const seed = Array.from({ length: 5 }, (_, i) => ({ _id: ids[i], eventId: 'evt1', imageUrl: blob(`p${i}.jpg`) }));
+  const seed = Array.from({ length: 5 }, (_, i) => eligible({ _id: ids[i], eventId: 'evt1', imageUrl: blob(`p${i}.jpg`) }));
   const { db } = fakeDb({ submissions: seed });
   const fetchImpl = (async () => new Response(null, { status: 206, headers: { 'content-type': 'image/jpeg', 'content-range': 'bytes 0-0/9' } })) as typeof fetch;
   const first = await probeImageSafety(db, { limit: 3 }, fetchImpl);
@@ -310,19 +298,42 @@ test('the address check is bounded and continues from a cursor', async () => {
 });
 
 test('a download that never ends is given up, reported with its reason and recorded, and the batch goes on', async () => {
-  const slow = { _id: ids[0], eventId: 'evt1', imageUrl: ibb('a/slow.jpg') };
-  const fine = { _id: ids[1], eventId: 'evt1', imageUrl: ibb('a/fine.jpg') };
+  const slow = eligible({ _id: ids[0], eventId: 'evt1', imageUrl: ibb('a/slow.jpg') });
+  const fine = eligible({ _id: ids[1], eventId: 'evt1', imageUrl: ibb('a/fine.jpg') });
   const t = await setup([slow, fine]);
   const never = { ...t.deps, downloadMs: 20, fetchPicture: async (url: string) => (url === ibb('a/slow.jpg') ? new Promise<Buffer>(() => undefined) : t.picture) };
   const result = await runImageSafetyBatch(t.db, { kind: 'rescue' }, never);
-  assert.deepEqual(result.counts, { copied: 1, deleted: 0, failed: 1 });
+  assert.deepEqual(result.counts, { copied: 1, failed: 1 });
   assert.match(result.failures[0].reason, /the host did not send the file within 0\.02 s/);
   assert.equal(t.state(ids[0], 'composed', 'blob'), 'failed');
   assert.equal(t.state(ids[1], 'composed', 'blob'), 'verified');
 });
 
-test('the address check does not ask for a crop that was deleted on purpose after its ImgBB copy was verified', async () => {
-  const { db } = fakeDb({ submissions: [clone(S.imgbbFinal)] });
+test('a verified historical ImgBB crop is restored to Blob and reattached without deleting the ImgBB source', async () => {
+  const t = await setup([S.imgbbFinal]);
+  const result = await runImageSafetyBatch(t.db, { kind: 'unframed-rescue' }, t.deps);
+  assert.deepEqual([result.processed, result.counts], [1, { copied: 1, failed: 0 }]);
+  assert.deepEqual(t.writes.map((write) => write.path), [`pending/evt1/${String(ids[11])}.jpg`]);
+  assert.equal(t.state(ids[11], 'unframed', 'blob'), 'verified');
+  assert.equal(t.state(ids[11], 'unframed', 'imgbb'), 'verified');
+  assert.equal((t.row(ids[11]).photoReview as Doc).photoUrl, blob(`pending/evt1/${String(ids[11])}.jpg`));
+  assert.equal(classify(t.row(ids[11])).unframed, 'both');
+  assert.deepEqual(t.deleted, [], 'the ImgBB source is kept');
+});
+
+test('photos without valid consent are neither probed nor copied', async () => {
+  const noAudit = { ...eligible({ _id: ids[0], eventId: 'evt1', imageUrl: ibb('a/no-consent.jpg') }), consents: [] };
+  const t = await setup([noAudit]);
+  const plan = await planImageSafety(t.db);
+  assert.deepEqual([plan.consentExcluded, plan.toDo.rescue], [1, 0]);
+  const result = await runImageSafetyBatch(t.db, { kind: 'rescue' }, t.deps);
+  assert.deepEqual([result.processed, t.writes.length], [0, 0]);
+  const probe = await probeImageSafety(t.db, {}, t.deps.fetch);
+  assert.equal(probe.processed, 0);
+});
+
+test('the address check does not ask for a historical crop whose Blob copy is marked deleted', async () => {
+  const { db } = fakeDb({ submissions: [clone(eligible(S.imgbbFinal))] });
   const asked: string[] = [];
   const fetchImpl = (async (input: unknown) => {
     asked.push(String(input));
@@ -330,6 +341,6 @@ test('the address check does not ask for a crop that was deleted on purpose afte
   }) as typeof fetch;
   const batch = await probeImageSafety(db, {}, fetchImpl);
   assert.equal(batch.gone, 0);
-  assert.equal(asked.some((url) => url.includes('pending/')), false, 'the deleted private file is not an address that should answer');
-  assert.deepEqual([batch.processed, batch.addresses], [1, 3], 'the framed picture, the ImgBB copy of the framed picture and the ImgBB copy of the crop');
+  assert.equal(asked.some((url) => url.includes('pending/')), false, 'the historical Blob source is not queried');
+  assert.deepEqual([batch.processed, batch.addresses], [1, 3], 'the framed picture, its ImgBB copy and the ImgBB crop backup');
 });

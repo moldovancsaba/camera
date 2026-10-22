@@ -75,10 +75,6 @@ export interface PhotoFacts {
   plays: number;
   lastPlayedAt: string | null;
   playsBySlideshow: Record<string, { count: number; lastPlayedAt: string | null }>;
-  /** `Submission.people`, untouched (the people counts read it with `summarizePeople`). */
-  people: unknown;
-  peopleBy: string | null;
-  peopleAt: string | null;
   emails: { arrived: boolean; photoLink: PhotoLinkEmail | null; photoLinkSkipReason: string | null; photoLinkKind: 'afterSave' | 'relatedPhotos' | 'tryOnRerun' | null; declined: 'sent' | 'not_sent' | null };
 }
 
@@ -118,8 +114,6 @@ export const PHOTO_PROJECTION = {
   playCount: 1,
   lastPlayedAt: 1,
   slideshowPlays: 1,
-  people: 1,
-  peopleReview: 1,
   'metadata.deviceClass': 1,
   'metadata.deviceInfo': 1,
   'metadata.device': 1,
@@ -200,7 +194,6 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
   const mediaHealth = record(doc.mediaHealth);
   const reframe = record(doc.reframe);
   const variant = record(doc.frameVariant);
-  const peopleReview = record(doc.peopleReview);
   const identityStatus = text(record(doc.metadata).identityStatus);
 
   const source: PhotoSource = metadata.adminGalleryUpload === true ? 'editor' : 'user';
@@ -275,9 +268,6 @@ export function photoFactsOf(doc: Record<string, unknown> | null | undefined): P
     plays,
     lastPlayedAt: text(doc.lastPlayedAt),
     playsBySlideshow: by,
-    people: doc.people,
-    peopleBy: text(peopleReview.by),
-    peopleAt: text(peopleReview.at),
     emails: {
       arrived: Boolean(text(metadata.arrivedEmailSentAt)),
       photoLink,

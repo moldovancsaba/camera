@@ -4,6 +4,8 @@
 
 Status 2026-10-16: **built and live.** Packages V1 to V10 are merged and the rollout was made on 2026-10-06 (238 of 238 events then; every new event starts with vetting on; RUNBOOK, "Photo vetting"); "inert until V10" below is history. What came later is at the end (marking the people at vetting, the big view, reopening a decision, and the independent Photo analysis page). Original status: plan, decisions confirmed by the owner on 2026-10-06 (below); work packages not started. Related: `docs/DEFAULT_FRAME_PLAN.md` (the frames), `RUNBOOK.md` ("How the photo is taken, and what is kept").
 
+> **Current workflow (2026-10-22):** manual people-box annotations and the standalone `Submission.people` / `peopleReview` system were retired. Vetting approves or rejects publication and stores rejection reasons. Fanmass is the one source of per-photo analytics; Camera's Photo analysis page reviews, corrects and confirms the Fanmass result. See [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md) and [MESSMASS_FANMASS_INTEGRATION.md](MESSMASS_FANMASS_INTEGRATION.md). The manual-marking and separate-analysis descriptions below are historical and must not be followed as current operator instructions.
+
 ## The request
 
 Owner, 2026-10-06, passing on a client request: by design every event should have vetting required, so that the final result
@@ -137,11 +139,13 @@ cannot be seen; the owner's phone test.
   on screen, never while a decision is in flight or a reason for a rejection is being written. Until 2026-10-08 it refreshed only after a decision, so a new photo needed a reload.
 - Photos that already have a public composite (all existing ones) are not touched by the backfill; hiding one is the existing
   "remove from event" action, and V1 makes that action effective on the share page as well.
-- Deleting a photo must delete its private file (the file-deletion helper covers the composite, the original and, since issue 509, the private unframed photo and every recorded copy). **Since issue 509 approval no longer deletes the private photo at once**: it is the only unframed copy until its copy on ImgBB is verified (owner decision 295), and only then is the Blob file deleted ("variant B"); a rejected photo keeps its file. The retention of ImgBB's copy (90 days after the event, owner answer 226) is a later step.
+- Deleting a photo must delete its recorded files through the erasure flow. **Current approval and Image safety repair retain Blob source files** while adding/verifying optional ImgBB copies; neither copy-repair path deletes a source. ImgBB is public and is not an independent private backup. The older variant-B description below this plan is historical; retention automation still needs separate verification.
 - The shapes picture shows the guest's own photo; it is kept in the guest's browser and in the moderation queue, not on a public page.
 - `ensure-indexes.ts` has an index on `{eventId, submissionKind, isSlideshowEligible, isArchived, createdAt}` that gains `reviewStatus`.
 
-## Marking the people in a photo (issue 542, owner request 2026-10-10; reworked in issue 628, owner request 2026-10-12)
+## Historical implementation: manual marking the people in a photo (retired 2026-10-22)
+
+> This section records the former implementation for change history only. It no longer describes the current UI, API, schema, or analytics behavior.
 
 A vetting person describes each photo before deciding: who is in it (gender and age), how they look, what they wear or hold, and, for a rejection, why. The result is attached to the photo and has two aims (owner, 2026-10-12): **feed messmass analytics** and **collect the picture with its annotation, so software can do this automatically one day** (the words and the counters: [ANNOTATION_VOCABULARY.md](ANNOTATION_VOCABULARY.md); the training question: [AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md](AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md)).
 
@@ -154,12 +158,12 @@ A vetting person describes each photo before deciding: who is in it (gender and 
 - **For the analytics and messmass:** `summarizePeople` counts people, photos looked at, gender, age, emotion and items; the card **People marked in the photos** on the Vetting tab shows it in the words of the event's list. The `camera_` counters for messmass (whole running totals; `camera_gender_female` is how many female people were counted over all annotated photos of the event) are built and **off** until the owner switches the push on.
 - **Not done:** a keyboard way to draw (the buttons work with a keyboard, drawing needs a mouse or a finger), a second reviewer on a sample and an "unsure" mark for the training quality, a phone check by the owner (the sticky decision bar and drawing on a touch screen were checked in an emulated phone only).
 
-## Reopen a decision and correct analysis
+## Reopen a publication decision (current)
 
 - **Back to vetting:** an event manager can reopen an approved photo from the event Gallery, or an approved/rejected photo from the Vetting lists. The photo returns to Waiting and follows the ordinary one-at-a-time review process; rejected photos can be corrected the same way. The update is conditional on the status the moderator saw, so a concurrent decision wins only once.
 - **Guest link while reopened:** the share token resolves to a bilingual further-review notice, never the photo or its preview. The page refreshes until the final decision. Its English and Hungarian title and message are editable in the event's Public result page settings. Reopening a photo that was publicly visible sends a further-review email with the existing link; reopening an already-hidden rejected photo sends no email.
 - **Finish the review:** the existing framed image is reused if its private source file was already cleaned up. The normal approval/rejection messages are sent when the decision restores or changes visibility; a second rejection of an already-hidden reopened photo does not send a duplicate decline email. A first-time rejection keeps its existing notification behavior.
-- **Analysis-only correction:** use the event's separate **Photo analysis** page, linked from the event overview at `/admin/events/<id>/analysis`. It lets a manager update saved people boxes and tags through `PUT /api/admin/submissions/<id>/people`. It does not call the decision endpoint, so vetting status, public visibility and guest email are unchanged.
+- **Fanmass analysis:** use the event's **Photo analysis** page at `/admin/events/<id>/analysis`. It displays the current per-photo Fanmass result and image-relative boxes. An authorized reviewer can correct or confirm the same Fanmass result without changing publication status, public visibility, or guest decision email. The correction is tied to the exact Fanmass source revision and analysis generation; see [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md).
 - **Visibility rule:** public surfaces continue to use the shared `isPubliclyVisible` rule. Pending/rejected records remain excluded from the gallery, downloads, link previews, and slideshow feeds while a review is open.
 
 ## Identity collected after capture and decision emails (2026-10-16)
@@ -172,16 +176,9 @@ The live guest flow uploads the photo as soon as the guest confirms it, then may
 - An atomic, short-lived claim prevents a repeated login callback from sending the same decision email twice. A missing address keeps the pending state; a provider error is recorded as a failure. Approved emails can also be retried through the existing approval retry action.
 - The submission list displays a known `userInfo.email`, otherwise labels the placeholder as **NO USER**.
 
-## Separate Photo analysis work (owner decision, 2026-10-16)
+## Historical implementation: separate manual Photo analysis (retired 2026-10-22)
 
-- Vetting and people analysis are independent jobs. Vetting remains on its own page and owns approve/reject decisions. **Photo analysis** is a separate event page and uses the same one-photo drawing and labeling workbench, with Save and Skip actions and no vetting controls.
-- The **Analysed** list shows the saved people-marking count on each card, including an explicit `0`. If stored tags cannot be read with the event vocabulary, the card says **Review data** rather than reporting a false zero. It uses the unframed analysis image when available; a framed composite is not substituted, and a missing unframed source is called out.
-- If an event requires vetting, photos enter the analysis queue only after approval or rejection. A photo whose analysis was required during vetting is already complete and does not appear in the outstanding queue. If people marking was switched off during vetting, the finalized photo appears in Photo analysis for later work.
-- If vetting is off, photos that were published without a vetting record enter Photo analysis directly. Previously vetted, finalized photos remain eligible too.
-- Photos still awaiting a vetting decision, awaiting required consent, archived, known broken, or not a plain photo are excluded. A rejected photo is shown from its private review image, so it remains available to event managers without becoming public.
-- The page shows outstanding and completed counts. Saving one photo removes it from "Needs analysis" and opens the next oldest eligible photo. Completed analysis is available in a paginated list for corrections.
-- Analysis eligibility is checked again when saving. If another moderator has returned a vetted photo to the pending queue, the stale analysis save is refused. An analysis update changes only `people` and `peopleReview`; it never changes `reviewStatus`, visibility, approval email, or rejection email.
-- `Submission.people` being absent means analysis is outstanding; `people: []` means the photo was checked and nobody was marked. Analysis is therefore required as an eventual event task, while the event's `markPeopleInVetting` setting controls whether it blocks an individual vetting decision.
+> The former one-photo manual drawing/labeling workbench used `Submission.people` and `peopleReview`. It has been removed. Current queue eligibility, Fanmass state, result properties, boxes, correction and confirmation behavior are documented in [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md). Do not use the legacy screenshots, test steps, or data fields described in this historical plan as the current Fanmass workflow.
 
 ## Open questions
 

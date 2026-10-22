@@ -14,6 +14,8 @@ interface VettingQuery {
   photos?: string;
   /** `list` shows the Waiting list as cards instead of the one-at-a-time screen. */
   view?: string;
+  /** One-based page for the Waiting, Rejected, or Approved card list. */
+  page?: string;
 }
 
 // WHAT: The event workspace's Vetting tab: the photos of the event that wait for approval (photo vetting, camera#284), for the event's
@@ -29,7 +31,8 @@ export default async function EventVettingTab({
 }) {
   const { id } = await params;
   if (!ObjectId.isValid(id)) notFound();
-  const { photos, view }: VettingQuery = searchParams ? await searchParams : {};
+  const { photos, view, page: rawPage }: VettingQuery = searchParams ? await searchParams : {};
+  const page = typeof rawPage === 'string' && /^\d+$/.test(rawPage) ? Math.max(1, Number(rawPage)) : 1;
   const photoStatus: QueueStatus = isQueueStatus(photos) ? photos : 'pending_review';
 
   const session = await getSession();
@@ -43,7 +46,7 @@ export default async function EventVettingTab({
 
   return (
     <div style={{ display: 'grid', gap: '2.5rem' }}>
-      <EventPhotoVetting db={db} eventMongoId={id} event={event as { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; markPeopleInVetting?: unknown }} status={photoStatus} view={view === 'list' ? 'list' : undefined} canChangeSetting={globalAdmin} />
+      <EventPhotoVetting db={db} eventMongoId={id} event={event as { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown } }} status={photoStatus} page={page} view={view === 'list' ? 'list' : undefined} canChangeSetting={globalAdmin} />
     </div>
   );
 }

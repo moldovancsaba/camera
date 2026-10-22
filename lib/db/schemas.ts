@@ -24,7 +24,6 @@
  */
 
 import type { ReframeRecord } from '@/lib/camera/reframe';
-import type { PersonTag } from '@/lib/photo-vetting/people';
 import type { StoredVocabulary } from '@/lib/photo-vetting/vocabulary';
 import { ObjectId } from 'mongodb';
 import type { FrameDesign } from '@/lib/frame/context';
@@ -402,8 +401,6 @@ export interface Event {
    * place is the event's choice. Missing: the default places (lib/events/default-pages.ts).
    */
   defaultPageOrders?: Record<string, number>;
-  /** The big vetting view asks the reviewer to mark the people in each photo before approving or declining it (issue 542, lib/photo-vetting/people.ts). **On for every event unless it is `false`** (owner answer 264, 2026-10-10); only a global admin switches it off. */
-  markPeopleInVetting?: boolean;
   /** What this event changed in the words the vetting person describes a photo with (issue 628, lib/photo-vetting/vocabulary.ts). Missing = nothing changed; the event follows its partner, which follows the general level. */
   annotationVocabulary?: StoredVocabulary | null;
   /**
@@ -741,13 +738,12 @@ export interface UserConsent {
  *
  * `verified` only after a ranged read of `url` answered with `bytes` bytes (`verifiedAt` is then set). `unverified`: the file was written (the address is known) but the read-back could not tell (a timeout, a 5xx).
  * `failed`: the copy was not made, or the read-back showed it is gone or the wrong size; `error` says why, and an address / delete link that is known is kept so deleting the submission can still reach it.
- * `deleted`: the file was deleted on purpose (`deletedAt`) and the row is kept so the history is readable. Only the private unframed crop on `blob` ends this way, and only after its `imgbb` copy was `verified`
- * (owner decision "variant B", issue 509): the crop is kept in our store until ImgBB holds a verified copy, then it is deleted and ImgBB is its final place.
+ * `deleted`: a historical copy entry was deliberately removed (`deletedAt`); retained for legacy records and erasure audit. Current approval and image-safety copy jobs never create this state.
  */
 export interface ImageCopy {
   /** `unframed`: the plain crop the user saved (before the frame). `composed`: the framed picture the public sees. */
   role: 'unframed' | 'composed';
-  /** `blob`: this project's Vercel Blob store. `imgbb`: the third-party host (owner decision 295: the final destination of unframed pictures). */
+  /** `blob`: this project's Vercel Blob store. `imgbb`: the third-party image host; it is an additional copy, not the sole retained source. */
   store: 'blob' | 'imgbb';
   state: 'verified' | 'unverified' | 'failed' | 'deleted';
   /** Address of the file in that store (of a `deleted` one: where it was), or null when none was made. */
@@ -838,7 +834,7 @@ export interface Submission {
   // never returned by a public route), what approval needs to compose the real picture, and the history of the review. The
   // branded composite does not exist until approval; imageUrl and finalImageUrl are absent until then.
   photoReview?: {
-    photoUrl: string | null;         // Plain photo, Blob `pending/<event>/…`; after approval it is kept until its ImgBB copy is verified (issue 509, variant B), then deleted and this is null; deleted with the submission otherwise
+    photoUrl: string | null;         // Plain photo in Blob `pending/<event>/…`; retained after approval for review/repair and removed only by the submission erasure flow
     photoSize: number;
     photoMime: string;
     shareOptIn: boolean;             // The guest's pledge-wall choice, applied when the photo is approved
@@ -850,13 +846,6 @@ export interface Submission {
     // Older documents may also hold `tryOn`; the removed integration no longer reads or writes it.
   } | null;
   shareToken?: string | null;        // Opaque share id of a vetted photo (/share/<token>); older photos use their database id
-  /**
-   * The people marked during vetting or later on Photo analysis (issue 542, lib/photo-vetting/people.ts): per person a rectangle in percent of the photo, one of the 8 person buttons (gender and age), an emotion and
-   * merchandise. Missing: nobody looked yet; an empty list: looked, nobody marked. `peopleReview` says who marked them and when. Used by the analytics.
-   */
-  people?: PersonTag[];
-  /** Who marked the people and when; `vocabulary` is the version of the list of words the marks were made with (lib/photo-vetting/vocabulary.ts), so marks made with different lists can be told apart. */
-  peopleReview?: { by: string | null; at: string; vocabulary?: string };
   /** Human review and optional correction of one exact Fanmass result revision; Fanmass remains the immutable source. */
   fanmassAnalysisReview?: {
     status: 'corrected' | 'confirmed';

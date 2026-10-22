@@ -37,9 +37,6 @@ function fact(extra: Partial<PhotoFacts> = {}): PhotoFacts {
     plays: 0,
     lastPlayedAt: null,
     playsBySlideshow: {},
-    people: undefined,
-    peopleBy: null,
-    peopleAt: null,
     emails: { arrived: false, photoLink: null, photoLinkSkipReason: null, photoLinkKind: null, declined: null },
     ...extra,
   };
@@ -192,27 +189,6 @@ test('users: told apart by e-mail or account; signed in, typed e-mail, and the p
   assert.deepEqual([report.emails.welcome.registrations, report.emails.welcome.sent], [3, 1]);
 });
 
-test('the people marked at vetting are counted with summarizePeople, and who marked them', () => {
-  const person = { id: 'a', box: { x: 10, y: 10, w: 30, h: 30 }, gender: 'female', age: 'adult', emotion: 'happy', merch: ['cap'] };
-  const report = buildEventReport(
-    {
-      photos: [
-        fact({ people: [person, { ...person, id: 'b', gender: 'male', age: 'old' }], peopleBy: 'ann' }),
-        fact({ people: [], peopleBy: 'ann' }),
-        fact({ people: [person], peopleBy: 'bob' }),
-        fact({ people: undefined }),
-      ],
-    },
-    BUDAPEST,
-  );
-  assert.equal(report.people.summary.photos, 3);
-  assert.equal(report.people.summary.people, 3);
-  assert.equal(report.people.summary.photosWithPeople, 2);
-  assert.equal(report.people.summary.byEmotion.happy, 3);
-  assert.equal(report.people.summary.withMerch, 3);
-  assert.deepEqual(report.people.markers.map((m) => [m.label, m.count]), [['ann', 2], ['bob', 1]]);
-});
-
 test('devices, how the photo was provided, and the framing; an unknown value is its own row so the rows add up', () => {
   const report = buildEventReport(
     {
@@ -338,16 +314,9 @@ test('the reasons chosen from the list: counted by key over the photos rejected 
   assert.equal(buildEventReport({ photos: [fact()] }, BUDAPEST).vetting.rejectReasons.length, 0);
 });
 
-test('the photos by how many people are in them: one person, a group, and nobody; a photo nobody looked at is in none', () => {
-  const person = (id: string) => ({ id, box: { x: 10, y: 10, w: 30, h: 30 }, gender: 'female', age: 'adult' });
-  const report = buildEventReport({ photos: [fact({ people: [person('a')] }), fact({ people: [person('a'), person('b')] }), fact({ people: [person('a'), person('b'), person('c')] }), fact({ people: [] }), fact({ people: undefined })] }, BUDAPEST);
-  assert.deepEqual([report.people.summary.photos, report.people.photosWithOnePerson, report.people.photosWithGroup, report.people.summary.photosWithPeople], [4, 1, 2, 3]);
-});
-
-test('the report carries the vocabulary it counted with: the standard list when none is given, and the people counts are filled from it', () => {
+test('the report carries the vocabulary used to label rejection reasons', () => {
   assert.equal(buildEventReport({ photos: [] }, BUDAPEST).vocabulary, STANDARD_VOCABULARY);
-  const custom = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'vuvuzela', label: 'Vuvuzela', custom: true }] } });
-  const report = buildEventReport({ photos: [fact({ people: [] })], vocabulary: custom }, BUDAPEST);
+  const custom = resolveVocabulary({ event: { options: [{ group: 'reject_reason', key: 'confetti', label: 'Confetti', custom: true }] } });
+  const report = buildEventReport({ photos: [fact()], vocabulary: custom }, BUDAPEST);
   assert.equal(report.vocabulary, custom);
-  assert.equal(report.people.summary.byMerch.vuvuzela, 0, 'an option offered now has a count even when nobody has it');
 });

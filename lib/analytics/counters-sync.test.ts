@@ -139,33 +139,6 @@ test('the counters are made from the photos of the event only, over the whole ev
   assert.equal(Object.keys(set.totals).some((name) => name.startsWith('camera_gender_')), false, 'nobody marked a photo: no counter about the people');
 });
 
-test('the counters are named from the vocabulary of the event: the stored event, its partner and the general level are read, even when the caller passes a thin event', async () => {
-  const custom = (key: string, label: string, group: string) => ({ options: [{ group, key, label, custom: true }] });
-  const person = (gender: string, merch: string[]) => ({ id: gender, box: { x: 10, y: 10, w: 30, h: 30 }, gender, age: 'adult', merch });
-  const photo = (id: string, extra: Record<string, unknown>) => ({ _id: id, eventId: 'ev-1', eventIds: ['ev-1'], submissionKind: 'original', createdAt: '2026-10-16T18:00:00.000Z', isArchived: false, userId: 'anonymous', userEmail: 'anonymous@event', reviewStatus: 'pending_review', ...extra });
-  const s = fakeDb({
-    [COLLECTIONS.EVENTS]: [{ _id: 'mongo-1', eventId: 'ev-1', messmassEventId: MESSMASS_ID, partnerId: 'partner-1', annotationVocabulary: custom('vuvuzela', 'Vuvuzela', 'merch') }],
-    [COLLECTIONS.PARTNERS]: [{ partnerId: 'partner-1', annotationVocabulary: custom('nonbinary', 'Non-binary', 'gender') }],
-    [COLLECTIONS.ADMIN_SETTINGS]: [{ settingId: COUNTERS_SETTING_ID, enabled: true }, { settingId: 'annotation-vocabulary', ...custom('mascot', 'Mascot costume', 'age') }],
-    [COLLECTIONS.SUBMISSIONS]: [
-      photo('a', { people: [person('nonbinary', ['vuvuzela']), person('female', [])] }),
-      photo('b', { people: [person('mascot_does_not_exist', [])] }),
-    ],
-  });
-  const pushed: PhotoStatsPayload[] = [];
-  const deps: CounterSyncDeps = { push: async (_id, payload) => (pushed.push(payload), true), counters: loadEventCounters, now: () => T0 };
-  const thin = { _id: 'mongo-1' as unknown as ObjectId, eventId: 'ev-1', messmassEventId: MESSMASS_ID };
-  assert.equal(await syncEventCounters(s.db, thin, {}, deps), 'pushed');
-  const [payload] = pushed;
-  assert.equal(payload.totals.camera_gender_nonbinary, 1, 'the partner level');
-  assert.equal(payload.labels.camera_gender_nonbinary, 'Camera: gender, Non-binary');
-  assert.equal(payload.totals.camera_merch_vuvuzela, 1, 'the event level');
-  assert.equal(payload.totals.camera_age_mascot, 0, 'the general level, offered and nobody has it');
-  assert.equal(payload.totals.camera_gender_female, 1);
-  assert.equal(payload.totals.camera_images_annotated, 1, 'a photo whose marking does not read against the list is left out, as everywhere');
-  assert.equal(payload.totals.camera_people_total, 2);
-});
-
 test('the state for the Messmass tab: the setting, the link, the numbers now and the last push, and nothing is written or sent', async () => {
   const { db, calls } = fakeDb({
     [COLLECTIONS.SUBMISSIONS]: [{ _id: 'a', eventId: 'ev-1', eventIds: ['ev-1'], submissionKind: 'original', createdAt: '2026-10-16T18:00:00.000Z', isArchived: false, reviewStatus: 'approved' }],

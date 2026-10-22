@@ -4,7 +4,7 @@
  * watched. Only a stored `true` is on: a missing document, a missing field, `"true"` as text or anything else is off. Unit-tested in counters-setting.test.ts.
  *
  * It is changed through PATCH /api/admin/settings/messmass-counters (global admins), from the button on the Messmass tab of the Analytics (components/admin/analytics/CountersSwitch.tsx), which asks
- * before switching on. The switch pushes nothing itself: a push is asked for after a vetting decision or a saved marking of the people (lib/analytics/counters-trigger.ts).
+ * before switching on. The switch pushes nothing itself: a push is asked for after a submission, vetting decision, or Journey batch (lib/analytics/counters-trigger.ts).
  */
 
 import type { Db } from 'mongodb';

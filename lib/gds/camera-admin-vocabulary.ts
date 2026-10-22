@@ -90,12 +90,12 @@ export const cameraAdminVocabularyPacks = [
   createGdsVocabularyPack('photo-review', {
     approve: { defaultMessage: 'Approve', icon: GdsIcons.Check, feedback: savedFeedback },
     reject: { defaultMessage: 'Reject', icon: GdsIcons.Delete, feedback: openedFeedback },
+    skip: { defaultMessage: 'Skip for now', icon: GdsIcons.Eye, feedback: openedFeedback },
     'confirm-reject': { defaultMessage: 'Confirm reject', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'cancel-reject': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
     'approve-selected': { defaultMessage: 'Approve selected', icon: GdsIcons.Check, feedback: savedFeedback },
     'toggle-select-all': { defaultMessage: 'Toggle selection', icon: GdsIcons.Toggle, feedback: savedFeedback },
     'view-photo': { defaultMessage: 'View photo', icon: GdsIcons.Eye, feedback: openedFeedback },
-    'update-analysis': { defaultMessage: 'Update analysis', icon: GdsIcons.Edit, feedback: openedFeedback },
     'retry-approval-email': { defaultMessage: 'Send approval link', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'return-to-vetting': { defaultMessage: 'Back to vetting', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'save-analysis': { defaultMessage: 'Save analysis', icon: GdsIcons.Save, feedback: savedFeedback },
@@ -103,12 +103,6 @@ export const cameraAdminVocabularyPacks = [
     'turn-off': { defaultMessage: 'Turn vetting off', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'confirm-turn-off': { defaultMessage: 'Confirm turn off', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'cancel-turn-off': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
-    // The one-screen vetting review (issue 628): plain words, no emoji. The choices of the vocabulary (gender, age, reasons...) are not actions: they are text buttons that read the event's list.
-    'mark-skip': { defaultMessage: 'Skip for now', icon: GdsIcons.Eye, feedback: openedFeedback },
-    'mark-remove': { defaultMessage: 'Remove person', icon: GdsIcons.Delete, feedback: deletedFeedback },
-    'mark-turn-on': { defaultMessage: 'Turn marking on', icon: GdsIcons.Check, feedback: savedFeedback },
-    'mark-turn-off': { defaultMessage: 'Turn marking off', icon: GdsIcons.Delete, feedback: deletedFeedback },
-    'review-this': { defaultMessage: 'Review', icon: GdsIcons.Eye, feedback: openedFeedback },
   }),
   createGdsVocabularyPack('photo-analysis', {
     edit: { defaultMessage: 'Update analysis', icon: GdsIcons.Edit, feedback: openedFeedback },

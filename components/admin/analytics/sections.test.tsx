@@ -10,7 +10,7 @@ import { VettingSection } from './sections';
 const photo = (extra: Partial<PhotoFacts> = {}): PhotoFacts => ({
   id: 'p', eventKey: 'e', eventKeys: ['e'], createdAt: '2026-10-16T18:00:00.000Z', source: 'user', excluded: null, method: 'camera', device: 'ios', review: 'waiting', submittedAt: '2026-10-16T18:00:00.000Z', decisions: [], rejectReasons: [],
   identity: 'email', userKey: 'a@x.test', email: 'a@x.test', consents: [], wallOptIn: false, galleryConsentAt: null, frame: { kind: 'none', label: 'No frame' }, message: null, layout: null, mirrored: null, framing: null,
-  plays: 0, lastPlayedAt: null, playsBySlideshow: {}, people: undefined, peopleBy: null, peopleAt: null, emails: { arrived: false, photoLink: null, photoLinkSkipReason: null, photoLinkKind: null, declined: null },
+  plays: 0, lastPlayedAt: null, playsBySlideshow: {}, emails: { arrived: false, photoLink: null, photoLinkSkipReason: null, photoLinkKind: null, declined: null },
   ...extra,
 });
 const render = (photos: PhotoFacts[], vocabulary?: ReturnType<typeof resolveVocabulary>) => renderToStaticMarkup(<MantineProvider><VettingSection report={buildEventReport({ photos, vocabulary }, { timeZone: 'UTC' })} /></MantineProvider>);
@@ -26,9 +26,8 @@ test('the reasons chosen from the list are shown next to the words a reviewer wr
   assert.match(html, /Not me/);
 });
 
-test('with no declined photo the panel says so instead of showing empty bars, and the people card uses the words of the event vocabulary', () => {
-  const custom = resolveVocabulary({ event: { options: [{ group: 'merch', key: 'vuvuzela', label: 'Vuvuzela', custom: true }] } });
-  const html = render([photo({ people: [{ id: 'a', box: { x: 10, y: 10, w: 30, h: 30 }, gender: 'female', age: 'adult', merch: ['vuvuzela'] }] })], custom);
+test('with no declined photo the panel says so, and legacy manual analytics are not shown', () => {
+  const html = render([photo()]);
   assert.match(html, /No declined photo carries a reason from the list yet/);
-  assert.match(html, /Vuvuzela: 1/);
+  assert.doesNotMatch(html, /People marked in the photos/);
 });

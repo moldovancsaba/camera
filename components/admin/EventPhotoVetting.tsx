@@ -1,6 +1,6 @@
 /**
  * The photos of one event waiting for approval, inside the event's Vetting tab (camera#284, docs/PHOTO_VETTING_PLAN.md): the Waiting / Rejected / Approved lists where event managers and global admins
- * approve or reject, and under them the settings (vetting on or off, marking the people) and the counts of what was marked. **The Waiting list is the one-at-a-time review screen by default**
+ * approve or reject. Image analytics are handled together by Fanmass and human review on the Photo analysis page. **The Waiting list is the one-at-a-time review screen by default**
  * (issue 628, owner request 2026-10-12: components/admin/PhotoReviewStage.tsx, inline when the event has photo vetting on); `?view=list` shows the old list of cards instead, with a plain link each
  * way. The Rejected and Approved lists are lists of cards. The work comes first on the page: a reviewer at the match should not scroll past settings to reach the photo.
  * (The try-on results that used to be vetted below the photos went with the try-on integration, issue 557.)
@@ -12,13 +12,9 @@ import { Card, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import PhotoReviewQueue from '@/components/admin/PhotoReviewQueue';
 import PhotoReviewStage from '@/components/admin/PhotoReviewStage';
 import PhotoVettingSwitch from '@/components/admin/PhotoVettingSwitch';
-import MarkPeopleSwitch from '@/components/admin/MarkPeopleSwitch';
-import PeopleSummaryCard from '@/components/admin/PeopleSummaryCard';
-import { COLLECTIONS } from '@/lib/db/schemas';
-import { markPeopleOn, summarizePeople } from '@/lib/photo-vetting/people';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
-import { countPhotoAnalysisQueue, countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
+import { countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
 
 const TAB_LABEL: Record<QueueStatus, string> = { pending_review: 'Waiting', rejected: 'Rejected', approved: 'Approved' };
 
@@ -26,27 +22,24 @@ interface EventPhotoVettingProps {
   db: Db;
   /** The event's Mongo id, as used in /admin/events/<id>. */
   eventMongoId: string;
-  event: { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; markPeopleInVetting?: unknown; partnerId?: unknown; annotationVocabulary?: unknown };
+  event: { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; partnerId?: unknown; annotationVocabulary?: unknown };
   status: QueueStatus;
+  /** One-based page for the card queue. */
+  page: number;
   /** `list` shows the Waiting list as cards instead of the one-at-a-time screen. */
   view?: 'list';
   canChangeSetting: boolean;
 }
 
-export default async function EventPhotoVetting({ db, eventMongoId, event, status, view, canChangeSetting }: EventPhotoVettingProps) {
+export default async function EventPhotoVetting({ db, eventMongoId, event, status, page, view, canChangeSetting }: EventPhotoVettingProps) {
   const eventUuid = String(event.eventId ?? '');
   // The words of the event first: the photos of the queue are read with them (a custom option would otherwise make a marked photo read as unmarked).
   const vocabulary = await loadEventVocabulary(db, event);
-  const [items, counts, analysisCounts, marked] = await Promise.all([
-    loadPhotoQueue(db, eventUuid, status, vocabulary),
-    countPhotoQueue(db, eventUuid),
-    countPhotoAnalysisQueue(db, eventUuid),
-    // What the reviewers marked in this event's photos (issue 542): only the people, nothing else is read.
-    db.collection(COLLECTIONS.SUBMISSIONS).find({ $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }], people: { $exists: true }, isArchived: { $ne: true } }, { projection: { people: 1 } }).limit(5000).toArray(),
-  ]);
+  const counts = await countPhotoQueue(db, eventUuid);
+  const activePage = Math.min(page, Math.max(1, Math.ceil(counts[status] / 60)));
+  const items = await loadPhotoQueue(db, eventUuid, status, 60, (activePage - 1) * 60);
   const required = photoVettingRequired(event);
   const any = counts.pending_review + counts.rejected + counts.approved > 0;
-  const markPeople = markPeopleOn(event);
   // The Waiting list of an event with vetting on is the one-at-a-time screen unless the list of cards was asked for.
   const oneAtATime = required && status === 'pending_review' && view !== 'list';
   const listHref = `/admin/events/${eventMongoId}/vetting?photos=pending_review&view=list`;
@@ -61,7 +54,7 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
       </div>
 
       <Link href={`/admin/events/${eventMongoId}/analysis`} style={{ alignSelf: 'start', fontSize: '0.875rem' }} data-photo-analysis-link>
-        Open Photo analysis ({analysisCounts.needs_analysis} to analyse)
+        Open Fanmass photo analysis
       </Link>
 
       {counts.consentPending > 0 || counts.consentUnknown > 0 ? (
@@ -106,16 +99,14 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
             ) : null}
           </nav>
           {oneAtATime ? (
-            <PhotoReviewStage eventId={eventMongoId} items={items} vocabulary={vocabulary} markPeople={markPeople} embedded />
+            <PhotoReviewStage eventId={eventMongoId} items={items} vocabulary={vocabulary} embedded />
           ) : (
-            <PhotoReviewQueue key={status} status={status} initialItems={items} canReview vocabulary={vocabulary} markPeopleEventId={required && markPeople ? eventMongoId : undefined} />
+            <PhotoReviewQueue key={`${status}-${activePage}`} status={status} initialItems={items} canReview vocabulary={vocabulary} page={activePage} pageSize={60} total={counts[status]} eventUrl={`/admin/events/${eventMongoId}/vetting`} listView={view === 'list'} />
           )}
         </>
       ) : null}
 
       <PhotoVettingSwitch eventId={eventMongoId} required={required} canChange={canChangeSetting} />
-      <MarkPeopleSwitch eventId={eventMongoId} on={markPeople} canChange={canChangeSetting} vettingRequired={required} />
-      <PeopleSummaryCard summary={summarizePeople(marked as Array<{ people?: unknown }>, vocabulary)} vocabulary={vocabulary} />
     </Stack>
   );
 }

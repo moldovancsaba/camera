@@ -3,10 +3,8 @@
 /**
  * Image safety (issue 509, lib/storage/image-safety.ts; global admins): which pictures exist in only one place, and a bounded, stoppable run that makes the missing copy.
  *
- * **Count (dry run)** reads the database and writes nothing: where every framed picture is held (only on ImgBB, only in our store, both), where the private unframed crops are (our store only, ImgBB only = final,
- * both), which crops stay in our store because their ImgBB copy could not be verified, and which copies were not made or could not be verified. **Check the addresses** is also read only: it asks each address a one-byte question and lists the ones that did not answer; it marks nothing. Each **copy** button
- * (only after a count) asks again in the page, with the number, and only then works, a few photos per call, one kind at a time; it can be stopped. It adds files and records and changes no picture address;
- * the one thing it deletes is a private unframed crop in our store, and only after its ImgBB copy is verified (owner decision "variant B"); a copy that fails is listed with its reason, and running it again
+ * **Count (dry run)** reads the database and writes nothing: where framed pictures and unframed crops are held and which copies were not made or could not be verified. **Check the addresses** is also read only: it asks each eligible address a one-byte question and lists the ones that did not answer; it marks nothing. Each **copy** button
+ * (only after a count) asks again in the page, with the number, and only then works, a few photos per call, one kind at a time; it can be stopped. It adds or restores copies and records, never deletes a source or changes a picture address. Photos without a valid consent audit are excluded from probes and copy runs and remain for the erasure workflow. A copy that fails is listed with its reason, and running it again
  * does only what is still missing. The work is GET and POST /api/admin/image-safety.
  */
 
@@ -57,13 +55,20 @@ const KINDS: Record<SafetyKind, KindText> = {
   },
   unframed: {
     title: 'Unframed photos still in our store',
-    help: 'The photo as the user saved it, before the frame, is kept in a private file in our store until ImgBB holds a verified copy. This sends the copy to ImgBB, checks it, and only then deletes the private file from our store (ImgBB is the final place of unframed photos).',
+    help: 'The approved photo as the user saved it, before the frame, is copied from our store to ImgBB. Both source and backup are retained.',
     button: (n) => `Copy ${plural(n, 'unframed photo')} to ImgBB`,
-    confirmTitle: (n) => `Copy ${plural(n, 'unframed photo')} to ImgBB and delete the private file from our store?`,
-    confirm: 'This writes to the live service: it uploads the unframed photo of each approved photo to ImgBB (a public image host; the rule is to keep it 90 days after the event and delete it on request, which is not automatic yet), reads the copy back, and only when the copy is verified deletes the private file from our store. If the copy cannot be verified the private file stays. Photos that are waiting or rejected are not touched. Nothing else is deleted.',
+    confirmTitle: (n) => `Copy ${plural(n, 'unframed photo')} to ImgBB?`,
+    confirm: 'This writes to the live service: it uploads each approved unframed photo to ImgBB (a public image host), reads the copy back, and records the result. The Blob source is retained whether the copy succeeds or fails.',
+  },
+  'unframed-rescue': {
+    title: 'Unframed photos only on ImgBB',
+    help: 'This restores the approved unframed photo from its verified ImgBB copy into our store and reconnects it to the submission. The ImgBB copy is retained.',
+    button: (n) => `Restore ${plural(n, 'unframed photo')}`,
+    confirmTitle: (n) => `Restore ${plural(n, 'unframed photo')} to our store?`,
+    confirm: 'This writes to the live service: it reads the verified ImgBB image, stores and verifies a Blob copy, records it, and restores the approved submission’s source-photo link if that field is still empty. It never deletes the ImgBB source.',
   },
 };
-const ORDER: SafetyKind[] = ['rescue', 'mirror', 'unframed'];
+const ORDER: SafetyKind[] = ['rescue', 'mirror', 'unframed', 'unframed-rescue'];
 
 interface ProbeTotals {
   processed: number;
@@ -79,7 +84,6 @@ interface RunTotals {
   kind: SafetyKind;
   processed: number;
   copied: number;
-  deleted: number;
   failed: number;
   bytes: number;
   failures: RunBatch['failures'];
@@ -147,7 +151,7 @@ export default function ImageSafetyCard() {
     setBusy(kind);
     setError(null);
     setConfirming(null);
-    let totals: RunTotals = { kind, processed: 0, copied: 0, deleted: 0, failed: 0, bytes: 0, failures: [], finished: false };
+    let totals: RunTotals = { kind, processed: 0, copied: 0, failed: 0, bytes: 0, failures: [], finished: false };
     setRun(totals);
     let after: string | null = null;
     try {
@@ -157,7 +161,6 @@ export default function ImageSafetyCard() {
           kind,
           processed: totals.processed + batch.processed,
           copied: totals.copied + batch.counts.copied,
-          deleted: totals.deleted + batch.counts.deleted,
           failed: totals.failed + batch.counts.failed,
           bytes: totals.bytes + batch.bytes,
           failures: [...totals.failures, ...batch.failures].slice(0, FAILURES_SHOWN),
@@ -183,8 +186,7 @@ export default function ImageSafetyCard() {
           Image safety
         </h3>
         <p style={{ ...muted, margin: '0.25rem 0 0' }}>
-          A picture should exist in two places, so losing one host does not lose the photo. This shows which pictures exist in only one, and makes the missing copy. Counting and checking only read. Making copies adds files and records and
-          changes no picture address; the only thing it ever deletes is a private unframed photo in our store, and only after ImgBB holds a verified copy of it. It can be stopped and repeated, and a repeat does only what is still missing.
+          This checks and repairs copies of eligible photos. Counting and checking only read. Copy runs add files and records; they keep the source and do not change photo addresses. ImgBB is a public third-party host, so two copies here are redundancy, not a private independent disaster-recovery backup. Runs can be stopped and repeated; a repeat only does what is still missing.
         </p>
       </div>
       {error ? <InlineAlert title="Not done" message={error} severity="error" /> : null}
@@ -212,14 +214,15 @@ export default function ImageSafetyCard() {
             <Row label="Only in our store" value={plan.composed.blobOnly} note={plan.composed.blobOnlyOldMirror > 0 ? `${num(plan.composed.blobOnlyOldMirror)} of them have an old ImgBB copy whose address was not kept` : undefined} />
             <Row label="On ImgBB and in our store" value={plan.composed.both} />
             <Row label="On another host" value={plan.composed.other} />
+            <Row label="Photos excluded because consent is missing or invalid" value={plan.consentExcluded} note="not probed or copied; these must follow the erasure workflow" />
             <Row label="Unframed photos in our store only" value={plan.unframed.blobOnly} note="approved; the copy to ImgBB is still to do" />
-            <Row label="Unframed photos on ImgBB only (final)" value={plan.unframed.imgbbOnly} note="the private file was deleted after the ImgBB copy was verified" />
-            <Row label="Unframed photos in our store and on ImgBB" value={plan.unframed.both} note="the private file is still to be deleted" />
-            <Row label="Unframed photos, waiting or rejected" value={plan.unframed.waiting + plan.unframed.rejected} note="kept in our store; copied when they are approved" />
+            <Row label="Unframed photos only on ImgBB" value={plan.unframed.imgbbOnly} note="a verified Blob restore is still to do" />
+            <Row label="Unframed photos in our store and on ImgBB" value={plan.unframed.both} note="both copies are retained" />
+            <Row label="Unframed photos, waiting or rejected" value={plan.unframed.waiting + plan.unframed.rejected} note="not copied by this tool" />
             <Row
               label="Unframed photos kept in our store because their ImgBB copy could not be verified"
               value={plan.unframed.keptUnverified}
-              note={plan.unframed.keptUnverified > 0 ? 'nothing was deleted; our store keeps growing until this is solved (ImgBB may have changed the file)' : undefined}
+              note={plan.unframed.keptUnverified > 0 ? 'the Blob source remains available while the mirror issue is resolved' : undefined}
             />
             <Row label="Copies that were not made" value={plan.copies.notMade} note={plan.copies.notMade + plan.copies.couldNotVerify > 0 ? `${plural(plan.copies.photosWithAProblem, 'photo')} with a copy that was not made or could not be verified` : undefined} />
             <Row label="Copies that could not be verified" value={plan.copies.couldNotVerify} note="the file was written, but reading it back did not confirm it" />
@@ -272,7 +275,7 @@ export default function ImageSafetyCard() {
         <div style={{ display: 'grid', gap: '0.5rem' }} data-safety-run>
           <span style={{ fontSize: '0.875rem' }}>
             {busy === run.kind ? 'Working: ' : run.finished ? 'Done: ' : 'Stopped: '}
-            {plural(run.processed, 'photo')} handled, {num(run.copied)} copied{run.bytes > 0 ? ` (${mb(run.bytes)})` : ''}, {num(run.failed)} not made{run.kind === 'unframed' ? `; ${num(run.deleted)} private ${run.deleted === 1 ? 'file' : 'files'} deleted from our store after the ImgBB copy was verified` : ''}.
+            {plural(run.processed, 'photo')} handled, {num(run.copied)} copied or restored{run.bytes > 0 ? ` (${mb(run.bytes)})` : ''}, {num(run.failed)} not made.
           </span>
           {run.failures.length > 0 ? (
             <ul style={{ fontSize: '0.8125rem', margin: 0, paddingLeft: '1.25rem' }}>

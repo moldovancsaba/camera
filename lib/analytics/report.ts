@@ -1,6 +1,6 @@
 /**
  * The numbers of the Analytics view of an event, or of all events (issue 521, phase 1; docs/ANALYTICS_AUDIT.md section 7.4): photos taken, approved, rejected and waiting, the time from taking to the
- * first decision and who decided, photos and users per day and hour, how the users identified themselves, the people marked at vetting, the frames, messages and layouts chosen, the plays on the
+ * first decision and who decided, photos and users per day and hour, how the users identified themselves, the frames, messages and layouts chosen, the plays on the
  * screens, the e-mails and the consents. **Everything is computed from data that already exists** (`submissions`, `email_registrations`, the slideshow names); what needs the journey recording of
  * phase 2 is listed in `NOT_MEASURED` and never shown as a zero.
  *
@@ -11,7 +11,6 @@
  * event. `taken` is what the users took or uploaded; a photo an editor added in the gallery is counted apart (`scope.addedByEditors`) because nobody took it, though it is shown on the screens.
  */
 
-import { parsePeople, summarizePeople, type PeopleSummary } from '@/lib/photo-vetting/people';
 import { optionLabel, STANDARD_VOCABULARY, type ResolvedVocabulary } from '@/lib/photo-vetting/vocabulary';
 import type { PhotoFacts } from './facts';
 import { average, dayInRange, daysBetween, localParts, median, secondsBetween } from './time';
@@ -33,7 +32,7 @@ export interface ReportInput {
   registrations?: readonly RegistrationFact[];
   /** The names of the slideshows by their id, for the plays. */
   slideshows?: ReadonlyArray<{ id: string; name: string }>;
-  /** The annotation vocabulary of the event (lib/photo-vetting/vocabulary-load.ts): the words of the people counts and of the reject reasons. The standard list when none is given. */
+  /** The event's vocabulary is used only to label rejection reasons in this report. */
   vocabulary?: ResolvedVocabulary;
 }
 
@@ -81,7 +80,7 @@ export interface EventReport {
   options: { timeZone: string; from: string | null; to: string | null };
   /** Full historical review totals, including archived, automatically deleted, and manually deleted photos. */
   outcomes: { approved: number; rejected: number };
-  /** The vocabulary the people and the reject reasons were counted with, so a screen and the counters for messmass read the same words. */
+  /** The vocabulary used to label rejection reasons, so a screen and counters for Messmass use the same words. */
   vocabulary: ResolvedVocabulary;
   scope: {
     /** Photos counted (taken by users plus added by editors). */
@@ -128,14 +127,6 @@ export interface EventReport {
     rejectReasons: Tally[];
     /** Rejected photos that carry no reason from the list (rejected before the list existed). */
     rejectedWithoutReasons: number;
-  };
-  people: {
-    summary: PeopleSummary;
-    /** Who marked the people, by photos. */
-    markers: Tally[];
-    /** Photos looked at with exactly one person marked, and with two or more. */
-    photosWithOnePerson: number;
-    photosWithGroup: number;
   };
   users: {
     /** Different users who took a photo and can be told apart (an e-mail or an account). */
@@ -305,15 +296,6 @@ export function buildEventReport(input: ReportInput, options: ReportOptions): Ev
   const rejectedPhotos = userPhotos.filter((photo) => photo.review === 'rejected');
   const rejectReasons = tally(rejectedPhotos.flatMap((photo) => photo.rejectReasons.map((key) => ({ id: key, label: optionLabel(vocabulary, 'reject_reason', key) }))));
 
-  // --- people marked at vetting ---
-  const markedPhotos = userPhotos.filter((photo) => Array.isArray(photo.people));
-  const people = summarizePeople(userPhotos.map((photo) => ({ people: photo.people })), vocabulary);
-  // Photos by how many people are in them; a photo whose people do not read against the list is left out, as summarizePeople leaves it out.
-  const peoplePerPhoto = markedPhotos.flatMap((photo) => {
-    const checked = parsePeople(photo.people, vocabulary);
-    return checked.ok ? [checked.value.length] : [];
-  });
-
   // --- users ---
   const byUser = new Map<string, PhotoFacts[]>();
   for (const photo of userPhotos) {
@@ -451,12 +433,6 @@ export function buildEventReport(input: ReportInput, options: ReportOptions): Ev
       },
       rejectReasons,
       rejectedWithoutReasons: rejectedPhotos.filter((photo) => photo.rejectReasons.length === 0).length,
-    },
-    people: {
-      summary: people,
-      markers: tally(markedPhotos.filter((photo) => photo.peopleBy).map((photo) => ({ id: photo.peopleBy as string, label: photo.peopleBy as string }))),
-      photosWithOnePerson: peoplePerPhoto.filter((count) => count === 1).length,
-      photosWithGroup: peoplePerPhoto.filter((count) => count >= 2).length,
     },
     users: {
       distinct: byUser.size,

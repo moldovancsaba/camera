@@ -1,4 +1,6 @@
-# Using annotated photos to train automatic annotation: purpose and consent (draft)
+# Historical draft: using annotated photos to train automatic annotation
+
+> **Superseded 2026-10-22.** Camera's standalone manual annotation workflow has been retired. Fanmass inference and Camera human corrections are not a model-training pipeline; no training export or automatic learning loop is authorized or implemented by this document. The content below is retained as a historical legal review draft only and must not be used as a description of current processing. Current per-photo workflow: [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md).
 
 **Status: draft for the owner and for legal review (owner answer 457, "yes", 2026-10-12). Nothing here is shown to any user.** **Owner information (answer 462, 2026-10-12): this use is managed in the terms every user accepts, as they were originally written.** I have not seen those terms (a linked document outside this repository), so I cannot check what they say; the draft therefore keeps a separate consent only as the option legal may still want, and the safeguards below apply either way. Nothing is exported until legal has confirmed that the terms' wording covers training on labelled pictures. The wordings are Dictionary texts (group "AI training consent (draft, not shown yet)"), editable at the global, partner and event levels like every other text (`docs/TEXT_LEVELS.md`).
 

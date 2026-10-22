@@ -4,7 +4,7 @@
  * The switch of the counters for messmass (issue 628; lib/analytics/counters-setting.ts), on the Messmass tab of the Analytics view, which only global admins see. It shows whether camera sends
  * the counters of the events that are linked to messmass, who last changed it and when, and changes it through PATCH /api/admin/settings/messmass-counters. **Switching on asks first, in the page**
  * (never the browser's own confirm box), because real numbers then go to messmass; switching off is at once. The switch pushes nothing itself: the first push happens after the next vetting
- * decision or saved marking of an event that is linked to messmass.
+ * decision or relevant Journey update for an event that is linked to messmass.
  */
 
 import { useState } from 'react';
@@ -82,7 +82,7 @@ export default function CountersSwitch({ enabled, updatedAt, updatedBy, timeZone
       {confirmOn && !enabled ? (
         <InlineAlert
           title="Real numbers will go to messmass"
-          message="From the next vetting decision or saved marking, the counters of every event that is linked to messmass are written into that event's statistics in messmass, under names that start with camera_. Switch it on only after you have looked at the numbers below on a real event. You can switch it off here at any time."
+          message="From the next submission, vetting decision, or Journey update, aggregate operational counters for linked events are written into that event's Messmass statistics under names that start with camera_. Per-photo image analysis is delivered separately by Fanmass. Switch it on only after reviewing the preview below. You can switch it off here at any time."
           severity="warning"
         />
       ) : null}

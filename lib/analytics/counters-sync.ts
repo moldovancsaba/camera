@@ -7,8 +7,7 @@
  * first real push waits for the owner to choose the event to watch and for the `photo-stats` route in messmass. It never throws, so a hook can call it without guarding. The tests run it against
  * fakes only (no database, no network): CLAUDE.md section 8, never test data into production messmass.
  *
- * The counters are named and labelled from the event's annotation vocabulary (lib/photo-vetting/vocabulary.ts), which is read from the stored event at the moment the slot is claimed, so a caller
- * that passes a thin event still gets the partner's and the event's own lists.
+ * Structured rejection-reason counters use the event's inherited vocabulary. Person, age, emotion, merchandise, and other per-photo analysis values come from Fanmass and are not calculated here.
  *
  * To keep a busy event from calling messmass on every decision, an event is pushed at most once per `COUNTER_SYNC_THROTTLE_MS`: the slot is claimed with one atomic update of
  * `event.counterSync.pushedAt`, so decisions arriving together make one push. The numbers of the last good push are kept next to it, and a push that would say nothing new is not made.

@@ -10,7 +10,7 @@ import { buildEventReport } from '@/lib/analytics/report';
 const photo = (extra: Partial<PhotoFacts> = {}): PhotoFacts => ({
   id: 'p', eventKey: 'e', eventKeys: ['e'], createdAt: '2026-10-16T18:00:00.000Z', source: 'user', excluded: null, method: 'camera', device: 'ios', review: 'waiting', submittedAt: '2026-10-16T18:00:00.000Z', decisions: [], rejectReasons: [],
   identity: 'email', userKey: 'a@x.test', email: 'a@x.test', consents: [], wallOptIn: false, galleryConsentAt: null, frame: { kind: 'none', label: 'No frame' }, message: null, layout: null, mirrored: null, framing: null,
-  plays: 0, lastPlayedAt: null, playsBySlideshow: {}, people: undefined, peopleBy: null, peopleAt: null, emails: { arrived: false, photoLink: null, photoLinkSkipReason: null, photoLinkKind: null, declined: null },
+  plays: 0, lastPlayedAt: null, playsBySlideshow: {}, emails: { arrived: false, photoLink: null, photoLinkSkipReason: null, photoLinkKind: null, declined: null },
   ...extra,
 });
 const state = (overrides: Partial<CounterState> = {}): CounterState => ({ enabled: false, updatedAt: '', updatedBy: null, linked: true, counters: NO_COUNTERS, lastPushAt: null, lastPushed: null, ...overrides });
@@ -28,12 +28,9 @@ async function render(t: TestContext, value: CounterState): Promise<string> {
 }
 
 test('the preview shows the name and the label of each counter, says the push is off and that no counter waits', async (t) => {
-  const person = { id: 'a', box: { x: 10, y: 10, w: 30, h: 30 }, gender: 'female', age: 'adult' };
-  const counters = buildCounters(buildEventReport({ photos: [photo({ review: 'rejected', rejectReasons: ['nudity'], people: [person] })] }, { timeZone: 'UTC' }));
+  const counters = buildCounters(buildEventReport({ photos: [photo({ review: 'rejected', rejectReasons: ['nudity'] })] }, { timeZone: 'UTC' }));
   const html = await render(t, state({ counters }));
   assert.match(html, /camera_images_taken/);
-  assert.match(html, /camera_gender_female/);
-  assert.match(html, /Camera: gender, Female/);
   assert.match(html, /camera_rejected_nudity/);
   assert.match(html, /Camera: rejected, Nudity or sexual content/);
   assert.match(html, /Label in messmass/);
@@ -42,9 +39,8 @@ test('the preview shows the name and the label of each counter, says the push is
   assert.doesNotMatch(html, /declined&lt;Reason&gt;|declined<Reason>/);
 });
 
-test('while nothing is marked or declined the families show as one placeholder row each, not sent yet', async (t) => {
+test('while no photo is declined the rejection reason family shows as a placeholder row, not sent yet', async (t) => {
   const html = await render(t, state({ counters: buildCounters(buildEventReport({ photos: [photo()] }, { timeZone: 'UTC' })) }));
-  assert.match(html, /camera_gender_&lt;option&gt;/);
   assert.match(html, /camera_rejected_&lt;option&gt;/);
   assert.match(html, /not sent yet/);
   assert.doesNotMatch(html, /camera_gender_female/);

@@ -1,6 +1,6 @@
 # MongoDB Atlas
 
-**Last Updated**: 2026-05-23
+**Last Updated**: 2026-10-22
 
 Operational guide for Atlas setup, connection validation, and index maintenance.
 
@@ -15,6 +15,15 @@ Optional:
 
 - `MONGODB_MAX_POOL_SIZE`
 - `MONGODB_MIN_POOL_SIZE`
+- `CAMERA_PIPELINE_DATABASE` (defaults to `fanmass_camera_pipeline`)
+
+## Production stack decision and current state
+
+**Target:** one Atlas cluster with separate logical databases: `camera`, `fanmass_camera_pipeline`, and `messmass`. The owner chose to keep the existing AtlasAdmin credential rather than create a scoped service user. Database names therefore organize data but do **not** enforce per-app permissions; AtlasAdmin can access all three databases and bypass application-level read-only boundaries.
+
+**Audited current state (2026-10-22):** Camera and Fanmass use `camaraclastar.koyedpi.mongodb.net`. Messmass's current local production configuration points to `messmass-cluster.r96vlxs.mongodb.net`. A `messmass` database also exists on the Camera/Fanmass cluster, but a read-only content digest found differences in `drive_folder_links`, `notifications`, `projects`, and `v3_metrics_summary` compared with the current Messmass cluster. The MTK project's Camera event link is identical on both clusters, but the databases are not fully in parity. Do not change Messmass's production connection until the existing database has a recoverable backup, the four differences are reconciled, exact document/index parity is verified, and the cutover is performed with writes controlled. Vercel does not expose the production secret value through `env pull`; no claim is made that the deployed production variable was changed.
+
+Camera reuses its Mongo client to read Fanmass's queue, result, and delivery records through `connectToDatabaseByName()`. Fanmass independently discovers eligible Camera submissions and writes its own pipeline collections. Camera writes only human review/correction evidence to the Camera submission; Fanmass reads that evidence and republishes the corrected per-photo result through the Messmass API. Messmass owns report aggregation. Exact result properties and IDs are documented in [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md).
 
 ## 2. Commands
 
@@ -68,13 +77,14 @@ Newer operational reads:
 - partner assignment lists by `partnerId`
 - active assignment filters by `appKey`
 
-## 5. Atlas setup recommendations
+## 5. Atlas operations
 
 - use `mongodb+srv://`
-- keep the database user scoped to the Camera database where possible
+- retain the owner-approved AtlasAdmin credential in the current deployment; a move to scoped service users requires a separate migration and owner approval
 - store credentials only in environment variables
 - enable backups on production-grade clusters
 - monitor connection count, slow queries, and index suggestions
+- verify restore readiness with a documented restore drill; enabled backups without a tested restore are not a verified recovery plan
 
 ## 6. DNS and connectivity troubleshooting
 

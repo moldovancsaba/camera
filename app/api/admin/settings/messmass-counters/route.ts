@@ -4,7 +4,7 @@
  * GET   /api/admin/settings/messmass-counters   { settingId, enabled, updatedAt, updatedBy }  (global admin)
  * PATCH /api/admin/settings/messmass-counters   { enabled: boolean }                           (global admin)
  *
- * Off unless a stored `true` (the standard). On: after a vetting decision or a saved marking of the people, camera pushes the counters of the event to messmass (lib/analytics/counters-trigger.ts).
+ * Off unless a stored `true` (the standard). On: new submissions, vetting decisions, and relevant Journey updates can schedule aggregate operational counters to Messmass (lib/analytics/counters-trigger.ts). Per-photo image analysis is delivered separately by Fanmass.
  * Off: nothing is read for messmass and nothing is sent. Takes effect on the next decision. Nothing is pushed by the switch itself.
  */
 

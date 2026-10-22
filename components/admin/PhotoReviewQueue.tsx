@@ -18,7 +18,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { RejectReasonPicker } from '@/components/admin/ReviewChoices';
 import { WAITING_REFRESH_MS, shouldRefreshWaiting } from '@/lib/photo-vetting/auto-refresh';
 import type { PhotoQueueItem, QueueStatus } from '@/lib/photo-vetting/queue';
-import { chosenReasons, toggleReason } from '@/lib/photo-vetting/review-state';
+import { chosenReasons, toggleReason } from '@/lib/photo-vetting/rejection';
 import { optionLabel, type ResolvedVocabulary } from '@/lib/photo-vetting/vocabulary';
 
 interface PhotoReviewQueueProps {
@@ -27,11 +27,11 @@ interface PhotoReviewQueueProps {
   canReview: boolean;
   /** The words of the event: the reasons of a rejection, and what a rejected card says. */
   vocabulary: ResolvedVocabulary;
-  /**
-   * The event's Mongo id when "mark the people" is on (issue 542, owner answer 267): the first decision of a waiting photo is then made in the one-at-a-time screen, after the people are marked,
-   * so the cards of the Waiting list have one button, Review, that opens that screen at that photo, and no selection or bulk approval. The server refuses an unmarked first decision too.
-   */
-  markPeopleEventId?: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  eventUrl: string;
+  listView?: boolean;
 }
 
 interface Notice {
@@ -94,7 +94,7 @@ const emailNote = (answers: ReviewAnswer[]): string => {
   return parts.length ? parts.join('; ') : '';
 };
 
-export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, markPeopleEventId }: PhotoReviewQueueProps) {
+export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, page, pageSize, total, eventUrl, listView }: PhotoReviewQueueProps) {
   const router = useRouter();
   // Photos decided here leave the list at once; everything else comes from the server (initialItems is fresh after each router.refresh()).
   const [decided, setDecided] = useState<string[]>([]);
@@ -145,9 +145,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
   const allIds = useMemo(() => items.map((item) => item.id), [items]);
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedSet.has(id));
   const working = busy.length > 0;
-  const mustMark = Boolean(markPeopleEventId) && status === 'pending_review';
-  // The quick Approve and Reject (and the selection for a bulk approval) are for the lists where marking does not apply: an event without marking, and the Rejected list (a photo decided before can be approved again).
-  const canDecide = canReview && status !== 'approved' && !mustMark;
+  const canDecide = canReview && status !== 'approved';
 
   const removeFromList = (ids: string[]) => {
     setDecided((current) => [...current, ...ids]);
@@ -247,10 +245,20 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
     }
   };
 
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const pagination = (
+    <nav aria-label="Photo pages" style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+      {page > 1 ? <Link href={`${eventUrl}?photos=${status}${status === 'pending_review' && listView ? '&view=list' : ''}&page=${page - 1}`}>Previous photos</Link> : null}
+      <span aria-live="polite" style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>Page {page} of {pageCount} · showing {total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}</span>
+      {page < pageCount ? <Link href={`${eventUrl}?photos=${status}${status === 'pending_review' && listView ? '&view=list' : ''}&page=${page + 1}`}>Next photos</Link> : null}
+    </nav>
+  );
+
   if (items.length === 0) {
     return (
       <div style={{ display: 'grid', gap: '1rem' }}>
         {notice ? <InlineAlert title={notice.title} message={notice.message} severity={notice.severity} /> : null}
+        {page > 1 ? pagination : null}
         <StateBlock
           variant="empty"
           title={status === 'pending_review' ? 'Nothing is waiting' : status === 'rejected' ? 'No rejected photos' : 'No approved photos yet'}
@@ -262,13 +270,6 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
 
   return (
     <div style={{ display: 'grid', gap: '1rem' }} data-photo-review-queue>
-      {canReview && mustMark ? (
-        <section style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between' }} data-must-mark>
-          <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
-            Marking the people is on: press Review on a photo to mark who is in it, then approve or reject it. Oldest first. Looks for new photos every 10 seconds. {items.length} shown
-          </span>
-        </section>
-      ) : null}
       {canDecide ? (
         <section style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -291,6 +292,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
 
       {notice ? <InlineAlert title={notice.title} message={notice.message} severity={notice.severity} /> : null}
       {newPhotosCount > 0 && status === 'pending_review' ? <InlineAlert title="More photos are waiting" message={`${newPhotosCount} more ${newPhotosCount === 1 ? 'photo is' : 'photos are'} waiting for vetting.`} severity="success" /> : null}
+      {pagination}
 
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))' }}>
         {items.map((item) => {
@@ -327,13 +329,6 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
                 </SemanticButton>
               );
             }
-          }
-          if (canReview && mustMark) {
-            actions.push(
-              <Link key="review" href={`/admin/events/${markPeopleEventId}/vetting/review?photo=${item.id}`} style={{ textDecoration: 'none' }}>
-                <SemanticButton action="photo-review:review-this" type="button" size="xs">Review</SemanticButton>
-              </Link>
-            );
           }
           if (isRejecting) {
             actions.push(
@@ -401,6 +396,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
           );
         })}
       </div>
+      {pagination}
     </div>
   );
 }

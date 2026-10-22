@@ -1,30 +1,34 @@
 # messmass + fanmass integration
 
 **Version**: 12.3.42
-**Last Updated**: 2026-10-11
-_Verified @ a87d78f_
+**Last Updated**: 2026-10-22
+_Current Camera/Fanmass boundary; historical release details below must be read against the current sections._
 
 Camera integrates with three other apps in the SEYU fan-engagement stack:
 **messmass** (event reporting/partner management, the master for
 organisations/partners/events), **fanmass** (image analytics — brand/sponsor/fan
 recognition on captured photos), and **savetheworld** (pledge campaign app, §2a).
 Messmass and Savetheworld use authenticated HTTP integrations. Fanmass is
-deliberately different: it independently reads a narrow, read-only Camera Atlas
-projection and writes only to its own pipeline database. Camera has no Fanmass
-queue, media feed, image upload, result callback, or Fanmass API client. The
-shared-secret email route is a separate service and is not an image integration.
+deliberately different: it independently discovers eligible records in Camera
+Atlas, claims its own one-photo queue, and stores analysis in its own pipeline
+database. Camera does not enqueue or upload images to Fanmass. Camera reads
+Fanmass queue/results for its authorized Photo analysis page and stores the
+reviewer's correction/confirmation evidence on the Camera submission; Fanmass
+polls that evidence. Fanmass sends each photo result to Messmass, which builds
+reports mechanically. The shared-secret email route is separate from image
+analysis.
 
 ```text
 messmass      --(provision org/partner/event)---------->  camera
 messmass      --(send email)---------------------------->  camera
-camera Atlas  --(read-only source data)--------------->  fanmass
-fanmass Atlas --(Fanmass-owned queue/results)---------->  fanmass
-fanmass       --(event analytics summaries)----------->  messmass
+camera Atlas  --(source records + review feedback)---->  fanmass
+fanmass Atlas --(queue/results; Camera reads status)-->  camera admin
+fanmass       --(one photo result + IDs)-------------->  messmass
 savetheworld  --(partners/events, pledge wall, publish)-->  camera
 camera        --(browser handoff: post-selfie CTA)----->  savetheworld
 ```
 
-Camera is mostly inbound but DOES call messmass outbound in five cases (see §4): two more than the three described here are the tracked-link totals (`pushLinkStatsToMessmass`, `POST {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/link-stats`, camera#320, [SHORT_LINKS.md](SHORT_LINKS.md)) and the photo counters (`pushPhotoStatsToMessmass`, `.../photo-stats`, issue 521, switched off and never called, [ANALYTICS.md](ANALYTICS.md)). The three: it reads the resolved theme of an event for its generated default frame from `GET {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/frame-context` (`fetchFrameContext`, [lib/messmassClient.ts](../lib/messmassClient.ts), bounded at 5000 ms, null on any failure; called when messmass provisions an event and when an admin refreshes the event's frame design, see RUNBOOK "Generated default frame"), and it
+Camera is mostly inbound but DOES call messmass outbound in five cases (see §4): two more than the three described here are the tracked-link totals (`pushLinkStatsToMessmass`, `POST {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/link-stats`, camera#320, [SHORT_LINKS.md](SHORT_LINKS.md)) and the optional photo counters (`pushPhotoStatsToMessmass`, `.../photo-stats`, currently off by default, [ANALYTICS.md](ANALYTICS.md)). The three: it reads the resolved theme of an event for its generated default frame from `GET {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/frame-context` (`fetchFrameContext`, [lib/messmassClient.ts](../lib/messmassClient.ts), bounded at 5000 ms, null on any failure; called when messmass provisions an event and when an admin refreshes the event's frame design, see RUNBOOK "Generated default frame"), and it
 pushes partners it creates natively to `POST {MESSMASS_BASE_URL}/api/integrations/camera/partners`
 (`pushPartnerToMessmass`, [lib/messmassClient.ts:79-102](../lib/messmassClient.ts),
 called from [app/api/partners/route.ts:136](../app/api/partners/route.ts) and
@@ -141,55 +145,80 @@ login is unaffected. Minting it needs the permission read to use Camera's own
 `client_credentials` token, which requires that grant (with
 `manage_permissions`) to be enabled for Camera's SSO client (owner action).
 
-## 2. Camera Atlas → Fanmass: independent discovery and analysis
+## 2. Camera Atlas → Fanmass → Messmass: per-photo analysis
 
-Camera writes its normal event and submission records, including consent,
-retention, and human vetting decisions, to Camera's Atlas database. Camera does
-not make a Fanmass request at capture, vetting, approval, or deletion time. It
-also does not create Fanmass queue records, upload photos to Fanmass, or accept
-Fanmass result callbacks. Fanmass independently reads the Camera source records
-and owns all queue, lease, analysis, result, and privacy-cleanup records in its
-own Atlas database. Fanmass never writes into Camera's database.
+Camera is the source of truth for the submission, partner/event links, consent,
+retention, image and vetting/publication state. When a photo is submitted,
+Camera stores those records normally. Fanmass independently discovers source
+records in Atlas; Camera does not call Fanmass, create a queue record, or upload
+the image at capture or vetting time. If vetting is required, only an approved
+photo is eligible. A pending no-login identity record, invalid/missing consent,
+erasure-pending or expired record, rejected/waiting photo, archived/hidden
+photo, broken source, or derived image is excluded.
 
-**Database permissions**: Fanmass uses a least-privilege Atlas principal with
-read-only access to the Camera database and read/write access only to the
-Fanmass pipeline database (`fanmass_camera_pipeline` by default). No Camera
-application route, shared media queue, claim, receipt, or result callback is in
-the image-analysis data path. Change streams provide low-latency discovery;
-bounded resumable scans recover after downtime, lost resume tokens, or process
-restarts.
+**Atlas and databases.** The accepted target is one Atlas cluster with separate
+logical databases: `camera`, `fanmass_camera_pipeline`, and `messmass`. The
+owner chose to retain the existing AtlasAdmin credential, so those database
+names do not provide MongoDB-enforced per-app permissions. As audited on
+2026-10-22, Camera and Fanmass use `camaraclastar.koyedpi.mongodb.net`, while
+Messmass's current local production configuration points to
+`messmass-cluster.r96vlxs.mongodb.net`. A `messmass` database is present on the
+Camera/Fanmass cluster but differs in four collections from the current
+Messmass database. The MTK project's Camera event link matches on both
+clusters; this does not prove full database parity. Do not describe the three
+production apps as aligned or switch Messmass until backup, reconciliation,
+full parity verification, and a controlled cutover are complete. Keep all
+connection strings in secret storage; no URI or password belongs in docs.
 
-**One-photo contract**: each Camera submission Mongo `_id` creates one Fanmass
-queue identity; event links are metadata and cannot duplicate the job. A single
-global Atlas lease allows at most one source photo to be analyzed at a time.
-Fanmass rechecks source eligibility before fetching and before persisting the
-result, runs its full local analysis, stores normalized output and all boxes in
-Fanmass Atlas, then releases the lease. Lease fencing and idempotent source IDs
-prevent stale workers from publishing results; an interrupted photo may be
-recomputed safely.
+**Photo and routing identity.** A task and result are keyed by the Camera
+submission Mongo `_id` (photo ID), Camera event UUID, and Camera partner ID. The
+Camera event has one exact `messmassEventId` link; Fanmass validates that route
+and includes the Messmass event ID in the delivery outbox. Names and labels are
+display metadata, never routing keys. The receiver verifies Camera event and
+partner links before accepting a photo result. See
+[`FANMASS_RESULTS_IN_CAMERA.md`](FANMASS_RESULTS_IN_CAMERA.md) and Fanmass's
+`docs/CAMERA_ATLAS_QUEUE_CONTRACT.md` for the field contract.
 
-**Eligibility and privacy**: a submission must have recorded required consent,
-a real user identity, and a usable source image. If event vetting is required,
-it must be approved. Missing identity, pending/expired consent, pending
-24-hour erasure, erasing/erased, deleted, archived, hidden, broken, rejected,
-waiting, and generated/derived images are ineligible. Fanmass's source
-projection reduces identity to a boolean; it does not read or persist guest
-email, name, social-login details, or consent wording. Camera remains the
-retention authority. Fanmass's retryable cleanup process removes derived and
-local copies when a source is deleted or becomes ineligible.
+**Strict single-photo queue.** Fanmass's Camera-image analysis lane has one
+global lease; it claims one queue row, processes one source image, persists
+that photo's normalized result and image-relative boxes, then releases the
+lease. This guarantees serialization for the Camera-photo inference lane; it
+does not claim that every unrelated Fanmass batch or local-AI feature is
+globally serialized. Durable queue identity, source revision/generation
+fencing, bounded retries, and idempotent writes prevent duplicate or stale
+results. A crash may cause the same photo to be retried, but does not authorize
+a second active photo.
+
+**Human review and reports.** Camera reads Fanmass queue/results for its
+authorized per-photo workbench. A reviewer can edit the structured result and
+boxes, or confirm the current Fanmass generation. Camera stores the review
+against the exact result revision on the Camera submission. Fanmass discovers
+that matching review from Atlas, applies corrected summary/analysis/boxes to
+the same photo result, and requeues that photo's Messmass delivery. Messmass
+validates the ID tuple, upserts one active row per event and photo, and rebuilds
+report values from the rows it has received. Fanmass does not create event
+reports; Camera does not maintain a parallel manual analytics dataset.
+
+**Consent and cleanup.** Fanmass reads only the minimum source fields needed
+to determine eligibility, retrieve the image, and route the result. It does
+not use guest email, name, social identity, or consent wording as analysis
+inputs. Camera remains the retention authority; Fanmass must remove its local
+and derived copies and publish a photo tombstone when the Camera source is
+erased or becomes ineligible. A missing or unverifiable consent audit is no
+consent and must be excluded and erased by Camera's cleanup path.
 
 **Ownership and reporting**: Fanmass owns per-photo machine analysis and boxes.
 Fanmass delivers each normalized single-photo result, with its Camera partner,
-event, and photo IDs, to Messmass through the authenticated per-photo endpoint.
-Messmass stores those rows and mechanically rebuilds event-level roll-ups;
-Messmass no longer consumes an event summary from Fanmass. Camera reads the
-Fanmass queue and result store for its per-photo operator view, and stores any
-human correction as an overlay on the source submission tied to the exact
-result revision; Fanmass's original result stays unchanged. That correction is
-currently Camera-only and is not included in Messmass roll-ups. Camera does not
-enqueue work or write to Fanmass's result store. The full source schema, queue state
-machine, retries, privacy behavior, monitoring, and release checks are specified
-in Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md`.
+event, photo and linked Messmass event IDs, to Messmass through the authenticated
+per-photo endpoint. Messmass stores those rows and mechanically rebuilds
+event-level roll-ups; it does not consume an event summary from Fanmass. Camera
+reads the Fanmass queue and result store for its per-photo operator view, and
+stores human correction/confirmation evidence on the source submission tied to
+the exact result revision. Fanmass consumes a matching correction and updates
+that photo's result and Messmass delivery; the reviewer identity stays in
+Camera. Camera does not enqueue work or write Fanmass queue/result rows. The
+full source schema, queue state machine, retries, privacy behavior, monitoring,
+and release checks are specified in Fanmass `docs/CAMERA_ATLAS_QUEUE_CONTRACT.md`.
 
 ## 2a. savetheworld → camera: pledge campaign
 
@@ -295,9 +324,10 @@ in Camera, not duplicated between the internal API and Camera's own feature.
   the fleet's email transport (POST /api/internal/email/send). Not inbound-only.
 - Camera does not know about `launchmass` — no code, config, or data path
   connects them.
-- Camera does not resolve or store Fanmass analytics. Per-photo results and
-  boxes stay in Fanmass; event aggregates flow directly from Fanmass to
-  Messmass (`messmass.fanmass.analytics-summary.v1`).
+- Camera does not run the Fanmass inference or write Fanmass result rows. It
+  reads Fanmass results and queue status for authorized per-photo review, and
+  stores review/correction evidence on the Camera submission. Fanmass sends
+  each photo result to Messmass; Messmass mechanically builds event reports.
 
 ## 5. Rate limiting
 
