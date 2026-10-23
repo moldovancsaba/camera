@@ -6351,3 +6351,4 @@ See ROADMAP.md for complete future planning.
 - **Fixed:** an ImgBB 404 is treated as already deleted only after the public image URL is verified unavailable.
 - **Fixed:** consent erasures are prioritized ahead of identity-only retries so a full retry batch cannot delay deletion of photos without consent evidence.
 - **Fixed:** rejected-photo cards fall back to the saved original when a legacy moderation URL is absent.
+- **Isolated backup restore erasure replay runner.** Camera can now validate an explicitly isolated restore deployment, page the SSO tombstone feed, and replay exact case/photo references through Camera's existing fence, record-scrub, and media-delete workers one photo at a time. Dry-run is default; apply requires the exact isolated database and instance confirmations. It does not authorize traffic release or claim Fanmass, Messmass, full-cluster, or backup-provider coverage.

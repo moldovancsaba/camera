@@ -91,6 +91,9 @@ backups require their own confirmed deletion stages before the overall case can
 be marked complete. The restricted deletion receipt keeps only authenticated-
 encrypted image locations and provider delete handles for the separate media
 worker; it does not copy participant contact, consent, review or analysis data.
+An isolated Camera-database replay procedure is in
+[RESTORE_REPLAY_RUNBOOK.md](privacy/RESTORE_REPLAY_RUNBOOK.md); passing it does
+not certify Fanmass, Messmass, a whole-cluster restore, or authorize traffic release.
 
 ## The IP address, everywhere it still appears
 
