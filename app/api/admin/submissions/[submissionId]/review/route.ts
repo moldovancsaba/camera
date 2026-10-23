@@ -24,6 +24,7 @@ import { approvePhoto, rejectPhoto, returnPhotoToVetting, retryApprovedPhotoEmai
 import { offeredReasons } from '@/lib/photo-vetting/rejection';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { hasFinalizedGuestContact } from '@/lib/submissions/guest-contact';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 const REVIEW_RATE_LIMIT = {
   max: 120,
@@ -60,7 +61,7 @@ export const POST = withErrorHandler(async (
   const db = await connectToDatabase();
   const submission = await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
-    .findOne({ _id: new ObjectId(submissionId) });
+    .findOne({ _id: new ObjectId(submissionId), ...PRIVACY_ERASURE_ACTIVE_FILTER });
   if (!submission) {
     throw apiNotFound('Submission');
   }

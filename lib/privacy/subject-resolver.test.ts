@@ -26,7 +26,8 @@ test('account resolution uses exact participant fields and never queries reviewe
 
 test('legacy top-level email lookup excludes anonymous and unfinished-contact records', () => {
   const filter = buildSubjectMatchFilter(accountProof({ verifiedEmail: { value: 'guest@example.com', proof: 'sso_account_email_verified', verifiedAt: null } }))!;
-  const branches = filter.$or as Array<Record<string, unknown>>;
+  const identity = (filter.$and as Array<Record<string, unknown>>)[0];
+  const branches = identity.$or as Array<Record<string, unknown>>;
   const legacy = branches[3].$and as Array<Record<string, unknown>>;
   const excludedIds = legacy.find((clause) => Array.isArray(clause.$nor))?.$nor as Array<{ userId: RegExp }>;
   assert.match(JSON.stringify(filter), /userInfoDraft/);
@@ -67,5 +68,7 @@ test('signed resolver cursor is case-bound and rejects tampering', () => {
 
 test('photo-level subject uses exact submission or Mongo photo id only', () => {
   const filter = buildSubjectMatchFilter({ version: 1, caseId: 'b44bda8b-a031-4a29-a9a5-0d0a340e7eab', subject: { kind: 'camera_photo', id: '507f1f77bcf86cd799439011' } });
-  assert.deepEqual(filter?.$or, [{ submissionId: '507f1f77bcf86cd799439011' }, { _id: new ObjectId('507f1f77bcf86cd799439011') }]);
+  const identity = (filter?.$and as Array<Record<string, unknown>>)[0];
+  assert.deepEqual(identity.$or, [{ submissionId: '507f1f77bcf86cd799439011' }, { _id: new ObjectId('507f1f77bcf86cd799439011') }]);
+  assert.deepEqual((filter?.$and as Array<Record<string, unknown>>)[1], { 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } });
 });

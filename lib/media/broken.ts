@@ -10,6 +10,7 @@ import type { Db, Document, ObjectId } from 'mongodb';
 import { ObjectId as Oid } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { isAllowedLogoUrl } from '@/lib/frame/logo';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export type PictureCheck = 'ok' | 'broken' | 'unknown';
 
@@ -58,18 +59,18 @@ export async function verifySubmission(db: Db, submission: Document, now: string
   const was = (submission.mediaHealth as MediaHealth | undefined)?.broken === true;
   if (result === 'broken') {
     const health: MediaHealth = { broken: true, reason: 'the picture is gone (http 404)', checkedAt: now };
-    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { mediaHealth: health } });
+    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { $set: { mediaHealth: health } });
     return 'marked';
   }
   const health: MediaHealth = { broken: false, checkedAt: now };
-  await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { mediaHealth: health } });
+  await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { $set: { mediaHealth: health } });
   return was ? 'cleared' : 'fine';
 }
 
 /** A report from a screen that could not load a picture: the server looks for itself (it never takes the screen's word for it) and records what it finds. */
 export async function reportBroken(db: Db, submissionId: unknown, now: string, check?: (url: string) => Promise<PictureCheck>): Promise<Outcome | 'not-found'> {
   if (typeof submissionId !== 'string' || !Oid.isValid(submissionId)) return 'not-found';
-  const submission = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: new Oid(submissionId) }, { projection: { imageUrl: 1, finalImageUrl: 1, mediaHealth: 1 } });
+  const submission = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: new Oid(submissionId), ...PRIVACY_ERASURE_ACTIVE_FILTER }, { projection: { imageUrl: 1, finalImageUrl: 1, mediaHealth: 1 } });
   if (!submission) return 'not-found';
   // A fresh answer is not asked for again at once: a screen that reports every slide must not make us ask the host for every slide.
   const health = submission.mediaHealth as MediaHealth | undefined;
@@ -97,6 +98,7 @@ export function scanFilter(maxAgeDays: number, now: Date, after?: ObjectId): Doc
       { $or: [{ imageUrl: { $type: 'string' } }, { finalImageUrl: { $type: 'string' } }] },
       { $or: [{ 'mediaHealth.checkedAt': { $exists: false } }, { 'mediaHealth.checkedAt': { $lt: cutoff } }] },
       { isArchived: { $ne: true } },
+      PRIVACY_ERASURE_ACTIVE_FILTER,
       ...(after ? [{ _id: { $gt: after } }] : []),
     ],
   };
@@ -123,5 +125,5 @@ export async function scanBatch(
 
 /** Photos of an event that are marked broken right now (the gallery says how many it hides). */
 export async function countBroken(db: Db, eventKeys: readonly string[]): Promise<number> {
-  return db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ 'mediaHealth.broken': true, isArchived: { $ne: true }, $or: [{ eventId: { $in: [...eventKeys] } }, { eventIds: { $in: [...eventKeys] } }] });
+  return db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ $and: [PRIVACY_ERASURE_ACTIVE_FILTER, { 'mediaHealth.broken': true, isArchived: { $ne: true }, $or: [{ eventId: { $in: [...eventKeys] } }, { eventIds: { $in: [...eventKeys] } }] }] });
 }

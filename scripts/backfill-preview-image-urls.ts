@@ -15,6 +15,7 @@ import { closeConnection, connectToDatabase } from '@/lib/db/mongodb';
 import { fetchImageBuffer, uploadPreviewVariant } from '@/lib/media/image-buffer';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { loadEnvFromFiles } from './load-env-from-files';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 interface BackfillOptions {
   dryRun: boolean;
@@ -54,6 +55,7 @@ async function main() {
 
   try {
     const filter: Document = {
+      ...PRIVACY_ERASURE_ACTIVE_FILTER,
       previewImageUrl: { $in: [null, undefined] },
       $or: [{ imageUrl: { $type: 'string' } }, { finalImageUrl: { $type: 'string' } }],
     };
@@ -86,7 +88,7 @@ async function main() {
 
         if (!options.dryRun) {
           await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-            { _id: candidate._id },
+            { _id: candidate._id, ...PRIVACY_ERASURE_ACTIVE_FILTER },
             { $set: { previewImageUrl: previewUrl, updatedAt: new Date().toISOString() } }
           );
         }

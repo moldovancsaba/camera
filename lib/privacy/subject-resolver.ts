@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { ObjectId, type Document } from 'mongodb';
 import type { SsoSubjectProof } from './subject-proof';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from './erasure';
 
 const INVALID_EMAILS = new Set(['anonymous@event', 'anonymous@event.com', 'admin@upload', 'unknown@unknown.com']);
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -52,19 +53,21 @@ export function normalizedVerifiedEmail(proof: SsoSubjectProof): string | null {
 
 /** Exact identity lookup over only participant-owned fields; reviewer fields never enter the query. */
 export function buildSubjectMatchFilter(proof: SsoSubjectProof): Document | null {
+  let identityFilter: Document;
   if (proof.subject.kind === 'camera_photo') {
     const alternatives: Document[] = [{ submissionId: proof.subject.id }];
     if (ObjectId.isValid(proof.subject.id)) alternatives.push({ _id: new ObjectId(proof.subject.id) });
-    return { $or: alternatives };
+    identityFilter = { $or: alternatives };
+  } else {
+    const escapedId = proof.subject.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Account IDs stay case-sensitive even when the operation uses a collation
+    // for legacy e-mail fields (Mongo regex matching is not collation-aware).
+    const alternatives: Document[] = [{ userId: { $regex: `^${escapedId}$` } }];
+    const email = normalizedVerifiedEmail(proof);
+    if (email) alternatives.push(...emailMatchBranches(email));
+    identityFilter = { 'metadata.adminGalleryUpload': { $ne: true }, $or: alternatives };
   }
-
-  const escapedId = proof.subject.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // Account IDs stay case-sensitive even when the operation uses a collation
-  // for legacy e-mail fields (Mongo regex matching is not collation-aware).
-  const alternatives: Document[] = [{ userId: { $regex: `^${escapedId}$` } }];
-  const email = normalizedVerifiedEmail(proof);
-  if (email) alternatives.push(...emailMatchBranches(email));
-  return { 'metadata.adminGalleryUpload': { $ne: true }, $or: alternatives };
+  return { $and: [identityFilter, PRIVACY_ERASURE_ACTIVE_FILTER] };
 }
 
 /** A stable account conflict on a verified-email match makes the whole resolution ambiguous. */
@@ -74,6 +77,7 @@ export function buildEmailConflictFilter(proof: SsoSubjectProof): Document | nul
   if (!email) return null;
   return {
     'metadata.adminGalleryUpload': { $ne: true },
+    ...PRIVACY_ERASURE_ACTIVE_FILTER,
     userId: { $exists: true },
     $nor: [
       { userId: /^$/ },

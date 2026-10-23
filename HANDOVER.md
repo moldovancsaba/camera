@@ -1,5 +1,25 @@
 # Handover
 
+## Current change — case-bound Camera photo erasure
+
+Camera now has an internal, SSO-case-bound erasure intake, an immediate
+read/write fence, encrypted media-reference tombstones, and a bounded scheduled
+worker that scrubs source rows. This is only the Camera database stage. Blob and
+ImgBB deletion, Fanmass and Messmass cleanup, and backup restore/replay remain
+separate sequenced stages; do not describe a request as complete until those
+systems return verifiable deletion receipts. No production data was changed.
+See `docs/privacy/CAMERA_RECORD_ERASURE.md` and `docs/PRIVACY_DATA.md`.
+
+## Current change — case-bound Camera photo erasure
+
+Camera now has an internal, SSO-case-bound erasure intake, an immediate
+read/write fence, encrypted media-reference tombstones, and a bounded scheduled
+worker that scrubs source rows. This is only the Camera database stage. Blob and
+ImgBB deletion, Fanmass and Messmass cleanup, and backup restore/replay remain
+separate sequenced stages; do not describe a request as complete until those
+systems return verifiable deletion receipts. No production data was changed.
+See `docs/privacy/CAMERA_RECORD_ERASURE.md` and `docs/PRIVACY_DATA.md`.
+
 ## Current change — verified erasure subject resolver (2026-10-23)
 
 Camera now has a read-only `POST /api/internal/privacy/resolve-subject` implementation in `app/api/internal/privacy/resolve-subject/route.ts`. The caller supplies only the opaque SSO case UUID; Camera obtains the case-bound proof from SSO with its dedicated resolver client, looks up Camera submissions using exact account/verified-email/photo fields, and returns opaque product references without contact data. Competing stable account IDs for a verified-email match return `ambiguous` with no IDs. Results use a signed case-bound cursor capped at 100 per page.

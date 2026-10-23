@@ -16,6 +16,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { ObjectId, type Document, type UpdateFilter } from 'mongodb';
 import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound } from '@/lib/api';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export const DELETE = withErrorHandler(async (
   request: NextRequest,
@@ -47,7 +48,7 @@ export const DELETE = withErrorHandler(async (
   // Find the submission
   const submission = await db
     .collection(COLLECTIONS.SUBMISSIONS)
-    .findOne({ _id: new ObjectId(submissionId) });
+    .findOne({ _id: new ObjectId(submissionId), ...PRIVACY_ERASURE_ACTIVE_FILTER });
 
   if (!submission) {
     throw apiNotFound('Submission not found');
@@ -80,7 +81,7 @@ export const DELETE = withErrorHandler(async (
   const result = await db
     .collection(COLLECTIONS.SUBMISSIONS)
     .updateOne(
-      { _id: new ObjectId(submissionId) },
+      { _id: new ObjectId(submissionId), ...PRIVACY_ERASURE_ACTIVE_FILTER },
       updateOperation as UpdateFilter<Document>
     );
 
@@ -101,6 +102,7 @@ export const DELETE = withErrorHandler(async (
           ]
         },
         { isArchived: { $ne: true } },
+        PRIVACY_ERASURE_ACTIVE_FILTER,
         {
           $or: [
             { hiddenFromEvents: { $exists: false } },

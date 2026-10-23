@@ -8,6 +8,7 @@
 
 import type { Db } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { PHOTO_PROJECTION, photoFactsOf, type PhotoFacts } from './facts';
 import { loadJourneySummary, type JourneySummary } from './journey';
@@ -47,7 +48,9 @@ export function analyticsEventOf(doc: Record<string, unknown>): AnalyticsEvent {
 /** The facts of the photos (originals, never try-on results) filed under an event, or of every event when none is given. */
 export async function loadPhotoFacts(db: Db, event: Pick<AnalyticsEvent, 'eventId'> | null): Promise<PhotoFacts[]> {
   const eventKeys = event ? [event.eventId] : null;
-  const filter = event ? { $or: [{ eventId: event.eventId }, { eventIds: { $in: eventKeys! } }, { hiddenFromEvents: { $in: eventKeys! } }], submissionKind: { $ne: 'tryon_result' } } : { submissionKind: { $ne: 'tryon_result' } };
+  const filter = event
+    ? { $and: [{ $or: [{ eventId: event.eventId }, { eventIds: { $in: eventKeys! } }, { hiddenFromEvents: { $in: eventKeys! } }] }, { submissionKind: { $ne: 'tryon_result' } }, PRIVACY_ERASURE_ACTIVE_FILTER] }
+    : { $and: [{ submissionKind: { $ne: 'tryon_result' } }, PRIVACY_ERASURE_ACTIVE_FILTER] };
   const [docs, tombstones] = await Promise.all([
     db.collection(COLLECTIONS.SUBMISSIONS).find(filter, { projection: PHOTO_PROJECTION }).toArray(),
     db.collection(COLLECTIONS.PHOTO_DELETION_ANALYTICS).find(event ? { eventId: { $in: eventKeys } } : {}, { projection: { eventId: 1, submissionId: 1, createdAt: 1, reviewStatus: 1, identityStatus: 1, method: 1, deviceClass: 1 } }).toArray(),

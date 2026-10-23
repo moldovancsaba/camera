@@ -94,6 +94,7 @@ test('the queue covers photos that went through vetting for one event, not archi
         reviewStatus: 'pending_review',
         isArchived: { $ne: true },
         retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+        'privacyErasure.state': { $nin: ['fenced', 'record_erased'] },
       },
     ],
   });

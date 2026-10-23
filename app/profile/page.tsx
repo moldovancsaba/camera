@@ -56,7 +56,7 @@ export default async function ProfilePage() {
     const db = await connectToDatabase();
     const rawSubmissions = await db
       .collection('submissions')
-      .find({ userId: session.user.id })
+      .find({ userId: session.user.id, 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } })
       .sort({ createdAt: -1 })
       .limit(50)
       .toArray();

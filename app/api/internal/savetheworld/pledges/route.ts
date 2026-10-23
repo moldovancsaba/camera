@@ -6,6 +6,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
 import { eventAsksForGalleryPermission } from '@/lib/savetheworld/gallery-asked';
 import { buildWallFilter } from '@/lib/savetheworld/wall';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 /**
  * GET /api/internal/savetheworld/pledges?eventId=<mongoId|eventId>&limit=<n>
@@ -68,6 +69,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     // Private lookup: the capturer viewing their own just-saved submission.
     // Still scoped to eventId so one event can't pull another event's submission.
     const submission = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({
+      ...PRIVACY_ERASURE_ACTIVE_FILTER,
       submissionId,
       ...eventMatch,
     });

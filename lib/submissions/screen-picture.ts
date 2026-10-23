@@ -12,7 +12,8 @@
  */
 
 import { createHash } from 'node:crypto';
-import { put } from '@vercel/blob';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
+import { del, put } from '@vercel/blob';
 import type { Db, ObjectId } from 'mongodb';
 import sharp from 'sharp';
 import { COLLECTIONS } from '@/lib/db/schemas';
@@ -48,11 +49,13 @@ export async function makeScreenPicture(source: Buffer): Promise<ScreenPicture> 
 export interface ScreenPictureDeps {
   fetchImage: (url: string) => Promise<Buffer>;
   put: (pathname: string, body: Buffer, options: { contentType: string; cacheControlMaxAge: number }) => Promise<{ url: string }>;
+  deleteFile?: (url: string) => Promise<void>;
 }
 
 export const defaultScreenPictureDeps: ScreenPictureDeps = {
   fetchImage: fetchImageBuffer,
   put: (pathname, body, options) => put(pathname, body, { access: 'public', contentType: options.contentType, addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: options.cacheControlMaxAge }),
+  deleteFile: (url) => del(url),
 };
 
 export type ScreenPictureOutcome = 'made' | 'reused-original' | 'exists' | 'no-source' | 'failed';
@@ -74,6 +77,8 @@ export async function ensureScreenPicture(
   deps: ScreenPictureDeps = defaultScreenPictureDeps,
   options: { dryRun?: boolean } = {}
 ): Promise<{ outcome: ScreenPictureOutcome; sourceBytes?: number; screenBytes?: number }> {
+  const current = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: submission._id, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { projection: { _id: 1 } });
+  if (!current) return { outcome: 'no-source' };
   if (typeof submission.screenImageUrl === 'string' && submission.screenImageUrl) return { outcome: 'exists' };
   const sourceUrl = submission.finalImageUrl || submission.imageUrl;
   if (!sourceUrl) return { outcome: 'no-source' };
@@ -83,14 +88,19 @@ export async function ensureScreenPicture(
     const small = source.length <= SCREEN_PICTURE_KEEP_BYTES || picture.buffer.length >= source.length;
     if (options.dryRun) return { outcome: small ? 'reused-original' : 'made', sourceBytes: source.length, screenBytes: small ? source.length : picture.buffer.length };
     if (small) {
-      await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { screenImageUrl: sourceUrl } });
+    const saved = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { $set: { screenImageUrl: sourceUrl } });
+    if (saved.matchedCount !== 1) return { outcome: 'no-source' };
       return { outcome: 'reused-original', sourceBytes: source.length, screenBytes: source.length };
     }
     const stored = await deps.put(screenPicturePath(String(submission._id), picture.buffer), picture.buffer, { contentType: 'image/webp', cacheControlMaxAge: 31_536_000 });
-    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submission._id },
+    const saved = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+      { _id: submission._id, ...PRIVACY_ERASURE_ACTIVE_FILTER },
       { $set: { screenImageUrl: stored.url, screenImageBytes: picture.buffer.length, 'metadata.screenWidth': picture.width, 'metadata.screenHeight': picture.height } }
     );
+    if (saved.matchedCount !== 1) {
+      await deps.deleteFile?.(stored.url).catch(() => undefined);
+      return { outcome: 'no-source' };
+    }
     return { outcome: 'made', sourceBytes: source.length, screenBytes: picture.buffer.length };
   } catch (error) {
     logWarn('screen_picture.failed', 'The screen picture could not be made; the slideshow keeps the original', { submissionId: String(submission._id), error: error instanceof Error ? error.message : String(error) });

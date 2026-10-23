@@ -10,6 +10,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { resolveSsoUserIdByEmail } from '@/lib/sso/submission-account';
 import { withErrorHandler } from '@/lib/api/withErrorHandler';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
   try {
@@ -42,13 +43,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     }
 
     const realUser = await db.collection(COLLECTIONS.SUBMISSIONS).findOne(
-      { userId: realUserId },
+      { userId: realUserId, ...PRIVACY_ERASURE_ACTIVE_FILTER },
       { sort: { createdAt: -1 }, projection: { userEmail: 1, userName: 1 } }
     );
 
-    const pseudoSubmissions = await db.collection(COLLECTIONS.SUBMISSIONS).find({
-      'userInfo.email': pseudoEmail,
-    }).toArray();
+    const activeEmailQuery = { $and: [{ 'userInfo.email': pseudoEmail }, PRIVACY_ERASURE_ACTIVE_FILTER] };
+    const pseudoSubmissions = await db.collection(COLLECTIONS.SUBMISSIONS).find(activeEmailQuery).toArray();
 
     if (pseudoSubmissions.length === 0) {
       return NextResponse.json(
@@ -70,7 +70,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     const userName = realUser?.userName || realUserEmail.split('@')[0];
 
     const result = await db.collection(COLLECTIONS.SUBMISSIONS).updateMany(
-      { 'userInfo.email': pseudoEmail },
+      activeEmailQuery,
       {
         $set: {
           userId: realUserId,

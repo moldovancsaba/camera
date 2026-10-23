@@ -12,6 +12,7 @@ import { CONSENT_AUDIT_ERASURE_STATUSES, CONSENT_AUDIT_VALID_FILTER, CONSENT_UNK
 import { missingRequiredConsent } from '@/lib/events/consent-guard';
 import { anonymousWithoutFinalContactMongoFilter, hasFinalizedGuestContact, incompleteContactErasure } from '@/lib/submissions/guest-contact';
 import { prioritizeErasureCandidates } from '@/lib/submissions/erasure-batch';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -84,26 +85,32 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       },
     ],
     retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+    ...PRIVACY_ERASURE_ACTIVE_FILTER,
   };
   const identityDueFilter = {
-    $or: [
+    $and: [
+      { $or: [
       { retentionStatus: 'pending_erasure', retentionExpiresAt: { $lte: now } },
       { retentionStatus: 'erasing', $or: [
         { retentionErasureStartedAt: { $lte: staleErasureBefore } },
         { retentionErasureStartedAt: { $exists: false } },
       ] },
+      ] },
+      PRIVACY_ERASURE_ACTIVE_FILTER,
     ],
   };
   const unknownConsentFilter = {
     $and: [
       CONSENT_UNKNOWN_FILTER,
       { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+      PRIVACY_ERASURE_ACTIVE_FILTER,
     ],
   };
   const unverifiedConsentAuditFilter = {
     consentStatus: { $in: [...CONSENT_AUDIT_ERASURE_STATUSES] },
     $nor: [CONSENT_AUDIT_VALID_FILTER],
     retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+    ...PRIVACY_ERASURE_ACTIVE_FILTER,
   };
   // Legacy anonymous captures predate the explicit 24-hour marker. Derive the
   // same deadline from createdAt, while excluding finalized contacts and admin uploads.
@@ -112,6 +119,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       anonymousWithoutFinalContactMongoFilter,
       { createdAt: { $lte: contactRetentionCutoff } },
       { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+      PRIVACY_ERASURE_ACTIVE_FILTER,
     ],
   };
   // Run consent erasure before identity-only retries. A large, repeatedly
@@ -140,6 +148,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   let retried = 0;
 
   for (const submission of due) {
+    if (submission.privacyErasure?.state === 'fenced' || submission.privacyErasure?.state === 'record_erased') continue;
     const legacyNoContactDue = (submission.userId === 'anonymous' || !submission.userId)
       && submission.metadata?.adminGalleryUpload !== true
       && !hasFinalizedGuestContact(submission)
@@ -154,6 +163,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
           anonymousWithoutFinalContactMongoFilter,
           { createdAt: { $lte: contactRetentionCutoff } },
           { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+          PRIVACY_ERASURE_ACTIVE_FILTER,
         ],
       }, { $set: { retentionStatus: retention.status, retentionExpiresAt: retention.retentionExpiresAt, updatedAt: now } });
       if (claim.modifiedCount !== 1) continue;
@@ -175,6 +185,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         consentStatus: submission.consentStatus,
         $nor: [CONSENT_AUDIT_VALID_FILTER],
         retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+        ...PRIVACY_ERASURE_ACTIVE_FILTER,
       }, {
         $set: {
           consentStatus: 'expiring',
@@ -194,7 +205,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       if (await hasVerifiedConsentAudit(db, submission, rollout, eventCache)) {
         const reconciled = await submissions.updateOne({
           _id: submission._id,
-          $and: [CONSENT_UNKNOWN_FILTER, { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } }],
+          $and: [CONSENT_UNKNOWN_FILTER, { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } }, PRIVACY_ERASURE_ACTIVE_FILTER],
         }, {
           $set: { consentStatus: 'received', 'metadata.consentAuditVerifiedAt': now, updatedAt: now },
         });
@@ -210,6 +221,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         $and: [
           CONSENT_UNKNOWN_FILTER,
           { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+          PRIVACY_ERASURE_ACTIVE_FILTER,
         ],
       }, {
         $set: {
@@ -232,8 +244,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       // Claim the identity-erasure state atomically. A concurrent identity PATCH
       // or cleanup worker cannot make this photo visible while files are removed.
       const erasureClaim = submission.retentionStatus === 'pending_erasure'
-        ? { _id: submission._id, retentionStatus: 'pending_erasure', retentionExpiresAt: { $lte: now } }
-        : { _id: submission._id, retentionStatus: 'erasing', $or: [
+        ? { _id: submission._id, retentionStatus: 'pending_erasure', retentionExpiresAt: { $lte: now }, ...PRIVACY_ERASURE_ACTIVE_FILTER }
+        : { _id: submission._id, retentionStatus: 'erasing', ...PRIVACY_ERASURE_ACTIVE_FILTER, $or: [
             { retentionErasureStartedAt: { $lte: staleErasureBefore } },
             { retentionErasureStartedAt: { $exists: false } },
           ] };
@@ -246,14 +258,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         const files = await deleteSubmissionFiles(db, submission);
         if (files.imgbbFailed > 0) {
           await submissions.updateOne(
-            { _id: submission._id, retentionStatus: 'erasing', retentionErasureStartedAt: now },
+            { _id: submission._id, retentionStatus: 'erasing', retentionErasureStartedAt: now, ...PRIVACY_ERASURE_ACTIVE_FILTER },
             { $set: { retentionStatus: 'pending_erasure', updatedAt: now }, $unset: { retentionErasureStartedAt: '' } },
           );
           retried += 1;
           continue;
         }
         await submissions.updateOne(
-          { _id: submission._id, retentionStatus: 'erasing', retentionErasureStartedAt: now },
+          { _id: submission._id, retentionStatus: 'erasing', retentionErasureStartedAt: now, ...PRIVACY_ERASURE_ACTIVE_FILTER },
           {
             $set: {
               retentionStatus: 'erased',
@@ -286,7 +298,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       } catch (error) {
         console.error(`No-identity capture erasure failed for ${String(submission._id)}`, error);
         await submissions.updateOne(
-          { _id: submission._id, retentionStatus: 'erasing', retentionErasureStartedAt: now },
+          { _id: submission._id, retentionStatus: 'erasing', retentionErasureStartedAt: now, ...PRIVACY_ERASURE_ACTIVE_FILTER },
           { $set: { retentionStatus: 'pending_erasure', updatedAt: now }, $unset: { retentionErasureStartedAt: '' } },
         );
         retried += 1;
@@ -313,6 +325,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       const claim = await submissions.updateOne({
         ...consentErasureClaim,
         retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+        ...PRIVACY_ERASURE_ACTIVE_FILTER,
       }, {
         $set: { consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now, updatedAt: now },
       });
@@ -324,7 +337,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       // ImgBB deletion is best-effort in the shared delete helper. Keep the source URLs and retry next run if it failed.
       if (files.imgbbFailed > 0) {
         if (!noConsentAudit) {
-          await submissions.updateOne({ _id: submission._id, consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now }, { $set: { consentStatus: 'pending', updatedAt: now }, $unset: { 'metadata.consentErasureStartedAt': '' } });
+          await submissions.updateOne({ _id: submission._id, consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { $set: { consentStatus: 'pending', updatedAt: now }, $unset: { 'metadata.consentErasureStartedAt': '' } });
         }
         retried += 1;
         continue;
@@ -379,7 +392,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
             'metadata.consentErasureStartedAt': '',
           };
       await submissions.updateOne(
-        { _id: submission._id, consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now },
+        { _id: submission._id, consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now, ...PRIVACY_ERASURE_ACTIVE_FILTER },
         {
           $set: setFields,
           $unset: unsetFields,
@@ -390,7 +403,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     } catch (error) {
       console.error(`Unconsented capture cleanup failed for ${String(submission._id)}`, error);
       if (!noConsentAudit) {
-        await submissions.updateOne({ _id: submission._id, consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now }, { $set: { consentStatus: 'pending', updatedAt: now }, $unset: { 'metadata.consentErasureStartedAt': '' } });
+        await submissions.updateOne({ _id: submission._id, consentStatus: 'expiring', 'metadata.consentErasureStartedAt': now, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { $set: { consentStatus: 'pending', updatedAt: now }, $unset: { 'metadata.consentErasureStartedAt': '' } });
       }
       retried += 1;
     }

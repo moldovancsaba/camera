@@ -21,6 +21,7 @@
 import type { Db } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export interface EventExportContext {
   /** Mongo _id string of the event. */
@@ -103,6 +104,7 @@ export async function collectEventSubmissionsForExport(db: Db, eventUuid: string
       $and: [
         { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
         { isArchived: { $ne: true } },
+        PRIVACY_ERASURE_ACTIVE_FILTER,
         {
           $or: [
             { hiddenFromEvents: { $exists: false } },

@@ -26,8 +26,7 @@ test('a tall photo is limited on its height, and a small one is not enlarged', a
   assert.deepEqual([small.width, small.height], [640, 360]);
 });
 
-function world(source: Buffer | null, fail = false) {
-  const id = new ObjectId();
+function world(source: Buffer | null, fail = false, id = new ObjectId()) {
   const seeded = fakeDb({ submissions: [{ _id: id, imageUrl: 'https://store.test/a.jpg', finalImageUrl: 'https://store.test/a.jpg' }] });
   const puts: Array<{ pathname: string; bytes: number; options: { contentType: string; cacheControlMaxAge: number } }> = [];
   const fetched: string[] = [];
@@ -93,7 +92,7 @@ test('a picture made again for the same submission, from another source (a photo
   const framed = await photo(3000, 2000);
   const w1 = world(unframed);
   await ensureScreenPicture(w1.db, { _id: w1.id, imageUrl: 'https://store.test/a.jpg', finalImageUrl: 'https://store.test/a.jpg' }, w1.deps);
-  const w2 = world(framed);
+  const w2 = world(framed, false, w1.id);
   await ensureScreenPicture(w2.db, { _id: w1.id, imageUrl: 'https://store.test/framed.jpg', finalImageUrl: 'https://store.test/framed.jpg' }, w2.deps);
   assert.notEqual(w1.puts[0].pathname, w2.puts[0].pathname, 'another picture, another address');
   // The same picture is the same address, so asking twice stores one file.

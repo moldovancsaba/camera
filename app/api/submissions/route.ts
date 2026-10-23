@@ -48,6 +48,7 @@ import {
 } from '@/lib/api';
 import { safeLinkUrl } from '@/lib/events/consent';
 import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 interface EventLookupFilter {
   $or: Array<Record<string, unknown>>;
 }
@@ -440,8 +441,13 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     // the finalize call sends it once the contact is saved.
     runAfterResponse(async () => {
       try {
+        const active = await db.collection(COLLECTIONS.SUBMISSIONS).findOne(
+          { _id: result.insertedId, ...PRIVACY_ERASURE_ACTIVE_FILTER },
+          { projection: { _id: 1 } },
+        );
+        if (!active) return;
         const arrived = await dispatchArrivedEmail(db, { ...submission, _id: result.insertedId });
-        if (arrived && Object.keys(arrived.metadataPatch).length > 0) await db.collection('submissions').updateOne({ _id: result.insertedId }, { $set: arrived.metadataPatch });
+        if (arrived && Object.keys(arrived.metadataPatch).length > 0) await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: result.insertedId, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { $set: arrived.metadataPatch });
       } catch (error) {
         logWarn('submission.arrived_email_failed', 'The arrived e-mail could not be sent', { submissionId, error: error instanceof Error ? error.message : String(error) });
       }
@@ -486,12 +492,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     // Get total count
     const total = await db
       .collection('submissions')
-      .countDocuments({ userId: session.user.id });
+      .countDocuments({ $and: [{ userId: session.user.id }, PRIVACY_ERASURE_ACTIVE_FILTER] });
 
     // Get paginated results
     const submissions = await db
       .collection('submissions')
-      .find({ userId: session.user.id })
+      .find({ $and: [{ userId: session.user.id }, PRIVACY_ERASURE_ACTIVE_FILTER] })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)

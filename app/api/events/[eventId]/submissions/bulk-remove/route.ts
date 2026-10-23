@@ -19,6 +19,7 @@ import {
   apiNotFound,
 } from '@/lib/api';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export const POST = withErrorHandler(async (
   request: NextRequest,
@@ -66,7 +67,7 @@ export const POST = withErrorHandler(async (
   };
 
   const result = await db.collection(COLLECTIONS.SUBMISSIONS).updateMany(
-    { _id: { $in: objectIds } },
+    { $and: [{ _id: { $in: objectIds } }, PRIVACY_ERASURE_ACTIVE_FILTER] },
     updateDoc as never
   );
 

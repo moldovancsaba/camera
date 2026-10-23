@@ -16,7 +16,9 @@
  */
 
 import type { Db, Document, ObjectId } from 'mongodb';
+import { del } from '@vercel/blob';
 import { COLLECTIONS, type ImageCopy } from '@/lib/db/schemas';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { isAllowedLogoUrl } from '@/lib/frame/logo';
 import { deleteImage, uploadToImgbbOnly, type MirrorResult } from '@/lib/imgbb/upload';
 import { logInfo, logWarn } from '@/lib/observability/logger';
@@ -97,7 +99,7 @@ const keyOf = (copy: Pick<ImageCopy, 'role' | 'store'>) => ({ role: copy.role, s
 
 /** The copies recorded on a submission (none for a photo that has none). */
 export async function readCopies(db: Db, submissionId: ObjectId): Promise<ImageCopy[]> {
-  const row = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId }, { projection: { imageCopies: 1 } });
+  const row = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { projection: { imageCopies: 1 } });
   return Array.isArray(row?.imageCopies) ? (row.imageCopies as ImageCopy[]) : [];
 }
 
@@ -110,12 +112,12 @@ export async function recordImageCopy(db: Db, submissionId: ObjectId, copy: Imag
   const same = { $elemMatch: keyOf(copy) };
   for (let attempt = 0; attempt < 3; attempt += 1) {
     // The positional `$` stands for the element the `$elemMatch` found, so the entry is replaced as a whole.
-    const replaced = await submissions.updateOne({ _id: submissionId, imageCopies: same }, { $set: { 'imageCopies.$': copy } });
+    const replaced = await submissions.updateOne({ _id: submissionId, imageCopies: same, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { $set: { 'imageCopies.$': copy } });
     if (replaced.matchedCount > 0) return true;
-    const added = await submissions.updateOne({ _id: submissionId, imageCopies: { $not: same } }, { $push: { imageCopies: copy } as Document });
+    const added = await submissions.updateOne({ _id: submissionId, imageCopies: { $not: same }, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { $push: { imageCopies: copy } as Document });
     if (added.matchedCount > 0) return true;
     // Neither matched: either another writer added the entry between the two updates (go round again) or the submission is gone.
-    if (!(await submissions.countDocuments({ _id: submissionId }, { limit: 1 }))) return false;
+    if (!(await submissions.countDocuments({ _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { limit: 1 }))) return false;
   }
   throw new Error('the copy could not be recorded (the entry kept changing under two writers)');
 }
@@ -127,6 +129,8 @@ export interface ImageCopyDeps {
   readBackDelayMs: number;
   uploadToImgbb: (base64: string, name: string) => Promise<MirrorResult>;
   deleteFromImgbb: (deleteUrl: string) => Promise<boolean>;
+  /** Remove a Blob file that was uploaded while the source photo became fenced. */
+  deleteBlob?: (url: string) => Promise<void>;
   now: () => string;
   probeTimeoutMs: number;
   imgbbTimeoutMs: number;
@@ -140,6 +144,7 @@ export const defaultImageCopyDeps: ImageCopyDeps = {
   // One retry at most, and no validation request of its own: the read-back below is the check.
   uploadToImgbb: (base64, name) => uploadToImgbbOnly(base64, { name, maxRetries: 2, validatePublicUrl: false }),
   deleteFromImgbb: deleteImage,
+  deleteBlob: (url) => del(url),
   now: () => new Date().toISOString(),
   probeTimeoutMs: PROBE_TIMEOUT_MS,
   imgbbTimeoutMs: IMGBB_COPY_TIMEOUT_MS,
@@ -192,7 +197,17 @@ export async function verifyAndRecord(
   const copy: ImageCopy = { role: entry.role, store: entry.store, state: back.state, url: entry.url, bytes: entry.bytes, verifiedAt: back.verifiedAt, recordedAt: now, error: back.error };
   if (entry.deleteUrl) copy.deleteUrl = entry.deleteUrl;
   if (entry.externalId) copy.externalId = entry.externalId;
-  await record(db, submissionId, copy, startedAt);
+  const recorded = await record(db, submissionId, copy, startedAt);
+  if (!recorded) {
+    if (entry.store === 'blob' && deps.deleteBlob) {
+      try {
+        await deps.deleteBlob(entry.url);
+      } catch (error) {
+        logWarn('image_copy.orphan_cleanup_failed', 'A Blob copy made for a fenced or missing photo could not be removed', { submissionId: String(submissionId), role: entry.role, url: entry.url, error: errorMessage(error) });
+      }
+    }
+    return { ...copy, state: 'failed', error: 'the source photo was fenced or removed before the copy could be recorded' };
+  }
   return copy;
 }
 
@@ -243,7 +258,7 @@ export async function makeImgbbCopy(
   const recorded = await record(db, input.submissionId, copy, startedAt);
   if (!recorded && uploaded.deleteUrl) {
     // Recording failed for a reason other than the database being down (the row is gone): do not leave a public file that no submission names.
-    const exists = await db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ _id: input.submissionId }, { limit: 1 }).catch(() => 1);
+    const exists = await db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ _id: input.submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { limit: 1 }).catch(() => 1);
     if (!exists) {
       const removed = await deps.deleteFromImgbb(uploaded.deleteUrl).catch(() => false);
       logWarn('image_copy.orphan_removed', removed ? 'The ImgBB file made for a deleted submission was deleted again' : 'The ImgBB file made for a deleted submission could not be deleted; remove it by hand', { submissionId: String(input.submissionId), role: input.role, url: uploaded.imageUrl });

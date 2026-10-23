@@ -9,6 +9,7 @@
 import { ObjectId, type Db, type Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { isPubliclyVisible, publiclyVisibleClauses, visibilityInputOf } from '@/lib/submissions/visibility';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 const LIST_LIMIT = 200;
@@ -41,7 +42,7 @@ const isOfEvent = (doc: Document, event: Document): boolean => {
 /** The photo of the event that may be shown in the window, or null (gone, hidden, not approved, another event's, a stored try-on result, no picture). */
 export async function eligiblePhoto(db: Db, event: Document, photoId: string): Promise<{ id: string; doc: Document; picture: WindowPicture } | null> {
   if (!ObjectId.isValid(photoId)) return null;
-  const doc = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: new ObjectId(photoId) });
+  const doc = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: new ObjectId(photoId), ...PRIVACY_ERASURE_ACTIVE_FILTER });
   if (!doc || doc.submissionKind === 'tryon_result' || !isOfEvent(doc, event) || !isPubliclyVisible(visibilityInputOf(doc))) return null;
   const picture = windowPictureOf(doc);
   return picture ? { id: photoId, doc, picture } : null;

@@ -69,3 +69,19 @@ Logs use fixed event names and phase/outcome codes. They must not include the re
 - Full repository gate: `npm run release:check` plus `npm run inventory:check`.
 - Recovery: disable SSO's resolver caller or remove its dedicated caller secret. The route fails closed. No submission, image, contact, consent, Fanmass result, or report is changed by resolver rollback.
 - This lookup does not establish that a photo's Blob/ImgBB copies, backup copies, Fanmass derivatives, or Messmass projections have been erased. Those remain product erasure steps; backup restore/replay coverage is blocked on Camera #509 and the sequenced #727 work.
+
+The subsequent Camera intake is a separate operation:
+`POST /api/internal/privacy/erase` accepts only the verified `request_id` and
+exact photo references returned by this resolver. It fences matching records
+immediately and returns per-photo progress; it does not claim that external
+media or downstream product data have been deleted. See
+[Camera record erasure](CAMERA_RECORD_ERASURE.md) for the worker and recovery
+contract.
+
+The subsequent Camera intake is a separate operation:
+`POST /api/internal/privacy/erase` accepts only the verified `request_id` and
+exact photo references returned by this resolver. It fences matching records
+immediately and returns per-photo progress; it does not claim that external
+media or downstream product data have been deleted. See
+[Camera record erasure](CAMERA_RECORD_ERASURE.md) for the worker and recovery
+contract.

@@ -45,13 +45,14 @@ test('no photo at all is not public', () => {
 
 test('the query clauses express the same rule', () => {
   const clauses = publiclyVisibleClauses(['e1', 'u1']);
-  assert.equal(clauses.length, 6);
+  assert.equal(clauses.length, 7);
   assert.deepEqual(clauses[0], { isArchived: { $ne: true } });
   assert.deepEqual(clauses[1], { 'mediaHealth.broken': { $ne: true } }, 'a picture that is gone is not public');
   assert.deepEqual(clauses[2], { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } });
   assert.deepEqual(clauses[3], { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } });
-  assert.deepEqual(clauses[4], { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: ['e1', 'u1'] } }] });
-  const review = clauses[5] as { $and: object[] };
+  assert.deepEqual(clauses[4], { 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } });
+  assert.deepEqual(clauses[5], { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: ['e1', 'u1'] } }] });
+  const review = clauses[6] as { $and: object[] };
   assert.deepEqual(review.$and[0], plainPhotoClause, 'a plain photo: no kind or original');
   assert.deepEqual(review.$and[1], { reviewStatus: { $nin: ['pending_review', 'rejected'] } });
   assert.doesNotMatch(JSON.stringify(clauses), /tryon_result/, 'a stored try-on result has no branch that lets it in');

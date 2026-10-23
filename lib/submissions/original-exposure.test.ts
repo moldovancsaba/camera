@@ -29,6 +29,8 @@ const ALLOWED: Record<string, string> = {
   'lib/submissions/delete-files.ts': 'reads the URL only to delete the file with the submission; returns counts, never a URL',
   'lib/submissions/public-image.ts': 'the public image resolver, which refuses the original when a reframe record exists',
   'app/api/internal/purge-unconsented-captures/route.ts': 'scheduled server-only cleanup deletes expired unconsented photos; its response contains counts only',
+  'app/api/internal/privacy/process-erasure/route.ts': 'internal erasure worker reads encrypted original media references to remove provider objects; its response contains counts and states only',
+  'lib/privacy/erasure.ts': 'encrypts and decrypts media deletion references for the restricted erasure worker; no public surface reads the values',
 };
 
 const PUBLIC_SURFACES = [

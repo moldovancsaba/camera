@@ -11,6 +11,7 @@
 import { ObjectId, type Db, type Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 const TOKEN = /^[A-Za-z0-9_-]{16,64}$/;
 
@@ -32,7 +33,8 @@ export function shareLookupFilter(id: string): Document | null {
 export async function findShareSubmission(db: Db, id: string): Promise<ShareLookup | null> {
   const filter = shareLookupFilter(id);
   if (!filter) return null;
-  const doc = await db.collection(COLLECTIONS.SUBMISSIONS).findOne(filter);
+  // Keep the id/token fields at the query root so existing indexed lookup behavior remains intact.
+  const doc = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ ...filter, ...PRIVACY_ERASURE_ACTIVE_FILTER });
   if (!doc) return null;
   return { doc, byToken: typeof doc.shareToken === 'string' && doc.shareToken === id };
 }

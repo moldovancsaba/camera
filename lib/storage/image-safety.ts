@@ -17,6 +17,7 @@ import type { Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import sharp from 'sharp';
 import { COLLECTIONS, type ImageCopy } from '@/lib/db/schemas';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { hasVerifiableConsentAudit } from '@/lib/events/consent-eligibility';
 import { isAllowedLogoUrl } from '@/lib/frame/logo';
 import { detectImageProvider } from '@/lib/imgbb/url';
@@ -124,7 +125,7 @@ export function needs(kind: SafetyKind, doc: Document): boolean {
 async function* pages(db: Db, after?: ObjectId): AsyncGenerator<Document[]> {
   let cursor = after;
   for (;;) {
-    const filter: Document = { submissionKind: { $ne: 'tryon_result' }, ...(cursor ? { _id: { $gt: cursor } } : {}) };
+    const filter: Document = { $and: [PRIVACY_ERASURE_ACTIVE_FILTER, { submissionKind: { $ne: 'tryon_result' }, ...(cursor ? { _id: { $gt: cursor } } : {}) }] };
     const rows = await db.collection(COLLECTIONS.SUBMISSIONS).find(filter, { projection: PROJECTION }).sort({ _id: 1 }).limit(PAGE).toArray();
     if (rows.length === 0) return;
     yield rows;
@@ -154,7 +155,7 @@ export interface ImageSafetyPlan {
 export async function planImageSafety(db: Db): Promise<ImageSafetyPlan> {
   const plan: ImageSafetyPlan = {
     pictures: 0,
-    tryOnResults: await db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ submissionKind: 'tryon_result' }),
+    tryOnResults: await db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ submissionKind: 'tryon_result', ...PRIVACY_ERASURE_ACTIVE_FILTER }),
     consentExcluded: 0,
     composed: { imgbbOnly: 0, blobOnly: 0, blobOnlyOldMirror: 0, both: 0, other: 0 },
     unframed: { blobOnly: 0, imgbbOnly: 0, both: 0, waiting: 0, rejected: 0, keptUnverified: 0 },
@@ -422,7 +423,7 @@ async function unframedRescueOne(db: Db, row: Document, deps: SafetyDeps): Promi
   if (copy.state !== 'verified') return { ok: false, reason: copy.error ?? 'the restored crop could not be verified', url: stored.url };
   // Restore the source only if the submission is still approved and the crop field is still empty.
   await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: id, reviewStatus: 'approved', 'photoReview.photoUrl': { $in: [null, ''] } },
+    { _id: id, reviewStatus: 'approved', 'photoReview.photoUrl': { $in: [null, ''] }, ...PRIVACY_ERASURE_ACTIVE_FILTER },
     { $set: { 'photoReview.photoUrl': stored.url } }
   );
   return { ok: true, bytes: file.buffer.length };

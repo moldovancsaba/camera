@@ -13,6 +13,7 @@
 
 import { GALLERY_CONSENT_VERSION } from '@/lib/events/gallery-consent';
 import { notWaitingOrRejectedClause } from '@/lib/submissions/visibility';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 /**
  * The ticked public-gallery box, kept as evidence on the photo (issue 554). An event that asks for the permission
@@ -41,6 +42,7 @@ export function buildPublishSelfiesFilter(eventKeys: string[], asked = false): R
     $and: [
       eventMatchFor(eventKeys),
       { submissionKind: { $ne: 'tryon_result' } },
+      PRIVACY_ERASURE_ACTIVE_FILTER,
       {
         $or: [
           { finalImageUrl: { $type: 'string' } },
@@ -58,5 +60,5 @@ export function buildPublishSelfiesFilter(eventKeys: string[], asked = false): R
 
 /** All plain photos of the event, never a stored try-on result (the `total` in the response). */
 export function buildEventSubmissionsFilter(eventKeys: string[]): Record<string, unknown> {
-  return { $and: [eventMatchFor(eventKeys), { submissionKind: { $ne: 'tryon_result' } }, notWaitingOrRejectedClause] };
+  return { $and: [eventMatchFor(eventKeys), { submissionKind: { $ne: 'tryon_result' } }, PRIVACY_ERASURE_ACTIVE_FILTER, notWaitingOrRejectedClause] };
 }

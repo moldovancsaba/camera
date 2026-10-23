@@ -161,6 +161,7 @@ export default async function AdminSubmissionsPage({
     const query: Record<string, unknown> = {
       isArchived: false,
       retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+      'privacyErasure.state': { $nin: ['fenced', 'record_erased'] },
     };
     if (search) {
       query.$or = [

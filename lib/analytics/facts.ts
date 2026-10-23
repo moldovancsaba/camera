@@ -89,6 +89,7 @@ export const PHOTO_PROJECTION = {
   consentStatus: 1,
   analyticsDeletion: 1,
   retentionStatus: 1,
+  'privacyErasure.state': 1,
   consentExpiredAt: 1,
   updatedAt: 1,
   'mediaHealth.broken': 1,

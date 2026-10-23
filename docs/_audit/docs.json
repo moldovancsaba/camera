@@ -87,6 +87,7 @@
   {"file": "docs/_research/GALLERY_MULTISELECT_RESEARCH.md", "title": "Event gallery: selecting several photos at once (research, camera#488, owner report 207)"},
   {"file": "docs/_research/SLIDESHOW_FREEZE_RESEARCH.md", "title": "Giant-screen slideshow freeze: root-cause research and fix plan"},
   {"file": "docs/landing-page-css-handoff.md", "title": "Landing Page CSS Handoff"},
+  {"file": "docs/privacy/CAMERA_RECORD_ERASURE.md", "title": "Camera record erasure and tombstone"},
   {"file": "docs/privacy/ERASURE_DATA_INVENTORY.md", "title": "Cross-product right-to-erasure data inventory"},
   {"file": "docs/privacy/ERASURE_SUBJECT_RESOLVER.md", "title": "Camera verified-subject resolver"},
   {"file": "gds_fix_handover.md", "title": "GDS fix handover: camera"}

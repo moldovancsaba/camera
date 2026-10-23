@@ -18,6 +18,14 @@ Camera is no longer just a flat event-photo tool. The system now behaves as:
   - user and access management
 - **Apps**
   - Events
+  - Privacy erasure: verified SSO cases resolve to exact Camera photo
+    references, fence them from active photo surfaces, and scrub source rows to
+    minimal tombstones. Provider media and downstream products have separate
+    deletion obligations; see `docs/privacy/CAMERA_RECORD_ERASURE.md`.
+  - Privacy erasure: verified SSO cases resolve to exact Camera photo
+    references, fence them from active photo surfaces, and scrub source rows to
+    minimal tombstones. Provider media and downstream products have separate
+    deletion obligations; see `docs/privacy/CAMERA_RECORD_ERASURE.md`.
 
 ## 2. Top-level layers
 

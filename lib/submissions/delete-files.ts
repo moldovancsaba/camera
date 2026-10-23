@@ -26,6 +26,7 @@ import { deleteImage } from '@/lib/imgbb/upload';
 import { isRenderableImgbbImageUrl } from '@/lib/imgbb/url';
 import { logWarn } from '@/lib/observability/logger';
 import { blobStoreHostFromToken } from '@/lib/submissions/original-image';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 /** Display fields another submission may legitimately share a file through. */
 const SHARED_URL_FIELDS = ['imageUrl', 'finalImageUrl', 'originalImageUrl', 'previewImageUrl', 'screenImageUrl'] as const;
@@ -130,7 +131,7 @@ export function defaultDeps(db: Db): SubmissionFilesDeps {
       const others = await db
         .collection(COLLECTIONS.SUBMISSIONS)
         .find(
-          { _id: { $ne: selfId } as never, $or: SHARED_URL_FIELDS.map((field) => ({ [field]: { $in: urls } })) },
+          { $and: [PRIVACY_ERASURE_ACTIVE_FILTER, { _id: { $ne: selfId } as never, $or: SHARED_URL_FIELDS.map((field) => ({ [field]: { $in: urls } })) }] },
           { projection }
         )
         .toArray();

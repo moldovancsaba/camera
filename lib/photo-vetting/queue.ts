@@ -8,6 +8,7 @@ import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { CONSENT_ELIGIBLE_FILTER, CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER } from '@/lib/events/consent-eligibility';
 import { guestContactOf, processingContactMongoFilter } from '@/lib/submissions/guest-contact';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export type QueueStatus = 'pending_review' | 'rejected' | 'approved';
 
@@ -78,6 +79,7 @@ export function queueFilter(eventUuid: string, status: QueueStatus): Document {
         reviewStatus: status,
         isArchived: { $ne: true },
         retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+        ...PRIVACY_ERASURE_ACTIVE_FILTER,
       },
     ],
   };
@@ -100,10 +102,10 @@ export async function countPhotoQueue(db: Db, eventUuid: string): Promise<Record
   const [pending, rejected, approved, consentPending, consentUnknown] = await Promise.all([
     ...QUEUE_STATUSES.map((status) => db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(queueFilter(eventUuid, status))),
     db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({
-      $and: [eventFilter, CONSENT_PENDING_FILTER, { photoReview: { $exists: true }, isArchived: { $ne: true }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } }],
+      $and: [eventFilter, CONSENT_PENDING_FILTER, { photoReview: { $exists: true }, isArchived: { $ne: true }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] }, ...PRIVACY_ERASURE_ACTIVE_FILTER }],
     }),
     db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({
-      $and: [eventFilter, CONSENT_UNKNOWN_FILTER, { photoReview: { $exists: true }, isArchived: { $ne: true }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } }],
+      $and: [eventFilter, CONSENT_UNKNOWN_FILTER, { photoReview: { $exists: true }, isArchived: { $ne: true }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] }, ...PRIVACY_ERASURE_ACTIVE_FILTER }],
     }),
   ]);
   return { pending_review: pending, rejected, approved, consentPending, consentUnknown };
@@ -126,6 +128,7 @@ export async function countWaitingPhotos(db: Db, eventUuids: readonly string[] |
           ...CONSENT_ELIGIBLE_FILTER,
           ...processingContactMongoFilter,
           retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+          ...PRIVACY_ERASURE_ACTIVE_FILTER,
           eventId: eventUuids ? { $in: [...eventUuids] } : { $type: 'string' },
         },
       },
