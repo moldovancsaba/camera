@@ -43,3 +43,7 @@ The current path controls application visibility and durable deletion requests. 
 4. For legacy cleanup or backfill, generate and review a dry-run inventory first. Never infer a participant address from a reviewer address, a display name, or an anonymous placeholder.
 
 See [Photo vetting](PHOTO_VETTING_PLAN.md), [Fanmass results in Camera](FANMASS_RESULTS_IN_CAMERA.md), and the [Camera Atlas integration contract](MESSMASS_FANMASS_INTEGRATION.md).
+
+## Verified right-to-erasure case lookup
+
+The case-based resolver is documented in [ERASURE_SUBJECT_RESOLVER.md](privacy/ERASURE_SUBJECT_RESOLVER.md). It consumes case-bound proof from SSO, uses exact account, verified-contact, or photo-ID matches, returns opaque Camera references, and never treats an anonymous sentinel or reviewer field as participant identity. The resolver is read-only; SSO's coordinator must collect every page and must not dispatch a partial page as a complete target list. Its service credentials are not configured by a code merge, and no case is completed by resolution alone.

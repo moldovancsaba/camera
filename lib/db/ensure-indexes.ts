@@ -229,6 +229,26 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .collection(COLLECTIONS.SUBMISSIONS)
       .createIndex({ 'userInfo.email': 1 }, { sparse: true, name: 'submissions_userInfo_email_sparse' })
   );
+  // Legacy addresses can retain user-entered letter case. The resolver uses
+  // this matching collation while keeping stable account IDs case-sensitive.
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db
+      .collection(COLLECTIONS.SUBMISSIONS)
+      .createIndex({ 'userInfo.email': 1 }, { sparse: true, collation: { locale: 'en', strength: 2 }, name: 'submissions_userInfo_email_case_insensitive' })
+  );
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db
+      .collection(COLLECTIONS.SUBMISSIONS)
+      .createIndex({ userEmail: 1 }, { sparse: true, collation: { locale: 'en', strength: 2 }, name: 'submissions_userEmail_case_insensitive' })
+  );
+  // Exact participant e-mail lookups for the internal privacy resolver. This
+  // indexes the canonical contact only; reviewer and legacy mirrors are handled
+  // by separate exact filters and are never returned from the resolver.
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db
+      .collection(COLLECTIONS.SUBMISSIONS)
+      .createIndex({ 'guestContact.email': 1 }, { sparse: true, collation: { locale: 'en', strength: 2 }, name: 'submissions_guestContact_email_case_insensitive' })
+  );
   await track(COLLECTIONS.SUBMISSIONS, () =>
     db
       .collection(COLLECTIONS.SUBMISSIONS)

@@ -80,7 +80,7 @@ AUTH_MARKERS = [
     "requireCameraIntegrationAuth", "getServerSession", "isGlobalAdminSession", "getAdminUser",
     "validateApiKey", "require_api_key", "api_key", "verifyMachineToken", "checkAuth",
     "withErrorHandler", "assertAdmin", "requireSession", "requireAdmin",
-    "assertInternalSavetheworldSecret", "assertInternalFanmassSecret", "assertCameraSecret", "requirePartnerWrite",
+    "assertInternalSavetheworldSecret", "assertInternalFanmassSecret", "assertCameraSecret", "requireCameraPrivacyResolver", "requirePartnerWrite",
     "requireProjectWrite", "validateOrganizationAccess",
 ]
 

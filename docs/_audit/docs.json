@@ -88,6 +88,7 @@
   {"file": "docs/_research/SLIDESHOW_FREEZE_RESEARCH.md", "title": "Giant-screen slideshow freeze: root-cause research and fix plan"},
   {"file": "docs/landing-page-css-handoff.md", "title": "Landing Page CSS Handoff"},
   {"file": "docs/privacy/ERASURE_DATA_INVENTORY.md", "title": "Cross-product right-to-erasure data inventory"},
+  {"file": "docs/privacy/ERASURE_SUBJECT_RESOLVER.md", "title": "Camera verified-subject resolver"},
   {"file": "gds_fix_handover.md", "title": "GDS fix handover: camera"}
  ]
 }
