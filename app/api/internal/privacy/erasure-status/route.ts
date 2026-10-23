@@ -39,18 +39,27 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const db = await connectToDatabase();
   const rows = await db.collection(COLLECTIONS.PRIVACY_ERASURE_TOMBSTONES)
     .find({ _id: { $in: ids.map((id) => new ObjectId(id)) }, requestId })
-    .project({ _id: 1, status: 1, recordErasedAt: 1, updatedAt: 1 })
+    .project({ _id: 1, status: 1, recordErasedAt: 1, mediaErasedAt: 1, mediaTasks: 1, mediaLastErrorCode: 1, updatedAt: 1 })
     .toArray();
   const byId = new Map(rows.map((row) => [String(row._id), row]));
   const photos = ids.map((id) => {
     const row = byId.get(id);
     const status = row && typeof row.status === 'string' ? row.status as ErasureTargetState : 'not_found';
-    return { photo_id: id, status, record_erased_at: typeof row?.recordErasedAt === 'string' ? row.recordErasedAt : null };
+    const mediaTasks = Array.isArray(row?.mediaTasks) ? row.mediaTasks : [];
+    return {
+      photo_id: id,
+      status,
+      record_erased_at: typeof row?.recordErasedAt === 'string' ? row.recordErasedAt : null,
+      media_erased_at: typeof row?.mediaErasedAt === 'string' ? row.mediaErasedAt : null,
+      media_error_code: typeof row?.mediaLastErrorCode === 'string' ? row.mediaLastErrorCode : null,
+      unresolved_media_tasks: mediaTasks.filter((task) => task && ['unknown', 'failed'].includes(String(task.status))).length,
+      pending_media_tasks: mediaTasks.filter((task) => task && ['pending', 'processing', 'retry'].includes(String(task.status))).length,
+    };
   });
   return apiSuccess({
     version: 1,
     operation_id: requestId,
-    status: photos.every((photo) => photo.status === 'record_erased' || photo.status === 'media_pending') ? 'record_erasure_complete' : 'in_progress',
+    status: photos.every((photo) => photo.status === 'media_erased') ? 'complete' : 'in_progress',
     photos,
   });
 });

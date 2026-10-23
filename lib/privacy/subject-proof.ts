@@ -11,8 +11,8 @@ let tokenRequest: Promise<CachedToken> | null = null;
 export interface SsoSubjectProof {
   version: 1;
   caseId: string;
-  subject: { kind: 'sso_user' | 'camera_photo'; id: string };
-  verifiedEmail?: { value: string; proof: 'sso_account_email_verified'; verifiedAt: string | null };
+  subject: { kind: 'sso_user' | 'camera_photo' | 'verified_email'; id: string };
+  verifiedEmail?: { value: string; proof: 'sso_account_email_verified' | 'email_control'; verifiedAt: string | null };
 }
 
 export class PrivacySubjectProofError extends Error {
@@ -99,14 +99,17 @@ function isValidProof(value: unknown, expectedCaseId: string): value is SsoSubje
   const proof = value as Record<string, unknown>;
   if (proof.version !== 1 || proof.caseId !== expectedCaseId || !proof.subject || typeof proof.subject !== 'object' || Array.isArray(proof.subject)) return false;
   const subject = proof.subject as Record<string, unknown>;
-  if ((subject.kind !== 'sso_user' && subject.kind !== 'camera_photo') || typeof subject.id !== 'string' || !subject.id.trim() || subject.id.length > 256 || /[\u0000-\u001f]/.test(subject.id)) return false;
+  if (!['sso_user', 'camera_photo', 'verified_email'].includes(String(subject.kind)) || typeof subject.id !== 'string' || !subject.id.trim() || subject.id.length > 256 || /[\u0000-\u001f]/.test(subject.id)) return false;
   if (subject.kind === 'camera_photo' && !/^[A-Za-z0-9_-]{1,128}$/.test(subject.id)) return false;
   if (!isUuid(expectedCaseId)) return false;
   if (proof.verifiedEmail !== undefined) {
     if (!proof.verifiedEmail || typeof proof.verifiedEmail !== 'object' || Array.isArray(proof.verifiedEmail)) return false;
     const email = proof.verifiedEmail as Record<string, unknown>;
-    if (typeof email.value !== 'string' || email.proof !== 'sso_account_email_verified' || !(email.verifiedAt === null || typeof email.verifiedAt === 'string')) return false;
+    if (typeof email.value !== 'string' || !['sso_account_email_verified', 'email_control'].includes(String(email.proof)) || !(email.verifiedAt === null || typeof email.verifiedAt === 'string')) return false;
+    if (subject.kind === 'verified_email' && email.proof !== 'email_control') return false;
+    if (subject.kind === 'sso_user' && email.proof !== 'sso_account_email_verified') return false;
   }
+  if (subject.kind === 'verified_email' && !proof.verifiedEmail) return false;
   return true;
 }
 

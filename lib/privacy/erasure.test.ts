@@ -33,6 +33,24 @@ test('media reference envelope is encrypted and authenticated', () => {
   assert.throws(() => decryptMediaReferences(envelope, 'rotated-secret'));
 });
 
+test('encrypted media handoff keeps only URLs and safe image-copy delete handles', () => {
+  const envelope = encryptMediaReferences({
+    imageUrl: 'https://blob.example/photo.jpg',
+    screenImageBytes: 123456,
+    userEmail: 'private@example.com',
+    reviewNotes: 'do not retain',
+    fanmassAnalysisReview: { note: 'do not retain' },
+    imageCopies: [{ role: 'composed', store: 'imgbb', state: 'verified', url: 'https://i.ibb.co/a/b.jpg', deleteUrl: 'https://ibb.co/delete/token', fileSize: 12, reviewer: 'private@example.com' }],
+  }, 'test-media-key-that-is-at-least-32-bytes-long');
+  assert.ok(envelope);
+  const clear = decryptMediaReferences(envelope, 'test-media-key-that-is-at-least-32-bytes-long');
+  assert.equal('screenImageBytes' in clear, false);
+  assert.equal('userEmail' in clear, false);
+  assert.equal('reviewNotes' in clear, false);
+  assert.equal('fanmassAnalysisReview' in clear, false);
+  assert.deepEqual(clear.imageCopies, [{ role: 'composed', store: 'imgbb', state: 'verified', url: 'https://i.ibb.co/a/b.jpg', deleteUrl: 'https://ibb.co/delete/token' }]);
+});
+
 test('minimal erased source row contains only the immutable photo key and retry fence', () => {
   const row = minimalErasedSubmission({ photoId, requestId, fencedAt: '2026-10-23T12:00:00.000Z', recordErasedAt: '2026-10-23T12:02:00.000Z' });
   assert.deepEqual(Object.keys(row).sort(), ['_id', 'privacyErasure']);

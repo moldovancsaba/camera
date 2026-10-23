@@ -9,6 +9,7 @@
       "photoKey": "submissions._id",
       "collections": [
         {"name": "submissions", "contains": ["contact", "consent", "photo references", "vetting", "fanmass review"], "deletion": "submission erasure and media adapter; provider verification incomplete"},
+        {"name": "privacy_erasure_tombstones", "contains": ["case UUID", "photo key", "encrypted media references", "URL-free provider task receipts"], "deletion": "retained as minimal anti-resurrection and completion evidence; no plaintext media URL or participant identity"},
         {"name": "photo_deletion_analytics", "contains": ["event ID", "submission ID", "deletion category", "review status"], "deletion": "minimal analytics row retained; policy disposition unresolved"},
         {"name": "email_registrations", "contains": ["event ID", "email", "name", "delivery state"], "deletion": "no account erasure cascade inventoried"},
         {"name": "email_follow_ups", "contains": ["hashed event/email key", "delivery state"], "deletion": "no account erasure cascade inventoried"},
@@ -18,7 +19,7 @@
         {"name": "activity_log", "contains": ["operator identity", "action and outcome"], "retention": "weekly export policy; platform logs external"},
         {"name": "web_sessions", "contains": ["server session payload"], "retention": "session expiry"}
       ],
-      "media": ["Vercel Blob", "ImgBB", "recorded imageCopies", "rescue copies"],
+      "media": ["Vercel Blob", "ImgBB", "recorded imageCopies", "rescue copies", "unsupported historical hosts remain manual review"],
       "backupStatus": "incomplete_and_provider_inventory_unverified",
       "blockingIssue": "moldovancsaba/camera#509"
     },
@@ -48,8 +49,8 @@
     }
   },
   "externalSurfaces": [
-    {"name": "Vercel Blob", "owner": "Camera", "state": "submission deletion supported; complete historical object inventory and independent backup unknown"},
-    {"name": "ImgBB", "owner": "Camera", "state": "saved delete link requested; deletion is best-effort and may remain unresolved"},
+    {"name": "Vercel Blob", "owner": "Camera", "state": "case erasure worker deletes by exact URL and verifies origin plus public URL; CDN propagation may take up to 60 seconds; complete historical inventory and independent backup unknown"},
+    {"name": "ImgBB", "owner": "Camera", "state": "case erasure worker requires saved allowlisted delete link and verifies the public URL; missing legacy links remain unresolved"},
     {"name": "hosting logs", "owner": "each product/hosting provider", "state": "retention outside app-level deletion APIs"},
     {"name": "MongoDB backups", "owner": "operations", "state": "backup schedule and restore replay evidence not verified"},
     {"name": "CDN/cache", "owner": "storage/hosting provider", "state": "provider-specific purge/expiry not verified"}

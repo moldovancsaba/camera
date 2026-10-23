@@ -47,6 +47,8 @@ function emailMatchBranches(email: string): Document[] {
 }
 
 export function normalizedVerifiedEmail(proof: SsoSubjectProof): string | null {
+  if (proof.subject.kind === 'verified_email' && proof.verifiedEmail?.proof !== 'email_control') return null;
+  if (proof.subject.kind === 'sso_user' && proof.verifiedEmail && proof.verifiedEmail.proof !== 'sso_account_email_verified') return null;
   const email = proof.verifiedEmail?.value.trim().toLowerCase();
   return email && EMAIL_PATTERN.test(email) && !INVALID_EMAILS.has(email) ? email : null;
 }
@@ -58,6 +60,10 @@ export function buildSubjectMatchFilter(proof: SsoSubjectProof): Document | null
     const alternatives: Document[] = [{ submissionId: proof.subject.id }];
     if (ObjectId.isValid(proof.subject.id)) alternatives.push({ _id: new ObjectId(proof.subject.id) });
     identityFilter = { $or: alternatives };
+  } else if (proof.subject.kind === 'verified_email') {
+    const email = normalizedVerifiedEmail(proof);
+    if (!email) return null;
+    identityFilter = { 'metadata.adminGalleryUpload': { $ne: true }, $or: emailMatchBranches(email) };
   } else {
     const escapedId = proof.subject.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // Account IDs stay case-sensitive even when the operation uses a collation
@@ -72,17 +78,20 @@ export function buildSubjectMatchFilter(proof: SsoSubjectProof): Document | null
 
 /** A stable account conflict on a verified-email match makes the whole resolution ambiguous. */
 export function buildEmailConflictFilter(proof: SsoSubjectProof): Document | null {
-  if (proof.subject.kind !== 'sso_user') return null;
+  if (proof.subject.kind !== 'sso_user' && proof.subject.kind !== 'verified_email') return null;
   const email = normalizedVerifiedEmail(proof);
   if (!email) return null;
   return {
     'metadata.adminGalleryUpload': { $ne: true },
     ...PRIVACY_ERASURE_ACTIVE_FILTER,
     userId: { $exists: true },
-    $nor: [
+    $nor: proof.subject.kind === 'sso_user' ? [
       { userId: /^$/ },
       { userId: /^anonymous$/ },
       { userId: new RegExp(`^${proof.subject.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) },
+    ] : [
+      { userId: /^$/ },
+      { userId: /^anonymous$/ },
     ],
     $or: emailMatchBranches(email),
   };

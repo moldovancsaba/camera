@@ -100,6 +100,7 @@
   {"path": "/api/internal/privacy/erase", "methods": ["POST"], "file": "app/api/internal/privacy/erase/route.ts", "auth_markers": ["requireCameraPrivacyResolver", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/internal/privacy/erasure-status", "methods": ["POST"], "file": "app/api/internal/privacy/erasure-status/route.ts", "auth_markers": ["requireCameraPrivacyResolver", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/internal/privacy/process-erasure", "methods": ["GET", "POST"], "file": "app/api/internal/privacy/process-erasure/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
+  {"path": "/api/internal/privacy/process-media-erasure", "methods": ["GET", "POST"], "file": "app/api/internal/privacy/process-media-erasure/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/internal/privacy/resolve-subject", "methods": ["POST"], "file": "app/api/internal/privacy/resolve-subject/route.ts", "auth_markers": ["requireCameraPrivacyResolver", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/internal/purge-unconsented-captures", "methods": ["GET"], "file": "app/api/internal/purge-unconsented-captures/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/internal/savetheworld/events/[eventId]/publish-selfies", "methods": ["POST"], "file": "app/api/internal/savetheworld/events/[eventId]/publish-selfies/route.ts", "auth_markers": ["assertInternalSavetheworldSecret", "withErrorHandler"], "no_auth_marker": false},
