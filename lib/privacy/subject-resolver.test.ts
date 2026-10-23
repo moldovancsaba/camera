@@ -50,6 +50,23 @@ test('email conflict query only catches a competing stable account', () => {
   assert.doesNotMatch(JSON.stringify(filter), /review/);
 });
 
+test('verified-email control resolves exact guest contact fields but blocks stable-account ambiguity', () => {
+  const proof: SsoSubjectProof = {
+    version: 1,
+    caseId: 'b44bda8b-a031-4a29-a9a5-0d0a340e7eab',
+    subject: { kind: 'verified_email', id: 'fan@example.com' },
+    verifiedEmail: { value: 'Fan@Example.com', proof: 'email_control', verifiedAt: '2026-10-23T12:00:00.000Z' },
+  };
+  const filter = buildSubjectMatchFilter(proof)!;
+  assert.match(JSON.stringify(filter), /guestContact\.email/);
+  assert.match(JSON.stringify(filter), /userInfo\.email/);
+  assert.doesNotMatch(JSON.stringify(filter), /reviewer/);
+  assert.equal(normalizedVerifiedEmail(proof), 'fan@example.com');
+  const conflict = buildEmailConflictFilter(proof)!;
+  assert.deepEqual(conflict.$nor, [{ userId: /^$/ }, { userId: /^anonymous$/ }]);
+  assert.equal(buildSubjectMatchFilter({ ...proof, verifiedEmail: { ...proof.verifiedEmail!, proof: 'sso_account_email_verified' } }), null);
+});
+
 test('photo DTO contains opaque product references only', () => {
   const raw = new ObjectId();
   const result = toCameraPhotoMatch({ _id: raw, submissionId: 'submission-uuid', eventId: 'e-1', eventIds: ['e-2', 'e-1'], partnerId: 'p-1', userId: 'sso-account-17', userEmail: 'guest@example.com' }, 'sso-account-17');
