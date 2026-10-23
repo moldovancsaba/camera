@@ -3,6 +3,7 @@ import { closeConnection, connectToDatabase } from '@/lib/db/mongodb';
 import { dispatchPendingSubmissionEmailForSubmission } from '@/lib/email/submission-result-email';
 import { UNPUBLISHED_REVIEW_STATUSES } from '@/lib/submissions/visibility';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 interface SendTodayOptions {
   dateLabel: string;
@@ -93,7 +94,7 @@ async function applyMetadataPatch(
   if (!submissionId || Object.keys(sanitized).length === 0) return;
 
   await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submissionId },
+    { _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER },
     { $set: sanitized }
   );
 }
@@ -108,6 +109,7 @@ async function runForDate(db: Awaited<ReturnType<typeof connectToDatabase>>, opt
 
   // A stored try-on result (an event that ran it earlier) is no picture of a guest to send a link for (issue 557).
   baseQuery.submissionKind = { $ne: 'tryon_result' };
+  Object.assign(baseQuery, PRIVACY_ERASURE_ACTIVE_FILTER);
 
   // A vetted photo that is waiting or was rejected gets no email from this script (camera#270): its guest is emailed when it is approved.
   baseQuery.reviewStatus = { $nin: [...UNPUBLISHED_REVIEW_STATUSES] };

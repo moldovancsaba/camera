@@ -6,6 +6,7 @@ import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibili
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { isCountableVisit } from '@/lib/short-links/device';
 import { recordServerJourney } from '@/lib/journey/store';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,7 @@ export async function GET(
     }
 
     const db = await connectToDatabase();
-    const doc = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: new ObjectId(id) });
+    const doc = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: new ObjectId(id), ...PRIVACY_ERASURE_ACTIVE_FILTER });
     // A photo that is not public (pending, rejected, archived, removed from its events) cannot be downloaded: the same answer as
     // an unknown id (camera#262).
     if (!doc || typeof doc !== 'object' || !isPubliclyVisible(visibilityInputOf(doc))) {

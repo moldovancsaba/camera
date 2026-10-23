@@ -1,5 +1,6 @@
 import { eventMatchFor, galleryConsentMarkerClause } from './publishSelfies';
 import { notWaitingOrRejectedClause } from '@/lib/submissions/visibility';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 /**
  * Filter for GET /api/internal/savetheworld/pledges (savetheworld's public wall
@@ -13,6 +14,7 @@ export function buildWallFilter(eventKeys: string[], asked = false): Record<stri
   return {
     $and: [
       eventMatchFor(eventKeys),
+      PRIVACY_ERASURE_ACTIVE_FILTER,
       { submissionKind: { $ne: 'tryon_result' } },
       { isShareVisible: true },
       ...(asked ? [galleryConsentMarkerClause] : []),

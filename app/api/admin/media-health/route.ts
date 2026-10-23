@@ -15,6 +15,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { scanBatch, scanFilter } from '@/lib/media/broken';
 import { brokenPictureRows, scanPictures } from '@/lib/media/pictures';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export const maxDuration = 60;
 
@@ -29,7 +30,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const submissions = db.collection(COLLECTIONS.SUBMISSIONS);
   const [unchecked, broken, checked, goneItems] = await Promise.all([
     submissions.countDocuments(scanFilter(7, new Date())),
-    submissions.countDocuments({ 'mediaHealth.broken': true }),
+    submissions.countDocuments({ 'mediaHealth.broken': true, ...PRIVACY_ERASURE_ACTIVE_FILTER }),
     db.collection(COLLECTIONS.PICTURE_HEALTH).countDocuments({}),
     brokenPictureRows(db),
   ]);

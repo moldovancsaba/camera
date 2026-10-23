@@ -184,6 +184,7 @@ export default async function PartnerDetailPage({
       .find({
         partnerId: partner.partnerId,
         isArchived: false,
+        'privacyErasure.state': { $nin: ['fenced', 'record_erased'] },
         hiddenFromPartner: false,
         // A vetted photo that is waiting or rejected is reviewed under the event's Photos tab, not shown here (camera#270).
         $or: [{ photoReview: { $exists: false } }, { reviewStatus: 'approved' }],
@@ -199,6 +200,7 @@ export default async function PartnerDetailPage({
           $match: {
             partnerId: partner.partnerId,
             isArchived: false,
+            'privacyErasure.state': { $nin: ['fenced', 'record_erased'] },
             hiddenFromPartner: false,
           },
         },

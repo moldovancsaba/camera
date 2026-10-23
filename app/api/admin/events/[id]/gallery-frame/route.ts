@@ -8,10 +8,11 @@
  */
 
 import { NextRequest } from 'next/server';
+import { del } from '@vercel/blob';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
-import { uploadImage } from '@/lib/imgbb/upload';
+import { deleteImage, uploadImage } from '@/lib/imgbb/upload';
 import { fetchImageBuffer } from '@/lib/media/image-buffer';
 import { frameGalleryPhoto, loadGalleryFrames, pickGalleryFrame, type GalleryFrameDeps } from '@/lib/gallery/frame';
 import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
@@ -19,6 +20,7 @@ import { runAfterResponse } from '@/lib/api/run-after-response';
 import { logWarn } from '@/lib/observability/logger';
 import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound } from '@/lib/api';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export const MAX_FRAMED_AT_ONCE = 25;
 
@@ -56,7 +58,7 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
 
   const rows = await db
     .collection(COLLECTIONS.SUBMISSIONS)
-    .find({ _id: { $in: ids.map((v) => new ObjectId(v)) }, $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] })
+    .find({ $and: [{ _id: { $in: ids.map((v) => new ObjectId(v)) }, $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] }, PRIVACY_ERASURE_ACTIVE_FILTER] })
     .toArray();
 
   const framed: Array<{ id: string; imageUrl: string }> = [];
@@ -82,8 +84,8 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
       const frame = pickGalleryFrame(frames)!;
       const photo = await defaultDeps.fetchImage(sourceUrl);
       const upload = await frameGalleryPhoto(photo, frame, `admin-gallery-framed-${eventUuid}-${Date.now()}`, defaultDeps);
-      await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-        { _id: row._id },
+      const updated = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+        { _id: row._id, ...PRIVACY_ERASURE_ACTIVE_FILTER },
         {
           $set: {
             imageUrl: upload.imageUrl,
@@ -107,6 +109,12 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
           $unset: { screenImageUrl: '', screenImageBytes: '' },
         }
       );
+      if (updated.matchedCount !== 1) {
+        await del(upload.imageUrl).catch(() => undefined);
+        await deleteImage(upload.deleteUrl, upload.imageUrl).catch(() => false);
+        skipped.push({ id, reason: 'the photo was removed while its frame was being added' });
+        continue;
+      }
       runAfterResponse(async () => {
         await ensureScreenPicture(db, { _id: row._id, imageUrl: upload.imageUrl, finalImageUrl: upload.imageUrl });
       });

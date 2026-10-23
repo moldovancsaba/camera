@@ -500,4 +500,11 @@ The event menu **Analytics** and the Operations hub **Analytics** show the measu
 
 Before enabling SSO to call it, configure the dedicated `CAMERA_PRIVACY_RESOLVER_SECRET` on Camera and the coordinator, configure the confidential `SSO_PRIVACY_RESOLVER_CLIENT_ID` / `SSO_PRIVACY_RESOLVER_CLIENT_SECRET` pair on Camera, and set the same resolver client ID in SSO. Allow only `sso:privacy.resolve`; do not reuse broad Messmass, Fanmass, or savetheworld credentials. Verify SSO's privacy case keyring is healthy. Do not put secret values in GitHub issues, the project board, or release notes. Missing or mismatched credentials fail closed.
 
+The record-erasure intake and scrubber also require a separate high-entropy
+`CAMERA_PRIVACY_MEDIA_KEY` (at least 32 UTF-8 bytes). It encrypts provider media
+references in `privacy_erasure_tombstones` and must not be reused as the resolver
+caller credential. The intake returns 503 before fencing if it is unavailable.
+The scheduled scrubber runs every two minutes; an orphan fence without a
+durable receipt stays private and is retried after the key is configured.
+
 An authorized operator provisions the documented case-insensitive e-mail indexes with `npm run db:ensure-indexes` after reviewing the index plan and current Atlas load. This PR deliberately does not run that command against production. Test the endpoint only with a synthetic approved case and synthetic records in a non-production database. SSO must fetch every page until `complete: true` before scheduling target work. `ambiguous` and `invalid_proof` are review states, not permission to guess. `503` and `429` are retryable with bounded backoff. A successful resolution is not a deletion receipt; do not tell a requester that erasure is complete until all product, provider, export, and backup targets have receipts. Camera #509 still blocks backup/restore completeness.

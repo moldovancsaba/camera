@@ -281,6 +281,14 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       )
   );
 
+  // Durable, participant-free work receipts for verified erasure. `_id` is the photo key; the state index keeps the bounded scrubber efficient.
+  await track(COLLECTIONS.PRIVACY_ERASURE_TOMBSTONES, () =>
+    db.collection(COLLECTIONS.PRIVACY_ERASURE_TOMBSTONES).createIndex(
+      { status: 1, createdAt: 1 },
+      { name: 'privacy_erasure_status_createdAt' },
+    )
+  );
+
   // --- slideshows ---
   await track(COLLECTIONS.SLIDESHOWS, () =>
     db

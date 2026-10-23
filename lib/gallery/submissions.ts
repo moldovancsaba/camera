@@ -27,6 +27,7 @@ export async function galleryFilter(eventUuid: string): Promise<Document> {
   };
   const notErasedOrDeleted = {
     retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
+    'privacyErasure.state': { $nin: ['fenced', 'record_erased'] },
     analyticsDeletion: { $nin: ['manual', 'automatic_no_login', 'automatic_other'] },
   };
   return {

@@ -1,6 +1,7 @@
 import type { Db } from 'mongodb';
 import { COLLECTIONS, generateId, generateTimestamp, type NewPartnerUserAccess, type PartnerAccessRole, type PartnerAppKey, type PartnerUserAccess } from '@/lib/db/schemas';
 import { resolveSsoUserIdByEmail } from '@/lib/sso/submission-account';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export interface PartnerAccessUpsertInput {
   partnerId: string;
@@ -26,6 +27,7 @@ function normalizeEmail(value: string): string {
 async function resolveUserNameByEmail(db: Db, email: string): Promise<string | null> {
   const row = await db.collection(COLLECTIONS.SUBMISSIONS).findOne(
     {
+      ...PRIVACY_ERASURE_ACTIVE_FILTER,
       $or: [
         { userEmail: email },
         { 'userInfo.email': email },

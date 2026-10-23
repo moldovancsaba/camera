@@ -16,6 +16,7 @@ import { loadGallerySubmissions, GALLERY_PAGE_SIZE } from '@/lib/gallery/submiss
 import { loadGalleryFrames } from '@/lib/gallery/frame';
 import { countBroken } from '@/lib/media/broken';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export default async function EventGalleryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,7 +37,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
   const hiddenBroken = await countBroken(db, [String(event.eventId), id]);
   // Photos an editor uploaded that have no frame yet (before the option existed, or uploaded with it off): the gallery offers to frame them in one press.
   const unframedUploadIds = hasFrame
-    ? (await db.collection(COLLECTIONS.SUBMISSIONS).find({ eventId: event.eventId, 'metadata.adminGalleryUpload': true, 'metadata.galleryFrame': { $ne: true }, isArchived: { $ne: true } }).project({ _id: 1 }).limit(500).toArray()).map((row) => String(row._id))
+    ? (await db.collection(COLLECTIONS.SUBMISSIONS).find({ eventId: event.eventId, 'metadata.adminGalleryUpload': true, 'metadata.galleryFrame': { $ne: true }, isArchived: { $ne: true }, ...PRIVACY_ERASURE_ACTIVE_FILTER }).project({ _id: 1 }).limit(500).toArray()).map((row) => String(row._id))
     : [];
   const slideshows = await db.collection(COLLECTIONS.SLIDESHOWS).find({ $or: [{ eventId: event.eventId }, { eventId: id }] }).sort({ createdAt: -1 }).toArray();
 

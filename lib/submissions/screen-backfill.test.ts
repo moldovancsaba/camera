@@ -30,7 +30,8 @@ const photos = (count: number): Row[] => Array.from({ length: count }, (_, i) =>
 
 test('the filter is photos of slideshow events that can be seen on a screen and lack a screen picture, from an id on', () => {
   const filter = screenBackfillFilter(['e1', 'e2'], id(5)) as { $and: Array<Record<string, unknown>> };
-  assert.deepEqual(filter.$and[0], { $or: [{ eventIds: { $in: ['e1', 'e2'] } }, { eventId: { $in: ['e1', 'e2'] } }] });
+  assert.deepEqual(filter.$and[0], { 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } });
+  assert.deepEqual(filter.$and[1], { $or: [{ eventIds: { $in: ['e1', 'e2'] } }, { eventId: { $in: ['e1', 'e2'] } }] });
   assert.deepEqual(filter.$and.find((c) => 'screenImageUrl' in c), { screenImageUrl: { $in: [null, ''] } });
   assert.deepEqual(filter.$and.find((c) => 'reviewStatus' in c), { reviewStatus: { $nin: ['pending_review', 'rejected'] } });
   assert.deepEqual(filter.$and.at(-1), { _id: { $gt: id(5) } });

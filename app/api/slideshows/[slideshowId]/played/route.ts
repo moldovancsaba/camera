@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import {
   withErrorHandler,
   checkRateLimit,
@@ -58,7 +59,7 @@ export const POST = withErrorHandler(
     const now = generateTimestamp();
 
     const result = await db.collection(COLLECTIONS.SUBMISSIONS).updateMany(
-      { _id: { $in: objectIds } },
+      { _id: { $in: objectIds }, ...PRIVACY_ERASURE_ACTIVE_FILTER },
       {
         $inc: {
           playCount: 1,

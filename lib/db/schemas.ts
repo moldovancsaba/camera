@@ -45,6 +45,8 @@ export const COLLECTIONS = {
   /** The QR texts of the default slideshow (issue 326, lib/library/qr-texts.ts): the short lines next to the QR code on the stage, a library of global items with an active flag; one is picked at random, once, when an event's default slideshow is made. */
   QR_TEXTS: 'qr_texts',
   SUBMISSIONS: 'submissions',
+  /** Minimal case-linked receipts that fence erased photos and hand protected media references to the separate media-erasure worker. */
+  PRIVACY_ERASURE_TOMBSTONES: 'privacy_erasure_tombstones',
   /** Minimal event-level tombstones for photos permanently deleted by a user or administrator; contain no photo, user, consent, or e-mail data. */
   PHOTO_DELETION_ANALYTICS: 'photo_deletion_analytics',
   /** Who registered at an event (epic 463, lib/email/triggers.ts): one row for each event and e-mail address, with whether the welcome e-mail went. */
@@ -913,6 +915,13 @@ export interface Submission {
   retentionStatus?: 'pending_erasure' | 'erasing' | 'erased';
   retentionExpiresAt?: string;
   retentionErasedAt?: string;
+  /** A verified privacy request permanently fences this photo from all normal reads and writes before its record is scrubbed. */
+  privacyErasure?: {
+    state: 'fenced' | 'record_erased';
+    requestId: string;
+    fencedAt: string;
+    recordErasedAt?: string;
+  };
   
   // Comprehensive metadata for tracking and analytics
   metadata: {

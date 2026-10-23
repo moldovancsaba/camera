@@ -11,6 +11,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { clearInactiveUserEmailsCache } from '@/lib/db/sso';
 import { setCameraAccountDisabledForEmail } from '@/lib/sso/submission-account';
 import { withErrorHandler } from '@/lib/api/withErrorHandler';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export const PATCH = withErrorHandler(async (
   request: NextRequest,
@@ -86,7 +87,7 @@ export const PATCH = withErrorHandler(async (
       const db = await connectToDatabase();
 
       const result = await db.collection(COLLECTIONS.SUBMISSIONS).updateMany(
-        { 'userInfo.email': decodedEmail },
+        { $and: [{ 'userInfo.email': decodedEmail }, PRIVACY_ERASURE_ACTIVE_FILTER] },
         {
           $set: {
             'userInfo.isActive': isActive,

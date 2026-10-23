@@ -32,6 +32,7 @@ import {
 import { dispatchPendingSubmissionEmailForSubmission } from '@/lib/email/submission-result-email';
 import { dispatchArrivedEmail } from '@/lib/email/triggers';
 import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { recordManualPhotoDeletion } from '@/lib/analytics/photo-deletion';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { safeLinkUrl } from '@/lib/events/consent';
@@ -95,7 +96,7 @@ async function applySubmissionMetadataPatch(
   }
 
   await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submissionId },
+    { _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER },
     { $set: sanitized }
   );
 }
@@ -130,7 +131,7 @@ export const DELETE = withErrorHandler(async (
   // Find the submission
   const submission = await db
     .collection(COLLECTIONS.SUBMISSIONS)
-    .findOne({ _id: new ObjectId(submissionId) });
+    .findOne({ _id: new ObjectId(submissionId), ...PRIVACY_ERASURE_ACTIVE_FILTER });
 
   if (!submission) {
     throw apiNotFound('Submission not found');
@@ -173,7 +174,7 @@ export const DELETE = withErrorHandler(async (
   // Permanently delete the submission
   const result = await db
     .collection(COLLECTIONS.SUBMISSIONS)
-    .deleteOne({ _id: new ObjectId(submissionId) });
+    .deleteOne({ _id: new ObjectId(submissionId), ...PRIVACY_ERASURE_ACTIVE_FILTER });
 
   if (result.deletedCount === 0) {
     throw new Error('Failed to delete submission');
@@ -208,7 +209,7 @@ export const GET = withErrorHandler(async (
 
   const db = await connectToDatabase();
   const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne(
-    { _id: new ObjectId(submissionId) },
+    { _id: new ObjectId(submissionId), ...PRIVACY_ERASURE_ACTIVE_FILTER },
     { projection: { userId: 1, eventId: 1, imageUrl: 1, finalImageUrl: 1, photoReview: 1, reviewStatus: 1 } },
   );
   if (!submission) throw apiNotFound('Submission not found');
@@ -277,7 +278,7 @@ export const PATCH = withErrorHandler(async (
 
   const submission = await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
-    .findOne({ _id: objectId });
+    .findOne({ _id: objectId, ...PRIVACY_ERASURE_ACTIVE_FILTER });
 
   if (!submission) {
     throw apiNotFound('Submission not found');
@@ -310,6 +311,7 @@ export const PATCH = withErrorHandler(async (
     }
     const draftFilter: Filter<Submission> = {
       _id: objectId,
+      ...PRIVACY_ERASURE_ACTIVE_FILTER,
       $and: [
         ...(isAdmin ? [] : [
           { 'userInfo.collectedAt': { $exists: false } },
@@ -347,6 +349,7 @@ export const PATCH = withErrorHandler(async (
     const linked = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
       {
         _id: objectId,
+        ...PRIVACY_ERASURE_ACTIVE_FILTER,
         $and: [
           { $or: [{ userId: 'anonymous' }, { userId: session.user.id }] },
           { $or: [
@@ -377,9 +380,11 @@ export const PATCH = withErrorHandler(async (
     if (email) {
       runAfterResponse(async () => {
         try {
+          const current = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: objectId, ...PRIVACY_ERASURE_ACTIVE_FILTER });
+          if (!current) return;
           const arrived = await dispatchArrivedEmail(db, { ...submission, userEmail: email, userName: name, userInfo, _id: objectId });
           if (arrived && Object.keys(arrived.metadataPatch).length > 0) {
-            await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne({ _id: objectId }, { $set: arrived.metadataPatch });
+            await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne({ _id: objectId, ...PRIVACY_ERASURE_ACTIVE_FILTER }, { $set: arrived.metadataPatch });
           }
         } catch (error) {
           console.warn('[email] The arrived e-mail could not be sent after account link', error instanceof Error ? error.message : error);
@@ -448,10 +453,11 @@ export const PATCH = withErrorHandler(async (
       const appendFilter: Filter<Submission> = submission.consentStatus === 'pending'
         ? {
             _id: objectId,
+            ...PRIVACY_ERASURE_ACTIVE_FILTER,
             consentStatus: 'pending',
             ...(typeof submission.consentExpiresAt === 'string' ? { consentExpiresAt: { $gt: now } } : {}),
           }
-        : { _id: objectId };
+        : { _id: objectId, ...PRIVACY_ERASURE_ACTIVE_FILTER };
       const consentUpdate = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
         appendFilter,
         {
@@ -522,6 +528,7 @@ export const PATCH = withErrorHandler(async (
       .updateOne(
         {
           _id: objectId,
+          ...PRIVACY_ERASURE_ACTIVE_FILTER,
           $or: [
             { retentionStatus: { $exists: false } },
             { retentionStatus: 'pending_erasure', retentionExpiresAt: { $gt: now } },

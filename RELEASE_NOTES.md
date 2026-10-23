@@ -1,5 +1,41 @@
 # RELEASE_NOTES.md
 
+## Unreleased — case-bound Camera photo erasure
+
+- **Added:** an authenticated internal intake accepts only a verified SSO case
+  and exact Camera photo references. Camera fences matching records from public
+  visibility, vetting, analysis, exports, and background image writes before a
+  scheduled worker replaces source rows with minimal erasure tombstones.
+- **Added:** encrypted, case-bound media-reference tombstones support retries
+  without retaining the original row's identity fields. The worker is bounded,
+  lease-protected, idempotent, and reports Camera database progress separately
+  from provider or downstream deletion.
+- **Operational limit:** this does not itself delete Blob/ImgBB copies, Fanmass
+  analysis, Messmass projections, or backup copies. Those sequenced product
+  stages and production configuration must complete before a request is
+  represented as fully erased. No production records were changed by this
+  implementation.
+- **Verification:** focused erasure contract tests and type-check passed; full
+  release checks run before opening the pull request.
+
+## Unreleased — case-bound Camera photo erasure
+
+- **Added:** an authenticated internal intake accepts only a verified SSO case
+  and exact Camera photo references. Camera fences matching records from public
+  visibility, vetting, analysis, exports, and background image writes before a
+  scheduled worker replaces source rows with minimal erasure tombstones.
+- **Added:** encrypted, case-bound media-reference tombstones support retries
+  without retaining the original row's identity fields. The worker is bounded,
+  lease-protected, idempotent, and reports Camera database progress separately
+  from provider or downstream deletion.
+- **Operational limit:** this does not itself delete Blob/ImgBB copies, Fanmass
+  analysis, Messmass projections, or backup copies. Those sequenced product
+  stages and production configuration must complete before a request is
+  represented as fully erased. No production records were changed by this
+  implementation.
+- **Verification:** focused erasure contract tests and type-check passed; full
+  release checks run before opening the pull request.
+
 ## Unreleased — resolve verified erasure subjects to exact Camera photos (2026-10-23)
 
 - **Added:** a read-only internal resolver that retrieves case-bound proof from SSO and returns exact Camera photo/submission/event/partner references. It accepts no caller-supplied identity values and returns no contact details, provider IDs, or image URLs.

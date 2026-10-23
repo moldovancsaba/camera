@@ -7,6 +7,7 @@
 import type { Db } from 'mongodb';
 
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 const FIELD = 'cameraAccountDisabled' as const;
 
@@ -16,6 +17,7 @@ export async function getInactiveUserEmailsFromMirror(db: Db): Promise<Set<strin
     .collection(COLLECTIONS.SUBMISSIONS)
     .distinct('userEmail', {
       [FIELD]: true,
+      ...PRIVACY_ERASURE_ACTIVE_FILTER,
       userEmail: { $exists: true, $nin: [null, '', 'anonymous@event'] },
     });
   const set = new Set<string>();
@@ -30,6 +32,7 @@ export async function resolveSsoUserIdByEmail(db: Db, email: string): Promise<st
   const row = await db.collection(COLLECTIONS.SUBMISSIONS).findOne(
     {
       userEmail: email,
+      ...PRIVACY_ERASURE_ACTIVE_FILTER,
       userId: { $exists: true, $nin: ['anonymous', null, ''] },
     },
     { projection: { userId: 1 }, sort: { createdAt: -1 } }
@@ -46,7 +49,7 @@ export async function setCameraAccountDisabledForEmail(
 ): Promise<number> {
   const now = new Date().toISOString();
   const result = await db.collection(COLLECTIONS.SUBMISSIONS).updateMany(
-    { userEmail: email },
+    { $and: [{ userEmail: email }, PRIVACY_ERASURE_ACTIVE_FILTER] },
     {
       $set: {
         [FIELD]: disabled,

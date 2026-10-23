@@ -6,6 +6,7 @@
 
 import type { Db, Document, ObjectId } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { ensureScreenPicture, type ScreenPictureOutcome, type ScreenPictureSubmission } from '@/lib/submissions/screen-picture';
 
 export const SCREEN_BACKFILL_BATCH_DEFAULT = 24;
@@ -21,6 +22,7 @@ export async function slideshowEventIds(db: Db): Promise<string[]> {
 export function screenBackfillFilter(events: readonly string[], after?: ObjectId): Document {
   return {
     $and: [
+      PRIVACY_ERASURE_ACTIVE_FILTER,
       { $or: [{ eventIds: { $in: [...events] } }, { eventId: { $in: [...events] } }] },
       { $or: [{ imageUrl: { $type: 'string' } }, { finalImageUrl: { $type: 'string' } }] },
       { screenImageUrl: { $in: [null, ''] } },

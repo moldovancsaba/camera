@@ -15,6 +15,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
 import { withErrorHandler, requireAdmin, apiSuccess, apiBadRequest, apiNotFound } from '@/lib/api';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export const POST = withErrorHandler(async (
   request: NextRequest,
@@ -35,7 +36,7 @@ export const POST = withErrorHandler(async (
   // Find the submission
   const submission = await db
     .collection(COLLECTIONS.SUBMISSIONS)
-    .findOne({ _id: new ObjectId(submissionId) });
+    .findOne({ _id: new ObjectId(submissionId), ...PRIVACY_ERASURE_ACTIVE_FILTER });
 
   if (!submission) {
     throw apiNotFound('Submission not found');
@@ -50,7 +51,7 @@ export const POST = withErrorHandler(async (
   const result = await db
     .collection(COLLECTIONS.SUBMISSIONS)
     .updateOne(
-      { _id: new ObjectId(submissionId) },
+      { _id: new ObjectId(submissionId), ...PRIVACY_ERASURE_ACTIVE_FILTER },
       {
         $set: {
           isArchived: true,
@@ -68,7 +69,7 @@ export const POST = withErrorHandler(async (
   // Get the updated submission
   const archivedSubmission = await db
     .collection(COLLECTIONS.SUBMISSIONS)
-    .findOne({ _id: new ObjectId(submissionId) });
+    .findOne({ _id: new ObjectId(submissionId), ...PRIVACY_ERASURE_ACTIVE_FILTER });
 
   console.log(`✓ Archived submission ${submissionId} by ${session.user.email}`);
 

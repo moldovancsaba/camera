@@ -154,7 +154,7 @@ export default async function UserProfilePage({ params }: PageProps) {
     const allSubmissions = (
       await db
         .collection('submissions')
-        .find({})
+        .find({ 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } })
         .sort({ createdAt: -1 })
         .toArray()
     ).filter((sub) => viewerCanManageUsers || isPubliclyVisible(visibilityInputOf(sub)));

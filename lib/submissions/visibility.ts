@@ -3,6 +3,7 @@
  * surface (share page and its link preview, share download, slideshow candidates, user pages, and later the feeds), instead of
  * a filter copied into each of them.
  *
+ * - Privacy erasure fenced: never public or eligible for a normal surface.
  * - Archived by an admin: never public.
  * - Hidden from every event it belongs to ("remove from event"): never public.
  * - Only a plain photo (`submissionKind` missing or `original`) is public, and it is unless its review says `pending_review` or `rejected`.
@@ -14,6 +15,8 @@
  *
  * Pure and DOM-free, unit-tested in visibility.test.ts.
  */
+
+import { privacyErasureIsFenced } from '@/lib/privacy/erasure';
 
 export interface VisibilityInput {
   submissionKind?: string | null;
@@ -27,6 +30,7 @@ export interface VisibilityInput {
   mediaBroken?: boolean | null;
   consentStatus?: string | null;
   retentionStatus?: string | null;
+  privacyErasure?: unknown;
 }
 
 /** Every event reference a photo belongs to (the UUID and the ids it was filed under), without duplicates. */
@@ -61,11 +65,13 @@ export function visibilityInputOf(doc: Record<string, unknown> | null | undefine
     mediaBroken: (doc.mediaHealth as { broken?: unknown } | undefined)?.broken === true,
     consentStatus: text(doc.consentStatus),
     retentionStatus: text(doc.retentionStatus),
+    privacyErasure: doc.privacyErasure,
   };
 }
 
 export function isPubliclyVisible(submission: VisibilityInput | null | undefined): boolean {
   if (!submission) return false;
+  if (privacyErasureIsFenced(submission.privacyErasure)) return false;
   if (submission.isArchived === true) return false;
   if (submission.mediaBroken === true) return false;
   if (submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired') return false;
@@ -93,6 +99,7 @@ export function publiclyVisibleClauses(eventIdKeys: readonly string[]): object[]
     { 'mediaHealth.broken': { $ne: true } },
     { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } },
     { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+    { 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } },
     { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: [...eventIdKeys] } }] },
     {
       $and: [plainPhotoClause, { reviewStatus: { $nin: ['pending_review', 'rejected'] } }],

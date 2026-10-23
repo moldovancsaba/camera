@@ -81,6 +81,17 @@ Verified subject requests use the separate case-bound resolver described in
 returns exact Camera references only; it is not a deletion receipt and does not
 prove removal from media providers, product projections, logs, or backups.
 
+The follow-on erasure intake and worker are documented in
+[CAMERA_RECORD_ERASURE.md](privacy/CAMERA_RECORD_ERASURE.md). Once a verified
+case hands Camera exact photo references, Camera first fences each submission
+from reads and new writes, then replaces its identifying source row with a
+minimal tombstone. A successful source-row scrub is only the Camera database
+stage; provider copies, Fanmass results, Messmass projections, and retained
+backups require their own confirmed deletion stages before the overall case can
+be marked complete. The restricted deletion receipt keeps only authenticated-
+encrypted image locations and provider delete handles for the separate media
+worker; it does not copy participant contact, consent, review or analysis data.
+
 ## The IP address, everywhere it still appears
 
 - **The rate limiter** (`lib/api/rateLimiter.ts`) uses the IP address to count requests. It keeps it **in the memory of the server instance** (a bucket per path and address, cleared after an hour) or, when Upstash is configured, **as a SHA-256 hash** (`lib/api/upstash-rate-limit.ts`). It is not written to the database.

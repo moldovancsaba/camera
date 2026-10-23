@@ -78,6 +78,7 @@ export default async function AdminUsersPage({
       .collection('submissions')
       .find({
         $or: [{ isArchived: false }, { isArchived: { $exists: false } }],
+        'privacyErasure.state': { $nin: ['fenced', 'record_erased'] },
       })
       .sort({ createdAt: -1 })
       .toArray();

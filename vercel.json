@@ -13,6 +13,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/internal/privacy/process-erasure",
+      "schedule": "*/2 * * * *"
+    },
+    {
       "path": "/api/internal/follow-up-emails",
       "schedule": "0 7 * * *"
     }

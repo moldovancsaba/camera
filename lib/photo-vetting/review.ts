@@ -13,9 +13,10 @@
  */
 
 import type { Db, Document, ObjectId, WithId } from 'mongodb';
+import { del } from '@vercel/blob';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { CONSENT_ELIGIBLE_FILTER, hasConsentEvidenceForProcessing } from '@/lib/events/consent-eligibility';
-import { uploadImageTracked, type MirrorResult } from '@/lib/imgbb/upload';
+import { deleteImage, uploadImageTracked, type MirrorResult } from '@/lib/imgbb/upload';
 import { recordApprovalCopies, type ApprovalCopiesInput } from '@/lib/storage/image-copies';
 import { logWarn } from '@/lib/observability/logger';
 import { buildEmailMetadataPatch, legalOf, resolveEventForSubmission, textsOf, themeOf } from '@/lib/email/submission-result-email';
@@ -26,6 +27,7 @@ import sharp from 'sharp';
 import { composePhotoWithFrame } from '@/lib/photo-vetting/compose';
 import { approvedShareUrl, sendPhotoApprovedEmail, sendPhotoNotApprovedEmail, sendPhotoUnderReviewEmail, takeAnotherPhotoUrl } from '@/lib/photo-vetting/emails';
 import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export interface ReviewActor {
   email: string | null;
@@ -101,7 +103,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   if (!hasConsentEvidenceForProcessing(submission as unknown as Record<string, unknown>)) {
     return { ok: false, reason: 'consent_required', message: 'This photo is on hold until the required consent is recorded. It cannot be approved.' };
   }
-  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') {
+  if (submission.privacyErasure?.state === 'fenced' || submission.privacyErasure?.state === 'record_erased' || submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') {
     return { ok: false, reason: 'not_reviewable', message: 'This capture is scheduled for erasure and cannot be approved' };
   }
   if (submission.reviewStatus !== 'pending_review' && submission.reviewStatus !== 'rejected') {
@@ -151,7 +153,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
     {
       $and: [
-        { _id: submission._id, reviewStatus: { $in: ['pending_review', 'rejected'] }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+        { _id: submission._id, reviewStatus: { $in: ['pending_review', 'rejected'] }, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] }, ...PRIVACY_ERASURE_ACTIVE_FILTER },
         CONSENT_ELIGIBLE_FILTER,
       ],
     },
@@ -181,7 +183,18 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
       $push: { reviewHistory: { action: 'approve', by: actorName(actor), at, reason: null } } as Document,
     }
   );
-  if (won.matchedCount === 0) return { ok: false, reason: 'not_reviewable', message: 'Someone else already decided on this photo' };
+  if (won.matchedCount === 0) {
+    // Erasure can fence the photo while composition is in flight. Remove the
+    // just-created public file and any mirror that finished with it; never let
+    // an approval worker leave untracked media after the fence wins.
+    if (!reopeningExistingImage) {
+      await del(picture.imageUrl).catch(() => undefined);
+      await deleteImage(picture.deleteUrl, picture.imageUrl).catch(() => false);
+      const mirror = await picture.mirror?.catch(() => null);
+      if (mirror?.deleteUrl) await deleteImage(mirror.deleteUrl, mirror.imageUrl).catch(() => false);
+    }
+    return { ok: false, reason: 'not_reviewable', message: 'Someone else already decided on this photo' };
+  }
 
   // The picture for the giant screen is made after the answer; a failure there never touches the approval.
   try {
@@ -225,6 +238,7 @@ function decisionEmailClaimFilter(submissionId: ObjectId, reviewStatus: 'approve
   return {
     _id: submissionId,
     reviewStatus,
+    ...PRIVACY_ERASURE_ACTIVE_FILTER,
     $or: [
       { 'metadata.decisionEmailSending': { $ne: true } },
       { 'metadata.decisionEmailSendingAt': { $lt: staleBefore } },
@@ -235,7 +249,7 @@ function decisionEmailClaimFilter(submissionId: ObjectId, reviewStatus: 'approve
 async function sendApprovedLinkForSubmission(db: Db, submission: Submission | null, deps: ReviewDeps, force = false): Promise<DecisionEmailStatus> {
   if (!submission?._id) return 'skipped';
   const submissionId = submission._id as ObjectId;
-  const initial = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+  const initial = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER });
   if (!initial || initial.reviewStatus !== 'approved') return 'skipped';
 
   const claimAt = deps.now();
@@ -251,7 +265,7 @@ async function sendApprovedLinkForSubmission(db: Db, submission: Submission | nu
   if (!claimed.matchedCount) return 'skipped';
 
   try {
-    const current = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+    const current = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER });
     if (!current || current.reviewStatus !== 'approved' || !isPubliclyVisible(visibilityInputOf({ ...current })) || !current.shareToken || !current.imageUrl || (!force && (current.metadata?.emailSentAfterSave === true || current.metadata?.emailSent === true))) {
       return 'skipped';
     }
@@ -262,7 +276,7 @@ async function sendApprovedLinkForSubmission(db: Db, submission: Submission | nu
     const patch = buildEmailMetadataPatch(result, shareUrl);
     const emailDeferred = patch.metadataPatch['metadata.emailSkipReason'] === 'missing_recipient';
     await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submissionId, reviewStatus: 'approved', 'metadata.decisionEmailSending': true },
+      { _id: submissionId, reviewStatus: 'approved', 'metadata.decisionEmailSending': true, ...PRIVACY_ERASURE_ACTIVE_FILTER },
       {
         $set: { ...patch.metadataPatch, ...(emailDeferred ? { 'metadata.approvalEmailPending': true } : {}) },
         ...(!emailDeferred ? { $unset: { 'metadata.approvalEmailPending': '' } } : {}),
@@ -274,7 +288,7 @@ async function sendApprovedLinkForSubmission(db: Db, submission: Submission | nu
     return 'failed';
   } finally {
     await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submissionId, 'metadata.decisionEmailSending': true },
+      { _id: submissionId, 'metadata.decisionEmailSending': true, ...PRIVACY_ERASURE_ACTIVE_FILTER },
       { $unset: { 'metadata.decisionEmailSending': '', 'metadata.decisionEmailSendingAt': '' } },
     ).catch((error) => logWarn('photo_vetting.approval_email_claim_release_failed', 'The approval email claim could not be released', { submissionId: String(submissionId), error: errorMessage(error) }));
   }
@@ -282,7 +296,7 @@ async function sendApprovedLinkForSubmission(db: Db, submission: Submission | nu
 
 /** Send the approved share link when a guest records consent after moderation has already approved the photo. */
 export async function sendApprovedLinkAfterConsent(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
-  const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+  const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER });
   if (!submission || submission.consentStatus !== 'received' || submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') return 'skipped';
   const result = await sendApprovedLinkForSubmission(db, submission, deps);
   return result === 'deferred' ? 'skipped' : result;
@@ -301,7 +315,7 @@ async function sendRejectedNoteForSubmission(db: Db, submissionId: ObjectId, dep
   if (!claim.matchedCount) return 'skipped';
 
   try {
-    const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+    const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER });
     if (!submission || submission.reviewStatus !== 'rejected' || submission.metadata?.rejectionEmailPending !== true) return 'skipped';
     const event = await resolveEventForSubmission(db, submission).catch(() => null);
     const result = await deps.sendNotApproved(
@@ -317,7 +331,7 @@ async function sendRejectedNoteForSubmission(db: Db, submissionId: ObjectId, dep
     const missingRecipient = !result.sent && result.skipped && result.reason === 'missing_recipient';
     const providerFailed = !result.sent && !result.skipped;
     await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submissionId, reviewStatus: 'rejected', 'metadata.decisionEmailSending': true },
+      { _id: submissionId, reviewStatus: 'rejected', 'metadata.decisionEmailSending': true, ...PRIVACY_ERASURE_ACTIVE_FILTER },
       {
         $set: {
           'metadata.rejectionEmailSent': result.sent,
@@ -340,23 +354,23 @@ async function sendRejectedNoteForSubmission(db: Db, submissionId: ObjectId, dep
     return 'failed';
   } finally {
     await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submissionId, 'metadata.decisionEmailSending': true },
+      { _id: submissionId, 'metadata.decisionEmailSending': true, ...PRIVACY_ERASURE_ACTIVE_FILTER },
       { $unset: { 'metadata.decisionEmailSending': '', 'metadata.decisionEmailSendingAt': '' } },
     ).catch((error) => logWarn('photo_vetting.rejection_email_claim_release_failed', 'The rejection email claim could not be released', { submissionId: String(submissionId), error: errorMessage(error) }));
   }
 }
 
 export async function sendPendingVettingEmailAfterIdentity(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<DecisionEmailStatus> {
-  let submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+  let submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER });
   if (!submission) return 'skipped';
 
   const olderApprovalWasSkippedForMissingRecipient = submission.reviewStatus === 'approved' && submission.metadata?.emailSent === false && submission.metadata?.emailSkipReason === 'missing_recipient';
   if (olderApprovalWasSkippedForMissingRecipient && submission.metadata?.approvalEmailPending !== true) {
     await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submissionId, reviewStatus: 'approved', 'metadata.emailSent': false, 'metadata.emailSkipReason': 'missing_recipient' },
+      { _id: submissionId, reviewStatus: 'approved', 'metadata.emailSent': false, 'metadata.emailSkipReason': 'missing_recipient', ...PRIVACY_ERASURE_ACTIVE_FILTER },
       { $set: { 'metadata.approvalEmailPending': true } },
     );
-    submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
+    submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER });
     if (!submission) return 'skipped';
   }
 
@@ -367,7 +381,7 @@ export async function sendPendingVettingEmailAfterIdentity(db: Db, submissionId:
   const olderRejectionWasSkipped = submission.reviewStatus === 'rejected' && submission.metadata?.rejectionEmailSent === false && Boolean(submission.metadata?.rejectionEmailAt);
   if (olderRejectionWasSkipped && submission.metadata?.rejectionEmailPending !== true) {
     await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: submissionId, reviewStatus: 'rejected', 'metadata.rejectionEmailSent': false, 'metadata.rejectionEmailAt': { $exists: true } },
+      { _id: submissionId, reviewStatus: 'rejected', 'metadata.rejectionEmailSent': false, 'metadata.rejectionEmailAt': { $exists: true }, ...PRIVACY_ERASURE_ACTIVE_FILTER },
       { $set: { 'metadata.rejectionEmailPending': true } },
     );
   }
@@ -377,8 +391,8 @@ export async function sendPendingVettingEmailAfterIdentity(db: Db, submissionId:
 
 /** Let an event manager retry a missed approval email for an already-approved, public photo. */
 export async function retryApprovedPhotoEmail(db: Db, submissionId: ObjectId, deps: ReviewDeps = defaultReviewDeps): Promise<'sent' | 'skipped' | 'failed'> {
-  const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId });
-  if (submission?.retentionStatus === 'pending_erasure' || submission?.retentionStatus === 'erasing' || submission?.retentionStatus === 'erased') return 'skipped';
+  const submission = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).findOne({ _id: submissionId, ...PRIVACY_ERASURE_ACTIVE_FILTER });
+  if (submission?.privacyErasure?.state === 'fenced' || submission?.privacyErasure?.state === 'record_erased' || submission?.retentionStatus === 'pending_erasure' || submission?.retentionStatus === 'erasing' || submission?.retentionStatus === 'erased') return 'skipped';
   const result = await sendApprovedLinkForSubmission(db, submission, deps);
   return result === 'deferred' ? 'skipped' : result;
 }
@@ -391,7 +405,7 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
   if (!hasConsentEvidenceForProcessing(submission as unknown as Record<string, unknown>)) {
     return { ok: false, reason: 'consent_required', message: 'This photo is on hold until the required consent is recorded. It cannot be rejected.' };
   }
-  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased' || submission.reviewStatus !== 'pending_review') {
+  if (submission.privacyErasure?.state === 'fenced' || submission.privacyErasure?.state === 'record_erased' || submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased' || submission.reviewStatus !== 'pending_review') {
     return { ok: false, reason: 'not_reviewable', message: 'This photo is not waiting for a decision' };
   }
   const shouldSendRejectionEmail = !(submission.photoReview?.returnedAt && submission.photoReview.returnedWasPubliclyVisible !== true);
@@ -399,7 +413,7 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
     {
       $and: [
-        { _id: submission._id, reviewStatus: 'pending_review', retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+        { _id: submission._id, reviewStatus: 'pending_review', retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] }, ...PRIVACY_ERASURE_ACTIVE_FILTER },
         CONSENT_ELIGIBLE_FILTER,
       ],
     },
@@ -432,7 +446,7 @@ export async function returnPhotoToVetting(db: Db, submission: WithId<Submission
   if (!hasConsentEvidenceForProcessing(submission as unknown as Record<string, unknown>)) {
     return { ok: false, reason: 'consent_required', message: 'This photo cannot return to vetting until the required consent is recorded.' };
   }
-  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased' || (submission.reviewStatus !== 'approved' && submission.reviewStatus !== 'rejected') || !submission.photoReview) {
+  if (submission.privacyErasure?.state === 'fenced' || submission.privacyErasure?.state === 'record_erased' || submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased' || (submission.reviewStatus !== 'approved' && submission.reviewStatus !== 'rejected') || !submission.photoReview) {
     return { ok: false, reason: 'not_reviewable', message: 'This photo cannot be returned to vetting' };
   }
   const at = deps.now();
@@ -440,7 +454,7 @@ export async function returnPhotoToVetting(db: Db, submission: WithId<Submission
   const won = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
     {
       $and: [
-        { _id: submission._id, reviewStatus: submission.reviewStatus, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+        { _id: submission._id, reviewStatus: submission.reviewStatus, retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] }, ...PRIVACY_ERASURE_ACTIVE_FILTER },
         CONSENT_ELIGIBLE_FILTER,
       ],
     },

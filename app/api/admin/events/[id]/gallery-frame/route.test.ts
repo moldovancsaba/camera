@@ -49,7 +49,10 @@ function world(t: TestContext, options: { frames?: boolean; signedIn?: boolean; 
     },
   });
   t.mock.module('@/lib/imgbb/upload', {
-    exports: { uploadImage: async (_data: string, o: { name?: string }) => (uploads.push(o.name ?? ''), { imageUrl: `https://store.test/${o.name}.jpg`, deleteUrl: '', imageId: 'i', fileSize: 999, mimeType: 'image/jpeg' }) },
+    exports: {
+      uploadImage: async (_data: string, o: { name?: string }) => (uploads.push(o.name ?? ''), { imageUrl: `https://store.test/${o.name}.jpg`, deleteUrl: '', imageId: 'i', fileSize: 999, mimeType: 'image/jpeg' }),
+      deleteImage: async () => true,
+    },
   });
   t.mock.module('@/lib/media/image-buffer', { exports: { fetchImageBuffer: async (url: string) => (url.includes('f1') ? frameOf() : photoOf()) } });
   t.mock.module('@/lib/submissions/screen-picture', { exports: { ensureScreenPicture: async (_db: unknown, s: { imageUrl: string }) => void screenFor.push(s.imageUrl) } });

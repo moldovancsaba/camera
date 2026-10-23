@@ -1,6 +1,7 @@
 import type { Db, Document, ObjectId } from 'mongodb';
 import { connectToDatabaseByName } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { CONSENT_ELIGIBLE_FILTER, CONSENT_EXPIRED_FILTER, CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER } from '@/lib/events/consent-eligibility';
 import { processingContactMongoFilter } from '@/lib/submissions/guest-contact';
 
@@ -156,7 +157,7 @@ const iso = (value: unknown): string | null => {
 };
 
 function eventPhotoFilter(eventId: string): Document {
-  return { $or: [{ eventId }, { eventIds: eventId }] };
+  return { $and: [{ $or: [{ eventId }, { eventIds: eventId }] }, PRIVACY_ERASURE_ACTIVE_FILTER] };
 }
 
 function fanmassEventFilter(eventId: string): Document {
@@ -182,6 +183,7 @@ function fanmassEligiblePhotoFilter(eventId: string, event: Document): Document 
       { isArchived: { $ne: true } },
       { analyticsDeletion: { $nin: ['manual', 'automatic_no_login', 'automatic_other'] } },
       { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+      PRIVACY_ERASURE_ACTIVE_FILTER,
       { 'mediaHealth.broken': { $ne: true } },
       { submissionKind: { $ne: 'tryon_result' } },
       { method: { $in: [null, 'camera_capture'] } },
