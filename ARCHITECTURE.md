@@ -1,7 +1,7 @@
 # Architecture
 
 **Version**: 12.3.42  
-**Last Updated**: 2026-10-15
+**Last Updated**: 2026-10-23
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -50,6 +50,7 @@ Browser / Public Screens
 - partner-scoped access helpers in `lib/partners/*`
 - analytics in `lib/analytics/*` (pure aggregations, the only database access is `load.ts`, read only)
 - anonymous capture Journey vocabulary and aggregation in `lib/journey/*` and `lib/analytics/journey.ts` (daily aggregate counts are retained; raw rows expire after 30 days; Journey has no guest identity)
+- participant contact and consent lifecycle in `lib/submissions/guest-contact.ts` and `lib/events/consent-eligibility.ts`; the current cross-product deletion inventory and unresolved provider/backup boundaries are recorded in [docs/privacy/ERASURE_DATA_INVENTORY.md](docs/privacy/ERASURE_DATA_INVENTORY.md)
 - outbound call deadlines and outcome logs in `lib/observability/outbound.ts`
 - transactional email (templates, per-event sender name) in `lib/email/*`
 - event export logic in `lib/events/*`

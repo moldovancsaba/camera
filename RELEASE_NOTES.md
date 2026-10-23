@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — inventory right-to-erasure data boundaries (2026-10-23)
+
+- **Documented:** a source-verified inventory for Camera, SSO, Fanmass, and Messmass, including stable identity/photo keys, collections, media providers, current deletion behavior, and known gaps.
+- **Added:** a machine-readable `privacy.erasure.inventory.v1` snapshot for review and future contract checks.
+- **Clarified:** Camera's 24-hour no-contact/missing-consent cleanup is not a verified subject erasure case; no case can be reported complete while a media provider or backup target is unknown.
+- **Not done:** no production rows, photos, accounts, or backups were changed; no production backup, provider deletion, or restore execution was verified.
+- **Follow-up:** implementation proceeds through the GDPR issue sequence; Camera image backup remains blocked by [camera#509](https://github.com/moldovancsaba/camera/issues/509).
+
 ## Unreleased — unify participant contact and 24-hour erasure (2026-10-22)
 
 - **Added:** a canonical `guestContact` lifecycle (`awaiting_contact`, `draft`, `complete`, `erased`) alongside compatibility mirrors. A login ID without a usable e-mail does not count as a deliverable contact.
