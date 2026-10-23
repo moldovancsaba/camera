@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — resolve verified erasure subjects to exact Camera photos (2026-10-23)
+
+- **Added:** a read-only internal resolver that retrieves case-bound proof from SSO and returns exact Camera photo/submission/event/partner references. It accepts no caller-supplied identity values and returns no contact details, provider IDs, or image URLs.
+- **Safety:** matching is exact; anonymous sentinels and reviewer fields are excluded. Verified-email matches attached to a different stable account produce an ambiguity result with no photo IDs. Results are capped at 100 per page with a signed, case-bound cursor.
+- **Legacy addresses:** e-mail equality uses dedicated case-insensitive indexes; stable SSO account IDs remain case-sensitive exact matches.
+- **Operations:** the endpoint fails closed until the dedicated SSO resolver OAuth client and purpose-limited inbound resolver secret are configured. This change does not set production secrets, run database index creation, or mutate production data.
+- **Checks:** focused resolver tests and TypeScript check passed. Full release and inventory gates are pending.
+- **Limit:** subject resolution does not delete photos or prove provider/backup deletion. Independent backup and restore-replay coverage remains blocked on Camera #509 and the sequenced #727 work.
+
 ## Unreleased — inventory right-to-erasure data boundaries (2026-10-23)
 
 - **Documented:** a source-verified inventory for Camera, SSO, Fanmass, and Messmass, including stable identity/photo keys, collections, media providers, current deletion behavior, and known gaps.

@@ -1,8 +1,14 @@
 # Handover
 
+## Current change — verified erasure subject resolver (2026-10-23)
+
+Camera now has a read-only `POST /api/internal/privacy/resolve-subject` implementation in `app/api/internal/privacy/resolve-subject/route.ts`. The caller supplies only the opaque SSO case UUID; Camera obtains the case-bound proof from SSO with its dedicated resolver client, looks up Camera submissions using exact account/verified-email/photo fields, and returns opaque product references without contact data. Competing stable account IDs for a verified-email match return `ambiguous` with no IDs. Results use a signed case-bound cursor capped at 100 per page.
+
+The resolver fails closed until operations configures `CAMERA_PRIVACY_RESOLVER_SECRET`, `SSO_PRIVACY_RESOLVER_CLIENT_ID`, `SSO_PRIVACY_RESOLVER_CLIENT_SECRET`, and matching SSO-side keyring/client settings. The code does not set or rotate secrets, run production index creation, inspect or alter production photo rows, or prove photo deletion. Full release gates and GitHub Verify are pending. Camera #509 still blocks complete backup and restore-replay assurance.
+
 ## Current change — right-to-erasure inventory (2026-10-23)
 
-Added a source-verified cross-product inventory and `privacy.erasure.inventory.v1` snapshot in `docs/privacy/ERASURE_DATA_INVENTORY.md` and `.v1.json`. This is a read-only code/documentation baseline; it does not assert production row counts, database parity, completed provider deletion, or backup coverage. The most material blocker is still Camera issue #509: independent image backup and complete provider inventory are not verified. The next implementation item is SSO's durable case ledger after this inventory is reviewed.
+Added a source-verified cross-product inventory and `privacy.erasure.inventory.v1` snapshot in `docs/privacy/ERASURE_DATA_INVENTORY.md` and `.v1.json`. The inventory, SSO case ledger, verified SSO subject proof, and Camera subject resolver have now merged. This remains a source-code baseline; it does not assert production row counts, database parity, completed provider deletion, or backup coverage. The most material blocker is still Camera issue #509: independent image backup and complete provider inventory are not verified.
 
 **Version**: 12.3.42
 **Last Updated**: 2026-10-15

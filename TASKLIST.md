@@ -15,6 +15,7 @@ drifted (it still described 2.22.0 as current).
 | Need | Where |
 |---|---|
 | Open work and its status | project board #24 |
+| Cross-product right-to-erasure delivery | [Project #76](https://github.com/users/moldovancsaba/projects/76), order column; Camera resolver contract: `docs/privacy/ERASURE_SUBJECT_RESOLVER.md`; backup/restore prerequisite: camera#509 |
 | What changed and when (including the v2.15-v2.22 history that used to be listed here) | `RELEASE_NOTES.md` |
 | Current state and owner decisions | `HANDOVER.md` |
 | Direction beyond the active work | `ROADMAP.md` |

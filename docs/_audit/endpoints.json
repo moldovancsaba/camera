@@ -97,6 +97,7 @@
   {"path": "/api/internal/messmass/sso-session", "methods": ["POST"], "file": "app/api/internal/messmass/sso-session/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/internal/messmass/theme-updated", "methods": ["POST"], "file": "app/api/internal/messmass/theme-updated/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/internal/pictures-scan", "methods": ["GET"], "file": "app/api/internal/pictures-scan/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
+  {"path": "/api/internal/privacy/resolve-subject", "methods": ["POST"], "file": "app/api/internal/privacy/resolve-subject/route.ts", "auth_markers": ["requireCameraPrivacyResolver", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/internal/purge-unconsented-captures", "methods": ["GET"], "file": "app/api/internal/purge-unconsented-captures/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/internal/savetheworld/events/[eventId]/publish-selfies", "methods": ["POST"], "file": "app/api/internal/savetheworld/events/[eventId]/publish-selfies/route.ts", "auth_markers": ["assertInternalSavetheworldSecret", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/internal/savetheworld/events", "methods": ["GET", "POST"], "file": "app/api/internal/savetheworld/events/route.ts", "auth_markers": ["assertInternalSavetheworldSecret", "withErrorHandler"], "no_auth_marker": false},
