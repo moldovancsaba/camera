@@ -17,6 +17,10 @@
       "schedule": "*/2 * * * *"
     },
     {
+      "path": "/api/internal/privacy/process-media-erasure",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/internal/follow-up-emails",
       "schedule": "0 7 * * *"
     }

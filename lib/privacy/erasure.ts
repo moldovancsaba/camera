@@ -18,10 +18,7 @@ const MEDIA_REFERENCE_FIELDS = [
   'originalImageUrl',
   'previewImageUrl',
   'screenImageUrl',
-  'screenImageBytes',
   'deleteUrl',
-  'imageId',
-  'imageCopies',
 ] as const;
 
 export interface EncryptedMediaReferences {
@@ -32,7 +29,7 @@ export interface EncryptedMediaReferences {
   ciphertext: string;
 }
 
-export type ErasureTargetState = 'fenced' | 'processing' | 'record_erased' | 'media_pending' | 'failed' | 'not_found' | 'retained_exception' | 'retryable_failure';
+export type ErasureTargetState = 'fenced' | 'processing' | 'record_erased' | 'media_pending' | 'media_processing' | 'media_erased' | 'media_review_required' | 'media_failed' | 'failed' | 'not_found' | 'retained_exception' | 'retryable_failure';
 
 /** A scrubbed source row retains only the opaque photo key and retry fence needed to prevent resurrection. */
 export function minimalErasedSubmission(input: { photoId: unknown; requestId: string; fencedAt: string; recordErasedAt: string }): Document {
@@ -52,19 +49,45 @@ export function minimalErasedSubmission(input: { photoId: unknown; requestId: st
  * Keep only this handoff encrypted in the restricted tombstone collection; it is not an image backup.
  */
 export function encryptMediaReferences(submission: Document, mediaKey: string): EncryptedMediaReferences | null {
-  const references = Object.fromEntries(MEDIA_REFERENCE_FIELDS.flatMap((field) => {
+  const references: Document = Object.fromEntries(MEDIA_REFERENCE_FIELDS.flatMap((field) => {
     const value = submission[field];
-    return value === undefined || value === null ? [] : [[field, value]];
+    return typeof value === 'string' && value.trim().startsWith('https://') ? [[field, value.trim()]] : [];
   }));
   const photoReview = submission.photoReview && typeof submission.photoReview === 'object' ? submission.photoReview as Document : {};
   const tryOnRequest = submission.tryOnRequest && typeof submission.tryOnRequest === 'object' ? submission.tryOnRequest as Document : {};
-  // Preserve only the old media addresses needed by the later provider deletion worker; never copy review/try-on metadata.
+  const secureUrl = (value: unknown): string | undefined => {
+    if (typeof value !== 'string' || !value.trim()) return undefined;
+    try {
+      const url = new URL(value.trim());
+      return (url.protocol === 'https:' || url.protocol === 'http:') && !url.username && !url.password ? url.toString() : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  // Keep only deletion references. Inline image bytes, provider IDs, review data, and try-on metadata are not part of this handoff.
   for (const [key, value] of Object.entries({
-    legacyPhotoReviewUrl: photoReview.photoUrl,
-    legacyTryOnSourceImageUrl: tryOnRequest.sourceImageUrl,
-    legacyTryOnSourceDeleteUrl: tryOnRequest.sourceDeleteUrl,
+    legacyPhotoReviewUrl: secureUrl(photoReview.photoUrl),
+    legacyTryOnSourceImageUrl: secureUrl(tryOnRequest.sourceImageUrl),
+    legacyTryOnSourceDeleteUrl: secureUrl(tryOnRequest.sourceDeleteUrl),
   })) {
     if (typeof value === 'string' && value.trim()) references[key] = value.trim();
+  }
+  if (Array.isArray(submission.imageCopies)) {
+    const copies = submission.imageCopies.flatMap((value) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+      const copy = value as Document;
+      const url = secureUrl(copy.url);
+      const deleteUrl = secureUrl(copy.deleteUrl);
+      if (!url && !deleteUrl) return [];
+      return [{
+        ...(typeof copy.role === 'string' ? { role: copy.role.slice(0, 40) } : {}),
+        ...(copy.store === 'blob' || copy.store === 'imgbb' ? { store: copy.store } : {}),
+        ...(typeof copy.state === 'string' ? { state: copy.state.slice(0, 24) } : {}),
+        ...(url ? { url } : {}),
+        ...(deleteUrl ? { deleteUrl } : {}),
+      }];
+    });
+    if (copies.length) references.imageCopies = copies;
   }
   if (Object.keys(references).length === 0) return null;
 

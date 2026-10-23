@@ -57,7 +57,7 @@ const handler = withErrorHandler(async (request: NextRequest) => {
       { $match: { privacyReceipts: { $eq: [] } } },
       { $sort: { updatedAt: 1, _id: 1 } },
       { $limit: BATCH_SIZE },
-      { $project: { _id: 1, submissionId: 1, eventId: 1, eventIds: 1, privacyErasure: 1, imageUrl: 1, finalImageUrl: 1, originalImageUrl: 1, previewImageUrl: 1, screenImageUrl: 1, screenImageBytes: 1, deleteUrl: 1, imageId: 1, imageCopies: 1, photoReview: 1, tryOnRequest: 1 } },
+      { $project: { _id: 1, submissionId: 1, eventId: 1, eventIds: 1, privacyErasure: 1, imageUrl: 1, finalImageUrl: 1, originalImageUrl: 1, previewImageUrl: 1, screenImageUrl: 1, deleteUrl: 1, imageCopies: 1, photoReview: 1, tryOnRequest: 1 } },
     ]).toArray();
     for (const source of orphanFences) {
       const fence = source.privacyErasure && typeof source.privacyErasure === 'object' ? source.privacyErasure as Record<string, unknown> : {};
@@ -87,6 +87,7 @@ const handler = withErrorHandler(async (request: NextRequest) => {
   let recordErased = 0;
   let mediaPending = 0;
   let retryable = 0;
+  let processed = 0;
   for (const receipt of due) {
     const claim = await receipts.updateOne(
       { _id: receipt._id, $or: [{ status: 'fenced' }, { status: 'processing', processingAt: { $lt: staleBefore } }] },
@@ -119,8 +120,9 @@ const handler = withErrorHandler(async (request: NextRequest) => {
         }
       }
 
-      // A missing source row is already scrubbed. Its encrypted media handoff remains until Camera #726 completes.
-      const nextStatus = receipt.mediaReferences ? 'media_pending' : 'record_erased';
+      // Always send a scrubbed record through media reconciliation. A missing
+      // handoff is an unresolved provider target, not proof that no file exists.
+      const nextStatus = 'media_pending' as const;
       const completed = await receipts.updateOne(
         { _id: receipt._id, requestId: receipt.requestId, status: 'processing', processingAt: now },
         {
@@ -129,8 +131,9 @@ const handler = withErrorHandler(async (request: NextRequest) => {
         },
       );
       if (completed.modifiedCount !== 1) throw new Error('receipt_update_lost');
+      recordErased += 1;
       if (nextStatus === 'media_pending') mediaPending += 1;
-      else recordErased += 1;
+      processed += 1;
     } catch {
       const latest = await receipts.findOne({ _id: receipt._id }, { projection: { attempts: 1 } });
       const attempts = typeof latest?.attempts === 'number' ? latest.attempts : MAX_ATTEMPTS;
@@ -151,7 +154,7 @@ const handler = withErrorHandler(async (request: NextRequest) => {
     }
   }
 
-  return apiSuccess({ version: 1, recovered_orphan_fences: recoveredOrphanFences, processed: recordErased + mediaPending, record_erased: recordErased, media_pending: mediaPending, retryable });
+  return apiSuccess({ version: 1, recovered_orphan_fences: recoveredOrphanFences, processed, record_erased: recordErased, media_pending: mediaPending, retryable });
 });
 
 export const GET = handler;
