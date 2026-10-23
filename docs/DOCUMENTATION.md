@@ -1,7 +1,7 @@
 # Documentation Maintenance
 
-**Last Updated**: 2026-10-11
-_Verified @ a87d78f_
+**Last Updated**: 2026-10-23
+_Verified for this erasure inventory change._
 
 The running code is the source of truth. Documentation must be updated from the implementation, not from memory.
 
@@ -23,6 +23,7 @@ set:
 - [docs/EVENT_EXPORTS.md](EVENT_EXPORTS.md)
 - [docs/SLIDESHOW_LOGIC.md](SLIDESHOW_LOGIC.md)
 - [docs/MESSMASS_FANMASS_INTEGRATION.md](MESSMASS_FANMASS_INTEGRATION.md)
+- [docs/privacy/ERASURE_DATA_INVENTORY.md](privacy/ERASURE_DATA_INVENTORY.md) — source-verified cross-product map of identity/photo keys, storage, deletion coverage, and unresolved backup/provider gaps (snapshot 2026-10-23)
 - [docs/GDS_CAMERA_ADOPTION.md](GDS_CAMERA_ADOPTION.md)
 - [docs/GDS_COMPONENT_RULES.md](GDS_COMPONENT_RULES.md)
 - [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)

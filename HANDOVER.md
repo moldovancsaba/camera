@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — right-to-erasure inventory (2026-10-23)
+
+Added a source-verified cross-product inventory and `privacy.erasure.inventory.v1` snapshot in `docs/privacy/ERASURE_DATA_INVENTORY.md` and `.v1.json`. This is a read-only code/documentation baseline; it does not assert production row counts, database parity, completed provider deletion, or backup coverage. The most material blocker is still Camera issue #509: independent image backup and complete provider inventory are not verified. The next implementation item is SSO's durable case ledger after this inventory is reviewed.
+
 **Version**: 12.3.42
 **Last Updated**: 2026-10-15
 
