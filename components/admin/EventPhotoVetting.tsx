@@ -7,6 +7,7 @@
  */
 
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Db } from 'mongodb';
 import { Card, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import PhotoReviewQueue from '@/components/admin/PhotoReviewQueue';
@@ -15,6 +16,8 @@ import PhotoVettingSwitch from '@/components/admin/PhotoVettingSwitch';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
+import { COLLECTIONS } from '@/lib/db/schemas';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 const TAB_LABEL: Record<QueueStatus, string> = { pending_review: 'Waiting', rejected: 'Rejected', approved: 'Approved' };
 
@@ -38,6 +41,15 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
   const counts = await countPhotoQueue(db, eventUuid);
   const activePage = Math.min(page, Math.max(1, Math.ceil(counts[status] / 60)));
   const items = await loadPhotoQueue(db, eventUuid, status, 60, (activePage - 1) * 60);
+  // These recovery-only copies are intentionally kept out of every normal photo queue. The original
+  // consent audit is absent and retention is erased, so they are visible only to event managers here.
+  const recovered = await db.collection(COLLECTIONS.SUBMISSIONS).find({
+    $and: [
+      { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
+      { 'adminRecovery.state': 'available', consentStatus: 'expired', retentionStatus: 'erased' },
+      PRIVACY_ERASURE_ACTIVE_FILTER,
+    ],
+  }, { projection: { createdAt: 1, adminRecovery: 1 } }).sort({ 'adminRecovery.recoveredAt': -1 }).toArray();
   const required = photoVettingRequired(event);
   const any = counts.pending_review + counts.rejected + counts.approved > 0;
   // The Waiting list of an event with vetting on is the one-at-a-time screen unless the list of cards was asked for.
@@ -64,6 +76,34 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
             {counts.consentPending > 0 ? <Text size="sm">Awaiting required consent: {counts.consentPending}</Text> : null}
             {counts.consentUnknown > 0 ? <Text size="sm">Consent status missing; held from review: {counts.consentUnknown}</Text> : null}
             <Text size="sm" c="dimmed">These photos stay private and are excluded from vetting and analysis. Photos with an expired 24-hour consent window are removed by Camera’s scheduled cleanup. A missing consent record must be verified before the photo can be reviewed.</Text>
+          </Stack>
+        </Card>
+      ) : null}
+
+      {recovered.length > 0 ? (
+        <Card aria-label="Recovered photos for restricted review">
+          <Stack gap="md">
+            <div>
+              <Title order={3}>Recovered photos ({recovered.length})</Title>
+              <Text size="sm" c="dimmed">
+                These copies were recovered from the supplied backup for restricted Camera review. Their consent records remain expired and their erasure status remains recorded. They are not eligible for approval, public display, e-mail, or Fanmass analysis.
+              </Text>
+            </div>
+            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 15rem), 1fr))' }}>
+              {recovered.map((row) => {
+                const recovery = row.adminRecovery as { originalReviewStatus?: string; recoveredAt?: string };
+                const imageUrl = `/api/admin/events/${eventMongoId}/recovered-photos/${String(row._id)}/image`;
+                return (
+                  <article key={String(row._id)} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}>
+                    <Image src={imageUrl} alt="Recovered event photo for restricted review" width={640} height={480} unoptimized loading="lazy" style={{ display: 'block', width: '100%', height: 'auto', aspectRatio: '4 / 3', objectFit: 'contain', background: 'var(--mantine-color-gray-1)' }} />
+                    <Stack gap="xs" p="sm">
+                      <Text fw={700}>Previously {recovery.originalReviewStatus === 'approved' ? 'approved' : recovery.originalReviewStatus === 'rejected' ? 'rejected' : 'reviewed'}</Text>
+                      <Text size="xs" c="dimmed">Recovered {recovery.recoveredAt ? new Date(recovery.recoveredAt).toLocaleString() : 'from backup'}</Text>
+                    </Stack>
+                  </article>
+                );
+              })}
+            </div>
           </Stack>
         </Card>
       ) : null}
