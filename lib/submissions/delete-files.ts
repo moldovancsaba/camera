@@ -38,6 +38,8 @@ export interface SubmissionFilesDeps {
   storeHost: string | null;
   del: (urls: string[]) => Promise<void>;
   deleteImage: (url: string, publicImageUrl?: string | null) => Promise<boolean>;
+  /** Delete a path from the separate private recovery store, if this submission has one. */
+  deleteRecovery?: (pathname: string) => Promise<void>;
   /** Which of `urls` is still referenced by a submission other than `selfId`. */
   referencedElsewhere: (urls: string[], selfId: unknown) => Promise<Set<string>>;
 }
@@ -126,6 +128,11 @@ export function defaultDeps(db: Db): SubmissionFilesDeps {
     storeHost: blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN),
     del: (urls) => del(urls),
     deleteImage: (url, publicImageUrl) => deleteImage(url, publicImageUrl),
+    deleteRecovery: async (pathname) => {
+      const storeId = process.env.CAMERA_MTK_RECOVERY_STORE_ID?.trim();
+      if (!storeId || !process.env.VERCEL_OIDC_TOKEN) throw new Error('The private recovery store is not configured');
+      await del(pathname, { storeId });
+    },
     referencedElsewhere: async (urls, selfId) => {
       const projection = Object.fromEntries(SHARED_URL_FIELDS.map((field) => [field, 1]));
       const others = await db
@@ -154,6 +161,22 @@ export async function deleteSubmissionFiles(
 ): Promise<SubmissionFilesResult> {
   const { fileUrls, imgbbDeleteLinks } = ownedUrls(submission);
   const candidates = fileUrls.filter((url) => inStore(url, deps.storeHost));
+
+  const recovery = (submission.adminRecovery ?? {}) as Document;
+  const recoveryPath = text(recovery.pathname);
+  const recoveryFileIsOwned = recovery.store === 'camera-mtk-recovery'
+    && recoveryPath === `camera-admin-recovery/mtk/${String(submission._id)}.jpg`;
+  if (recoveryFileIsOwned) {
+    if (!deps.deleteRecovery) {
+      throw apiError('Could not delete the restricted recovery image, so the submission was kept. Try again.', 502);
+    }
+    try {
+      await deps.deleteRecovery(recoveryPath!);
+    } catch (error) {
+      console.error(`Submission ${String(submission._id)}: deleting its restricted recovery copy failed`, error);
+      throw apiError('Could not delete the restricted recovery image, so the submission was kept. Try again.', 502);
+    }
+  }
 
   const shared = candidates.length ? await deps.referencedElsewhere(candidates, submission._id) : new Set<string>();
   const toDelete = candidates.filter((url) => !shared.has(url));

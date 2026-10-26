@@ -915,6 +915,21 @@ export interface Submission {
   retentionStatus?: 'pending_erasure' | 'erasing' | 'erased';
   retentionExpiresAt?: string;
   retentionErasedAt?: string;
+  /**
+   * A separately authorized, manager-only copy recovered from an offline backup after the normal
+   * image references were erased. This never restores consent, publication, vetting, or Fanmass
+   * eligibility; only the private recovery image route reads its pathname.
+   */
+  adminRecovery?: {
+    state: 'available';
+    store: 'camera-mtk-recovery';
+    pathname: string;
+    sourceArchive: string;
+    sourceFileName: string;
+    sha256: string;
+    recoveredAt: string;
+    originalReviewStatus: 'approved' | 'rejected';
+  } | null;
   /** A verified privacy request permanently fences this photo from all normal reads and writes before its record is scrubbed. */
   privacyErasure?: {
     state: 'fenced' | 'record_erased';

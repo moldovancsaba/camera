@@ -24,6 +24,7 @@
   {"path": "/api/admin/events/[id]/frame-slots", "methods": ["PUT"], "file": "app/api/admin/events/[id]/frame-slots/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/events/[id]/gallery-frame", "methods": ["POST"], "file": "app/api/admin/events/[id]/gallery-frame/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/events/[id]/gallery-upload", "methods": ["POST"], "file": "app/api/admin/events/[id]/gallery-upload/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/admin/events/[id]/recovered-photos/[submissionId]/image", "methods": ["GET"], "file": "app/api/admin/events/[id]/recovered-photos/[submissionId]/image/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/events/[id]/short-links/[slug]/qr", "methods": ["GET"], "file": "app/api/admin/events/[id]/short-links/[slug]/qr/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/events/[id]/short-links", "methods": ["GET", "POST", "PATCH"], "file": "app/api/admin/events/[id]/short-links/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/events/[id]/stage-background", "methods": ["GET", "PUT"], "file": "app/api/admin/events/[id]/stage-background/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
