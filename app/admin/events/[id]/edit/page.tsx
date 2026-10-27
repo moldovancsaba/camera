@@ -248,29 +248,44 @@ export default function EditEventPage({
       }
     }
 
-    const data = {
-      name: formData.get('name') as string,
-      description: formData.get('description') as string,
-      eventDate: formData.get('eventDate') as string,
-      location: formData.get('location') as string,
-      isActive: formData.get('isActive') === 'on',
-      logoUrl,
-      emailFooterImageUrl: emailFooterImageUrl.trim() || null,
-      showLogo: formData.get('showLogo') === 'on',
-      // Only when the colours were touched: null clears them, so the event follows messmass (or the default of its partner) again.
-      ...(coloursTouched ? { brandColor: ownColours ? brandColor || null : null, brandBorderColor: ownColours ? brandBorderColor || null : null } : {}),
-      shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
-      visualSettings: {
-        buttonSize,
-      },
-      uiLanguage,
-      cameraMode,
-      tourEnabled,
-      sharePage: {
-        showCreateYourOwnButton,
-        texts: shareTexts,
-      },
-    };
+    // This is a PATCH: send only what the editor changed. Resubmitting every field made a colour-only
+    // save revalidate unrelated legacy values (for example an existing short-link slug) and could
+    // turn one stale setting into a failed save for the whole event.
+    const data: Record<string, unknown> = {};
+    const name = (formData.get('name') as string) ?? '';
+    const description = (formData.get('description') as string) ?? '';
+    const eventDate = (formData.get('eventDate') as string) ?? '';
+    const location = (formData.get('location') as string) ?? '';
+    const isActive = formData.get('isActive') === 'on';
+    const showLogo = formData.get('showLogo') === 'on';
+    const shortUrlSlug = (formData.get('shortUrlSlug') as string) ?? '';
+    const nextEmailFooterImageUrl = emailFooterImageUrl.trim();
+
+    if (name !== (event?.name ?? '')) data.name = name;
+    if (description !== (event?.description ?? '')) data.description = description;
+    if (eventDate !== (event?.eventDate ? event.eventDate.split('T')[0] : '')) data.eventDate = eventDate;
+    if (location !== (event?.location ?? '')) data.location = location;
+    if (isActive !== Boolean(event?.isActive)) data.isActive = isActive;
+    if (logoUrl !== event?.logoUrl) data.logoUrl = logoUrl;
+    if (nextEmailFooterImageUrl !== (event?.emailFooterImageUrl ?? '')) data.emailFooterImageUrl = nextEmailFooterImageUrl || null;
+    if (showLogo !== Boolean(event?.showLogo)) data.showLogo = showLogo;
+    if (shortUrlSlug !== (event?.shortUrlSlug ?? '')) data.shortUrlSlug = shortUrlSlug;
+
+    // Only when the colours were touched: null clears them, so the event follows messmass (or the default of its partner) again.
+    if (coloursTouched) {
+      data.brandColor = ownColours ? brandColor || null : null;
+      data.brandBorderColor = ownColours ? brandBorderColor || null : null;
+    }
+
+    const currentVisualSettings = normalizeEventButtonSize(event?.visualSettings?.buttonSize);
+    if (buttonSize !== currentVisualSettings) data.visualSettings = { buttonSize };
+    if (uiLanguage !== (event?.uiLanguage ?? '')) data.uiLanguage = uiLanguage;
+    if (cameraMode !== (event?.cameraMode ?? '')) data.cameraMode = cameraMode;
+    if (tourEnabled !== (event?.tourEnabled === true)) data.tourEnabled = tourEnabled;
+
+    const currentSharePage = normalizeEventSharePageSettings(event?.sharePage);
+    const nextSharePage = normalizeEventSharePageSettings({ showCreateYourOwnButton, texts: shareTexts });
+    if (JSON.stringify(nextSharePage) !== JSON.stringify(currentSharePage)) data.sharePage = nextSharePage;
 
     try {
       const response = await fetch(`/api/events/${mongoId}`, {
