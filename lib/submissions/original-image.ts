@@ -5,8 +5,8 @@
  *
  * The browser uploads the original straight to Vercel Blob with a short-lived token from
  * POST /api/uploads/original, because the original plus the composite can exceed the 4.5 MB
- * request-body limit of Vercel Functions. The submission then carries only the resulting URL,
- * which must be inside `originals/<eventId>/` of this project's own Blob store.
+ * request-body limit of Vercel Functions. The signed completion callback mirrors it to private
+ * R2 and ImgBB before a saved submission can attach the three-provider manifest.
  */
 
 /** Largest original a token allows. A 12 MP JPEG at quality 0.92 is about 3 to 6 MB. */
@@ -105,6 +105,32 @@ export function isOriginalBlobUrl(url: unknown, options: { eventId: unknown; sto
   return validateOriginalPathname(pathname, options.eventId);
 }
 
+/** Bind a capture's source URL to its stable capture ID, not merely its event folder. */
+export function isCaptureOriginalBlobUrl(
+  url: unknown,
+  options: { eventId: unknown; captureId: unknown; storeHost: string | null },
+): url is string {
+  if (!isOriginalBlobUrl(url, options) || typeof options.captureId !== 'string' || !/^[a-f0-9]{24}$/i.test(options.captureId)) return false;
+  try {
+    const pathname = decodeURIComponent(new URL(url).pathname.replace(/^\//, ''));
+    return pathname === `originals/${options.eventId}/${options.captureId}.jpg`;
+  } catch {
+    return false;
+  }
+}
+
+/** A browser may request cleanup only for the random filename used by the capture flow. */
+export function isUnsubmittedOriginalBlobUrl(url: unknown, options: { eventId: unknown; storeHost: string | null }): url is string {
+  if (!isOriginalBlobUrl(url, options) || !isValidEventIdForPath(options.eventId)) return false;
+  try {
+    const pathname = decodeURIComponent(new URL(url).pathname.replace(/^\//, ''));
+    const fileName = pathname.slice(originalPathPrefix(options.eventId).length);
+    return /^(?:[0-9a-f]{24}|[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:-[A-Za-z0-9]+)?\.jpg$/i.test(fileName);
+  } catch {
+    return false;
+  }
+}
+
 function dimension(value: unknown): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
   const rounded = Math.round(value);
@@ -119,6 +145,60 @@ export interface VerifiedOriginal {
   mimeType: string;
 }
 
+/**
+ * Returns a genuine full-frame source only when both the capture record exists and the stored URL
+ * differs from known composed URLs. Earlier approval code could overwrite originalImageUrl with
+ * the framed image while leaving `reframe` behind, so the record alone is not sufficient proof.
+ */
+export function distinctOriginalImageUrl(submission: {
+  originalImageUrl?: unknown;
+  imageUrl?: unknown;
+  finalImageUrl?: unknown;
+  reframe?: unknown;
+}): string | null {
+  const record = submission.reframe;
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
+  const original = typeof submission.originalImageUrl === 'string' ? submission.originalImageUrl.trim() : '';
+  if (!original) return null;
+  const composed = [submission.imageUrl, submission.finalImageUrl]
+    .filter((url): url is string => typeof url === 'string')
+    .map((url) => url.trim());
+  return composed.includes(original) ? null : original;
+}
+
+/**
+ * Best known unframed source for moderation, analysis, and an originals export.
+ * Current submissions use the separately verified full-frame URL. Legacy vetted
+ * records retain their original in photoReview.photoUrl; some later approvals
+ * instead have a verified unframed backup. Never fall back to a known composition.
+ */
+export function originalSourceImageUrl(submission: {
+  originalImageUrl?: unknown;
+  imageUrl?: unknown;
+  finalImageUrl?: unknown;
+  reframe?: unknown;
+  photoReview?: unknown;
+  imageCopies?: unknown;
+}): string | null {
+  const distinct = distinctOriginalImageUrl(submission);
+  if (distinct) return distinct;
+  const composed = [submission.imageUrl, submission.finalImageUrl]
+    .filter((url): url is string => typeof url === 'string')
+    .map((url) => url.trim());
+  const review = submission.photoReview;
+  const reviewUrl = review && typeof review === 'object' && !Array.isArray(review)
+    ? (review as { photoUrl?: unknown }).photoUrl
+    : null;
+  if (typeof reviewUrl === 'string' && reviewUrl.trim() && !composed.includes(reviewUrl.trim())) return reviewUrl.trim();
+  const copies = Array.isArray(submission.imageCopies) ? submission.imageCopies : [];
+  const unframedCopy = copies.find((copy) => copy && typeof copy === 'object' && !Array.isArray(copy)
+    && (copy as { role?: unknown }).role === 'unframed'
+    && (copy as { state?: unknown }).state === 'verified'
+    && typeof (copy as { url?: unknown }).url === 'string') as { url: string } | undefined;
+  if (unframedCopy?.url.trim() && !composed.includes(unframedCopy.url.trim())) return unframedCopy.url.trim();
+  return null;
+}
+
 export type OriginalCheck =
   | { kind: 'none' }
   | { kind: 'invalid'; reason: string }
@@ -129,10 +209,10 @@ export type OriginalCheck =
 export type BlobHead = (url: string) => Promise<{ size: number; contentType: string } | null>;
 
 /**
- * Decides what to do with the original a submission claims.
- * - none: nothing was claimed (older clients, or the upload failed on the device).
+ * Decides whether the original a submission claims is safe to attach.
+ * - none: nothing was claimed (legacy clients only; current event capture requires it).
  * - invalid: the claim is wrong (foreign host, other event, wrong type or size); reject the request.
- * - unverified: the file could not be confirmed (not found, transient error); keep the submission without it.
+ * - unverified: the file could not be confirmed (not found, transient error); the current event route asks the guest to retry.
  * - ok: confirmed in our store, within the event's folder, an image of an allowed size.
  */
 export async function verifyOriginalImage(input: {

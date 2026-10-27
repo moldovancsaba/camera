@@ -57,6 +57,7 @@
   "homepage": "https://github.com/moldovancsaba/camera",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1157.0",
     "@mantine/core": "^8.3.6",
     "@mantine/dates": "^8.3.18",
     "@mantine/hooks": "^8.3.6",

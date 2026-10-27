@@ -140,30 +140,17 @@ of the shutter, then the guest zooms and pans anywhere in it. Pressing "Continue
 
 The optional marketing checkbox is controlled with the other consent settings at the partner level and the event's Pages of the user journey editor. It offers only **Shown, optional** or **Not shown**; there is no required mode. By default, the default consent page includes the opt-in. When the consent page is merged into Who-are-you, the marketing checkbox appears separately below the legal acceptance. Leaving it unticked never blocks login or Continue. Check the submission's `consents` array for a `kind: "marketing"` record: `accepted: true` is opt-in, while `accepted: false` with `required: false` is a shown, declined opt-in. The record keeps the exact wording and answer time; the default Hungarian wording is `Nyitott vagyok klub és szurkolói fotó marketing kommunikációra.`
 
-## Full-frame originals (camera#210, no longer stored since camera#257)
+## Full-frame originals (three-provider backup)
 
-The guest keeps only the frame-sized image as the final submission (owner decision 2026-10-06). The full camera image stays in browser memory while the guest frames it. When the guest presses Continue, the finished composition is sent through the established `POST /api/submissions` flow; the upload starts there, and the journey advances only after the submission is stored. A failed upload leaves the confirmed image on screen for retry. Captures without a signed-in account are stored with `userName: "NO USER"` and `metadata.identityStatus: "NO USER"`.
+After the guest confirms the crop, the browser uploads the unframed, full-camera JPEG to Vercel Blob at the stable path `originals/<eventId>/<captureId>.jpg`. Vercel Blob is the first landing copy, not the completed save. Its signed completion callback reads the Blob back and synchronously creates byte-identical, verified copies in the private Cloudflare R2 bucket and ImgBB. `POST /api/submissions` attaches the original only after all three providers report the expected bytes. The composed submission remains on its existing path. A storage failure returns a retryable error and leaves the capture on screen; it does not acknowledge a saved photo with a missing original backup.
 
-After a social sign-in later in the journey, the same-tab return carries the stable page ID, its journey phase, and the exact submission ID. The client resolves the page ID in the current ordered journey, links that submission to the signed-in account, then restores its saved preview image through the owner-checked `GET /api/submissions/<id>` route before the guest continues; it never uploads the photo a second time. Upload start, success, and failure are recorded in Journey analytics when recording is enabled. Older `capture-drafts/` objects from the superseded flow may still appear in the report-only `npm run blob:orphans -- --list` inventory and can be removed during post-event storage cleanup. The rest of this section describes older submissions and the legacy original upload contract still accepted by the server.
-
-- **Where:** legacy full-frame originals are in Vercel Blob, `originals/<eventId>/<random>-<suffix>.jpg` (public store, unguessable
-  path, never returned by a public route, never mirrored to imgbb). `submissions.originalImageUrl`
-  points at it and `submissions.reframe` records how it was framed.
-- **How it gets there:** when a fan taps Save, the browser asks `POST /api/uploads/original` for a
-  token (one JPEG, at most 15 MB, 10 minutes, existing event only) and uploads straight to
-  `https://vercel.com/api/blob/` (allowed by the CSP `connect-src`). The submission then carries
-  only the URL. `POST /api/submissions` accepts it only when it is inside the event's folder of our
-  own store and a Blob lookup confirms a JPEG of an allowed size; a foreign or malformed claim is a
-  400, a file it cannot confirm just drops the original.
-- **If the upload fails** (network, token route down) the browser retries twice, then saves the photo
-  without the original; the submission looks like an older one (original = composite, no `reframe`).
-  Look for `submissions.original_unverified` log lines and for submissions that have a framed photo
-  but no `reframe` after the rollout.
-- **Cleanup:** deleting a submission now deletes its files (see "Deleting a submission"). An upload
-  that succeeds but whose save never completes leaves an orphan under `originals/`;
-  `npm run blob:orphans` lists them.
-- **Privacy:** the original shows more of the scene than the framed photo, so the privacy and consent
-  text must say the full camera image is stored (proposed wording under "Deleting a submission").
+- **Configuration:** server-side `BLOB_READ_WRITE_TOKEN`, `IMGBB_API_KEY`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_PRIVATE_BUCKET=camera-photo-backups`, `R2_JURISDICTION=eu`, `MONGODB_URI`, `MONGODB_DB`, and `CRON_SECRET`. The three provider keys are never exposed to browser code. Missing/invalid R2 or ImgBB configuration makes original upload fail closed. Configure the same storage variables in Vercel Production and Preview before enabling capture there.
+- **Provider records:** `submissions.imageCopies` stores verified `original` entries for Blob, R2 (private object key), and ImgBB (public URL and deletion link); `camera_original_assets` is the retry/cleanup manifest, keyed by the stable capture ObjectId. The delete link and R2 key are operational secrets and are removed from browser-facing submission responses. `npm run db:ensure-indexes` creates the manifest query indexes before rollout.
+- **Retries:** browser retries reuse the same capture id and Blob path. The signed callback uses a Mongo lease to prevent duplicate mirrors; stale leases can be claimed after 150 seconds. R2 uses a deterministic content-addressed object key. Both secondary copies are read back and compared by byte count and SHA-256 before the callback succeeds. A partial secondary copy is rolled back; rollback failures are recorded for cleanup and surfaced in sanitized logs.
+- **Unsubmitted capture cleanup:** `/api/internal/purge-original-assets` is called every 15 minutes with `CRON_SECRET`. Partial secondary copies are retried for cleanup after 15 minutes while Blob remains available for a guest retry. At 24 hours, an unattached original is removed from ImgBB, R2, and Blob. If a submission was committed but the attachment update was interrupted, the job detects the submission and marks its manifest attached instead of deleting it. Cleanup failures are retried every 15 minutes and logged as `original_asset.cleanup_failed`.
+- **Submitted photo deletion and erasure:** the normal submission deletion and privacy media-erasure paths delete recorded Blob, R2, and ImgBB copies. A failed provider delete keeps the submission/erasure task retryable; provider keys and ImgBB deletion links remain encrypted or server-only.
+- **Limits and privacy:** ImgBB is a public third-party host, so anyone holding its image URL may view the original and ImgBB may remove it. R2 is private. Vercel Blob's original URL is an unguessable URL on the Blob public host; it is not an access-controlled private object. The product's consent/privacy language must describe retention and the wider original image. The 15 MB JPEG cap is enforced before storage.
+- **Operational check:** after rollout, take a consented test capture, confirm a `camera_original_assets` row reaches `attached` with three `verified` entries and the same byte count, verify the R2 object is private, then delete the test submission and confirm all three copies are absent. Do not print the ImgBB delete URL, R2 key secret, or provider credentials in logs/chat.
 
 ## Installing the capture flow as an app (camera#222)
 

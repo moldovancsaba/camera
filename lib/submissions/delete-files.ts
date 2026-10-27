@@ -27,6 +27,7 @@ import { isRenderableImgbbImageUrl } from '@/lib/imgbb/url';
 import { logWarn } from '@/lib/observability/logger';
 import { blobStoreHostFromToken } from '@/lib/submissions/original-image';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
+import { deleteCameraOriginalR2Copy, isCameraOriginalR2Key } from '@/lib/storage/r2';
 
 /** Display fields another submission may legitimately share a file through. */
 const SHARED_URL_FIELDS = ['imageUrl', 'finalImageUrl', 'originalImageUrl', 'previewImageUrl', 'screenImageUrl'] as const;
@@ -58,9 +59,9 @@ function text(value: unknown): string | null {
 }
 
 /** The copies recorded on the submission (issue 509): the address of each file and, for imgbb, the link that deletes it. */
-function copiesOf(submission: Document): Array<{ url: string | null; deleteUrl: string | null; store: string | null; role: string | null; deleted: boolean }> {
+function copiesOf(submission: Document): Array<{ url: string | null; deleteUrl: string | null; objectKey: string | null; store: string | null; role: string | null; deleted: boolean }> {
   if (!Array.isArray(submission.imageCopies)) return [];
-  return (submission.imageCopies as Document[]).map((copy) => ({ url: text(copy?.url), deleteUrl: text(copy?.deleteUrl), store: text(copy?.store), role: text(copy?.role), deleted: copy?.state === 'deleted' }));
+  return (submission.imageCopies as Document[]).map((copy) => ({ url: text(copy?.url), deleteUrl: text(copy?.deleteUrl), objectKey: text(copy?.objectKey), store: text(copy?.store), role: text(copy?.role), deleted: copy?.state === 'deleted' }));
 }
 
 /** Every file URL the submission owns, de-duplicated; originalImageUrl equals imageUrl for older submissions. */
@@ -196,6 +197,20 @@ export async function deleteSubmissionFiles(
     }
   }
 
+  const r2Keys = [...new Set(copiesOf(submission)
+    .filter((copy) => copy.store === 'r2' && !copy.deleted)
+    .map((copy) => copy.objectKey)
+    .filter((key): key is string => key !== null))];
+  if (copiesOf(submission).some((copy) => copy.store === 'r2' && !copy.deleted && (!copy.objectKey || !isCameraOriginalR2Key(copy.objectKey)))) {
+    throw apiError('Could not verify the private backup image reference, so the submission was kept. Try again.', 502);
+  }
+  try {
+    await Promise.all(r2Keys.map((key) => deleteCameraOriginalR2Copy(key)));
+  } catch (error) {
+    console.error(`Submission ${String(submission._id)}: deleting a private R2 image copy failed`, error instanceof Error ? error.name : 'unknown error');
+    throw apiError('Could not delete the private backup image, so the submission was kept. Try again.', 502);
+  }
+
   let imgbbFailed = 0;
   const imgbbNotDeleted: string[] = [];
   const recorded = new Map(copiesOf(submission).filter((copy) => copy.deleteUrl).map((copy) => [copy.deleteUrl as string, copy]));
@@ -214,7 +229,12 @@ export async function deleteSubmissionFiles(
   }
   if (imgbbFailed) {
     console.warn(`Submission ${String(submission._id)}: ${imgbbFailed} imgbb delete request(s) failed; the mirror may still be online`);
+    throw apiError('Could not confirm deletion of every ImgBB copy, so the submission was kept. Try again.', 502);
   }
+
+  // The short-lived upload manifest is retained until every provider copy has
+  // been removed. The submission row itself is deleted by the caller next.
+  await db.collection(COLLECTIONS.ORIGINAL_ASSETS).deleteOne({ _id: submission._id });
 
   return {
     deleted: toDelete,

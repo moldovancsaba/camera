@@ -69,6 +69,9 @@ import { pickRandom } from '@/lib/slots/resolve';
 import { detectTouchPrimaryDevice } from '@/lib/camera/constraints';
 import { journey } from '@/lib/journey/client';
 import { useJourneyRecorder } from '@/lib/journey/useJourneyRecorder';
+import { upload as uploadBlobFromClient } from '@vercel/blob/client';
+import { ORIGINAL_UPLOAD_ENDPOINT, TEMPORARY_CAPTURE_DELETE_ENDPOINT } from '@/lib/submissions/original-image';
+import type { ReframeRecord } from '@/lib/camera/reframe';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -255,6 +258,9 @@ export default function EventCapturePage({
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   // The whole photo at the camera's full size stays in browser memory for reframing; Continue uploads the framed result through POST /api/submissions.
   const [capturedOriginal, setCapturedOriginal] = useState<FullFrameCapture | null>(null);
+  const [storedOriginal, setStoredOriginal] = useState<{ url: string; width: number; height: number; reframe: ReframeRecord } | null>(null);
+  const originalCaptureIdRef = useRef<string | null>(null);
+  const [confirmedReframe, setConfirmedReframe] = useState<ReframeRecord | null>(null);
   // How the photo is taken in this environment (camera#257): the device's own camera on every touch device, a real still or
   // the video frame on a desktop webcam. Known after mount.
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
@@ -956,6 +962,9 @@ export default function EventCapturePage({
     setCapturedImage(null);
     setCompositeImage(null);
     setImageDimensions(null);
+    setStoredOriginal(null);
+    setConfirmedReframe(null);
+    originalCaptureIdRef.current = null;
     setCapturedOriginal(capture);
     setStep('reframe');
   };
@@ -966,6 +975,7 @@ export default function EventCapturePage({
     // The frame compositor runs asynchronously; clear the previous composite so the upload waits for this confirmed crop.
     setCompositeImage(null);
     setCapturedImage(result.dataUrl);
+    setConfirmedReframe(result.record);
     setSaveRequested(true);
   };
 
@@ -975,6 +985,17 @@ export default function EventCapturePage({
   }, [step]);
 
   const handleReframeRetake = () => {
+    if (storedOriginal && event) {
+      void fetch(TEMPORARY_CAPTURE_DELETE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: event.eventId, url: storedOriginal.url }),
+        keepalive: true,
+      }).catch(() => undefined);
+    }
+    setStoredOriginal(null);
+    setConfirmedReframe(null);
+    originalCaptureIdRef.current = null;
     setCapturedOriginal(null);
     setCapturedImage(null);
     setCompositeImage(null);
@@ -1005,7 +1026,7 @@ export default function EventCapturePage({
 
   const moveToThankYouRef = useRef<() => void>(() => undefined);
   const handleSave = async () => {
-    if (!compositeImage || !event) return;
+    if (!compositeImage || !event || !capturedOriginal || !confirmedReframe) return;
 
     clearCaptureNotices();
     if (selection && selectionFrame) {
@@ -1020,6 +1041,34 @@ export default function EventCapturePage({
     journey.uploadStarted(captureMethod ?? 'system');
 
     try {
+      // Keep retries tied to one stable source identity and Blob path. The signed
+      // completion callback mirrors this exact file before the submission can attach it.
+      const captureId = originalCaptureIdRef.current ?? Array.from(
+        crypto.getRandomValues(new Uint8Array(12)),
+        (byte) => byte.toString(16).padStart(2, '0'),
+      ).join('');
+      originalCaptureIdRef.current = captureId;
+      let originalForAttempt = storedOriginal;
+      if (!originalForAttempt) {
+        const uploaded = await uploadBlobFromClient(
+          `originals/${event.eventId}/${captureId}.jpg`,
+          capturedOriginal.blob,
+          {
+            access: 'public',
+            contentType: 'image/jpeg',
+            handleUploadUrl: ORIGINAL_UPLOAD_ENDPOINT,
+            clientPayload: JSON.stringify({ eventId: event.eventId, captureId }),
+          },
+        );
+        originalForAttempt = {
+          url: uploaded.url,
+          width: capturedOriginal.width,
+          height: capturedOriginal.height,
+          reframe: confirmedReframe,
+        };
+        setStoredOriginal(originalForAttempt);
+      }
+
       // Include userInfo and consents in the submission payload
       const submissionData: {
         imageData: string;
@@ -1030,6 +1079,11 @@ export default function EventCapturePage({
         partnerName: string | null;
         imageWidth: number;
         imageHeight: number;
+        originalImageUrl: string;
+        originalImageWidth: number;
+        originalImageHeight: number;
+        captureId: string;
+        reframe: ReframeRecord;
         userInfo?: WhoAreYouPageData;
         consents?: CollectedData['consents'];
         shareOptIn?: boolean;
@@ -1046,6 +1100,11 @@ export default function EventCapturePage({
         partnerName: event.partnerName,
         imageWidth: imageDimensions?.width || selectedFrame?.width || 1920,
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
+        originalImageUrl: originalForAttempt.url,
+        originalImageWidth: originalForAttempt.width,
+        originalImageHeight: originalForAttempt.height,
+        captureId,
+        reframe: originalForAttempt.reframe,
         ...(sourceLinkSlug ? { sourceSlug: sourceLinkSlug } : {}),
         // The terms the user accepted cover showing the photo on the event's pledge wall (camera#344), unless the event asks for the user's own permission (issue 554): then only a ticked box makes the photo eligible,
         // and the version of the sentence goes with it; the server decides from the event's own setting too.
@@ -1101,6 +1160,9 @@ export default function EventCapturePage({
       // Later journey pages may choose the next photo's frame/message; preserve the composition that was just stored.
       setCapturedImage(null);
       setCapturedOriginal(null);
+      setStoredOriginal(null);
+      setConfirmedReframe(null);
+      originalCaptureIdRef.current = null;
       try {
         window.sessionStorage.setItem(captureSubmissionResumeKey, JSON.stringify({ eventId, submissionId }));
       } catch {

@@ -9,10 +9,12 @@
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { uploadImage } from '@/lib/imgbb/upload';
-import { head as blobHead, put as blobPut } from '@vercel/blob';
+import { deleteImage, uploadImage } from '@/lib/imgbb/upload';
+import { del as blobDelete, head as blobHead, put as blobPut } from '@vercel/blob';
 import { sanitizeReframeRecord } from '@/lib/camera/reframe';
-import { blobStoreHostFromToken, verifyOriginalImage } from '@/lib/submissions/original-image';
+import { blobStoreHostFromToken, isCaptureOriginalBlobUrl, verifyOriginalImage } from '@/lib/submissions/original-image';
+import { fetchImageBuffer } from '@/lib/media/image-buffer';
+import { createRequiredOriginalBackups, deleteOriginalBackupCopies, OriginalBackupError } from '@/lib/storage/original-backups';
 import { logWarn } from '@/lib/observability/logger';
 import { dispatchArrivedEmail } from '@/lib/email/triggers';
 import { runAfterResponse } from '@/lib/api/run-after-response';
@@ -43,12 +45,17 @@ import {
   apiCreated,
   apiNotFound,
   apiBadRequest,
+  apiError,
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
 import { safeLinkUrl } from '@/lib/events/consent';
 import { scheduleCounterSync } from '@/lib/analytics/counters-trigger';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
+import type { ImageCopy } from '@/lib/db/schemas';
+
+export const runtime = 'nodejs';
+export const maxDuration = 120;
 interface EventLookupFilter {
   $or: Array<Record<string, unknown>>;
 }
@@ -110,6 +117,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       originalImageUrl: claimedOriginalUrl,
       originalImageWidth,
       originalImageHeight,
+      captureId: claimedCaptureId,
       reframe: claimedReframe,
       // The message and image of the generated default frame the photo used (camera#236); checked below.
       frameVariant: claimedFrameVariant,
@@ -131,6 +139,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   if (!imageData) {
     throw apiBadRequest('Image data is required');
   }
+  if (eventId && (typeof claimedCaptureId !== 'string' || !/^[a-f0-9]{24}$/i.test(claimedCaptureId))) {
+    throw apiBadRequest('The original photo capture id is missing or invalid. Please retry the photo.');
+  }
+  const captureSubmissionId = eventId ? new ObjectId(String(claimedCaptureId)) : new ObjectId();
 
   // Photo vetting (camera#266): read from the event, never from the client. A vetted event saves the photo pending, with nothing public.
   const db = await connectToDatabase();
@@ -170,12 +182,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     );
   }
 
-    // Check the claimed full-frame original before anything is uploaded or stored (camera#210).
-    // A claim outside this event's folder of our own Blob store, or not a JPEG of an allowed size,
-    // rejects the request; a file that cannot be confirmed only drops the original, never the photo.
-    const originalCheck = vetted
-      ? ({ kind: 'none' } as const)
-      : await verifyOriginalImage({
+    // Every event capture needs the untouched source: vetting and Fanmass use
+    // this asset, while the chosen crop is only used to compose the final image.
+    const originalCheck = await verifyOriginalImage({
           url: claimedOriginalUrl,
           width: originalImageWidth,
           height: originalImageHeight,
@@ -186,15 +195,42 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
             return { size: found.size, contentType: found.contentType };
           },
         });
+    if (eventId && originalCheck.kind === 'none') {
+      throw apiBadRequest('The original photo is missing. Please take the photo again.');
+    }
     if (originalCheck.kind === 'invalid') {
       throw apiBadRequest(originalCheck.reason);
     }
     if (originalCheck.kind === 'unverified') {
-      logWarn('submissions.original_unverified', 'The claimed original image could not be confirmed; saving without it', {
+      logWarn('submissions.original_unverified', 'The claimed original image could not be confirmed; the submission was rejected for retry', {
         eventId: typeof eventId === 'string' ? eventId : null,
       });
+      throw apiBadRequest('The original photo could not be verified. Please retry the photo.');
     }
     const verifiedOriginal = originalCheck.kind === 'ok' ? originalCheck.original : null;
+    if (eventId && verifiedOriginal && !isCaptureOriginalBlobUrl(verifiedOriginal.url, {
+      eventId,
+      captureId: claimedCaptureId,
+      storeHost: blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN),
+    })) {
+      throw apiBadRequest('The original photo does not match this capture. Please take the photo again.');
+    }
+
+    if (eventId && verifiedOriginal) {
+      const priorSubmission = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: captureSubmissionId });
+      if (priorSubmission) {
+        if (priorSubmission.eventId !== eventId || priorSubmission.originalImageUrl !== verifiedOriginal.url) {
+          throw apiBadRequest('This capture id is already assigned to another photo. Please take the photo again.');
+        }
+        const pending = priorSubmission.reviewStatus === 'pending_review';
+        return apiCreated({
+          submission: pending
+            ? { _id: priorSubmission._id, reviewStatus: 'pending_review', metadata: { emailSent: false } }
+            : { _id: priorSubmission._id, imageUrl: priorSubmission.imageUrl, finalImageUrl: priorSubmission.finalImageUrl, reviewStatus: priorSubmission.reviewStatus },
+          pending,
+        });
+      }
+    }
 
     // A distinct original always comes with the record of how it was framed, and nothing else
     // does: the record is what marks the original as private (lib/submissions/public-image.ts).
@@ -325,6 +361,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     // Save submission to database
     const submission = {
+      _id: captureSubmissionId,
       submissionId: `submission_${Date.now()}`,
       userId: session?.user?.id || 'anonymous',
       // Keep the guest-provided contact on the legacy top-level fields too. Admin queues
@@ -361,6 +398,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
             mimeType: uploadResult.mimeType,
           }
         : {
+            ...(verifiedOriginal ? { originalImageUrl: verifiedOriginal.url, reframe: reframeRecord } : {}),
             fileSize: pendingPhoto?.size ?? null,
             mimeType: pendingPhoto?.mime ?? null,
             reviewStatus: 'pending_review',
@@ -433,8 +471,152 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       updatedAt: createdAt,
     } as unknown as Submission;
 
+    // A Vercel Blob callback normally completes the two required mirrors before
+    // the guest submits. This guarded fallback handles older open pages and a
+    // callback that has not yet created its manifest; it never accepts a partial
+    // set of copies. A live callback owns the `replicating` lease, so this request
+    // asks the guest to retry instead of creating a second ImgBB object.
+    if (eventId && verifiedOriginal) {
+      const assets = db.collection(COLLECTIONS.ORIGINAL_ASSETS);
+      const backupStartedAt = new Date().toISOString();
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      let asset = await assets.findOne({ _id: captureSubmissionId });
+      if (asset && (asset.eventId !== eventId || asset.url !== verifiedOriginal.url)) {
+        throw apiBadRequest('This capture id is already assigned to another original photo. Please take the photo again.');
+      }
+      if (!asset) {
+        try {
+          await assets.updateOne(
+            { _id: captureSubmissionId },
+            { $setOnInsert: { eventId, url: verifiedOriginal.url, state: 'ready', copies: [], expiresAt: expiry, createdAt: backupStartedAt, updatedAt: backupStartedAt } },
+            { upsert: true },
+          );
+        } catch (error) {
+          const code = error && typeof error === 'object' ? (error as { code?: unknown }).code : null;
+          if (code !== 11000) throw error;
+        }
+        asset = await assets.findOne({ _id: captureSubmissionId });
+        if (asset && (asset.eventId !== eventId || asset.url !== verifiedOriginal.url)) {
+          throw apiBadRequest('This capture id is already assigned to another original photo. Please take the photo again.');
+        }
+      }
+      if (!asset) return apiError('The original photo backup could not be confirmed. Please retry in a few seconds.', 503);
+      const complete = (copies: unknown): copies is ImageCopy[] => Array.isArray(copies)
+        && copies.length === 3
+        && ['blob', 'r2', 'imgbb'].every((store) => copies.some((copy) => copy.role === 'original' && copy.store === store && copy.state === 'verified' && copy.bytes === verifiedOriginal.fileSize));
+      if (asset.expiresAt && String(asset.expiresAt) <= backupStartedAt && asset.state !== 'attached') {
+        return apiError('This photo capture has expired. Please take the photo again.', 410);
+      }
+      if (!complete(asset?.copies)) {
+        const startedAt = typeof asset?.startedAt === 'string' ? Date.parse(asset.startedAt) : 0;
+        const leaseIsLive = asset?.state === 'replicating' && Number.isFinite(startedAt) && Date.now() - startedAt < 150_000;
+        if (asset?.state === 'cleanup_in_progress' || leaseIsLive) {
+          return apiError('Photo backup is still being verified. Please retry in a few seconds.', 503);
+        }
+        const claimed = await assets.updateOne(
+          {
+            _id: captureSubmissionId,
+            eventId,
+            url: verifiedOriginal.url,
+            $or: [
+              { state: { $in: ['ready', 'failed', 'cleanup_failed', 'verified', 'attached'] } },
+              { state: 'replicating', startedAt: { $lte: new Date(Date.now() - 150_000).toISOString() } },
+            ],
+          },
+          { $set: { state: 'replicating', startedAt: backupStartedAt, expiresAt: expiry, updatedAt: backupStartedAt } },
+        );
+        if (claimed.modifiedCount !== 1) {
+          asset = await assets.findOne({ _id: captureSubmissionId, eventId, url: verifiedOriginal.url });
+          if (!complete(asset?.copies)) {
+            return apiError('Photo backup is still being verified. Please retry in a few seconds.', 503);
+          }
+        } else {
+          try {
+            const priorCopies = Array.isArray(asset.copies) ? asset.copies as ImageCopy[] : [];
+            if (priorCopies.length > 0) {
+              try {
+                await deleteOriginalBackupCopies(priorCopies);
+              } catch (error) {
+                const cleanupAt = new Date().toISOString();
+                await assets.updateOne(
+                  { _id: captureSubmissionId, state: 'replicating', startedAt: backupStartedAt },
+                  { $set: { state: 'cleanup_failed', copies: priorCopies, nextCleanupAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(), lastError: error instanceof Error ? error.name : 'cleanup_failed', updatedAt: cleanupAt }, $unset: { startedAt: '' } },
+                );
+                return apiError('A previous photo backup is still being cleaned up. Please retry in a few seconds.', 503);
+              }
+              await assets.updateOne(
+                { _id: captureSubmissionId, state: 'replicating', startedAt: backupStartedAt },
+                { $set: { copies: [], updatedAt: new Date().toISOString() } },
+              );
+            }
+            const sourceBytes = await fetchImageBuffer(verifiedOriginal.url);
+            if (sourceBytes.byteLength !== verifiedOriginal.fileSize) throw new Error('Blob original size changed before replication');
+            const copies = await createRequiredOriginalBackups({
+              eventId,
+              submissionId: captureSubmissionId.toHexString(),
+              sourceUrl: verifiedOriginal.url,
+              bytes: sourceBytes,
+              now: backupStartedAt,
+            });
+            await assets.updateOne(
+              { _id: captureSubmissionId, eventId, url: verifiedOriginal.url, state: 'replicating', startedAt: backupStartedAt },
+              { $set: { state: 'verified', bytes: sourceBytes.byteLength, copies, verifiedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, $unset: { startedAt: '' } },
+            );
+            submission.imageCopies = copies;
+          } catch (error) {
+            const pendingCopies = error instanceof OriginalBackupError ? error.cleanupPendingCopies : [];
+            const failureAt = new Date().toISOString();
+            await assets.updateOne(
+              { _id: captureSubmissionId, state: 'replicating', startedAt: backupStartedAt },
+              {
+                $set: {
+                  state: pendingCopies.length ? 'cleanup_failed' : 'failed',
+                  bytes: verifiedOriginal.fileSize,
+                  copies: pendingCopies,
+                  expiresAt: expiry,
+                  ...(pendingCopies.length ? { nextCleanupAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() } : {}),
+                  lastError: error instanceof Error ? error.name : 'unknown_storage_failure',
+                  updatedAt: failureAt,
+                },
+                $unset: { startedAt: '' },
+              },
+            );
+            const cleanup = await Promise.allSettled([
+              ...(uploadResult ? [blobDelete(uploadResult.imageUrl)] : []),
+              ...(uploadResult?.deleteUrl ? [deleteImage(uploadResult.deleteUrl, uploadResult.imageUrl)] : []),
+              ...(pendingPhoto?.url ? [blobDelete(pendingPhoto.url)] : []),
+            ]);
+            cleanup.forEach((result, index) => {
+              if (result.status === 'rejected') logWarn('submission.partial_upload_cleanup_failed', 'A temporary photo copy could not be removed after required original replication failed', { eventId, submissionRef: captureSubmissionId.toHexString().slice(-8), copyIndex: index });
+            });
+            logWarn('submission.original_replication_failed', 'The event photo was not accepted because its required original copies could not be verified', {
+              eventId,
+              submissionRef: captureSubmissionId.toHexString().slice(-8),
+              failedStores: error instanceof OriginalBackupError ? error.failedStores : [],
+              error: error instanceof Error ? error.name : 'unknown_storage_failure',
+            });
+            return apiError('Photo storage is temporarily unavailable. Please try again.', 503);
+          }
+        }
+      }
+      const verifiedAsset = await assets.findOne({
+        _id: captureSubmissionId,
+        eventId,
+        url: verifiedOriginal.url,
+        state: { $in: ['verified', 'attached'] },
+      }, { projection: { copies: 1 } });
+      if (complete(verifiedAsset?.copies)) submission.imageCopies = verifiedAsset.copies;
+      else return apiError('The original photo copies have not all been verified. Please retry.', 503);
+    }
+
     const result = await db.collection('submissions').insertOne(submission);
     const submissionId = getSubmissionMongoIdString(result.insertedId);
+    if (eventId && verifiedOriginal) {
+      await db.collection(COLLECTIONS.ORIGINAL_ASSETS).updateOne(
+        { _id: captureSubmissionId, eventId, url: verifiedOriginal.url, state: 'verified' },
+        { $set: { state: 'attached', submissionId, attachedAt: createdAt, updatedAt: createdAt }, $unset: { expiresAt: '' } },
+      );
+    }
     scheduleCounterSync(db, vettingEvent as unknown as Record<string, unknown> | null);
 
     // The "arrived" e-mail (epic 463), when the event has it on and the user's address is already known: after the answer is sent, so it never slows the photo. Without an address yet
@@ -472,8 +654,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       _id: result.insertedId,
       ...submission,
     };
+    // `imageCopies` contains private R2 object paths and ImgBB deletion links.
+    // Keep them in Mongo for erasure and operations, never return them to a browser.
+    const clientSafeSubmission = { ...createdSubmission };
+    delete clientSafeSubmission.imageCopies;
 
-    return apiCreated({ submission: createdSubmission });
+    return apiCreated({ submission: clientSafeSubmission });
 });
 
 /**
@@ -504,7 +690,13 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       .toArray();
 
   return apiSuccess({
-    submissions,
+    // The browser needs the picture and submission state, never provider object
+    // keys or ImgBB deletion links held by the private copy manifest.
+    submissions: submissions.map((submission) => {
+      const clientSafeSubmission = { ...submission };
+      delete clientSafeSubmission.imageCopies;
+      return clientSafeSubmission;
+    }),
     pagination: {
       page,
       limit,
