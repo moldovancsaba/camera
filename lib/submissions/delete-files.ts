@@ -11,15 +11,15 @@
  *     file is ever left without a row that names it.
  *  2. Only files in this project's own Blob store are touched; a URL on any other host is skipped.
  *  3. A file another submission still points at is kept, not deleted.
- *  4. The imgbb mirror is third-party and best effort: its delete link is requested and the
- *     outcome reported, but it never blocks the delete (see RUNBOOK, "Deleting a submission").
+ *  4. A failed ImgBB deletion keeps the submission row so the same operation can be retried;
+ *     Blob and R2 deletions are idempotent, and the saved ImgBB delete link remains available.
  *  5. Every copy recorded on the submission (`imageCopies`, issue 509: the unframed crop and the framed picture, on Blob and on imgbb) is deleted with it, through the same two
  *     paths: a Blob copy with the Blob files, an imgbb copy through its stored delete link. A Blob copy already recorded as `deleted` is a historical entry and is not asked for again; its ImgBB copy is still deleted through its link. An ImgBB file whose delete link failed is never silent: it is counted
- *     (`imgbbFailed`), listed with its address (`imgbbNotDeleted`, no secret in it) and logged as a warning (`submission_files.imgbb_not_deleted`), so it can be removed by hand.
+ *     (`imgbbFailed`), listed with its address (`imgbbNotDeleted`, no delete link in it) and logged as a warning (`submission_files.imgbb_not_deleted`). The route returns 502 and preserves the row until retry succeeds.
  */
 
 import { del } from '@vercel/blob';
-import type { Db, Document } from 'mongodb';
+import type { Db, Document, ObjectId } from 'mongodb';
 import { apiError } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { deleteImage } from '@/lib/imgbb/upload';
@@ -41,6 +41,8 @@ export interface SubmissionFilesDeps {
   deleteImage: (url: string, publicImageUrl?: string | null) => Promise<boolean>;
   /** Delete a path from the separate private recovery store, if this submission has one. */
   deleteRecovery?: (pathname: string) => Promise<void>;
+  /** Remove the temporary original-copy manifest once every provider delete succeeds. */
+  deleteOriginalAssetManifest?: (submissionId: ObjectId) => Promise<void>;
   /** Which of `urls` is still referenced by a submission other than `selfId`. */
   referencedElsewhere: (urls: string[], selfId: unknown) => Promise<Set<string>>;
 }
@@ -50,7 +52,7 @@ export interface SubmissionFilesResult {
   keptShared: string[];
   imgbbRequested: number;
   imgbbFailed: number;
-  /** The addresses of the imgbb files whose delete request failed (they may still be online; remove them by hand). Public addresses, never a delete link. */
+  /** Public addresses of ImgBB copies whose delete request failed; never contains a delete link. */
   imgbbNotDeleted: string[];
 }
 
@@ -135,6 +137,9 @@ export function defaultDeps(db: Db, runtimeOidcToken?: string): SubmissionFilesD
       const oidcToken = runtimeOidcToken?.trim() || process.env.VERCEL_OIDC_TOKEN?.trim();
       if (!storeId || !oidcToken) throw new Error('The private recovery store is not configured');
       await del(pathname, { storeId, oidcToken });
+    },
+    deleteOriginalAssetManifest: async (submissionId) => {
+      await db.collection(COLLECTIONS.ORIGINAL_ASSETS).deleteOne({ _id: submissionId });
     },
     referencedElsewhere: async (urls, selfId) => {
       const projection = Object.fromEntries(SHARED_URL_FIELDS.map((field) => [field, 1]));
@@ -221,20 +226,30 @@ export async function deleteSubmissionFiles(
     const copy = recorded.get(link);
     const unresolvedUrl = copy?.url ?? publicImageUrl;
     if (unresolvedUrl) imgbbNotDeleted.push(unresolvedUrl);
-    logWarn('submission_files.imgbb_not_deleted', 'An imgbb file could not be deleted with its submission; it may still be online and must be removed by hand', {
+    logWarn('submission_files.imgbb_not_deleted', 'An imgbb file could not be deleted with its submission; the submission remains available for a deletion retry', {
       submissionId: String(submission._id),
       role: copy?.role ?? 'framed picture',
       url: unresolvedUrl ?? null,
     });
   }
   if (imgbbFailed) {
-    console.warn(`Submission ${String(submission._id)}: ${imgbbFailed} imgbb delete request(s) failed; the mirror may still be online`);
+    console.warn(`Submission ${String(submission._id)}: ${imgbbFailed} imgbb delete request(s) failed; retaining the submission for retry`);
     throw apiError('Could not confirm deletion of every ImgBB copy, so the submission was kept. Try again.', 502);
   }
 
-  // The short-lived upload manifest is retained until every provider copy has
-  // been removed. The submission row itself is deleted by the caller next.
-  await db.collection(COLLECTIONS.ORIGINAL_ASSETS).deleteOne({ _id: submission._id });
+  // The short-lived upload manifest is removed only after every provider copy
+  // has been deleted; if this fails, the caller keeps the submission for retry.
+  if (submission._id !== undefined && deps.deleteOriginalAssetManifest) {
+    try {
+      await deps.deleteOriginalAssetManifest(submission._id);
+    } catch (error) {
+      logWarn('submission_files.original_manifest_not_deleted', 'The original-image manifest could not be removed with its submission', {
+        submissionId: String(submission._id),
+        error: error instanceof Error ? error.name : 'unknown_error',
+      });
+      throw apiError('Could not remove the photo backup record, so the submission was kept. Try again.', 502);
+    }
+  }
 
   return {
     deleted: toDelete,
