@@ -8,9 +8,10 @@ The recovered files live in the `camera-mtk-recovery` private Blob store in the 
 
 ## Runtime behavior
 
-- Event managers can inspect these files in a separate **Recovered photos** section of the event's Vetting page.
-- Each thumbnail is streamed through an authenticated Camera route after the route checks manager access to the event and confirms the submission is still marked `consentStatus: expired` and `retentionStatus: erased`. In Vercel Functions, the route reads the short-lived Blob OIDC token from the `x-vercel-oidc-token` request header; `VERCEL_OIDC_TOKEN` is only a build/local fallback. The route passes that token explicitly to the private Blob SDK and bypasses cache so expired or removed recovery copies are never served from a stale edge response.
-- Recovery files are not added to `imageUrl`, `photoReview`, normal vetting queues, public galleries, share pages, emails, or Fanmass. The historical approved/rejected status is displayed only as context and cannot be changed from this section.
+- The existing event **Approved** and **Rejected** tabs include these images under their historical decision. The existing manager Event Gallery includes the historically approved images. There is no separate recovery section or menu.
+- The cards use the same authenticated Camera image route after it checks manager access and confirms the submission is still marked `consentStatus: expired` and `retentionStatus: erased`. In Vercel Functions, the route reads the short-lived Blob OIDC token from the `x-vercel-oidc-token` request header; `VERCEL_OIDC_TOKEN` is only a build/local fallback. The route passes that token explicitly to the private Blob SDK and bypasses cache so expired or removed copies are never served from a stale edge response.
+- These cards are read-only: they cannot be approved, rejected, returned to vetting, selected for bulk removal, or framed. The historical decision is retained; the one historically rejected photo stays in Rejected.
+- The archive does not restore the erased submission fields or the consent audit. These manager views do not add the photos to the guest-facing public gallery, share pages, e-mails, or Fanmass. Those systems continue to require Camera's ordinary stored consent and visibility fields.
 - Reads return `Cache-Control: private, no-store` and never return the private Blob address to the browser.
 - Permanent submission deletion removes this separate private copy as well. Deletion routes pass the Function's OIDC request header to the private Blob SDK; a missing recovery-store ID or OIDC token fails closed and keeps the submission row so deletion can be retried.
 
@@ -22,4 +23,4 @@ The production environment uses the dedicated `CAMERA_MTK_RECOVERY_*` variables 
 
 ## Recovery limits
 
-This recovery restores private admin inspection for the 40 archive-confirmed images. It does not restore consent, customer contact details, or eligibility for publication or analysis. The remaining 35 originals were not found in the supplied archive or confirmed storage inventory; their metadata is not sufficient to recreate the photos.
+This recovery restores manager-only inspection for the 40 archive-confirmed images in the existing Camera views. It does not restore customer contact details or the erased consent record, nor does it grant guest-facing publication or analysis eligibility. The remaining 35 originals were not found in the supplied archive or confirmed storage inventory; their metadata is not sufficient to recreate the photos.

@@ -921,9 +921,9 @@ export interface Submission {
   retentionExpiresAt?: string;
   retentionErasedAt?: string;
   /**
-   * A separately authorized, manager-only copy recovered from an offline backup after the normal
-   * image references were erased. This never restores consent, publication, vetting, or Fanmass
-   * eligibility; only the private recovery image route reads its pathname.
+   * A manager-only image copy retained from an offline archive after the normal image references
+   * were erased. It can be displayed in the event's existing decision/gallery views, but does not
+   * restore consent, public publication, e-mail, or Fanmass eligibility.
    */
   adminRecovery?: {
     state: 'available';
