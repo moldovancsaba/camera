@@ -3,14 +3,16 @@
  *
  * The browser uploads the pure camera image straight to Vercel Blob (the original plus the
  * composite can exceed the 4.5 MB request-body limit of Vercel Functions). This public route only
- * hands out a short-lived upload token, and only for: an existing event, a path inside
- * `originals/<eventId>/`, a JPEG, at most ORIGINAL_MAX_BYTES, with a random suffix so the URL
- * cannot be guessed. POST /api/submissions later accepts the resulting URL only if it is inside
- * the same folder and passes a lookup. Nothing is uploaded through this function.
+ * hands out a short-lived upload token, and only for: an existing event, the stable
+ * `originals/<eventId>/<captureId>.jpg` path, a JPEG, and at most ORIGINAL_MAX_BYTES. Vercel Blob
+ * calls the signed upload-completed handler after upload; that handler verifies Blob, R2, and ImgBB
+ * copies before POST /api/submissions can attach the original. Nothing is uploaded through this
+ * function.
  *
  * Event capture uses this route after the participant confirms the crop, then attaches the verified source URL to
  * the submission. The URL is not returned by guest-facing submission APIs; managers and the Fanmass analysis flow
- * use it for review. See RUNBOOK ("Full-frame originals") for its lifecycle and storage limits.
+ * use it for review. Vercel derives the callback URL from deployment system environment variables.
+ * See RUNBOOK ("Full-frame originals") for its lifecycle and storage limits.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

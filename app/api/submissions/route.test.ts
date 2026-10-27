@@ -5,11 +5,12 @@ import { ObjectId } from 'mongodb';
 import { defaultView, fitView, toReframeRecord } from '@/lib/camera/reframe';
 
 const apiReal = await import('@/lib/api');
+const originalCaptureId = 'abcdef1234567890abcdef12';
 
 const EVENT = '3f2b8c1e-7a54-4d8e-9c21-0b6a5e4d3c2f';
 const HOST = 'teststoreid.public.blob.vercel-storage.com';
 const COMPOSITE = 'https://teststoreid.public.blob.vercel-storage.com/submission-1-composite.jpg';
-const ORIGINAL = `https://${HOST}/originals/${EVENT}/abc123-xyz.jpg`;
+const ORIGINAL = `https://${HOST}/originals/${EVENT}/${originalCaptureId}.jpg`;
 let ipCounter = 0;
 
 type RouteModule = typeof import('./route');
@@ -37,11 +38,29 @@ function mockDeps(
     exports: {
       connectToDatabase: async () => ({
         collection: (name: string) => ({
-          findOne: async () => (name === 'events' ? { _id: 'event-1', name: 'Test event', ...(extra.event ?? {}) } : name === 'partners' ? (extra.partner ?? null) : null),
+          findOne: async () => {
+            if (name === 'events') return { _id: 'event-1', name: 'Test event', ...(extra.event ?? {}) };
+            if (name === 'partners') return extra.partner ?? null;
+            if (name === 'camera_original_assets') {
+              const bytes = 3_400_000;
+              return {
+                eventId: EVENT,
+                url: ORIGINAL,
+                state: 'verified',
+                copies: [
+                  { role: 'original', store: 'blob', state: 'verified', url: ORIGINAL, bytes },
+                  { role: 'original', store: 'r2', state: 'verified', objectKey: `camera/originals/${EVENT}/${originalCaptureId}/${'a'.repeat(64)}.jpg`, bytes },
+                  { role: 'original', store: 'imgbb', state: 'verified', url: 'https://i.ibb.co/original.jpg', deleteUrl: 'https://ibb.co/delete/original', bytes },
+                ],
+              };
+            }
+            return null;
+          },
           insertOne: async (doc: Record<string, unknown>) => {
             h.inserted.push(doc);
             return { insertedId: new ObjectId() };
           },
+          updateOne: async () => ({ matchedCount: 1, modifiedCount: 1 }),
         }),
       }),
     },
@@ -52,6 +71,8 @@ function mockDeps(
         h.uploads += 1;
         return { success: true, imageUrl: COMPOSITE, thumbnailUrl: COMPOSITE, deleteUrl: '', imageId: '', fileSize: 4321, mimeType: 'image/jpeg', fileName: 'x.jpg', provider: 'blob', mirrorImageUrl: null };
       },
+      uploadToImgbbOnly: async () => { throw new Error('original backup upload should not run in submission tests'); },
+      deleteImage: async () => true,
     },
   });
   t.mock.module('@vercel/blob', {
@@ -96,6 +117,7 @@ function submissionRequest(extra: Record<string, unknown> = {}, headers: Record<
       imageWidth: 1080,
       imageHeight: 1920,
       shareOptIn: false,
+      ...(typeof extra.originalImageUrl === 'string' ? { captureId: originalCaptureId } : {}),
       ...extra,
     }),
   });

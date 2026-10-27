@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import type { Session } from '@/lib/auth/session';
+import { COLLECTIONS } from '@/lib/db/schemas';
 
 const apiReal = await import('@/lib/api');
 
@@ -152,10 +153,10 @@ function mockDeleteDeps(
   t.mock.module('@/lib/db/mongodb', {
     exports: {
       connectToDatabase: async () => ({
-        collection: () => ({
+        collection: (name: string) => ({
           findOne: async () => options.submission,
           deleteOne: async (filter: unknown) => {
-            deletes.push(filter);
+            if (name === COLLECTIONS.SUBMISSIONS) deletes.push(filter);
             return { deletedCount: 1 };
           },
         }),

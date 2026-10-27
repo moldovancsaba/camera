@@ -151,10 +151,10 @@ Runtime submission persistence currently relies on fields like:
 - `frameId`
 - `imageUrl`
 
-Image fields (camera#210; since camera#257 the capture page no longer uploads an original, so new submissions carry only the composite and the two fields below exist on older submissions):
+Image fields (camera#210):
 
 - `finalImageUrl` and `imageUrl` are the framed composite; they are the public image.
-- `originalImageUrl` is the pure full-frame camera image (not cropped, not framed, not mirrored) in Vercel Blob under `originals/<eventId>/`. It is private: no public route returns it (`lib/submissions/original-exposure.test.ts` guards this). Submissions made before camera#210, and submissions whose original could not be uploaded, carry the composite here instead.
+- `originalImageUrl` is the pure full-frame camera image (not cropped, not framed, not mirrored) in Vercel Blob under `originals/<eventId>/<captureId>.jpg`. The URL is unguessable but Vercel Blob itself is URL-accessible; Camera never returns it from guest-facing routes (`lib/submissions/original-exposure.test.ts` guards this). A successful new original also has three verified `imageCopies` entries: Vercel Blob, private EU R2, and ImgBB (public URL and server-only delete link). Submissions made before camera#210, and legacy submissions without an original, may carry the composite here instead.
 - `reframe` is present exactly when `originalImageUrl` is a distinct full-frame original: `{version: 1, mode: fill|fit|custom, zoom, crop {x, y, width, height} in source pixels (may extend past the image in fit), sourceWidth, sourceHeight, frameAspect, mirrored}`. `lib/submissions/public-image.ts` never falls back to the original when it exists.
 - `metadata.originalWidth`, `originalHeight`, `originalFileSize` and `originalMimeType` describe the original (the file's size and type come from a Blob lookup); `metadata.finalWidth` and `finalHeight` still describe the composite, which the slideshow reads.
 - `frameVariant` `{index, message, imageUrl}` is present when the photo used the generated default frame of an event with no frame of its own (camera#236, `frameId` is then null): the position and text of the message drawn and the generated image in Vercel Blob (`frames/generated/`), kept because try-on composes with it later. It is never deleted with the submission (it is shared by every photo of that variant). A try-on result made from such a photo is composed with this image and keeps the same `frameVariant` (camera#238).

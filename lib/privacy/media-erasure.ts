@@ -129,7 +129,7 @@ export function collectMediaReferences(encryptedPayload: Document, blobToken?: s
     refIndex,
     provider: item.provider,
     url: item.url,
-    objectKey: item.objectKey,
+    ...(item.objectKey ? { objectKey: item.objectKey } : {}),
     deleteUrl: item.deleteUrls.values().next().value ?? null,
     variants: [...item.variants].sort(),
   }));
