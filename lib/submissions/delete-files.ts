@@ -123,15 +123,17 @@ function publicImageUrlForDeleteLink(submission: Document, link: string): string
   return null;
 }
 
-export function defaultDeps(db: Db): SubmissionFilesDeps {
+export function defaultDeps(db: Db, runtimeOidcToken?: string): SubmissionFilesDeps {
   return {
     storeHost: blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN),
     del: (urls) => del(urls),
     deleteImage: (url, publicImageUrl) => deleteImage(url, publicImageUrl),
     deleteRecovery: async (pathname) => {
       const storeId = process.env.CAMERA_MTK_RECOVERY_STORE_ID?.trim();
-      if (!storeId || !process.env.VERCEL_OIDC_TOKEN) throw new Error('The private recovery store is not configured');
-      await del(pathname, { storeId });
+      // Vercel Functions expose OIDC on the incoming request, not process.env.
+      const oidcToken = runtimeOidcToken?.trim() || process.env.VERCEL_OIDC_TOKEN?.trim();
+      if (!storeId || !oidcToken) throw new Error('The private recovery store is not configured');
+      await del(pathname, { storeId, oidcToken });
     },
     referencedElsewhere: async (urls, selfId) => {
       const projection = Object.fromEntries(SHARED_URL_FIELDS.map((field) => [field, 1]));
@@ -157,7 +159,8 @@ export function defaultDeps(db: Db): SubmissionFilesDeps {
 export async function deleteSubmissionFiles(
   db: Db,
   submission: Document,
-  deps: SubmissionFilesDeps = defaultDeps(db)
+  deps: SubmissionFilesDeps = defaultDeps(db),
+  runtimeOidcToken?: string,
 ): Promise<SubmissionFilesResult> {
   const { fileUrls, imgbbDeleteLinks } = ownedUrls(submission);
   const candidates = fileUrls.filter((url) => inStore(url, deps.storeHost));
@@ -167,11 +170,14 @@ export async function deleteSubmissionFiles(
   const recoveryFileIsOwned = recovery.store === 'camera-mtk-recovery'
     && recoveryPath === `camera-admin-recovery/mtk/${String(submission._id)}.jpg`;
   if (recoveryFileIsOwned) {
-    if (!deps.deleteRecovery) {
+    const deleteRecovery = runtimeOidcToken?.trim()
+      ? defaultDeps(db, runtimeOidcToken).deleteRecovery
+      : deps.deleteRecovery;
+    if (!deleteRecovery) {
       throw apiError('Could not delete the restricted recovery image, so the submission was kept. Try again.', 502);
     }
     try {
-      await deps.deleteRecovery(recoveryPath!);
+      await deleteRecovery(recoveryPath!);
     } catch (error) {
       console.error(`Submission ${String(submission._id)}: deleting its restricted recovery copy failed`, error);
       throw apiError('Could not delete the restricted recovery image, so the submission was kept. Try again.', 502);

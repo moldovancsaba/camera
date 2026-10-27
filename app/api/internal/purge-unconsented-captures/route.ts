@@ -255,7 +255,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       );
       if (claim.modifiedCount !== 1) continue;
       try {
-        const files = await deleteSubmissionFiles(db, submission);
+        const files = await deleteSubmissionFiles(db, submission, undefined, request.headers.get('x-vercel-oidc-token') ?? undefined);
         if (files.imgbbFailed > 0) {
           await submissions.updateOne(
             { _id: submission._id, retentionStatus: 'erasing', retentionErasureStartedAt: now, ...PRIVACY_ERASURE_ACTIVE_FILTER },
@@ -333,7 +333,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     }
 
     try {
-      const files = await deleteSubmissionFiles(db, submission);
+      const files = await deleteSubmissionFiles(db, submission, undefined, request.headers.get('x-vercel-oidc-token') ?? undefined);
       // ImgBB deletion is best-effort in the shared delete helper. Keep the source URLs and retry next run if it failed.
       if (files.imgbbFailed > 0) {
         if (!noConsentAudit) {

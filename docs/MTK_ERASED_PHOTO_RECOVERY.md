@@ -9,10 +9,10 @@ The recovered files live in the `camera-mtk-recovery` private Blob store in the 
 ## Runtime behavior
 
 - Event managers can inspect these files in a separate **Recovered photos** section of the event's Vetting page.
-- Each thumbnail is streamed through an authenticated Camera route after the route checks manager access to the event and confirms the submission is still marked `consentStatus: expired` and `retentionStatus: erased`.
+- Each thumbnail is streamed through an authenticated Camera route after the route checks manager access to the event and confirms the submission is still marked `consentStatus: expired` and `retentionStatus: erased`. In Vercel Functions, the route reads the short-lived Blob OIDC token from the `x-vercel-oidc-token` request header; `VERCEL_OIDC_TOKEN` is only a build/local fallback. The route passes that token explicitly to the private Blob SDK and bypasses cache so expired or removed recovery copies are never served from a stale edge response.
 - Recovery files are not added to `imageUrl`, `photoReview`, normal vetting queues, public galleries, share pages, emails, or Fanmass. The historical approved/rejected status is displayed only as context and cannot be changed from this section.
 - Reads return `Cache-Control: private, no-store` and never return the private Blob address to the browser.
-- Permanent submission deletion removes this separate private copy as well. A missing recovery-store token fails closed and keeps the submission row so deletion can be retried.
+- Permanent submission deletion removes this separate private copy as well. Deletion routes pass the Function's OIDC request header to the private Blob SDK; a missing recovery-store ID or OIDC token fails closed and keeps the submission row so deletion can be retried.
 
 ## Recovery procedure
 
