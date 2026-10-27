@@ -4,7 +4,9 @@ import { NextRequest } from 'next/server';
 import { getPayloadFromClientToken } from '@vercel/blob/client';
 
 const EVENT = '3f2b8c1e-7a54-4d8e-9c21-0b6a5e4d3c2f';
-const PATH = `originals/${EVENT}/abc123.jpg`;
+const CAPTURE_ID = 'abcdef1234567890abcdef12';
+const PATH = `originals/${EVENT}/${CAPTURE_ID}.jpg`;
+const validClientPayload = JSON.stringify({ eventId: EVENT, captureId: CAPTURE_ID });
 let ipCounter = 0;
 
 type RouteModule = typeof import('./route');
@@ -56,7 +58,7 @@ test('an existing event gets a short-lived token that allows exactly one JPEG of
     mockEvents(t, [EVENT]);
     const { POST } = await importRouteModule('ok');
     const started = Date.now();
-    const response = await POST(tokenRequest(PATH, JSON.stringify({ eventId: EVENT })));
+    const response = await POST(tokenRequest(PATH, validClientPayload));
     assert.equal(response.status, 200);
 
     const body = (await response.json()) as { type: string; clientToken: string };
@@ -65,10 +67,10 @@ test('an existing event gets a short-lived token that allows exactly one JPEG of
     assert.equal(payload.pathname, PATH);
     assert.deepEqual(payload.allowedContentTypes, ['image/jpeg']);
     assert.equal(payload.maximumSizeInBytes, 15 * 1024 * 1024);
-    assert.equal(payload.addRandomSuffix, true);
+    assert.equal(payload.addRandomSuffix, false, 'stable capture identity makes upload retries idempotent');
     const validUntil = Number(payload.validUntil);
     assert.ok(validUntil > started && validUntil <= started + 10 * 60 * 1000 + 5000, 'valid for at most ten minutes');
-    assert.equal(payload.callbackUrl, undefined, 'no completion callback is requested');
+    assert.equal(payload.callbackUrl, undefined, 'Vercel derives the completion callback URL from deployment settings');
   } finally {
     restore();
   }
@@ -79,7 +81,7 @@ test('an unknown event gets no token', async (t) => {
   try {
     mockEvents(t, ['some-other-event-id-0001']);
     const { POST } = await importRouteModule('unknown-event');
-    const response = await POST(tokenRequest(PATH, JSON.stringify({ eventId: EVENT })));
+    const response = await POST(tokenRequest(PATH, validClientPayload));
     assert.equal(response.status, 400);
     assert.equal(JSON.stringify(await response.json()).includes('clientToken'), false);
   } finally {
@@ -92,7 +94,7 @@ test('paths outside the event folder, other file types and bad payloads get no t
   try {
     mockEvents(t, [EVENT, 'some-other-event-id-0001']);
     const { POST } = await importRouteModule('bad-paths');
-    const payload = JSON.stringify({ eventId: EVENT });
+    const payload = validClientPayload;
     for (const [pathname, clientPayload] of [
       [`frames/${EVENT}/a.jpg`, payload],
       [`originals/some-other-event-id-0001/a.jpg`, payload],
@@ -112,12 +114,12 @@ test('paths outside the event folder, other file types and bad payloads get no t
   }
 });
 
-test('anything but a token request is rejected before the SDK is involved', async (t) => {
+test('unsupported upload message types are rejected before the SDK is involved', async (t) => {
   const restore = withBlobToken();
   try {
     mockEvents(t, [EVENT]);
     const { POST } = await importRouteModule('wrong-type');
-    assert.equal((await POST(tokenRequest(PATH, JSON.stringify({ eventId: EVENT }), { type: 'blob.upload-completed' }))).status, 400);
+    assert.equal((await POST(tokenRequest(PATH, validClientPayload, { type: 'blob.upload-started' }))).status, 400);
     const noBody = new NextRequest('http://localhost/api/uploads/original', { method: 'POST', body: 'nope', headers: { 'x-forwarded-for': '198.51.100.250' } });
     assert.equal((await POST(noBody)).status, 400);
   } finally {
@@ -133,7 +135,7 @@ test('a missing storage token is a generic server error that leaks nothing', asy
   try {
     mockEvents(t, [EVENT]);
     const { POST } = await importRouteModule('no-token');
-    const response = await POST(tokenRequest(PATH, JSON.stringify({ eventId: EVENT })));
+    const response = await POST(tokenRequest(PATH, validClientPayload));
     assert.equal(response.status, 500);
     assert.equal(JSON.stringify(await response.json()), JSON.stringify({ error: 'Could not prepare the upload' }));
   } finally {
@@ -149,7 +151,7 @@ test('a flood from one address is cut off with 429', async (t) => {
     const { POST } = await importRouteModule('flood');
     let limited = 0;
     for (let i = 0; i < 35; i += 1) {
-      const response = await POST(tokenRequest(PATH, JSON.stringify({ eventId: EVENT }), { ip: '203.0.113.77' }));
+      const response = await POST(tokenRequest(PATH, validClientPayload, { ip: '203.0.113.77' }));
       if (response.status === 429) limited += 1;
     }
     assert.ok(limited > 0, 'expected 429 after the 30 per minute cap');

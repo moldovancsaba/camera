@@ -13,6 +13,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/internal/purge-original-assets",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/internal/privacy/process-erasure",
       "schedule": "*/2 * * * *"
     },

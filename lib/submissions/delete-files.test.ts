@@ -84,15 +84,19 @@ test('a failed file delete answers 502, names no URL, and leaves the imgbb mirro
   assert.deepEqual(calls.images, []);
 });
 
-test('requests the imgbb delete link, counts a failure, and never blocks on it', async () => {
+test('requests the imgbb delete link and keeps the submission for retry when deletion cannot be verified', async () => {
   let attemptedLink = '';
   let attemptedImageUrl: string | null | undefined;
   const { deps, calls } = makeDeps({ deleteImage: async (link, imageUrl) => { attemptedLink = link; attemptedImageUrl = imageUrl; return false; } });
 
-  const result = await deleteSubmissionFiles(db, submission({ deleteUrl: 'https://ibb.co/AbC/hash', imageUrl: IBB_COMPOSED }), deps);
+  const error = await deleteSubmissionFiles(db, submission({ deleteUrl: 'https://ibb.co/AbC/hash', imageUrl: IBB_COMPOSED }), deps).then(
+    () => null,
+    (e: unknown) => e,
+  );
 
-  assert.equal(result.imgbbRequested, 1);
-  assert.equal(result.imgbbFailed, 1);
+  assert.ok(error instanceof Response);
+  assert.equal(error.status, 502);
+  assert.doesNotMatch(JSON.stringify(await error.json()), /AbC\/hash/);
   assert.deepEqual(calls.del, [[composite, original]]);
   assert.equal(attemptedLink, 'https://ibb.co/AbC/hash');
   assert.equal(attemptedImageUrl, IBB_COMPOSED);
@@ -134,12 +138,15 @@ test('every recorded copy is deleted with the submission: the Blob files with th
   assert.deepEqual([result.imgbbRequested, result.imgbbFailed, result.imgbbNotDeleted], [2, 0, []]);
 });
 
-test('a recorded imgbb copy whose delete failed is never silent: counted, listed by its public address (never its delete link) and the submission is still deleted', async () => {
+test('a recorded imgbb copy whose delete failed keeps its submission for retry and does not expose its delete link', async () => {
   const { deps } = makeDeps({ deleteImage: async (url) => url !== 'https://ibb.co/aaa/hash-unframed' });
-  const result = await deleteSubmissionFiles(db, submission({ imageCopies: copies }), deps);
-  assert.equal(result.imgbbFailed, 1);
-  assert.deepEqual(result.imgbbNotDeleted, [IBB_UNFRAMED]);
-  assert.doesNotMatch(JSON.stringify(result), /hash-unframed/, 'the delete link is a secret and is not reported');
+  const error = await deleteSubmissionFiles(db, submission({ imageCopies: copies }), deps).then(
+    () => null,
+    (e: unknown) => e,
+  );
+  assert.ok(error instanceof Response);
+  assert.equal(error.status, 502);
+  assert.doesNotMatch(JSON.stringify(await error.json()), /hash-unframed/, 'the delete link is never returned');
 });
 
 test('a Blob file that a failed copy names is deleted too, and a copy with no address or delete link adds nothing', () => {

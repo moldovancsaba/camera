@@ -20,10 +20,14 @@ const ALLOWED: Record<string, string> = {
   'lib/fanmass/photo-results.ts': 'admin-only, event-manager-authorized Fanmass review page uses the verified photo URL to display the image; no public route or API returns image-copy metadata or delete links',
   'lib/submissions/delete-files.ts': 'reads the addresses and delete links only to delete the files with the submission; returns counts and public ImgBB addresses, never a delete link',
   'app/api/internal/purge-unconsented-captures/route.ts': 'scheduled server-only cleanup deletes expired unconsented photos; its response contains counts only',
+  'app/api/internal/purge-original-assets/route.ts': 'scheduled server-only cleanup deletes unattached originals and returns counts only',
+  'app/api/submissions/route.ts': 'server-side submission write and owner GET strip provider keys and ImgBB delete links before returning',
+  'app/api/uploads/temporary-capture/route.ts': 'server-only retake cleanup checks submission references before deleting recorded provider copies',
   'app/api/internal/privacy/process-erasure/route.ts': 'internal erasure worker reads encrypted media references to remove provider objects; its response contains counts and states only',
   'app/api/internal/privacy/process-media-erasure/route.ts': 'internal erasure worker reads encrypted media references to remove provider objects; its response contains counts and states only',
   'lib/privacy/erasure.ts': 'encrypts and decrypts media deletion references for the restricted erasure worker; no public surface reads the values',
   'lib/privacy/media-erasure.ts': 'server-only erasure worker reads encrypted provider references to remove exact media objects; the route returns only counts and states',
+  'lib/submissions/original-image.ts': 'server-only source and image-copy validation helpers; no public surface returns copy metadata',
 };
 
 const PUBLIC_SURFACES = [

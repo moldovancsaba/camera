@@ -3,8 +3,9 @@ import type { Document } from 'mongodb';
 import { checkPicture } from '@/lib/media/broken';
 import { detectImageProvider, isRenderableImgbbImageUrl } from '@/lib/imgbb/url';
 import { blobStoreHostFromToken } from '@/lib/submissions/original-image';
+import { cameraOriginalR2CopyExists, deleteCameraOriginalR2Copy, isCameraOriginalR2Key } from '@/lib/storage/r2';
 
-export type MediaProvider = 'blob' | 'imgbb' | 'unsupported';
+export type MediaProvider = 'blob' | 'r2' | 'imgbb' | 'unsupported';
 export type MediaTaskState = 'pending' | 'processing' | 'retry' | 'deleted' | 'already_absent' | 'unknown' | 'failed';
 
 export interface MediaReference {
@@ -12,6 +13,7 @@ export interface MediaReference {
   provider: MediaProvider;
   url: string | null;
   deleteUrl: string | null;
+  objectKey?: string | null;
   variants: string[];
 }
 
@@ -69,11 +71,11 @@ function isOwnBlobUrl(value: string, token: string | undefined): boolean {
  * deleted remain historical evidence and are not sent to Blob again.
  */
 export function collectMediaReferences(encryptedPayload: Document, blobToken?: string): MediaReference[] {
-  const candidates: Array<{ url: string | null; deleteUrl: string | null; variant: string; alreadyDeleted?: boolean }> = [];
+  const candidates: Array<{ url: string | null; deleteUrl: string | null; objectKey: string | null; variant: string; alreadyDeleted?: boolean }> = [];
   const add = (urlValue: unknown, variant: string, deleteValue?: unknown, alreadyDeleted = false) => {
     const url = httpsUrl(urlValue);
     const deleteUrl = httpsUrl(deleteValue);
-    if (url || deleteUrl) candidates.push({ url, deleteUrl, variant, alreadyDeleted });
+    if (url || deleteUrl) candidates.push({ url, deleteUrl, objectKey: null, variant, alreadyDeleted });
   };
 
   const topDeleteUrl = httpsUrl(encryptedPayload.deleteUrl);
@@ -93,15 +95,21 @@ export function collectMediaReferences(encryptedPayload: Document, blobToken?: s
     for (const [index, value] of encryptedPayload.imageCopies.entries()) {
       const copy = record(value);
       const deletedBlob = copy.store === 'blob' && copy.state === 'deleted';
-      if (!deletedBlob) add(copy.url, typeof copy.role === 'string' ? copy.role : `imageCopy${index + 1}`, copy.deleteUrl);
+      if (copy.store === 'r2' && copy.state !== 'deleted' && isCameraOriginalR2Key(copy.objectKey)) {
+        candidates.push({ url: null, deleteUrl: null, objectKey: copy.objectKey, variant: typeof copy.role === 'string' ? copy.role : `imageCopy${index + 1}` });
+      } else if (!deletedBlob) {
+        add(copy.url, typeof copy.role === 'string' ? copy.role : `imageCopy${index + 1}`, copy.deleteUrl);
+      }
     }
   }
 
-  const grouped = new Map<string, { provider: MediaProvider; url: string | null; deleteUrls: Set<string>; variants: Set<string> }>();
+  const grouped = new Map<string, { provider: MediaProvider; url: string | null; objectKey: string | null; deleteUrls: Set<string>; variants: Set<string> }>();
   for (const candidate of candidates) {
     if (candidate.alreadyDeleted) continue;
     const detected = candidate.url ? detectImageProvider(candidate.url) : null;
-    const provider: MediaProvider = candidate.url && new URL(candidate.url).protocol !== 'https:'
+    const provider: MediaProvider = candidate.objectKey && isCameraOriginalR2Key(candidate.objectKey)
+      ? 'r2'
+      : candidate.url && new URL(candidate.url).protocol !== 'https:'
       ? 'unsupported'
       : detected === 'imgbb'
       ? 'imgbb'
@@ -110,8 +118,8 @@ export function collectMediaReferences(encryptedPayload: Document, blobToken?: s
         : !candidate.url && safeImgBbDeleteLink(candidate.deleteUrl)
           ? 'imgbb'
           : 'unsupported';
-    const key = `${provider}\n${candidate.url ?? ''}\n${candidate.deleteUrl ?? ''}`;
-    const current = grouped.get(key) ?? { provider, url: candidate.url, deleteUrls: new Set<string>(), variants: new Set<string>() };
+    const key = `${provider}\n${candidate.url ?? ''}\n${candidate.objectKey ?? ''}\n${candidate.deleteUrl ?? ''}`;
+    const current = grouped.get(key) ?? { provider, url: candidate.url, objectKey: candidate.objectKey, deleteUrls: new Set<string>(), variants: new Set<string>() };
     if (candidate.deleteUrl) current.deleteUrls.add(candidate.deleteUrl);
     current.variants.add(candidate.variant.slice(0, 40));
     grouped.set(key, current);
@@ -121,6 +129,7 @@ export function collectMediaReferences(encryptedPayload: Document, blobToken?: s
     refIndex,
     provider: item.provider,
     url: item.url,
+    ...(item.objectKey ? { objectKey: item.objectKey } : {}),
     deleteUrl: item.deleteUrls.values().next().value ?? null,
     variants: [...item.variants].sort(),
   }));
@@ -188,6 +197,17 @@ export async function deleteAndVerifyMediaReference(
   } = {},
 ): Promise<MediaDeleteOutcome> {
   const imageUrl = reference.url;
+  if (reference.provider === 'r2') {
+    const key = reference.objectKey;
+    if (!key || !isCameraOriginalR2Key(key)) return { state: 'unknown', errorCode: 'r2_object_key_invalid' };
+    try {
+      if (!await cameraOriginalR2CopyExists(key)) return { state: 'already_absent' };
+      await deleteCameraOriginalR2Copy(key);
+      return { state: 'deleted' };
+    } catch {
+      return { state: 'retry', errorCode: 'r2_delete_or_verify_failed' };
+    }
+  }
   if (!imageUrl && reference.provider !== 'imgbb') return { state: 'unknown', errorCode: 'public_reference_missing' };
   if (imageUrl && options.isReferencedElsewhere && await options.isReferencedElsewhere(imageUrl)) {
     return { state: 'retry', errorCode: 'media_reference_shared' };

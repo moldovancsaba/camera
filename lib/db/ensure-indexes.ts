@@ -289,6 +289,22 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
     )
   );
 
+  // Full-frame source replicas staged by the signed Blob completion callback.
+  // The two expiry indexes keep the bounded orphan-cleanup pass efficient;
+  // URL lookup lets the page-exit cleanup find a capture without scanning.
+  await track(COLLECTIONS.ORIGINAL_ASSETS, () =>
+    db.collection(COLLECTIONS.ORIGINAL_ASSETS).createIndex({ state: 1, expiresAt: 1 }, { name: 'camera_original_assets_state_expiresAt' })
+  );
+  await track(COLLECTIONS.ORIGINAL_ASSETS, () =>
+    db.collection(COLLECTIONS.ORIGINAL_ASSETS).createIndex({ state: 1, nextCleanupAt: 1 }, { name: 'camera_original_assets_state_nextCleanupAt' })
+  );
+  await track(COLLECTIONS.ORIGINAL_ASSETS, () =>
+    db.collection(COLLECTIONS.ORIGINAL_ASSETS).createIndex({ state: 1, cleanupStartedAt: 1 }, { name: 'camera_original_assets_state_cleanupStartedAt' })
+  );
+  await track(COLLECTIONS.ORIGINAL_ASSETS, () =>
+    db.collection(COLLECTIONS.ORIGINAL_ASSETS).createIndex({ url: 1 }, { name: 'camera_original_assets_url' })
+  );
+
   // --- slideshows ---
   await track(COLLECTIONS.SLIDESHOWS, () =>
     db

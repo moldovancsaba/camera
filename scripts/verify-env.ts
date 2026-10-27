@@ -4,8 +4,8 @@
  * Usage (repo root):
  *   npx tsx scripts/verify-env.ts
  *
- * Tests: MongoDB (Camera), SSO OAuth discovery, Vercel Blob, ImgBB API (mirror,
- * optional), optional Upstash Redis (rate limits).
+ * Checks: MongoDB (Camera), SSO OAuth discovery, Vercel Blob, ImgBB API and
+ * required R2 configuration for full-frame original replication, optional Redis.
  */
 
 import { del, put } from '@vercel/blob';
@@ -157,9 +157,20 @@ async function main() {
   const imgbbKey = process.env.IMGBB_API_KEY?.trim();
   if (imgbbKey) {
     const passed = await testImgBB(imgbbKey);
-    results.push({ name: 'IMGBB_API_KEY (mirror, optional)', pass: passed });
+    results.push({ name: 'IMGBB_API_KEY', pass: passed });
   } else {
-    console.log('○ IMGBB_API_KEY: not set (optional -- best-effort mirror only, uploads still work without it)');
+    console.log('✗ IMGBB_API_KEY: not set (required for full-frame original copies)');
+    results.push({ name: 'IMGBB_API_KEY', pass: false });
+  }
+
+  const r2Names = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'] as const;
+  const missingR2 = r2Names.filter((name) => !process.env[name]?.trim());
+  if (missingR2.length === 0) {
+    console.log(`✓ Cloudflare R2: credentials are present (bucket ${process.env.R2_PRIVATE_BUCKET?.trim() || 'camera-photo-backups'})`);
+    results.push({ name: 'Cloudflare R2 configuration', pass: true });
+  } else {
+    console.log(`✗ Cloudflare R2: missing ${missingR2.join(', ')} (required for full-frame original copies)`);
+    results.push({ name: 'Cloudflare R2 configuration', pass: false });
   }
 
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();

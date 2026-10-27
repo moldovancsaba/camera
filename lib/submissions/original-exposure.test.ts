@@ -31,8 +31,12 @@ const ALLOWED: Record<string, string> = {
   'app/api/internal/purge-unconsented-captures/route.ts': 'scheduled server-only cleanup deletes expired unconsented photos; its response contains counts only',
   'app/api/internal/privacy/process-erasure/route.ts': 'internal erasure worker reads encrypted original media references to remove provider objects; its response contains counts and states only',
   'app/api/internal/privacy/process-media-erasure/route.ts': 'internal erasure worker reads encrypted original media references to remove provider objects; its response contains counts and states only',
+  'app/api/internal/purge-original-assets/route.ts': 'scheduled server-only cleanup deletes unattached originals; its response contains counts only',
+  'app/api/uploads/temporary-capture/route.ts': 'server-only retake cleanup checks submission references before deleting the original; response contains no image URL',
+  'app/capture/[eventId]/page.tsx': 'guest capture page uploads the original and sends its URL only to the server-side submission flow',
   'lib/privacy/erasure.ts': 'encrypts and decrypts media deletion references for the restricted erasure worker; no public surface reads the values',
   'lib/privacy/media-erasure.ts': 'server-only erasure worker reads encrypted provider references to remove exact media objects; the route returns only counts and states',
+  'lib/submissions/original-image.ts': 'server-only URL and source validation helpers; URLs are delivered only to authorized reviewers or the capture owner',
 };
 
 const PUBLIC_SURFACES = [

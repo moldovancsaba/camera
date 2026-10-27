@@ -78,13 +78,15 @@ export function encryptMediaReferences(submission: Document, mediaKey: string): 
       const copy = value as Document;
       const url = secureUrl(copy.url);
       const deleteUrl = secureUrl(copy.deleteUrl);
-      if (!url && !deleteUrl) return [];
+      const objectKey = copy.store === 'r2' && typeof copy.objectKey === 'string' ? copy.objectKey : undefined;
+      if (!url && !deleteUrl && !objectKey) return [];
       return [{
         ...(typeof copy.role === 'string' ? { role: copy.role.slice(0, 40) } : {}),
-        ...(copy.store === 'blob' || copy.store === 'imgbb' ? { store: copy.store } : {}),
+        ...(copy.store === 'blob' || copy.store === 'imgbb' || copy.store === 'r2' ? { store: copy.store } : {}),
         ...(typeof copy.state === 'string' ? { state: copy.state.slice(0, 24) } : {}),
         ...(url ? { url } : {}),
         ...(deleteUrl ? { deleteUrl } : {}),
+        ...(objectKey ? { objectKey: objectKey.slice(0, 240) } : {}),
       }];
     });
     if (copies.length) references.imageCopies = copies;

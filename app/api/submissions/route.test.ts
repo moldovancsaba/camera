@@ -5,11 +5,12 @@ import { ObjectId } from 'mongodb';
 import { defaultView, fitView, toReframeRecord } from '@/lib/camera/reframe';
 
 const apiReal = await import('@/lib/api');
+const originalCaptureId = 'abcdef1234567890abcdef12';
 
 const EVENT = '3f2b8c1e-7a54-4d8e-9c21-0b6a5e4d3c2f';
 const HOST = 'teststoreid.public.blob.vercel-storage.com';
 const COMPOSITE = 'https://teststoreid.public.blob.vercel-storage.com/submission-1-composite.jpg';
-const ORIGINAL = `https://${HOST}/originals/${EVENT}/abc123-xyz.jpg`;
+const ORIGINAL = `https://${HOST}/originals/${EVENT}/${originalCaptureId}.jpg`;
 let ipCounter = 0;
 
 type RouteModule = typeof import('./route');
@@ -37,11 +38,29 @@ function mockDeps(
     exports: {
       connectToDatabase: async () => ({
         collection: (name: string) => ({
-          findOne: async () => (name === 'events' ? { _id: 'event-1', name: 'Test event', ...(extra.event ?? {}) } : name === 'partners' ? (extra.partner ?? null) : null),
+          findOne: async () => {
+            if (name === 'events') return { _id: 'event-1', name: 'Test event', ...(extra.event ?? {}) };
+            if (name === 'partners') return extra.partner ?? null;
+            if (name === 'camera_original_assets') {
+              const bytes = 3_400_000;
+              return {
+                eventId: EVENT,
+                url: ORIGINAL,
+                state: 'verified',
+                copies: [
+                  { role: 'original', store: 'blob', state: 'verified', url: ORIGINAL, bytes },
+                  { role: 'original', store: 'r2', state: 'verified', objectKey: `camera/originals/${EVENT}/${originalCaptureId}/${'a'.repeat(64)}.jpg`, bytes },
+                  { role: 'original', store: 'imgbb', state: 'verified', url: 'https://i.ibb.co/original.jpg', deleteUrl: 'https://ibb.co/delete/original', bytes },
+                ],
+              };
+            }
+            return null;
+          },
           insertOne: async (doc: Record<string, unknown>) => {
             h.inserted.push(doc);
             return { insertedId: new ObjectId() };
           },
+          updateOne: async () => ({ matchedCount: 1, modifiedCount: 1 }),
         }),
       }),
     },
@@ -52,6 +71,8 @@ function mockDeps(
         h.uploads += 1;
         return { success: true, imageUrl: COMPOSITE, thumbnailUrl: COMPOSITE, deleteUrl: '', imageId: '', fileSize: 4321, mimeType: 'image/jpeg', fileName: 'x.jpg', provider: 'blob', mirrorImageUrl: null };
       },
+      uploadToImgbbOnly: async () => { throw new Error('original backup upload should not run in submission tests'); },
+      deleteImage: async () => true,
     },
   });
   t.mock.module('@vercel/blob', {
@@ -96,6 +117,11 @@ function submissionRequest(extra: Record<string, unknown> = {}, headers: Record<
       imageWidth: 1080,
       imageHeight: 1920,
       shareOptIn: false,
+      captureId: originalCaptureId,
+      originalImageUrl: ORIGINAL,
+      originalImageWidth: 1440,
+      originalImageHeight: 1920,
+      reframe: record,
       ...extra,
     }),
   });
@@ -112,13 +138,13 @@ const silence = () => {
   };
 };
 
-test('without an original the submission is stored exactly as before: the composite is also the original', async (t) => {
+test('a legacy non-event submission without a distinct original keeps the composite as the original', async (t) => {
   const restore = withStoreToken();
   const quiet = silence();
   try {
     const h = mockDeps(t, goodHead);
     const { POST } = await importRouteModule('legacy');
-    const response = await POST(submissionRequest());
+    const response = await POST(submissionRequest({ eventId: null, originalImageUrl: null, originalImageWidth: null, originalImageHeight: null, reframe: null }));
     assert.equal(response.status, 201);
     assert.equal(h.inserted.length, 1);
     assert.equal(h.inserted[0].originalImageUrl, COMPOSITE);
@@ -221,7 +247,7 @@ for (const [label, reframe] of [['missing', undefined], ['invalid', { version: 1
       const h = mockDeps(t, goodHead);
       const { POST } = await importRouteModule(`record-${label}`);
       const response = await POST(
-        submissionRequest({ originalImageUrl: ORIGINAL, originalImageWidth: 1, originalImageHeight: 1, ...(reframe ? { reframe } : {}) })
+        submissionRequest({ originalImageUrl: ORIGINAL, originalImageWidth: 1, originalImageHeight: 1, reframe: reframe ?? null })
       );
       assert.equal(response.status, 400);
       assert.equal(h.inserted.length, 0);
@@ -233,7 +259,7 @@ for (const [label, reframe] of [['missing', undefined], ['invalid', { version: 1
   });
 }
 
-test('an original that cannot be confirmed keeps the photo: it is saved without the original and without the record', async (t) => {
+test('an event submission is rejected when its original cannot be confirmed', async (t) => {
   const restore = withStoreToken();
   const quiet = silence();
   try {
@@ -242,9 +268,8 @@ test('an original that cannot be confirmed keeps the photo: it is saved without 
     });
     const { POST } = await importRouteModule('unconfirmed');
     const response = await POST(submissionRequest({ originalImageUrl: ORIGINAL, originalImageWidth: 1440, originalImageHeight: 1920, reframe: record }));
-    assert.equal(response.status, 201);
-    assert.equal(h.inserted[0].originalImageUrl, COMPOSITE);
-    assert.equal('reframe' in h.inserted[0], false, 'no record without a distinct original, so the composite stays usable as the fallback');
+    assert.equal(response.status, 400);
+    assert.equal(h.inserted.length, 0, 'an event capture must not be accepted without its backed-up original');
   } finally {
     quiet();
     restore();
@@ -321,7 +346,8 @@ test('a vetted event saves the photo pending: private, no public picture, no mir
     assert.equal(doc.photoReview.photoMime, 'image/jpeg');
     assert.match(String(doc.photoReview.photoUrl), /pending\/event-1\//);
     assert.match(String(doc.shareToken), /^[A-Za-z0-9_-]{24}$/);
-    for (const key of ['imageUrl', 'finalImageUrl', 'originalImageUrl', 'deleteUrl']) assert.equal(key in doc, false, `no ${key} before approval`);
+    for (const key of ['imageUrl', 'finalImageUrl', 'deleteUrl']) assert.equal(key in doc, false, `no public ${key} before approval`);
+    assert.equal(doc.originalImageUrl, ORIGINAL, 'the verified original is retained privately for review and analysis');
     assert.deepEqual(doc.userInfo && { name: (doc.userInfo as Record<string, unknown>).name, email: (doc.userInfo as Record<string, unknown>).email }, GUEST);
     assert.equal(doc.metadata.compositionEngine, 'camera_capture_pending');
     assert.ok(!text.includes('pending/'), 'the response does not carry the private photo URL');
@@ -367,7 +393,7 @@ test('a social login is enough: the email of the logged-in user is the guest', a
   }
 });
 
-test('a vetted event ignores a claimed original, refuses something that is not a photo, and ignores the fields of a try-on request an old client may still send (issue 557)', async (t) => {
+test('a vetted event retains its verified original privately, refuses something that is not a photo, and ignores the fields of a try-on request an old client may still send (issue 557)', async (t) => {
   const restore = withStoreToken();
   const quiet = silence();
   try {
@@ -375,8 +401,10 @@ test('a vetted event ignores a claimed original, refuses something that is not a
     const { POST } = await importRouteModule('vetted-misc');
     const withClaims = await POST(submissionRequest({ userInfo: GUEST, originalImageUrl: ORIGINAL, originalImageWidth: 1440, originalImageHeight: 1920, reframe: record }));
     assert.equal(withClaims.status, 201);
-    assert.equal(h.heads.length, 0, 'the claimed original is never looked at');
-    assert.equal('reframe' in h.inserted[0], false);
+    assert.deepEqual(h.heads, [ORIGINAL], 'the submitted original is verified before it can be retained');
+    assert.equal(h.inserted[0].originalImageUrl, ORIGINAL);
+    assert.deepEqual(h.inserted[0].reframe, record);
+    assert.equal('imageUrl' in h.inserted[0], false, 'the original stays private until approval');
 
     assert.equal((await POST(submissionRequest({ userInfo: GUEST, imageData: 'data:text/html;base64,AAAA' }))).status, 400);
 

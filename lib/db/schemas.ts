@@ -45,6 +45,8 @@ export const COLLECTIONS = {
   /** The QR texts of the default slideshow (issue 326, lib/library/qr-texts.ts): the short lines next to the QR code on the stage, a library of global items with an active flag; one is picked at random, once, when an event's default slideshow is made. */
   QR_TEXTS: 'qr_texts',
   SUBMISSIONS: 'submissions',
+  /** Short-lived manifests for the full-frame original while it is replicated and attached. */
+  ORIGINAL_ASSETS: 'camera_original_assets',
   /** Minimal case-linked receipts that fence erased photos and hand protected media references to the separate media-erasure worker. */
   PRIVACY_ERASURE_TOMBSTONES: 'privacy_erasure_tombstones',
   /** Minimal event-level tombstones for photos permanently deleted by a user or administrator; contain no photo, user, consent, or e-mail data. */
@@ -738,18 +740,20 @@ export interface UserConsent {
  * is answered from the submission itself: how many copies exist, in which store, and when each was last read back. At most one entry per `role` and `store`; writing it again replaces it.
  * Designed so a later manifest collection can be filled from it (an entry is that manifest's `copies[]` row plus the role).
  *
- * `verified` only after a ranged read of `url` answered with `bytes` bytes (`verifiedAt` is then set). `unverified`: the file was written (the address is known) but the read-back could not tell (a timeout, a 5xx).
+ * `verified` only after a provider read-back matched `bytes` bytes (`verifiedAt` is then set). `unverified`: the file was written (the address is known) but the read-back could not tell (a timeout, a 5xx).
  * `failed`: the copy was not made, or the read-back showed it is gone or the wrong size; `error` says why, and an address / delete link that is known is kept so deleting the submission can still reach it.
  * `deleted`: a historical copy entry was deliberately removed (`deletedAt`); retained for legacy records and erasure audit. Current approval and image-safety copy jobs never create this state.
  */
 export interface ImageCopy {
-  /** `unframed`: the plain crop the user saved (before the frame). `composed`: the framed picture the public sees. */
-  role: 'unframed' | 'composed';
-  /** `blob`: this project's Vercel Blob store. `imgbb`: the third-party image host; it is an additional copy, not the sole retained source. */
-  store: 'blob' | 'imgbb';
+  /** `original`: the untouched full-frame source; `unframed`: the plain crop; `composed`: the framed picture. */
+  role: 'original' | 'unframed' | 'composed';
+  /** `blob`: this project's Vercel Blob store; `r2`: private Cloudflare R2; `imgbb`: third-party copy. */
+  store: 'blob' | 'r2' | 'imgbb';
   state: 'verified' | 'unverified' | 'failed' | 'deleted';
   /** Address of the file in that store (of a `deleted` one: where it was), or null when none was made. */
   url: string | null;
+  /** Private provider object path, used for R2 and never exposed to browser responses. */
+  objectKey?: string | null;
   /** Size in bytes that was written (and that the read-back must report). */
   bytes: number | null;
   /** ISO time of the last successful read-back, null until one succeeded. */
