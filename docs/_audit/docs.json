@@ -63,6 +63,7 @@
   {"file": "docs/MTK_ERASED_PHOTO_RECOVERY.md", "title": "MTK erased-photo recovery"},
   {"file": "docs/MULTI_LEVEL_SUBMISSION_MANAGEMENT_LOG.md", "title": "Multi-Level Submission Management Implementation"},
   {"file": "docs/OWNER_TEST_PLAN.md", "title": "Historical owner rehearsal plan: MTK x Vasas, Friday 16 October 2026"},
+  {"file": "docs/PHOTO_CONTENT_PRECHECK.md", "title": "Camera photo content precheck"},
   {"file": "docs/PHOTO_REFRAMING.md", "title": "Guest photo framing controls"},
   {"file": "docs/PHOTO_VETTING_PLAN.md", "title": "Photo vetting by default: plan"},
   {"file": "docs/PRIVACY_DATA.md", "title": "What camera stores about a user, and for how long"},

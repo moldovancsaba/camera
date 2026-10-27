@@ -36,6 +36,7 @@ function mockDeps(
   const h: Harness = { updates: [] };
   const event = { _id: new ObjectId(EVENT_ID), isActive: true, ...options.event };
   const session = options.session ?? null;
+  t.mock.module('server-only', { exports: {} });
   t.mock.module('@/lib/api', {
     exports: {
       ...apiReal,
@@ -93,12 +94,13 @@ const PARTNER_MANAGER = { appRole: 'none', user: { id: 'p1', email: 'manager@exa
 const pageIds = (event: { customPages?: Array<{ pageId: string }> }) => (event.customPages ?? []).map((page) => page.pageId);
 
 test('GET as a guest: a vetted event with no who-are-you page gets the default one first; the stored setting is not exposed', async (t) => {
-  mockDeps(t, { event: { photoVetting: STORED_VETTING, customPages: [] } });
+  mockDeps(t, { event: { photoVetting: STORED_VETTING, photoModerationPrecheck: { enabled: true, updatedBy: 'admin@example.com' }, customPages: [] } });
   const { GET } = await importRouteModule('get-guest-vetted');
   const body = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: Record<string, unknown> & { customPages: Array<{ pageId: string; pageType: string }> } } };
   const event = body.data.event;
   assert.equal(event.photoVettingRequired, true);
   assert.equal('photoVetting' in event, false, 'who changed it and when is admin data');
+  assert.equal('photoModerationPrecheck' in event, false, 'the internal screening setting is not sent to capture clients');
   assert.equal(event.customPages.length, 1);
   assert.equal(event.customPages[0].pageType, 'who-are-you');
 });
@@ -177,8 +179,83 @@ test('PATCH: the setting must be true or false', async (t) => {
   assert.equal(h.updates.length, 0);
 });
 
-test('PATCH: the language of the user interface accepts supported locales, clears with an empty value, and refuses unknown locales', async (t) => {
-  const h = mockDeps(t, { event: {}, session: ADMIN });
+test('PATCH: a partner events manager cannot enable content precheck', async (t) => {
+  const previousKey = process.env.CAMERA_MODERATION_API_KEY;
+  const previousBaseUrl = process.env.CAMERA_MODERATION_BASE_URL;
+  delete process.env.CAMERA_MODERATION_API_KEY;
+  delete process.env.CAMERA_MODERATION_BASE_URL;
+  t.after(() => {
+    if (previousKey === undefined) delete process.env.CAMERA_MODERATION_API_KEY;
+    else process.env.CAMERA_MODERATION_API_KEY = previousKey;
+    if (previousBaseUrl === undefined) delete process.env.CAMERA_MODERATION_BASE_URL;
+    else process.env.CAMERA_MODERATION_BASE_URL = previousBaseUrl;
+  });
+
+  const h = mockDeps(t, { event: {}, session: PARTNER_MANAGER, partnerAllowed: true });
+  const { PATCH } = await importRouteModule('patch-moderation-manager');
+  assert.equal((await PATCH(patchRequest({ photoModerationPrecheck: { enabled: true } }), params)).status, 403);
+  assert.equal(h.updates.length, 0);
+});
+
+test('PATCH: missing service credentials block a global admin from enabling content precheck', async (t) => {
+  const previousKey = process.env.CAMERA_MODERATION_API_KEY;
+  const previousBaseUrl = process.env.CAMERA_MODERATION_BASE_URL;
+  delete process.env.CAMERA_MODERATION_API_KEY;
+  delete process.env.CAMERA_MODERATION_BASE_URL;
+  t.after(() => {
+    if (previousKey === undefined) delete process.env.CAMERA_MODERATION_API_KEY;
+    else process.env.CAMERA_MODERATION_API_KEY = previousKey;
+    if (previousBaseUrl === undefined) delete process.env.CAMERA_MODERATION_BASE_URL;
+    else process.env.CAMERA_MODERATION_BASE_URL = previousBaseUrl;
+  });
+
+  const admin = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH: patchAdmin } = await importRouteModule('patch-moderation-admin-no-key');
+  assert.equal((await patchAdmin(patchRequest({ photoModerationPrecheck: { enabled: true } }), params)).status, 400);
+  assert.equal(admin.updates.length, 0);
+});
+
+test('PATCH: content precheck cannot be enabled when photo vetting is off', async (t) => {
+  const previousKey = process.env.CAMERA_MODERATION_API_KEY;
+  const previousBaseUrl = process.env.CAMERA_MODERATION_BASE_URL;
+  process.env.CAMERA_MODERATION_API_KEY = 'test-only-camera-key';
+  process.env.CAMERA_MODERATION_BASE_URL = 'https://chatbotapi.haho.ai/v1';
+  t.after(() => {
+    if (previousKey === undefined) delete process.env.CAMERA_MODERATION_API_KEY;
+    else process.env.CAMERA_MODERATION_API_KEY = previousKey;
+    if (previousBaseUrl === undefined) delete process.env.CAMERA_MODERATION_BASE_URL;
+    else process.env.CAMERA_MODERATION_BASE_URL = previousBaseUrl;
+  });
+
+  const admin = mockDeps(t, { event: { photoVetting: { required: false } }, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-moderation-admin-vetting-off');
+  assert.equal((await PATCH(patchRequest({ photoModerationPrecheck: { enabled: true } }), params)).status, 400);
+  assert.equal(admin.updates.length, 0);
+});
+
+test('PATCH: a global admin may turn content precheck on or off and the stored change is attributed', async (t) => {
+  const previousKey = process.env.CAMERA_MODERATION_API_KEY;
+  const previousBaseUrl = process.env.CAMERA_MODERATION_BASE_URL;
+  process.env.CAMERA_MODERATION_API_KEY = 'test-only-camera-key';
+  process.env.CAMERA_MODERATION_BASE_URL = 'https://chatbotapi.haho.ai/v1';
+  t.after(() => {
+    if (previousKey === undefined) delete process.env.CAMERA_MODERATION_API_KEY;
+    else process.env.CAMERA_MODERATION_API_KEY = previousKey;
+    if (previousBaseUrl === undefined) delete process.env.CAMERA_MODERATION_BASE_URL;
+    else process.env.CAMERA_MODERATION_BASE_URL = previousBaseUrl;
+  });
+
+  const h = mockDeps(t, { event: { photoVetting: STORED_VETTING }, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-moderation-admin-configured');
+  assert.equal((await PATCH(patchRequest({ photoModerationPrecheck: { enabled: true } }), params)).status, 200);
+  const enabled = h.updates[0].photoModerationPrecheck as { enabled: boolean; updatedBy: string | null; updatedAt: string };
+  assert.deepEqual({ enabled: enabled.enabled, updatedBy: enabled.updatedBy }, { enabled: true, updatedBy: 'admin@example.com' });
+  assert.ok(enabled.updatedAt);
+  assert.equal((await PATCH(patchRequest({ photoModerationPrecheck: { enabled: false } }), params)).status, 200);
+  assert.equal((h.updates[1].photoModerationPrecheck as { enabled: boolean }).enabled, false);
+});
+
+test('PATCH: the language of the user interface accepts supported locales, clears with an empty value, and refuses unknown locales', async (t) => {  const h = mockDeps(t, { event: {}, session: ADMIN });
   const { PATCH } = await importRouteModule('patch-language');
   assert.equal((await PATCH(patchRequest({ uiLanguage: 'hu' }), params)).status, 200);
   assert.equal(h.updates[0].uiLanguage, 'hu');

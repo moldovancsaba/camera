@@ -32,6 +32,30 @@ export interface PhotoQueueItem {
   last: { action: 'approve' | 'reject' | 'return_to_vetting'; by: string; at: string; reason: string | null } | null;
   /** Why the photo was rejected, as keys of the `reject_reason` group of the event's vocabulary (issue 628); none for a photo that was not rejected or was rejected before reasons existed. */
   rejectReasons: string[];
+  /** Optional Camera screening hint; its result cannot make a vetting decision. */
+  precheck: PhotoModerationQueueSignal | null;
+}
+
+export interface PhotoModerationQueueSignal {
+  status: 'queued' | 'submitting' | 'queued_remote' | 'running' | 'completed' | 'failed';
+  signal?: 'flagged' | 'uncertain' | 'no_flags_detected';
+  flags: string[];
+  evidence?: string;
+  errorCode?: string;
+}
+
+const PRECHECK_STATUSES = new Set<PhotoModerationQueueSignal['status']>(['queued', 'submitting', 'queued_remote', 'running', 'completed', 'failed']);
+const PRECHECK_CATEGORIES = new Set(['nudity', 'sexualContent', 'middleFinger', 'hateSymbols', 'hateWords', 'alcohol', 'drugs', 'violence', 'weapons']);
+
+export function precheckSummary(precheck: PhotoModerationQueueSignal | null): string | null {
+  if (!precheck) return null;
+  if (precheck.status === 'failed') return 'Unavailable · review manually';
+  if (precheck.status === 'queued' || precheck.status === 'submitting') return 'Waiting';
+  if (precheck.status === 'queued_remote') return 'Queued';
+  if (precheck.status === 'running') return 'Analyzing';
+  if (precheck.signal === 'flagged') return `Possible concern · ${precheck.flags.length} signal${precheck.flags.length === 1 ? '' : 's'}`;
+  if (precheck.signal === 'uncertain') return 'Uncertain · review manually';
+  return 'No listed concern detected · review manually';
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
@@ -41,6 +65,19 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
   const review = (doc.photoReview ?? {}) as Document;
   const history = Array.isArray(doc.reviewHistory) ? (doc.reviewHistory as Document[]) : [];
   const last = history[history.length - 1];
+  const rawPrecheck = doc.moderationPrecheck && typeof doc.moderationPrecheck === 'object' ? doc.moderationPrecheck as Document : null;
+  const rawResult = rawPrecheck?.result && typeof rawPrecheck.result === 'object' ? rawPrecheck.result as Document : null;
+  const rawSignal = rawResult?.signal;
+  const precheckStatus = rawPrecheck?.status;
+  const precheck: PhotoModerationQueueSignal | null = typeof precheckStatus === 'string' && PRECHECK_STATUSES.has(precheckStatus as PhotoModerationQueueSignal['status'])
+    ? {
+        status: precheckStatus as PhotoModerationQueueSignal['status'],
+        ...(rawSignal === 'flagged' || rawSignal === 'uncertain' || rawSignal === 'no_flags_detected' ? { signal: rawSignal } : {}),
+        flags: Array.isArray(rawResult?.flags) ? rawResult!.flags.filter((flag): flag is string => typeof flag === 'string' && PRECHECK_CATEGORIES.has(flag)) : [],
+        ...(typeof rawResult?.evidence === 'string' ? { evidence: rawResult.evidence.slice(0, 800) } : {}),
+        ...(typeof rawPrecheck?.lastErrorCode === 'string' ? { errorCode: rawPrecheck.lastErrorCode.slice(0, 80) } : {}),
+      }
+    : null;
   const contact = guestContactOf(doc);
   const name = contact.name ?? text(doc.userInfoDraft?.name) ?? text(doc.userName) ?? 'Guest';
   const email = contact.email;
@@ -61,6 +98,7 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',
     shareOptIn: review.shareOptIn === true,
     rejectReasons: Array.isArray(doc.rejectReasons) ? doc.rejectReasons.filter((key): key is string => typeof key === 'string' && key.length > 0) : [],
+    precheck,
     last:
       last && (last.action === 'approve' || last.action === 'reject' || last.action === 'return_to_vetting')
         ? { action: last.action, by: text(last.by) ?? 'unknown', at: text(last.at) ?? '', reason: text(last.reason) }

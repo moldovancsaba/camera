@@ -2,6 +2,33 @@ import { adminPageText } from '@/lib/i18n/admin-pages';
 import { adminCommonText } from '@/lib/i18n/admin-common';
 import { UI_LANGUAGES, type UiLanguage } from '@/lib/i18n';
 
+const AI_PRECHECK_ADVISORY_SOURCE = 'AI precheck is advisory; all decisions remain with the reviewer.';
+const AI_PRECHECK_ADVISORY: Record<UiLanguage, string> = {
+  en: AI_PRECHECK_ADVISORY_SOURCE,
+  hu: 'Az AI-előellenőrzés csak tájékoztató jellegű; minden döntést az ellenőrzést végző személy hoz meg.',
+  de: 'Die KI-Vorprüfung ist nur ein Hinweis; alle Entscheidungen trifft die prüfende Person.',
+  it: 'Il controllo preliminare dell’IA è solo indicativo; ogni decisione spetta alla persona che esamina la foto.',
+  'pt-BR': 'A pré-análise da IA é apenas indicativa; todas as decisões cabem à pessoa revisora.',
+  'pt-PT': 'A pré-análise por IA é apenas indicativa; todas as decisões cabem à pessoa responsável pela revisão.',
+  es: 'La comprobación previa de IA es orientativa; todas las decisiones corresponden a quien revisa la foto.',
+  fr: 'Le précontrôle par IA est indicatif ; la personne chargée de la vérification prend toutes les décisions.',
+  ru: 'Предварительная проверка ИИ носит рекомендательный характер; все решения принимает проверяющий.',
+  'zh-Hans': 'AI 预检仅供参考；所有决定均由审核人员作出。',
+  'zh-Hant': 'AI 預檢僅供參考；所有決定均由審核人員作出。',
+  ro: 'Verificarea preliminară AI este doar orientativă; toate deciziile îi aparțin persoanei care verifică.',
+  pl: 'Wstępna kontrola AI ma charakter pomocniczy; wszystkie decyzje podejmuje osoba sprawdzająca.',
+  sk: 'Predbežná kontrola AI je len orientačná; všetky rozhodnutia robí kontrolujúca osoba.',
+  hr: 'AI predprovjera služi samo kao smjernica; sve odluke donosi osoba koja provjerava.',
+  sl: 'Predhodni pregled z UI je zgolj informativen; vse odločitve sprejme pregledovalec.',
+  bg: 'Предварителната проверка с ИИ е само ориентировъчна; всички решения се вземат от проверяващия.',
+  tr: 'Yapay zekâ ön kontrolü yalnızca bilgilendirme amaçlıdır; tüm kararları incelemeyi yapan kişi verir.',
+  ar: 'الفحص الأولي بالذكاء الاصطناعي استرشادي فقط؛ ويتخذ المراجع جميع القرارات.',
+  hi: 'AI की प्रारंभिक जाँच केवल संकेत है; सभी निर्णय समीक्षक ही लेते हैं।',
+  ka: 'ხელოვნური ინტელექტის წინასწარი შემოწმება მხოლოდ დამხმარე სიგნალია; ყველა გადაწყვეტილებას შემმოწმებელი იღებს.',
+  'sr-Cyrl': 'Претходна AI провера је само смерница; све одлуке доноси особа која прегледа фотографију.',
+  'sr-Latn': 'Prethodna AI provera je samo smernica; sve odluke donosi osoba koja pregleda fotografiju.',
+};
+
 /**
  * Shared wording for the photo-review and Fanmass operations screens.
  * These are draft translations: see docs/LOCALIZATION_TRANSLATION_REVIEW.md.
@@ -82,6 +109,7 @@ const EXTRA_VALUES: Record<UiLanguage, readonly string[]> = {
 const EXTRA_INDEX = new Map<string, number>(EXTRA_SOURCES.map((source, index) => [source, index]));
 
 export function adminOperationText(source: string, language: UiLanguage): string {
+  if (source === AI_PRECHECK_ADVISORY_SOURCE) return AI_PRECHECK_ADVISORY[language];
   const common = adminCommonText(source, language);
   if (common !== null) return common;
   const extraIndex = EXTRA_INDEX.get(source);
@@ -98,7 +126,7 @@ export function adminOperationText(source: string, language: UiLanguage): string
 }
 
 export function hasAdminOperationTranslation(source: string): boolean {
-  return INDEX.has(source);
+  return INDEX.has(source) || source === AI_PRECHECK_ADVISORY_SOURCE;
 }
 
 // Guard catalog ordering during application startup without turning missing phrases into crashes.

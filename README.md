@@ -171,6 +171,7 @@ Pushing to `main` auto-deploys; Vercel does not wait for CI, so run
 - MongoDB Atlas
 - SSO OAuth2/OIDC + PKCE
 - Vercel Blob for raster hosting (primary since v12.2.14), imgbb as best-effort mirror
+- Optional shared Hetzner image-moderation job API for advisory content prechecks (server-only key; see [docs/PHOTO_CONTENT_PRECHECK.md](docs/PHOTO_CONTENT_PRECHECK.md))
 - Resend for transactional email (per-event templates and sender name)
 - optional Upstash Redis for shared rate limits
 

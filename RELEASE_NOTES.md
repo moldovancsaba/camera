@@ -6,7 +6,15 @@
 - **Added:** admin navigation, event/partner context menu labels, account actions, and role labels are translated for all 23 registered locale variants, with localized region `lang`/`dir` metadata.
 - **Added:** 111 common admin phrases have draft translations across all 23 variants and are used by the shared list-page shell, dashboard metrics, event-list empty state, sign-in copy, and database alert title.
 - **Not complete:** most page-specific admin, vetting, analysis, reporting, library, and operational copy still requires catalog migration. Locale drafts still need qualified review, and full WCAG 2.2 AA evidence is outstanding.
-- **Verification:** this shared-page extension has not yet run the release check; rerun it before merging.
+- **Verification:** the full release check passed in PR #739 before this branch was rebased.
+
+## Unreleased — optional Hetzner photo content precheck (2026-10-27)
+
+- **Added:** an event-level optional content-precheck setting and a server-only, scheduled worker that discovers the permitted job/model inventory, submits `image_moderation` with `model: auto`, and stores a validated result on the exact pending Camera submission revision.
+- **Reviewer flow:** the existing one-photo Vetting screen shows queued/running, flagged, uncertain, clear-signal, retrying, or unavailable states. Every photo still requires a human approve/reject action; AI output cannot publish or reject it.
+- **Safety:** only consent-audited, finalized-contact, pending-vetting photos enter the queue. Camera sends normalized image bytes without URL or participant/event identifiers, uses an idempotency key, a global worker lease and bounded retry/poll windows, then rechecks eligibility and the image hash before storing the result.
+- **Limit:** the Camera-specific `CAMERA_MODERATION_API_KEY` is not configured in the local authorized environment. Live `/job-types`, `/models`, provider E2E, and production operation are not verified. Provision that secret through the authorized server secret store before enabling an event. Provider false negatives/positives, no numeric confidence, English-only hate-word coverage, and no remote cancellation are documented in `docs/PHOTO_CONTENT_PRECHECK.md`.
+- **Verification:** `npm run release:check` and `npm run inventory:check` pass. Mocked tests cover the capture-to-result flow, consent/contact holds, one-at-a-time processing, retries/idempotency, result validation, and stale-result rejection. Live provider calls and browser E2E remain unverified because the Camera service key and disposable MongoDB E2E URI are not configured locally.
 
 ## Unreleased — case-bound Camera photo erasure
 

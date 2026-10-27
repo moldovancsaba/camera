@@ -6,6 +6,8 @@ Status 2026-10-16: **built and live.** Packages V1 to V10 are merged and the rol
 
 > **Current workflow (2026-10-22):** manual people-box annotations and the standalone `Submission.people` / `peopleReview` system were retired. Vetting approves or rejects publication and stores rejection reasons. Participant contact is one canonical lifecycle; awaiting/draft contact is held from vetting, galleries and analysis, then erased after 24 hours if it is not completed. Fanmass is the one source of per-photo analytics; Camera's Photo analysis page reviews, corrects and confirms the Fanmass result. See [GUEST_CONTACT_AND_ERASURE.md](GUEST_CONTACT_AND_ERASURE.md), [FANMASS_RESULTS_IN_CAMERA.md](FANMASS_RESULTS_IN_CAMERA.md), and [MESSMASS_FANMASS_INTEGRATION.md](MESSMASS_FANMASS_INTEGRATION.md). The manual-marking and separate-analysis descriptions below are historical and must not be followed as current operator instructions.
 
+> **Optional content screening (2026-10-27):** Camera can send a consent-eligible pending photo to the shared Hetzner moderation job API while event vetting is enabled. It provides advisory signals for nine prohibited-content categories in the existing one-photo Vetting screen; it is not Fanmass analytics and never changes the human approval/rejection decision. See [PHOTO_CONTENT_PRECHECK.md](PHOTO_CONTENT_PRECHECK.md) for the current implementation and limits.
+
 ## The request
 
 Owner, 2026-10-06, passing on a client request: by design every event should have vetting required, so that the final result

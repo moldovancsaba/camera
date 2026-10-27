@@ -305,8 +305,7 @@ panel and the backfill follow (camera#235 to #238).
 
 ## Photo vetting (camera#261)
 
-Plan and decisions: [docs/PHOTO_VETTING_PLAN.md](docs/PHOTO_VETTING_PLAN.md). The setting is `events.photoVetting.required`; until the rollout
-package it is off for every event, so none of the behaviour below applies yet.
+Plan and decisions: [docs/PHOTO_VETTING_PLAN.md](docs/PHOTO_VETTING_PLAN.md). The setting is `events.photoVetting.required`; it is on for new events and may be changed per event by a global admin.
 
 - **A vetted photo** is saved `pending_review` with the plain photo in a private Blob object under `pending/<eventId>/`. No picture exists,
   nothing is mirrored to imgbb, no link is shown or emailed.
@@ -355,6 +354,20 @@ silhouette, an event with a generated frame shows the shapes.
 **Rolling back.** One event: the switch on its Vetting tab (global admin) turns vetting off; photos already waiting stay on the Vetting tab and
 can still be approved, and new photos are published at once as before. Everything: turn the code default back (`false`) and switch the
 events off one by one, or ask for a bulk switch-off. Nothing the rollout wrote is destructive: it only sets `photoVetting` on events.
+
+### Optional content precheck via the shared Hetzner API
+
+The advisory screen is independent from the photo decision and is off by default. It runs only for new submissions captured while both photo vetting and the event's **Content precheck** option are on. The photo stays in the existing private pending-Blob flow; the one-photo worker asynchronously submits a normalized copy and attaches the returned signal to that submission. A vetter can continue immediately and always makes the approve/reject decision manually.
+
+Before enabling an event option, operations must provision the Camera-specific `CAMERA_MODERATION_API_KEY` in the authorized server secret store. Do not reuse a Fanmass/Messmass key, add a `NEXT_PUBLIC_` variable, or put a populated secret in `.env.example`, logs, or commits. `CAMERA_MODERATION_BASE_URL` defaults to `https://chatbotapi.haho.ai/v1`; if explicitly set it must be an HTTPS `/v1` URL. The event API refuses to enable the option while the server configuration is absent or invalid. Restart/redeploy the server runtime after secret changes according to the deployment's normal secret-rotation procedure.
+
+The scheduled `/api/internal/photo-moderation-precheck` route is protected by the existing `CRON_SECRET`; Vercel invokes it every minute from `vercel.json`. Its MongoDB global lease prevents overlapping Camera workers, and it keeps at most one unresolved Camera job active. The worker discovers `/job-types` and `/models` before submission, sends only `task: image_moderation`, `model: auto`, and `input.image_base64`, and uses the durable idempotency key when a POST outcome is ambiguous. It has bounded retries, a 42-second run budget and a 330-second maximum remote-job window. Service errors or malformed output leave the photo available for human review and are shown as unavailable/retrying; they never auto-reject or auto-approve.
+
+Results cover exactly these service categories: `nudity`, `sexualContent`, `middleFinger`, `hateSymbols`, `hateWords`, `alcohol`, `drugs`, `violence`, and `weapons`. This is experimental screening, not a guarantee that an image is safe or a complete prohibited-content taxonomy. Current service limitations include possible false positives/negatives, no numeric confidence, and English-only hate-word coverage. It is not Fanmass person/brand analytics.
+
+The remote API keeps jobs/results in memory for up to 15 minutes and has no cancellation endpoint. Camera checks consent, contact, erasure fence, pending status and image hash before sending and again before applying a result. If a photo is erased after a remote job was accepted, Camera discards the result; the remote task may still finish within the service's bounded window. Confirm the applicable notice/consent and data-processing terms for the external service before enabling this feature for an event. The current code relies on the event's existing verifiable consent audit and does not add a new guest-facing consent category.
+
+To diagnose, open the event's Vetting tab and inspect the current one-photo screen. A result can show waiting, queued, analyzing, possible concern, uncertain, no listed concern detected, or unavailable/retrying. Check Camera function logs for the aggregate `camera.photo_moderation.run` event and only the error code for failures; logs intentionally omit credentials, image bytes, and participant data. Disabling the option affects new captures only; existing queued jobs may finish, but their human decision remains unchanged.
 
 ## Event theme (camera#285)
 

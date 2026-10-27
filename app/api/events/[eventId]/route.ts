@@ -34,6 +34,8 @@ import { sanitizeNotificationSettings } from '@/lib/email/notification-settings'
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
+import { normalizePhotoModerationPrecheckInput } from '@/lib/events/photo-moderation';
+import { moderationConfiguration } from '@/lib/photo-moderation/config';
 import { applyEventBrandColours } from '@/lib/events/brand-colours';
 import { parseMessageArea } from '@/lib/frame/message-area';
 import { sanitizeDefaultPageOrders, withDefaultJourneyPages } from '@/lib/events/default-pages';
@@ -172,7 +174,12 @@ export const GET = withErrorHandler(async (
   // `photoVetting` (who changed it, when) is admin data: guests get `photoVettingRequired`, and when asked as a guest
   // (`?audience=guest`, the capture page) a vetted event with no "who are you" page before the photo gets the default one first:
   // every vetted event asks for an email or a social login (camera#264). The admin editor reads the stored pages, never this one.
-  const { frameDesign, photoVetting, ...publicEvent } = event;
+  const frameDesign = event.frameDesign;
+  const photoVetting = event.photoVetting;
+  const publicEvent = { ...event };
+  delete publicEvent.frameDesign;
+  delete publicEvent.photoVetting;
+  delete publicEvent.photoModerationPrecheck;
   const vettingRequired = photoVettingRequired({ photoVetting: photoVetting as { required?: unknown } | undefined });
 
   // The look of the guest pages (camera#285): the messmass style snapshot of the event, or for an event without one camera's own
@@ -310,6 +317,7 @@ export const PATCH = withErrorHandler(async (
     visualSettings,
     sharePage,
     photoVetting,
+    photoModerationPrecheck,
     uiLanguage,
     cameraMode,
     galleryConsent,
@@ -453,6 +461,20 @@ export const PATCH = withErrorHandler(async (
       throw apiBadRequest('photoVetting.required must be true or false');
     }
     updateFields.photoVetting = setting;
+  }
+
+  // Optional advisory content screening: a separate setting, enabled only while photo vetting is on; never a publication decision.
+  if (photoModerationPrecheck !== undefined) {
+    if (!isGlobalAdminSession(session)) {
+      throw apiForbidden('Only a global admin can change the photo moderation precheck');
+    }
+    const setting = normalizePhotoModerationPrecheckInput(photoModerationPrecheck, session.user.email ?? null);
+    if (!setting) throw apiBadRequest('photoModerationPrecheck.enabled must be true or false');
+    if (setting.enabled && !moderationConfiguration()) throw apiBadRequest('Camera moderation service credentials are not configured');
+    if (setting.enabled && !photoVettingRequired({ photoVetting: event.photoVetting as { required?: unknown } | null | undefined })) {
+      throw apiBadRequest('Enable photo vetting before enabling the content precheck');
+    }
+    updateFields.photoModerationPrecheck = setting;
   }
 
   if (sharePage !== undefined) {

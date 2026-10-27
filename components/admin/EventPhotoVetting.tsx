@@ -15,6 +15,8 @@ import PhotoReviewStage from '@/components/admin/PhotoReviewStage';
 import PhotoVettingSwitch from '@/components/admin/PhotoVettingSwitch';
 import { loadEventVocabulary } from '@/lib/photo-vetting/vocabulary-load';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
+import { photoModerationPrecheckEnabled } from '@/lib/events/photo-moderation';
+import { moderationConfiguration } from '@/lib/photo-moderation/config';
 import { countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
@@ -28,7 +30,7 @@ interface EventPhotoVettingProps {
   db: Db;
   /** The event's Mongo id, as used in /admin/events/<id>. */
   eventMongoId: string;
-  event: { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; partnerId?: unknown; annotationVocabulary?: unknown };
+  event: { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; photoModerationPrecheck?: { enabled?: unknown }; partnerId?: unknown; annotationVocabulary?: unknown };
   status: QueueStatus;
   /** One-based page for the card queue. */
   page: number;
@@ -56,6 +58,8 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
     ],
   }, { projection: { createdAt: 1, adminRecovery: 1 } }).sort({ 'adminRecovery.recoveredAt': -1 }).toArray();
   const required = photoVettingRequired(event);
+  const moderationEnabled = photoModerationPrecheckEnabled(event);
+  const moderationConfigured = moderationConfiguration() !== null;
   const any = counts.pending_review + counts.rejected + counts.approved > 0;
   // The Waiting list of an event with vetting on is the one-at-a-time screen unless the list of cards was asked for.
   const oneAtATime = required && status === 'pending_review' && view !== 'list';
@@ -151,7 +155,7 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
         </>
       ) : null}
 
-      <PhotoVettingSwitch eventId={eventMongoId} required={required} canChange={canChangeSetting} />
+          <PhotoVettingSwitch eventId={eventMongoId} required={required} moderationEnabled={moderationEnabled} moderationConfigured={moderationConfigured} canChange={canChangeSetting} />
     </Stack>
   );
 }

@@ -263,6 +263,15 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .collection(COLLECTIONS.SUBMISSIONS)
       .createIndex({ eventId: 1, reviewStatus: 1, createdAt: -1 }, { name: 'submissions_eventId_review_createdAt' })
   );
+  // Optional advisory screening outbox: keep the oldest due work discoverable without scanning unrelated submissions.
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db
+      .collection(COLLECTIONS.SUBMISSIONS)
+      .createIndex(
+        { 'moderationPrecheck.status': 1, 'moderationPrecheck.nextAttemptAt': 1, createdAt: 1 },
+        { partialFilterExpression: { 'moderationPrecheck.enabledAtCapture': true }, name: 'submissions_moderation_precheck_due' },
+      )
+  );
   // Share links of vetted photos carry an opaque token (camera#269); only photos that have one are indexed.
   await track(COLLECTIONS.SUBMISSIONS, () =>
     db

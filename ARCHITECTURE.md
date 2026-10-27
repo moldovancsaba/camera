@@ -67,9 +67,16 @@ Browser / Public Screens
 
 - MongoDB Atlas
 - Vercel Blob (primary image store since v12.2.14) and imgbb (best-effort mirror), both via `lib/imgbb/upload.ts`
+- Shared Hetzner job API for the optional Camera content precheck; its service-specific key is server-only and it receives normalized pending-photo bytes, never a Blob URL or participant fields
 - external SSO service
 - Resend (transactional email)
 - optional Upstash Redis for shared rate limiting
+
+### Optional photo content precheck
+
+The event's `photoModerationPrecheck.enabled` setting snapshots onto newly captured, consent-eligible photos while photo vetting is enabled. A one-minute scheduled Camera worker reads those private pending photos, normalizes one image at a time, discovers the currently permitted `image_moderation` task and selectable models, and submits `model: "auto"` to the shared job API. Camera stores the job/revision on the same submission and polls the job with a bounded run budget. A result is attached only if consent, contact, vetting state, and the exact source-image revision still match. The signal appears in the existing one-photo Vetting screen. It cannot change `reviewStatus`; a human still approves or rejects.
+
+This precheck is separate from Fanmass's per-photo audience and brand analytics. It sends no name, email, event identifiers, or source URL, and it returns only the service's nine moderation categories plus uncertainty/evidence. Missing credentials, malformed output, service errors, and stale images never count as a clear scan or a publication decision. See [docs/PHOTO_CONTENT_PRECHECK.md](docs/PHOTO_CONTENT_PRECHECK.md) for the complete contract and limitations.
 
 ### Picture-backed CTA pages
 
