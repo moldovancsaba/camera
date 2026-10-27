@@ -142,7 +142,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
   }, [initialItems, status]);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const allIds = useMemo(() => items.map((item) => item.id), [items]);
+  const allIds = useMemo(() => items.filter((item) => !item.recoveryOnly).map((item) => item.id), [items]);
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedSet.has(id));
   const working = busy.length > 0;
   const canDecide = canReview && status !== 'approved';
@@ -273,7 +273,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
       {canDecide ? (
         <section style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <SemanticButton action="photo-review:toggle-select-all" type="button" variant="secondary" onClick={() => setSelected(allSelected ? [] : allIds)} disabled={working}>
+            <SemanticButton action="photo-review:toggle-select-all" type="button" variant="secondary" onClick={() => setSelected(allSelected ? [] : allIds)} disabled={working || allIds.length === 0}>
               {allSelected ? 'Clear selection' : 'Select all'}
             </SemanticButton>
             {selected.length > 0 ? (
@@ -298,6 +298,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
         {items.map((item) => {
           const isBusy = busy.includes(item.id);
           const isRejecting = rejecting === item.id;
+          const canDecideItem = canDecide && !item.recoveryOnly;
           const metadata: ListingMetadataRow[] = [
             { id: 'when', label: 'Taken', value: formatDateTime(item.createdAt), tone: 'muted' },
             { id: 'frame', label: 'Frame', value: FRAME_LABEL[item.frameKind], tone: 'muted' },
@@ -316,7 +317,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
           }
 
           const actions: ReactNode[] = [];
-          if (canDecide && !isRejecting) {
+          if (canDecideItem && !isRejecting) {
             actions.push(
               <SemanticButton key="approve" action="photo-review:approve" type="button" size="xs" onClick={() => void approve([item.id])} disabled={isBusy}>
                 {isBusy ? 'Approving…' : 'Approve'}
@@ -341,20 +342,31 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
             );
           }
           if (item.status === 'approved') {
-            if (canReview && item.email && !item.approvalEmailSent) {
+            if (canReview && !item.recoveryOnly && item.email && !item.approvalEmailSent) {
               actions.push(
                 <SemanticButton key="retry-approval-email" action="photo-review:retry-approval-email" type="button" size="xs" variant="secondary" onClick={() => void retryApprovalEmail(item.id)} disabled={isBusy}>
                   {isBusy ? 'Sending…' : 'Send approval link'}
                 </SemanticButton>
               );
             }
-            actions.push(
+            actions.push(item.recoveryOnly && item.photoUrl ? (
+              <a key="view" href={item.photoUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <SemanticButton action="photo-review:view-photo" size="xs" variant="secondary">View</SemanticButton>
+              </a>
+            ) : (
               <Link key="view" href={`/share/${item.id}`} style={{ textDecoration: 'none' }}>
                 <SemanticButton action="photo-review:view-photo" size="xs" variant="secondary">View</SemanticButton>
               </Link>
+            ));
+          }
+          if (item.recoveryOnly && item.status === 'rejected' && item.photoUrl) {
+            actions.push(
+              <a key="view" href={item.photoUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <SemanticButton action="photo-review:view-photo" size="xs" variant="secondary">View</SemanticButton>
+              </a>
             );
           }
-          if (canReview && (item.status === 'approved' || item.status === 'rejected')) {
+          if (canReview && !item.recoveryOnly && (item.status === 'approved' || item.status === 'rejected')) {
             actions.push(
               <SemanticButton key="return-to-vetting" action="photo-review:return-to-vetting" type="button" size="xs" variant="secondary" onClick={() => void returnToVetting(item.id)} disabled={isBusy}>
                 {isBusy ? 'Returning…' : 'Back to vetting'}
@@ -368,7 +380,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
               title={item.name}
               image={
                 <div style={{ position: 'relative' }}>
-                  {canDecide ? (
+                  {canDecideItem ? (
                     <input
                       type="checkbox"
                       checked={selectedSet.has(item.id)}
