@@ -40,9 +40,13 @@ export const GET = withErrorHandler(async (
   if (!recovery || recovery.pathname !== expectedPathname) throw apiNotFound('Recovered photo not found');
 
   const storeId = process.env.CAMERA_MTK_RECOVERY_STORE_ID?.trim();
-  if (!storeId || !process.env.VERCEL_OIDC_TOKEN) throw apiError('Restricted recovery storage is not configured', 503);
+  // Vercel injects the runtime OIDC token into each Function request header; it
+  // is a build/local environment variable, not a runtime process.env value.
+  const oidcToken = request.headers.get('x-vercel-oidc-token')?.trim()
+    || process.env.VERCEL_OIDC_TOKEN?.trim();
+  if (!storeId || !oidcToken) throw apiError('Restricted recovery storage is not configured', 503);
 
-  const blob = await get(expectedPathname, { access: 'private', storeId }).catch(() => {
+  const blob = await get(expectedPathname, { access: 'private', storeId, oidcToken, useCache: false }).catch(() => {
     logWarn('admin_recovery.image_read_failed', 'A restricted recovery photo could not be read from private storage', { submissionId });
     throw apiError('Recovered photo is temporarily unavailable', 503);
   });
