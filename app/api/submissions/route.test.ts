@@ -117,7 +117,7 @@ function submissionRequest(extra: Record<string, unknown> = {}, headers: Record<
       imageWidth: 1080,
       imageHeight: 1920,
       shareOptIn: false,
-      ...(typeof extra.originalImageUrl === 'string' ? { captureId: originalCaptureId } : {}),
+      captureId: originalCaptureId,
       ...extra,
     }),
   });
