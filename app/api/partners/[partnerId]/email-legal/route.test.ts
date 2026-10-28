@@ -50,7 +50,7 @@ test('PUT replaces the partner’s legal part (manager); a bad one is refused an
   assert.equal((await PUT(put({ legal: { en: 'New: {terms}' } }), params)).status, 200);
   assert.deepEqual((data.partners[0] as { emailLegal: unknown }).emailLegal, { en: 'New: {terms}' });
   assert.deepEqual(roles, ['manager']);
-  assert.equal((await PUT(put({ legal: { de: 'x' } }), params)).status, 400);
+  assert.equal((await PUT(put({ legal: { xx: 'x' } }), params)).status, 400);
   assert.deepEqual((data.partners[0] as { emailLegal: unknown }).emailLegal, { en: 'New: {terms}' });
 });
 

@@ -16,7 +16,7 @@ export interface EmailVariable {
   /** What it stands for, for the editor. */
   label: string;
   /** A sample value in each language, for the preview. */
-  sample: Record<UiLanguage, string>;
+  sample: Partial<Record<UiLanguage, string>> & { en: string };
   /** The value is an address: it may be a link. */
   url?: boolean;
   /** Another name for the same value. */
@@ -47,7 +47,7 @@ export const URL_VARIABLES = EMAIL_VARIABLES.filter((variable) => variable.url).
 
 /** Sample values for every variable, for the preview of an e-mail that has no real user and event to fill from. */
 export function sampleValues(language: UiLanguage = DEFAULT_UI_LANGUAGE): Values {
-  return Object.fromEntries(EMAIL_VARIABLES.map((variable) => [variable.name, variable.sample[language]]));
+  return Object.fromEntries(EMAIL_VARIABLES.map((variable) => [variable.name, variable.sample[language] ?? variable.sample.en]));
 }
 
 /** What is known about the event and its partner. All optional: what is missing is a variable with no value. */
@@ -65,14 +65,13 @@ export interface EventFacts {
 
 const clean = (value: unknown): string | undefined => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
 
-const LOCALES: Record<UiLanguage, string> = { en: 'en-GB', hu: 'hu-HU' };
-
 /** The date as a person reads it in the language ("16 October 2026", "2026. október 16."), on the calendar of the event's country; undefined when there is no valid date. */
 export function formatEventDate(value: string | Date | null | undefined, language: UiLanguage = DEFAULT_UI_LANGUAGE): string | undefined {
   if (!value) return undefined;
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return undefined;
-  return new Intl.DateTimeFormat(LOCALES[language], { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Europe/Budapest' }).format(date);
+  const locale = language === 'en' ? 'en-GB' : language;
+  return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Europe/Budapest' }).format(date);
 }
 
 /** The facts of an event document (its own fields and its messmass snapshot), as far as it has them. */

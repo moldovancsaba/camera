@@ -22,12 +22,12 @@ const normalize = (text: string) => text.replace(/\r\n?/g, '\n').trim();
 export type ParsedLegal = { ok: true; value: LegalByLanguage } | { ok: false; error: string };
 
 /**
- * The legal part from a request: `{ en: '...', hu: '...' }`. An empty text means "no legal part at this level for that language" and is left out. Refused with the reason: an
+ * The legal part from a request: `{ localeTag: '...' }` for any supported locale. An empty text means "no legal part at this level for that language" and is left out. Refused with the reason: an
  * unknown language, something that is not text, or a text over the limit.
  */
 export function parseLegal(input: unknown): ParsedLegal {
   if (input === null || input === undefined) return { ok: true, value: {} };
-  if (typeof input !== 'object' || Array.isArray(input)) return { ok: false, error: 'The legal part is an object with a language at the top: { en: "...", hu: "..." }.' };
+  if (typeof input !== 'object' || Array.isArray(input)) return { ok: false, error: 'The legal part is an object keyed by supported language tags.' };
   const value: LegalByLanguage = {};
   for (const [language, raw] of Object.entries(input as Record<string, unknown>)) {
     if (!isUiLanguage(language)) return { ok: false, error: `Unknown language: ${language}.` };

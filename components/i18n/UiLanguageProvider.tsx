@@ -1,13 +1,14 @@
 'use client';
 
 /**
- * The language of the event's user interface for every client component below it (camera#352). The capture layout sets it from the event; a component
+ * The resolved language of every client component below it (camera#352). Capture/share layouts resolve the device preference and partner/event fallback; a component
  * reads it with `useUiLanguage()` or gets the ready function from `useT()`. Outside a provider the language is English, so nothing changes where no
  * language was set. The page's own language is set on the document too, so screen readers and the browser's translate offer know it.
  */
 
 import { createContext, useCallback, useContext, useEffect, type ReactNode } from 'react';
 import { DEFAULT_UI_LANGUAGE, textOr, translate, type MessageKey, type MessageValues, type UiLanguage } from '@/lib/i18n';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 import type { TextOverrides } from '@/lib/i18n/overrides';
 
 const UiLanguageContext = createContext<UiLanguage>(DEFAULT_UI_LANGUAGE);
@@ -18,9 +19,12 @@ export default function UiLanguageProvider({ language, texts = null, children }:
   useEffect(() => {
     const root = document.documentElement;
     const previous = root.lang;
+    const previousDirection = root.dir;
     root.lang = language;
+    root.dir = uiLanguageDirection(language);
     return () => {
       root.lang = previous;
+      root.dir = previousDirection;
     };
   }, [language]);
   return (

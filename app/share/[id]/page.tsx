@@ -27,6 +27,7 @@ import {
 } from '@/lib/events/share-page-settings';
 import { DEFAULT_UI_LANGUAGE, normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
 import { loadEventTexts, type TextOverrides } from '@/lib/i18n/overrides';
+import { parseAcceptLanguage } from '@/lib/i18n/locale-negotiation';
 import { formatDateTime } from '@/lib/i18n/date';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { isCountableVisit } from '@/lib/short-links/device';
@@ -60,7 +61,7 @@ const FALLBACK_SHARE_PAGE_SETTINGS: EventSharePageSettings = {
 
 export const dynamic = 'force-dynamic';
 
-/** The page in the theme and the language of its event (camera#285, camera#352); a page whose event is unknown keeps the default look, in English. */
+/** The page in the theme and resolved locale (camera#285, camera#352); a page whose event is unknown uses the device locale or English. */
 function ThemedPage({ theme, language, texts, children }: { theme: EventTheme | null; language: UiLanguage; texts?: TextOverrides | null; children: React.ReactNode }) {
   return theme ? (
     <EventThemeScope theme={theme}>
@@ -90,6 +91,15 @@ function getSubmissionEventLookupKeys(submission: Record<string, unknown>): stri
   return Array.from(new Set(normalized.map((value) => value.trim()).filter((value) => value.length > 0)));
 }
 
+async function requestLanguagePreferences(): Promise<string[]> {
+  try {
+    return parseAcceptLanguage((await headers()).get('accept-language'));
+  } catch {
+    // Unit/render adapters without a Next request context use the stored partner/event fallback.
+    return [];
+  }
+}
+
 async function resolveEventForSubmission(
   db: Db,
   submission: Record<string, unknown>
@@ -111,9 +121,9 @@ async function resolveEventForSubmission(
     .collection(COLLECTIONS.EVENTS)
     .findOne({ $or: orClauses });
   if (!eventDoc?._id) return null;
-  // The page speaks the language of the event (camera#352).
-  // ... in the language of the event or of its partner, with the wordings written for them (issue 353); a failed read gives the event's own language and the dictionary.
-  const loaded = await loadEventTexts(db, eventDoc).catch(() => null);
+  // The visitor's supported device language wins; partner and event settings are fallbacks.
+  const preferences = await requestLanguagePreferences();
+  const loaded = await loadEventTexts(db, eventDoc, undefined, preferences).catch(() => null);
   const language = loaded?.language ?? normalizeUiLanguage(eventDoc.uiLanguage);
   const texts = loaded?.overrides ?? {};
   const name =

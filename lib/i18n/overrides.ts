@@ -1,6 +1,6 @@
 /**
  * The text levels of the dictionary (issue 353, docs/BUILDING_BRICKS.md steps 6, owner decisions 159 and 167): every default text of the user journey has a **global** wording (the code
- * dictionary, English and Hungarian), and an admin can set another wording for **all events of a partner** or for **one event**, per language. The chain is the one every brick
+ * dictionary for every supported locale), and an admin can set another wording for **all events of a partner** or for **one event**, per language. The chain is the one every brick
  * follows: the event's own, else the partner's, else the global wording set by an admin, else the code dictionary; nothing is copied down (a level stores only what an editor wrote,
  * and looks at the level above for the rest), and a wording written at a level is its own and is never overridden by a later change above.
  *
@@ -12,7 +12,8 @@ import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { en, type MessageKey } from '@/lib/i18n/messages.en';
 import { hu } from '@/lib/i18n/messages.hu';
-import { UI_LANGUAGES, isUiLanguage, normalizeUiLanguage, type UiLanguage } from '@/lib/i18n';
+import { UI_LANGUAGES, type UiLanguage } from '@/lib/i18n';
+import { configuredUiLanguage, resolveUiLanguage } from '@/lib/i18n/locale-negotiation';
 
 export const TEXT_MAX = 500;
 
@@ -32,12 +33,12 @@ export function markersOf(text: string): string[] {
 export type ParsedTexts = { ok: true; value: TextsByLanguage } | { ok: false; error: string };
 
 /**
- * The wordings from a request: `{ en: { 'camera.takePhoto': 'Snap!' }, hu: { ... } }`. A missing key means "use the level above"; an empty string explicitly hides it. Refused with the reason:
+ * The wordings from a request: `{ localeTag: { 'camera.takePhoto': 'Snap!' } }`. A missing key means "use the level above"; an empty string explicitly hides it. Refused with the reason:
  * an unknown language or key, something that is not text, a text over the limit, one with `<` or `>`, or one that does not keep the `{name}` markers of the dictionary text.
  */
 export function parseTexts(input: unknown): ParsedTexts {
   if (input === null || input === undefined) return { ok: true, value: {} };
-  if (typeof input !== 'object' || Array.isArray(input)) return { ok: false, error: 'The texts are an object with a language at the top: { en: { ... }, hu: { ... } }.' };
+  if (typeof input !== 'object' || Array.isArray(input)) return { ok: false, error: 'The texts are an object keyed by supported language tags.' };
   const out: TextsByLanguage = {};
   for (const [language, map] of Object.entries(input as Record<string, unknown>)) {
     if (!(UI_LANGUAGES as readonly string[]).includes(language)) return { ok: false, error: `Unknown language: ${language}.` };
@@ -119,20 +120,18 @@ export async function saveEventTexts(db: Db, eventId: string, texts: TextsByLang
   return result.matchedCount > 0;
 }
 
-/**
- * The language of an event's users (issue 353, the partner's default language): the event's own, else its partner's, else English. An event that never set a language
- * **follows its partner** each time it is read (nothing is copied down), so setting the partner's language changes every event that has none, and an event that set its own keeps it.
- */
+/** Partner default is the configured fallback; an explicit event fallback applies only when the partner has none. */
 export function eventLanguage(event: { uiLanguage?: unknown } | null | undefined, partner?: { uiLanguage?: unknown } | null): UiLanguage {
-  if (isUiLanguage(event?.uiLanguage)) return event.uiLanguage;
-  return normalizeUiLanguage(partner?.uiLanguage);
+  return configuredUiLanguage(event?.uiLanguage, partner?.uiLanguage);
 }
 
-/** The event with its language filled in from its partner when it has none of its own, for the code that reads `uiLanguage` from an event document (the e-mails). One small read, only for an event with no language. */
+/** The event with its configured fallback resolved for email and other non-browser jobs. */
 export async function withEffectiveLanguage<T extends { uiLanguage?: unknown; partnerId?: unknown }>(db: Db, event: T): Promise<T> {
-  if (isUiLanguage(event.uiLanguage) || typeof event.partnerId !== 'string' || !event.partnerId) return event;
-  const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }, { projection: { uiLanguage: 1 } });
-  return isUiLanguage(partner?.uiLanguage) ? { ...event, uiLanguage: partner.uiLanguage } : event;
+  const partner = typeof event.partnerId === 'string' && event.partnerId
+    ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }, { projection: { uiLanguage: 1 } })
+    : null;
+  const language = configuredUiLanguage(event.uiLanguage, partner?.uiLanguage);
+  return event.uiLanguage === language ? event : { ...event, uiLanguage: language };
 }
 
 export interface EventTexts {
@@ -146,9 +145,11 @@ export interface EventTexts {
 }
 
 /** The wordings that apply to an event, level by level and merged. Two reads (the global setting and the partner), none when nothing was ever written. */
-export async function loadEventTexts(db: Db, event: Document, partner?: Document | null): Promise<EventTexts> {
+export async function loadEventTexts(db: Db, event: Document, partner?: Document | null, languagePreferences?: readonly string[]): Promise<EventTexts> {
   const partnerDoc = partner === undefined ? (typeof event.partnerId === 'string' && event.partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null) : partner;
-  const language = eventLanguage(event, partnerDoc);
+  const language = languagePreferences
+    ? resolveUiLanguage(languagePreferences, event.uiLanguage, partnerDoc?.uiLanguage)
+    : eventLanguage(event, partnerDoc);
   const eventTexts = storedTexts(event.texts);
   // `loadingText` predates text levels and belongs to the long capture-loading screen, not event.loading.
   const legacyLoadingText = typeof event.loadingText === 'string' ? event.loadingText.trim() : '';

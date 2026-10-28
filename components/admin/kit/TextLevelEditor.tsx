@@ -12,7 +12,7 @@ import { GdsInline, GdsStack, InlineAlert, LabelTag, MetadataText, SectionPanel 
 import { AdminSelect, AdminTextInput } from '@sovereignsquad/gds-admin/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { groupedCatalog } from '@/lib/i18n/catalog';
-import { UI_LANGUAGES, UI_LANGUAGE_LABELS, type UiLanguage } from '@/lib/i18n';
+import { isUiLanguage, UI_LANGUAGES, UI_LANGUAGE_LABELS, type UiLanguage } from '@/lib/i18n';
 import { TEXT_MAX, markersOf, type TextOverrides, type TextsByLanguage } from '@/lib/i18n/overrides';
 
 export interface InheritedLevel {
@@ -87,7 +87,7 @@ export default function TextLevelEditor({ own, inherited, initialLanguage = 'en'
           name="text-language"
           label="Language"
           value={language}
-          onChange={(next) => setLanguage(next === 'hu' ? 'hu' : 'en')}
+          onChange={(next) => { if (isUiLanguage(next)) setLanguage(next); }}
           data={UI_LANGUAGES.map((code) => ({ value: code, label: UI_LANGUAGE_LABELS[code] }))}
         />
         <AdminTextInput name="text-search" label="Find a text" value={search} onChange={setSearch} placeholder="Part of a text or its name" />
@@ -108,7 +108,7 @@ export default function TextLevelEditor({ own, inherited, initialLanguage = 'en'
       </MetadataText>
 
       {groups.map((group) => {
-        const entries = group.entries.filter((entry) => !query || entry.key.toLowerCase().includes(query) || entry.en.toLowerCase().includes(query) || entry.hu.toLowerCase().includes(query));
+        const entries = group.entries.filter((entry) => !query || entry.key.toLowerCase().includes(query) || entry.en.toLowerCase().includes(query) || entry.messages[language].toLowerCase().includes(query));
         if (entries.length === 0) return null;
         return (
           <SectionPanel key={group.group} title={group.label} description={`${entries.length} text${entries.length === 1 ? '' : 's'}`}>
@@ -117,7 +117,7 @@ export default function TextLevelEditor({ own, inherited, initialLanguage = 'en'
                 const languageDraft = draft[language] as Record<string, string> | undefined;
                 const hasOwn = Boolean(languageDraft && Object.prototype.hasOwnProperty.call(languageDraft, entry.key));
                 const value = languageDraft?.[entry.key] ?? '';
-                const above = fromAbove(entry.key, entry[language]);
+                const above = fromAbove(entry.key, entry.messages[language]);
                 const wrong = problem(entry.key, entry.en, value);
                 return (
                   <GdsStack key={entry.key} gap="xs">

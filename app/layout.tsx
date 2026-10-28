@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { preconnect, preinit } from "react-dom";
 // WHAT: the official GDS stylesheet. It imports both Mantine sheets itself and
@@ -7,7 +6,9 @@ import { preconnect, preinit } from "react-dom";
 import '@sovereignsquad/gds-theme/styles.css';
 import "./globals.css";
 import Providers from './providers';
-import { DEFAULT_UI_LANGUAGE, translate } from '@/lib/i18n';
+import { translate } from '@/lib/i18n';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
+import { initialDocumentUiLanguage } from '@/lib/i18n/server-language';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,11 +26,11 @@ export const viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  await headers().catch(() => null);
+  const language = await initialDocumentUiLanguage();
   return {
     title: "Camera",
     // The same text is the description of the share page's notices, in the event's language there (lib/i18n).
-    description: translate(DEFAULT_UI_LANGUAGE, 'meta.app.description'),
+    description: translate(language, 'meta.app.description'),
     applicationName: "Camera",
   };
 }
@@ -46,7 +47,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const INTER_STYLESHEET =
   "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -54,8 +55,9 @@ export default function RootLayout({
   preconnect("https://fonts.googleapis.com");
   preconnect("https://fonts.gstatic.com", { crossOrigin: "anonymous" });
   preinit(INTER_STYLESHEET, { as: "style", precedence: "default" });
+  const language = await initialDocumentUiLanguage();
   return (
-    <html lang="en">
+    <html lang={language} dir={uiLanguageDirection(language)}>
       <head>
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
       </head>

@@ -38,7 +38,7 @@ test('POST adds a text in a language; a bad text, a language we do not have and 
   assert.equal(w.data.qr_texts.length, 3);
   assert.equal((w.data.qr_texts[2] as { createdBy: string }).createdBy, 'a1');
   assert.equal((await POST(post({ text: '', language: 'en' }))).status, 400);
-  assert.equal((await POST(post({ text: 'Hallo', language: 'de' }))).status, 400);
+  assert.equal((await POST(post({ text: 'Hallo', language: 'xx' }))).status, 400);
   assert.equal((await POST(new NextRequest('http://localhost/api/qr-texts', { method: 'POST', body: 'not json' }))).status, 400);
   assert.equal((await POST(post({ text: 'scan & smile', language: 'en' }))).status, 409);
   assert.equal(w.data.qr_texts.length, 3, 'a refused text writes nothing');

@@ -11,7 +11,7 @@ const view = (id: string, text: string, language: 'en' | 'hu', isActive = true):
 test('a QR text is one short line in a language we have: whitespace is collapsed, empty, too long, unknown field or unknown language is refused', () => {
   assert.deepEqual(parseQrText({ text: '  Scan   &\n smile ', language: 'en' }), { ok: true, value: { text: 'Scan & smile', language: 'en' } });
   assert.equal(parseQrText({ text: 'x'.repeat(QR_TEXT_MAX_LENGTH), language: 'hu' }).ok, true);
-  for (const bad of [null, [], 'x', {}, { text: '', language: 'en' }, { text: '   ', language: 'en' }, { text: 'x'.repeat(QR_TEXT_MAX_LENGTH + 1), language: 'en' }, { text: 'a', language: 'de' }, { text: 'a' }, { text: 'a', language: 'en', other: 1 }, { text: 5, language: 'en' }]) {
+  for (const bad of [null, [], 'x', {}, { text: '', language: 'en' }, { text: '   ', language: 'en' }, { text: 'x'.repeat(QR_TEXT_MAX_LENGTH + 1), language: 'en' }, { text: 'a', language: 'xx' }, { text: 'a' }, { text: 'a', language: 'en', other: 1 }, { text: 5, language: 'en' }]) {
     assert.equal(parseQrText(bad).ok, false, JSON.stringify(bad));
   }
 });

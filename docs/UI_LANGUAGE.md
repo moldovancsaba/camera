@@ -1,32 +1,38 @@
-# UI language of an event (camera#352)
+# Camera UI language behavior
 
-The language of the user interface is a setting of the **event**: `Event.uiLanguage`, `en` (the default, also when the setting is missing) or `hu`. It decides the language of every **default** text of the user journey (the capture flow), the public photo page and the emails the user gets. It does not touch the admin screens.
+**Status (2026-10-27):** Device-first language negotiation and the shared message-catalog foundation are implemented for the capture journey, public photo share page, error copy, email defaults, and text editors. The extra locale dictionaries are machine-translated drafts and are not cleared for a production launch. This document describes current code, not a claim that every Camera route or WCAG 2.2 AA has been completed.
 
-## How it works
+## Supported locale identifiers
 
-- **One dictionary per language:** `lib/i18n/messages.en.ts` (the key list and the English texts) and `lib/i18n/messages.hu.ts` (Hungarian, informal "te", owner decision 2026-10-08). The Hungarian file must have every key of the English one (the type checks it, a test checks the `{markers}`).
-- **Server code:** `translate(language, key, values?)` from `lib/i18n`.
-- **Client code:** the capture layout (`app/capture/[eventId]/layout.tsx`) and the public photo page (`app/share/[id]/page.tsx`, inside the event's theme) set the language of the event in `UiLanguageProvider`; a component calls `useT()` and gets `t(key)` and `own(key, storedText)`. Without a provider the language is English, so nothing changes where none is set. The provider also sets `<html lang>`.
-- **Capture loading copy:** the event layout resolves `capture.loading` once for the full-screen load, using event, partner, global, and dictionary wording. The distinct `event.loading` key remains for event-flow loading states. Edit either key in the event's or partner's **Texts** page; old `Event.loadingText` values map to `capture.loading`.
-- **An editor's own text wins** over the dictionary (main rule 18): `own(key, storedText)` returns the editor's text when there is one. The page editor used to pre-fill and save the English defaults as if they were the editor's own, so in another language **a stored text that is exactly the English default counts as not set** (`textOr` in `lib/i18n`), and the dictionary text shows. No stored data is changed.
-- **The emails follow the same rule** (`emailTemplateIn` in `lib/email/submission-template-defaults.ts`): the event editor pre-fills its email fields with the English defaults and saves them, so in another language a stored template that is exactly one of those defaults is sent as **the same default in the event's language** (the "updated photo" wording stays the "updated photo" wording), and the English terms link the editor saved becomes the legal page of the language (`seyuselfies.com/hu/policies/`). A template or link an editor wrote is sent as written, even when it is English. The event API still stores what it reads, without a language.
+`lib/i18n/index.ts` is the canonical registry. It currently contains `en`, `hu`, `de`, `it`, `pt-BR`, `pt-PT`, `es`, `fr`, `ru`, `zh-Hans`, `zh-Hant`, `ro`, `pl`, `sk`, `hr`, `sl`, `bg`, `tr`, `ar`, `hi`, `ka`, `sr-Cyrl`, and `sr-Latn`. Native-language labels are in `UI_LANGUAGE_LABELS`.
 
-## Setting it
+The English catalog in `lib/i18n/messages.en.ts` defines 253 typed message keys. Each registered locale has a dictionary with the same keys. The 21 dictionaries beyond English and Hungarian are machine-generated first drafts. Georgian currently uses English for five long e-mail body keys. See [LOCALIZATION_TRANSLATION_REVIEW.md](./LOCALIZATION_TRANSLATION_REVIEW.md) before enabling this content for real users.
 
-Event editor, "Customization", "User interface language"; `PATCH /api/events/<id>` with `uiLanguage` (`"hu"`, `"en"`, or empty). `GET /api/events/<id>` returns it.
+## Locale selection
 
-**The partner's default language (issue 353, 2026-10-09):** the partner has a **default language** too (`Partner.uiLanguage`, partner editor, "Language of the events"; `PATCH /api/partners/<id>`). An event that **sets no language of its own follows its partner's** every time it is read (nothing is copied down): the event editor's language field has the choice **Same as the partner**, which is what an event that never set a language shows. An event that chose a language keeps it; a partner with none means English. The one function is `eventLanguage(event, partner)` (`lib/i18n/overrides.ts`); the capture app, the event API, the public photo page and the default slideshow read the language through `loadEventTexts` or `withEffectiveLanguage` so they cannot disagree, and the e-mails get it from `resolveEventForSubmission`.
+For `/capture/:eventId` and `/share/:id`, the server and client use the same order:
 
-## What uses the dictionary today
+1. First supported browser preference from `Accept-Language`, ordered by quality (`q`) and then header order.
+2. Partner default language.
+3. Event language if the partner has not configured one.
+4. English.
 
-- **The capture flow (step 2):** every text of the pages and of the capture page: the default consent and login pages (built on the server in the event's language, with the legal links of that language: `seyuselfies.com/<language>/...`), the camera screens (device camera and webcam), the photo screen (`ReframeStep`), the waiting and share screens, the CTA and restart pages, the social login buttons, the try-on selector, the tour (steps, buttons and replay button), the save and email notices, the tab title and link preview text. The take-photo settings (20 texts), the approval texts and the redirecting message use `own(key, storedText)`.
-- **Server error texts** the fan can see in the save notice (`lib/i18n/errors.ts`): English stays the server's own text; in another language a known text is translated, a network failure gets its own text and anything unknown becomes the general "unexpected error" text.
-- **The tour** points at `data-tour-id` attributes, not at `aria-label` texts, so translating a label cannot lose a step.
-- **The public photo page (step 3):** `/share/<id>`, the page the email links to, and its two notices (waiting for approval, not approved): the ten fixed texts of the share page settings (`sharePageText(settings, key, language)` in `lib/events/share-page-settings.ts`; an empty field is the default of the language, a stored English default counts as not set), the alt text of the photo ("Photo with Camera frame"), "Guest" when the name is unknown, the headline when the event has no name, the date under the photo (`hu-HU` and **Budapest time** for Hungarian, whatever time zone the server runs in, `lib/i18n/date.ts`; English keeps the server's own locale and time zone), the header logo's alt text and the tab title, description and link preview texts (Open Graph, Twitter). On a phone the Download and Create Your Own buttons now sit one under the other; side by side, the themed capitals of both languages were clipped.
-- **The emails (step 3):** the approval email and the not-approved email of a vetted photo (`lib/photo-vetting/emails.ts`), and the email the dispatcher sends after the save (`lib/email/submission-result-email.ts`): subject, body, button, the word for a guest without a name ("there" in English, "rajongó" in Hungarian), the word for a missing event name and the terms link. Every guest email goes through `sendSubmissionResultEmail` (`lib/email/submission-notification.ts`), which takes the language.
+Chinese matching respects writing system (`zh-TW` and `zh-HK` to `zh-Hant`; other Chinese preferences to `zh-Hans`). Serbian matching respects script (`sr-Latn` or `sr-Cyrl`). Portuguese uses `pt-PT` for Portugal and `pt-BR` otherwise. The rules live in `lib/i18n/locale-negotiation.ts` and are covered by unit tests.
 
-## Not yet (the next steps of #352)
+The `proxy.ts` forwards the request path while retaining Camera's admin-session gate, OAuth callback recovery, and short-link rewrites. The root layout uses that path to emit the guest page's correct `<html lang>` and `<html dir>` on the server. Arabic sets `dir="rtl"`; other supported locales use `ltr`. The guest `UiLanguageProvider` keeps document language and direction in sync. Pages outside the localized capture/share routes retain English document metadata until those page families are migrated.
 
-- Done for the pages that sit above the event and do not know its language (owner 2026-10-10, answer 310): the global error page follows the browser's language (Hungarian for a Hungarian browser, `lib/i18n/browser.ts`, texts `errorPage.*`), the not-found page of a share link (and its tab title) says it in both languages. The capture route's early boundary shows a spinner without a second message; after the event layout loads, the guest sees its localized `capture.loading` text. Still not translated: the old no-event `/capture` page, which no event uses.
-- Pages outside the photo journey: the landing pages and the slideshow screens (the Greatest Hits gallery that was listed here went with the try-on integration, issue 557). The JSON error answers of `/api/share/<id>/download`. The admin email preview API (`/api/admin/events/<id>/email-preview`, no screen uses it) still renders the English templates. The sender name of the emails ("The Selfie", an event setting) is the same in every language.
-- The partner-level default for its events and "same as the partner" on the event (#353, items 104 to 107 of the plan).
+Email jobs have no browser preference; they use the partner default, then the event fallback, then English. Persisted UI settings use the same canonical locale union. Labels are translated at display time; API/database values remain canonical.
+
+## Translation behavior and editing
+
+The shared `translate(language, key, values, overrides)` function selects a catalog string and fills `{markers}`. Global, partner, and event text overrides remain separate per locale and preserve the existing explicit-empty behavior. `TextLevelEditor` and the email legal-text editor now accept every supported locale.
+
+Date formatting uses the selected locale. The current share-date timezone behavior remains a separate concern: Hungarian explicitly uses `Europe/Budapest`; other locales use the runtime default. There is not yet an event timezone contract.
+
+## Scope limits and release gate
+
+The new dictionaries cover the existing 253-key message catalog; they do **not** translate every hard-coded label in Camera administration, gallery, vetting, analysis, reports, QR library, or every operational UI. Those surfaces remain an implementation gap. User-authored partner/event copy is also not machine-translated.
+
+No locale is linguistically approved by the generated files. Consent, privacy, e-mail, and other legal copy need qualified translation and legal review. Arabic RTL, all script/font coverage, screen-reader behavior, zoom/reflow, contrast, touch targets, and route-by-route WCAG 2.2 AA have not passed a full audit. Do not describe Camera as fully multilingual or accessibility-conformant until the release gates in [LOCALIZATION_ACCESSIBILITY_DELIVERY_PLAN.md](./LOCALIZATION_ACCESSIBILITY_DELIVERY_PLAN.md) are met.
+
+The operational roadmap and acceptance criteria are in [LOCALIZATION_ACCESSIBILITY_DELIVERY_PLAN.md](./LOCALIZATION_ACCESSIBILITY_DELIVERY_PLAN.md); translation provenance is in [LOCALIZATION_TRANSLATION_REVIEW.md](./LOCALIZATION_TRANSLATION_REVIEW.md).

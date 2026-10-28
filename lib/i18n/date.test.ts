@@ -10,9 +10,10 @@ test('a Hungarian event shows Budapest time, summer and winter, whatever the ser
   assert.match(winter, /18:00/, 'UTC+1 in December');
 });
 
-test('English keeps the server locale and time zone as before; a text that is not a date gives nothing', () => {
+test('English formatting is deterministic and invalid dates give nothing', () => {
   const english = formatDateTime('2026-10-16T17:00:00.000Z', 'en');
-  assert.equal(english, new Date('2026-10-16T17:00:00.000Z').toLocaleString(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }));
+  assert.equal(english, new Date('2026-10-16T17:00:00.000Z').toLocaleString('en', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }));
   assert.equal(formatDateTime('not a date', 'hu'), '');
   assert.equal(formatDateTime('', 'en'), '');
+  assert.ok(formatDateTime('2026-10-16T17:00:00.000Z', 'ar'));
 });

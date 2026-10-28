@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { translate, type UiLanguage } from '@/lib/i18n';
 import { browserLanguage } from '@/lib/i18n/browser';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 import { Button, Card, Center, Stack, Text } from '@/components/gds/PublicPrimitives';
 
 export default function Error({
@@ -24,6 +25,10 @@ export default function Error({
   useEffect(() => {
     setLanguage(browserLanguage(typeof navigator !== 'undefined' ? navigator.languages ?? [navigator.language] : []));
   }, []);
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.documentElement.dir = uiLanguageDirection(language);
+  }, [language]);
   useEffect(() => {
     console.error('Application error:', error);
     // Beacon the crash to the server so it lands in structured logs / alerting

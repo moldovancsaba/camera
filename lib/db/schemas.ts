@@ -25,6 +25,7 @@
 
 import type { ReframeRecord } from '@/lib/camera/reframe';
 import type { StoredVocabulary } from '@/lib/photo-vetting/vocabulary';
+import type { UiLanguage } from '@/lib/i18n';
 import { ObjectId } from 'mongodb';
 import type { FrameDesign } from '@/lib/frame/context';
 import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
@@ -163,7 +164,7 @@ export interface Partner {
   // Contact and metadata
   contactEmail?: string;             // Partner contact email
   /** The language of the events of this partner that did not set one themselves (issue 353): they follow it. English when missing. */
-  uiLanguage?: 'en' | 'hu' | null;
+  uiLanguage?: UiLanguage | null;
   /** How the events of this partner that made no choice take the photo (issue 547, lib/camera/mode.ts): `device` (the standard) or `live` (the live view with the view buttons). Missing = the standard. */
   cameraMode?: 'device' | 'live' | 'still' | 'frame' | null;
   /** Whether the events of this partner that made no choice ask for the user's own permission to show a photo in the public gallery (issue 554, lib/events/gallery-consent.ts). Missing = they do not ask (the terms cover it). */
@@ -177,7 +178,7 @@ export interface Partner {
   /** What this partner changed in the words the vetting person describes a photo with (issue 628, lib/photo-vetting/vocabulary.ts): options hidden, relabelled, reordered or added. Missing = nothing changed; its events follow the general level. */
   annotationVocabulary?: StoredVocabulary | null;
   /** The legal part of the e-mails of all events of this partner that did not set their own, per language (epic 463, lib/email/legal.ts): it follows the general one. */
-  emailLegal?: Partial<Record<'en' | 'hu', string>>;
+  emailLegal?: Partial<Record<UiLanguage, string>>;
   /** The pictures every event of this partner shows in the picture fields it left empty (lib/events/partner-pictures.ts, issue 368): the plain https address each field stores. */
   pictures?: Record<string, string>;
   contactName?: string;              // Partner contact person
@@ -374,7 +375,7 @@ export interface Event {
   shortUrlSlug?: string | null;
   greatestHitsSlug?: string | null;
   /** The language of the user interface of this event (camera#352): the default texts of the journey, the public photo page and the user emails come from its dictionary. English when missing. */
-  uiLanguage?: 'en' | 'hu';
+  uiLanguage?: UiLanguage;
   /** How this event takes the photo (issue 547, lib/camera/mode.ts): its own choice; missing or null = it follows its partner's, which follows the standard (`device`). */
   cameraMode?: 'device' | 'live' | 'still' | 'frame' | null;
   /** Whether this event asks for the permission to show a photo in the public gallery (issue 554): its own choice; missing or null = it follows its partner's, which follows the standard (does not ask). */
@@ -382,7 +383,7 @@ export interface Event {
   /** The event's own choice for the other checkbox settings (issue 558, lib/events/checkbox-settings.ts): shown and required per checkbox kind. A kind it makes no choice for follows its partner's, which follows the standard. */
   consentSettings?: StoredCheckboxSettings | null;
   /** The legal part of the e-mails of this event, per language (epic 463, lib/email/legal.ts): its own; missing = it follows its partner's, which follows the general one. */
-  emailLegal?: Partial<Record<'en' | 'hu', string>>;
+  emailLegal?: Partial<Record<UiLanguage, string>>;
   /** How a user gets the layout and the message of the frame (epic 444, lib/frame/selection.ts): each `editor` (with a pick), `random` or `user`. Missing = what the event always did. */
   frameSelection?: { layout: { mode: 'editor' | 'random' | 'user'; pick: string | null }; message: { mode: 'editor' | 'random' | 'user'; pick: string | null } } | null;
   /** Whether the ordered selection page follows Frames settings, offers both choices, or hides frame choices while message choice stays independent. Missing = automatic. */

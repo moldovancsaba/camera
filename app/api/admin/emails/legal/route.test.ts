@@ -34,7 +34,7 @@ test('a global admin writes the general legal part and reads it back; an empty t
 test('what the rules refuse is refused with the reason and nothing is stored', async (t) => {
   const { data } = setup(t, ADMIN);
   const { PUT } = await importRoute('refuse');
-  assert.equal((await PUT(put({ legal: { de: 'x' } }))).status, 400);
+  assert.equal((await PUT(put({ legal: { xx: 'x' } }))).status, 400);
   assert.equal((await PUT(put({ legal: 'x' }))).status, 400);
   assert.equal((await PUT(new NextRequest(url, { method: 'PUT', body: 'nope' }))).status, 400);
   assert.equal(data.admin_settings.length, 0);

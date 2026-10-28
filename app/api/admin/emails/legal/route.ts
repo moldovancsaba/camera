@@ -2,7 +2,7 @@
  * The general legal part of the e-mails to the user (epic 463, lib/email/legal.ts): the one every partner and event follows until it sets its own.
  *
  * GET /api/admin/emails/legal   { legal } the legal part written at this level, per language (global admin)
- * PUT /api/admin/emails/legal   { legal: { en: "...", hu: "..." } } replaces it; an empty text takes a language away (global admin)
+ * PUT /api/admin/emails/legal   { legal: { "locale-tag": "..." } } replaces it; an empty text takes a language away (global admin)
  */
 
 import { NextRequest } from 'next/server';
