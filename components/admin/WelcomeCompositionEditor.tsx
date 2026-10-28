@@ -91,7 +91,7 @@ export default function WelcomeCompositionEditor({
     const id = makeId();
     const next: WelcomeElement = type === 'image'
       ? { id, name: `Image ${elements.filter((item) => item.type === 'image').length + 1}`, type, anchor: { vertical: 'middle', horizontal: 'center' }, widthPercent: 28, alt: '' }
-      : { id, name: `Text ${elements.filter((item) => item.type === 'text').length + 1}`, type, anchor: { vertical: 'middle', horizontal: 'center' }, widthPercent: 45, fontSizePercent: 4, color: '#ffffff', fontWeight: 'bold', text: 'Your text' };
+      : { id, name: `Text ${elements.filter((item) => item.type === 'text').length + 1}`, type, anchor: { vertical: 'middle', horizontal: 'center' }, widthPercent: 45, fontSizePercent: 4, fontWeight: 'bold', text: 'Your text' };
     onElementsChange([...elements, next]);
     setSelectedId(id);
   };
@@ -231,7 +231,7 @@ export default function WelcomeCompositionEditor({
                       <Field label="Font size (% of stage width)"><NumberInput min={1} max={16} step={0.5} value={selected.fontSizePercent ?? 4} onChange={(value) => update(selected.id, { fontSizePercent: Number(value) || 1 })} /></Field>
                     </SimpleGrid>
                     <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                      <AdminTextInput name={`welcome-text-color-${selected.id}`} label="Text colour" value={selected.color ?? '#ffffff'} onChange={(color) => update(selected.id, { color })} placeholder="#RRGGBB" />
+                      <AdminTextInput name={`welcome-text-color-${selected.id}`} label="Text colour" value={selected.color ?? ''} onChange={(color) => update(selected.id, { color: color || undefined })} placeholder="6-digit hex colour" />
                       <AdminSelect name={`welcome-text-weight-${selected.id}`} label="Weight" value={selected.fontWeight ?? 'normal'} onChange={(value) => update(selected.id, { fontWeight: value === 'bold' ? 'bold' : 'normal' })} data={[{ value: 'normal', label: 'Regular' }, { value: 'bold', label: 'Bold' }]} />
                     </SimpleGrid>
                   </>
