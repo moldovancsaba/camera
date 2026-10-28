@@ -198,6 +198,94 @@ test('runs one consent-eligible photo at a time and attaches exact per-photo res
   }
 });
 
+test('an event-scoped preview run processes one image only from the requested event', async () => {
+  const targetEventId = '6ac636415fa8994cb2d3df85';
+  const target = submission('121212121212121212121212', '2026-10-27T10:00:00.000Z');
+  const unrelated = submission('343434343434343434343434', '2026-10-27T10:01:00.000Z');
+  (unrelated.moderationPrecheck as Document).eventMongoId = '7bc636415fa8994cb2d3df85';
+  const { db, collections } = memoryDb({
+    [COLLECTIONS.SUBMISSIONS]: [target, unrelated],
+    [COLLECTIONS.ADMIN_SETTINGS]: [],
+  });
+  let submitted = 0;
+  let active = 0;
+  let maxActive = 0;
+  const normalizedRevision = 'a'.repeat(64);
+  const result = {
+    schema_version: 'camera-moderation.v1', model: 'auto-selected-model', review_required: true, automated_decision: 'none',
+    signal: 'no_flags_detected', flags: [],
+    categories: Object.fromEntries(MODERATION_CATEGORIES.map((category) => [category, 'not_detected'])),
+    evidence: '', limitations: 'No flags does not establish safety.',
+  };
+  const client = {
+    async discover() {},
+    async submit() { submitted += 1; active += 1; maxActive = Math.max(active, maxActive); return `scoped-${submitted}`; },
+    async read(id: string) { active -= 1; return { id, status: 'completed' as const, imageSha256: normalizedRevision, result }; },
+    async delete() {},
+  };
+  const previousToken = process.env.BLOB_READ_WRITE_TOKEN;
+  process.env.BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_teststore_secret';
+  try {
+    const submittedOutcome = await runModerationPrecheckWorker(db, {
+      client,
+      eventMongoId: targetEventId,
+      maxBatch: 1,
+      budgetMs: 500,
+      loadImage: async () => ({ bytes: Buffer.from('normalized'), sourceRevision: 'b'.repeat(64), normalizedRevision }),
+    });
+    assert.equal(submittedOutcome.submitted, 1);
+    assert.equal(submittedOutcome.completed, 0, 'one-photo polling resumes on the next worker invocation');
+    assert.equal(submittedOutcome.waiting, 1);
+    assert.equal((target.moderationPrecheck as Document).status, 'queued_remote');
+    assert.equal((unrelated.moderationPrecheck as Document).status, 'queued');
+    const completedOutcome = await runModerationPrecheckWorker(db, {
+      client,
+      eventMongoId: targetEventId,
+      maxBatch: 1,
+      budgetMs: 500,
+      loadImage: async () => ({ bytes: Buffer.from('normalized'), sourceRevision: 'b'.repeat(64), normalizedRevision }),
+    });
+    assert.equal(completedOutcome.completed, 1);
+    assert.equal(submitted, 1);
+    assert.equal(maxActive, 1);
+    assert.equal((target.moderationPrecheck as Document).status, 'completed');
+    assert.equal((unrelated.moderationPrecheck as Document).status, 'queued');
+    assert.equal(collections.get(COLLECTIONS.SUBMISSIONS)!.length, 2);
+  } finally {
+    if (previousToken === undefined) delete process.env.BLOB_READ_WRITE_TOKEN;
+    else process.env.BLOB_READ_WRITE_TOKEN = previousToken;
+  }
+});
+
+test('an event-scoped preview run leaves a globally active job for another event untouched', async () => {
+  const targetEventId = '6ac636415fa8994cb2d3df85';
+  const unrelated = submission('565656565656565656565656', '2026-10-27T10:00:00.000Z');
+  (unrelated.moderationPrecheck as Document).eventMongoId = '7bc636415fa8994cb2d3df85';
+  (unrelated.moderationPrecheck as Document).status = 'running';
+  (unrelated.moderationPrecheck as Document).jobId = 'other-event-job';
+  const lock = {
+    _id: 'camera-photo-moderation-precheck-worker',
+    activeJobId: 'other-event-job',
+    activeJobStartedAt: '2026-10-27T10:00:00.000Z',
+  };
+  const { db, collections } = memoryDb({
+    [COLLECTIONS.SUBMISSIONS]: [unrelated],
+    [COLLECTIONS.ADMIN_SETTINGS]: [lock],
+  });
+  let calls = 0;
+  const client = {
+    async discover() { calls += 1; },
+    async submit() { calls += 1; return 'unexpected'; },
+    async read() { calls += 1; throw new Error('An unrelated remote job must not be polled.'); },
+    async delete() { calls += 1; },
+  };
+  const outcome = await runModerationPrecheckWorker(db, { client, eventMongoId: targetEventId, budgetMs: 500 });
+  assert.equal(outcome.waiting, 1);
+  assert.equal(calls, 0);
+  assert.equal((unrelated.moderationPrecheck as Document).status, 'running');
+  assert.equal((collections.get(COLLECTIONS.ADMIN_SETTINGS)![0] as Document).activeJobId, 'other-event-job');
+});
+
 test('does not submit a second image while the first POST outcome is ambiguous', async () => {
   const first = submission('444444444444444444444444', '2026-10-27T10:00:00.000Z');
   const second = submission('555555555555555555555555', '2026-10-27T10:01:00.000Z');

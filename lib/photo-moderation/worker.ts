@@ -87,8 +87,9 @@ export function moderationSourceEligible(row: WorkerSubmission, expectedUrl?: st
     && !privacyErasureIsFenced(row.privacyErasure);
 }
 
-function baseEligibleMongoFilter(): Document {
+function baseEligibleMongoFilter(eventMongoId?: string): Document {
   return {
+    ...(eventMongoId ? { 'moderationPrecheck.eventMongoId': eventMongoId } : {}),
     'moderationPrecheck.enabledAtCapture': true,
     'moderationPrecheck.status': { $in: [...EVENT_STATES] },
     reviewStatus: 'pending_review',
@@ -102,9 +103,9 @@ function baseEligibleMongoFilter(): Document {
   };
 }
 
-function dueWorkQuery(now: string): Document {
+function dueWorkQuery(now: string, eventMongoId?: string): Document {
   return {
-    ...baseEligibleMongoFilter(),
+    ...baseEligibleMongoFilter(eventMongoId),
     $or: [
       {
         'moderationPrecheck.status': { $in: ['queued', 'submitting'] },
@@ -118,8 +119,12 @@ function dueWorkQuery(now: string): Document {
   };
 }
 
-function remoteWorkQuery(jobId: string): Document {
-  return { 'moderationPrecheck.jobId': jobId, 'moderationPrecheck.status': { $in: ['queued_remote', 'running'] } };
+function remoteWorkQuery(jobId: string, eventMongoId?: string): Document {
+  return {
+    'moderationPrecheck.jobId': jobId,
+    'moderationPrecheck.status': { $in: ['queued_remote', 'running'] },
+    ...(eventMongoId ? { 'moderationPrecheck.eventMongoId': eventMongoId } : {}),
+  };
 }
 
 function responseFilter(row: WorkerSubmission): Document {
@@ -206,13 +211,13 @@ async function setWorkerLock(db: Db, leaseToken: string, set: Document, unset: D
   await db.collection<{ _id: string; [key: string]: unknown }>(COLLECTIONS.ADMIN_SETTINGS).updateOne({ _id: MODERATION_WORKER_LOCK_ID, leaseToken }, update);
 }
 
-async function loadCandidate(db: Db, now: string): Promise<WorkerSubmission | null> {
-  const rows = await db.collection(COLLECTIONS.SUBMISSIONS).find(dueWorkQuery(now)).sort({ createdAt: 1, _id: 1 }).limit(1).toArray();
+async function loadCandidate(db: Db, now: string, eventMongoId?: string): Promise<WorkerSubmission | null> {
+  const rows = await db.collection(COLLECTIONS.SUBMISSIONS).find(dueWorkQuery(now, eventMongoId)).sort({ createdAt: 1, _id: 1 }).limit(1).toArray();
   return (rows[0] as WorkerSubmission | undefined) ?? null;
 }
 
-async function loadJobSource(db: Db, jobId: string): Promise<WorkerSubmission | null> {
-  return await db.collection(COLLECTIONS.SUBMISSIONS).findOne(remoteWorkQuery(jobId)) as WorkerSubmission | null;
+async function loadJobSource(db: Db, jobId: string, eventMongoId?: string): Promise<WorkerSubmission | null> {
+  return await db.collection(COLLECTIONS.SUBMISSIONS).findOne(remoteWorkQuery(jobId, eventMongoId)) as WorkerSubmission | null;
 }
 
 async function updateFailed(db: Db, row: WorkerSubmission, code: string): Promise<boolean> {
@@ -322,8 +327,9 @@ async function processRemoteJob(
   budgetMs: number,
   counters: ModerationWorkerResult,
   loadImage: ModerationImageLoader,
+  eventMongoId?: string,
 ): Promise<'terminal' | 'waiting' | 'retry' | 'failed'> {
-  const row = await loadJobSource(db, jobId);
+  const row = await loadJobSource(db, jobId, eventMongoId);
   let job: RemoteModerationJob;
   try {
     job = await client.read(jobId, AbortSignal.timeout(10_000));
@@ -356,7 +362,7 @@ async function processRemoteJob(
     await setWorkerLock(db, leaseToken, {}, { activeNextPollAt: '' });
     if (Date.now() - startedAt + MODERATION_POLL_MS < budgetMs) {
       await sleep(MODERATION_POLL_MS);
-      return processRemoteJob(db, client, leaseToken, jobId, startedAt, budgetMs, counters, loadImage);
+      return processRemoteJob(db, client, leaseToken, jobId, startedAt, budgetMs, counters, loadImage, eventMongoId);
     }
     return 'waiting';
   }
@@ -394,8 +400,9 @@ async function pollUntilBudget(
   budgetMs: number,
   counters: ModerationWorkerResult,
   loadImage: ModerationImageLoader,
+  eventMongoId?: string,
 ): Promise<'terminal' | 'waiting' | 'retry' | 'failed'> {
-  return processRemoteJob(db, client, leaseToken, jobId, startedAt, budgetMs, counters, loadImage);
+  return processRemoteJob(db, client, leaseToken, jobId, startedAt, budgetMs, counters, loadImage, eventMongoId);
 }
 
 async function prepareAndSubmit(db: Db, client: ModerationClient, row: WorkerSubmission, leaseToken: string, counters: ModerationWorkerResult, loadImage: ModerationImageLoader): Promise<string | null> {
@@ -490,7 +497,7 @@ async function prepareAndSubmit(db: Db, client: ModerationClient, row: WorkerSub
 /** One Camera-wide lease, one remote image at a time, sequentially draining a bounded batch within the cron budget. */
 export async function runModerationPrecheckWorker(
   db: Db,
-  options: { client?: ModerationClient; now?: () => Date; budgetMs?: number; maxBatch?: number; loadImage?: ModerationImageLoader } = {},
+  options: { client?: ModerationClient; now?: () => Date; budgetMs?: number; maxBatch?: number; loadImage?: ModerationImageLoader; eventMongoId?: string } = {},
 ): Promise<ModerationWorkerResult> {
   const counters: ModerationWorkerResult = { status: 'processed', submitted: 0, completed: 0, flagged: 0, uncertain: 0, failed: 0, waiting: 0 };
   const configuration = options.client ? null : moderationConfiguration();
@@ -499,6 +506,7 @@ export async function runModerationPrecheckWorker(
     return counters;
   }
   const client = options.client ?? new CameraModerationClient(configuration!);
+  if (options.eventMongoId && !/^[a-f\d]{24}$/i.test(options.eventMongoId)) throw new ModerationServiceError('invalid_event_id', 400);
   const loadImage = options.loadImage ?? ((url, eventMongoId) => loadModerationImage(url, eventMongoId, { blobToken: process.env.BLOB_READ_WRITE_TOKEN }));
   const now = options.now ?? (() => new Date());
   const startedAt = Date.now();
@@ -521,9 +529,15 @@ export async function runModerationPrecheckWorker(
     const pendingUntil = typeof lock.pendingUntil === 'string' ? lock.pendingUntil : null;
     let activeJobId = typeof lock.activeJobId === 'string' ? lock.activeJobId : null;
     if (activeJobId) {
+      if (options.eventMongoId && !await loadJobSource(db, activeJobId, options.eventMongoId)) {
+        // Preview runs may share the production database, but must never poll
+        // or apply a different event's active result.
+        counters.waiting += 1;
+        return counters;
+      }
       const activeStartedAt = typeof lock.activeJobStartedAt === 'string' ? Date.parse(lock.activeJobStartedAt) : Number.NaN;
       if (Number.isFinite(activeStartedAt) && now().getTime() - activeStartedAt >= MODERATION_REMOTE_MAX_AGE_MS) {
-        const expiredRow = await loadJobSource(db, activeJobId);
+        const expiredRow = await loadJobSource(db, activeJobId, options.eventMongoId);
         if (expiredRow) {
           await updateFailed(db, expiredRow, 'remote_job_expired');
           counters.failed += 1;
@@ -546,7 +560,7 @@ export async function runModerationPrecheckWorker(
       const pendingRow = pendingSubmissionId
         ? await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: pendingSubmissionId }) as WorkerSubmission | null
         : null;
-      if (!pendingRow || !moderationSourceEligible(pendingRow)) {
+      if (!pendingRow || (options.eventMongoId && stateOf(pendingRow).eventMongoId !== options.eventMongoId) || !moderationSourceEligible(pendingRow)) {
         counters.waiting += 1;
         return counters;
       }
@@ -560,7 +574,7 @@ export async function runModerationPrecheckWorker(
       if (pendingUntil && Date.parse(pendingUntil) <= now().getTime() && !activeJobId) {
         await setWorkerLock(db, token, {}, { pendingUntil: '', pendingSubmissionId: '' });
       }
-      nextCandidate = await loadCandidate(db, now().toISOString());
+      nextCandidate = await loadCandidate(db, now().toISOString(), options.eventMongoId);
     }
     if (nextCandidate || activeJobId) {
       try {
@@ -589,7 +603,7 @@ export async function runModerationPrecheckWorker(
     let handled = 0;
     while (handled < (options.maxBatch ?? MODERATION_WORKER_MAX_BATCH) && Date.now() - startedAt < (options.budgetMs ?? MODERATION_WORKER_BUDGET_MS)) {
       if (jobId) {
-        const outcome = await pollUntilBudget(db, client, token, jobId, startedAt, options.budgetMs ?? MODERATION_WORKER_BUDGET_MS, counters, loadImage);
+        const outcome = await pollUntilBudget(db, client, token, jobId, startedAt, options.budgetMs ?? MODERATION_WORKER_BUDGET_MS, counters, loadImage, options.eventMongoId);
         handled += 1;
         if (outcome === 'waiting') {
           counters.waiting += 1;
@@ -599,7 +613,7 @@ export async function runModerationPrecheckWorker(
         continue;
       }
 
-      const candidate = await loadCandidate(db, now().toISOString());
+      const candidate = await loadCandidate(db, now().toISOString(), options.eventMongoId);
       if (!candidate) break;
       const state = stateOf(candidate);
       if (typeof state.jobId === 'string') {
@@ -631,7 +645,7 @@ export async function runModerationPrecheckWorker(
       jobId = submittedJob;
     }
 
-    const due = await loadCandidate(db, now().toISOString());
+    const due = await loadCandidate(db, now().toISOString(), options.eventMongoId);
     if (due || (typeof lock.activeJobId === 'string' && jobId)) counters.waiting += 1;
     logInfo('camera.photo_moderation.run', 'The sequential photo moderation precheck run ended', {
       submitted: counters.submitted,
