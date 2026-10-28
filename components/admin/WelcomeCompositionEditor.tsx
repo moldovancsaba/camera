@@ -21,6 +21,10 @@ const RELATIONS: Array<{ value: string; label: string }> = [
   { value: 'parent-left', label: 'Parent left (place this to the right)' },
   { value: 'parent-right', label: 'Parent right (place this to the left)' },
 ];
+// The page editor is a custom modal at z-index 1000. Keep Select dropdowns in a portal above it,
+// otherwise the options render behind the modal and look clickable without accepting a choice.
+const EDITOR_SELECT_COMBOBOX_PROPS = { withinPortal: true, zIndex: 1010 } as const;
+
 function makeId(): string {
   return `welcome-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`}`;
 }
@@ -139,6 +143,7 @@ export default function WelcomeCompositionEditor({
               value={previewSize}
               onChange={(value) => setPreviewSize(value === 'desktop' ? 'desktop' : 'mobile')}
               data={[{ value: 'mobile', label: 'Mobile' }, { value: 'desktop', label: 'Desktop' }]}
+              comboboxProps={EDITOR_SELECT_COMBOBOX_PROPS}
               aria-label="Preview screen size"
             />
           </div>
@@ -209,9 +214,10 @@ export default function WelcomeCompositionEditor({
                       value={selected.imageSource === 'event-welcome-screen' ? 'event-welcome-screen' : 'library'}
                       onChange={(value) => update(selected.id, value === 'event-welcome-screen' ? { imageSource: 'event-welcome-screen', imageUrl: undefined } : { imageSource: undefined, imageUrl: selected.imageUrl || '' })}
                       data={[
-                        { value: 'library', label: 'Images library or upload' },
-                        ...(eventWelcomeScreenUrl || selected.imageSource === 'event-welcome-screen' ? [{ value: 'event-welcome-screen', label: 'Event welcome screen (updates with slideshow)' }] : []),
+                        { value: 'library', label: 'Images library' },
+                        ...(eventWelcomeScreenUrl || selected.imageSource === 'event-welcome-screen' ? [{ value: 'event-welcome-screen', label: 'Event-generated image' }] : []),
                       ]}
+                      comboboxProps={EDITOR_SELECT_COMBOBOX_PROPS}
                     />
                     {selected.imageSource === 'event-welcome-screen' ? (
                       <Text size="sm" c="dimmed">This element follows the event’s generated welcome screen and updates when that screen is regenerated.</Text>
@@ -232,7 +238,7 @@ export default function WelcomeCompositionEditor({
                     </SimpleGrid>
                     <SimpleGrid cols={{ base: 1, sm: 2 }}>
                       <AdminTextInput name={`welcome-text-color-${selected.id}`} label="Text colour" value={selected.color ?? ''} onChange={(color) => update(selected.id, { color: color || undefined })} placeholder="6-digit hex colour" />
-                      <AdminSelect name={`welcome-text-weight-${selected.id}`} label="Weight" value={selected.fontWeight ?? 'normal'} onChange={(value) => update(selected.id, { fontWeight: value === 'bold' ? 'bold' : 'normal' })} data={[{ value: 'normal', label: 'Regular' }, { value: 'bold', label: 'Bold' }]} />
+                      <AdminSelect name={`welcome-text-weight-${selected.id}`} label="Weight" value={selected.fontWeight ?? 'normal'} onChange={(value) => update(selected.id, { fontWeight: value === 'bold' ? 'bold' : 'normal' })} data={[{ value: 'normal', label: 'Regular' }, { value: 'bold', label: 'Bold' }]} comboboxProps={EDITOR_SELECT_COMBOBOX_PROPS} />
                     </SimpleGrid>
                   </>
                 )}
@@ -246,16 +252,17 @@ export default function WelcomeCompositionEditor({
                     { value: 'independent', label: 'Independent object' },
                     ...elements.filter((item) => item.id !== selected.id && !safeParents.has(item.id)).map((item) => ({ value: item.id, label: item.name || item.type })),
                   ]}
+                  comboboxProps={EDITOR_SELECT_COMBOBOX_PROPS}
                 />
                 {selected.parentId ? (
                   <>
-                    <AdminSelect name={`welcome-element-relation-${selected.id}`} label="Where does the parent sit?" value={selected.parentRelation ?? 'parent-above'} onChange={(value) => update(selected.id, { parentRelation: (value as WelcomeParentRelation) ?? 'parent-above' })} data={RELATIONS} />
+                    <AdminSelect name={`welcome-element-relation-${selected.id}`} label="Where does the parent sit?" value={selected.parentRelation ?? 'parent-above'} onChange={(value) => update(selected.id, { parentRelation: (value as WelcomeParentRelation) ?? 'parent-above' })} data={RELATIONS} comboboxProps={EDITOR_SELECT_COMBOBOX_PROPS} />
                     <Text size="sm" c="dimmed">Alignment is inherited from the group root: {rootAnchor(selected, byId).vertical} / {rootAnchor(selected, byId).horizontal}. This object keeps a {WELCOME_PARENT_RELATIONS.includes(selected.parentRelation ?? 'parent-above') ? 'fixed gap' : 'group position'} from its parent.</Text>
                   </>
                 ) : (
                   <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                    <AdminSelect name={`welcome-element-vertical-${selected.id}`} label="Vertical alignment" value={selected.anchor?.vertical ?? 'middle'} onChange={(value) => update(selected.id, { anchor: { ...(selected.anchor ?? { vertical: 'middle', horizontal: 'center' }), vertical: (value as WelcomeVerticalAlignment) ?? 'middle' } })} data={VERTICAL} />
-                    <AdminSelect name={`welcome-element-horizontal-${selected.id}`} label="Horizontal alignment" value={selected.anchor?.horizontal ?? 'center'} onChange={(value) => update(selected.id, { anchor: { ...(selected.anchor ?? { vertical: 'middle', horizontal: 'center' }), horizontal: (value as WelcomeHorizontalAlignment) ?? 'center' } })} data={HORIZONTAL} />
+                    <AdminSelect name={`welcome-element-vertical-${selected.id}`} label="Vertical alignment" value={selected.anchor?.vertical ?? 'middle'} onChange={(value) => update(selected.id, { anchor: { ...(selected.anchor ?? { vertical: 'middle', horizontal: 'center' }), vertical: (value as WelcomeVerticalAlignment) ?? 'middle' } })} data={VERTICAL} comboboxProps={EDITOR_SELECT_COMBOBOX_PROPS} />
+                    <AdminSelect name={`welcome-element-horizontal-${selected.id}`} label="Horizontal alignment" value={selected.anchor?.horizontal ?? 'center'} onChange={(value) => update(selected.id, { anchor: { ...(selected.anchor ?? { vertical: 'middle', horizontal: 'center' }), horizontal: (value as WelcomeHorizontalAlignment) ?? 'center' } })} data={HORIZONTAL} comboboxProps={EDITOR_SELECT_COMBOBOX_PROPS} />
                   </SimpleGrid>
                 )}
               </Stack>
