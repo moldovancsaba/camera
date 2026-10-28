@@ -94,6 +94,11 @@ test.describe('event export routes — authorization', () => {
 
       const images = await request.get(`/api/admin/events/${payload.exportEventMongoId}/export/images`);
       expect(images.status()).toBe(401);
+
+      const selectedImages = await request.post(`/api/admin/events/${payload.exportEventMongoId}/export/images`, {
+        form: { kind: 'original', submissionIds: 'ffffffffffffffffffffffff' },
+      });
+      expect(selectedImages.status()).toBe(401);
     });
   });
 
@@ -163,6 +168,31 @@ test.describe('event export routes — contract', () => {
       // Both fixture submissions (two plain photos) must be represented.
       expect(lines.length).toBeGreaterThanOrEqual(3);
       expect(lines.some((line) => line.includes('original'))).toBeTruthy();
+    });
+  });
+
+  test('image rendition CSV can be filtered to originals or framed photos', async ({ request }) => {
+    await withBootstrap(request, async (payload) => {
+      await devLoginApi(request, MANAGER_LOGIN);
+
+      for (const kind of ['original', 'final']) {
+        const response = await request.get(`/api/admin/events/${payload.exportEventMongoId}/export/images?format=csv&kind=${kind}`);
+        expect(response.status()).toBe(200);
+        const lines = csvLines(await response.text());
+        expect(lines[0]).toBe('submission_id,kind,submission_kind,url,user_email,user_name,created_at');
+        expect(lines.slice(1).every((line) => line.split(',')[1] === kind)).toBeTruthy();
+      }
+    });
+  });
+
+  test('selected-image export rejects a photo that is not eligible for the event gallery', async ({ request }) => {
+    await withBootstrap(request, async (payload) => {
+      await devLoginApi(request, MANAGER_LOGIN);
+
+      const response = await request.post(`/api/admin/events/${payload.exportEventMongoId}/export/images`, {
+        form: { kind: 'original', submissionIds: 'ffffffffffffffffffffffff' },
+      });
+      expect(response.status()).toBe(400);
     });
   });
 

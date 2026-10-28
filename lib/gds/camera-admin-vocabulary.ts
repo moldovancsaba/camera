@@ -82,6 +82,8 @@ export const cameraAdminVocabularyPacks = [
     'start-bulk-remove': { defaultMessage: 'Start remove', icon: GdsIcons.Delete, feedback: openedFeedback },
     'view-submission': { defaultMessage: 'View submission', icon: GdsIcons.Eye, feedback: openedFeedback },
     'download-submission': { defaultMessage: 'Download submission', icon: GdsIcons.Download, feedback: savedFeedback },
+    'download-selected-originals': { defaultMessage: 'Download selected originals', icon: GdsIcons.Download, feedback: savedFeedback },
+    'download-selected-framed': { defaultMessage: 'Download selected framed photos', icon: GdsIcons.Download, feedback: savedFeedback },
     'return-to-vetting': { defaultMessage: 'Back to vetting', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'confirm-remove': { defaultMessage: 'Remove', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'cancel-remove': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },

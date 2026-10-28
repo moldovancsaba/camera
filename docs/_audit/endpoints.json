@@ -15,7 +15,7 @@
   {"path": "/api/admin/events/[id]/emails", "methods": ["GET", "PUT"], "file": "app/api/admin/events/[id]/emails/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/events/[id]/export/analytics", "methods": ["GET"], "file": "app/api/admin/events/[id]/export/analytics/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/events/[id]/export/emails", "methods": ["GET"], "file": "app/api/admin/events/[id]/export/emails/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
-  {"path": "/api/admin/events/[id]/export/images", "methods": ["GET"], "file": "app/api/admin/events/[id]/export/images/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/admin/events/[id]/export/images", "methods": ["GET", "POST"], "file": "app/api/admin/events/[id]/export/images/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/events/[id]/frame-design/migrate-base", "methods": ["POST"], "file": "app/api/admin/events/[id]/frame-design/migrate-base/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/events/[id]/frame-design/refresh", "methods": ["POST"], "file": "app/api/admin/events/[id]/frame-design/refresh/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/events/[id]/frame-design", "methods": ["GET", "PUT"], "file": "app/api/admin/events/[id]/frame-design/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},

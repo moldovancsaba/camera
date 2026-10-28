@@ -17,6 +17,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { InlineAlert, ListingCard, StateBlock, type ListingMetadataRow } from '@sovereignsquad/gds-core/client';
 import EventGalleryUpload from './EventGalleryUpload';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { imageExportText } from '@/lib/i18n/image-exports';
 import { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
 import { DRAG_THRESHOLD_PX, boxBetween, dragSelection, extendSelection, idsInBox, toggleId, type Box } from '@/lib/gallery/selection';
 
@@ -126,6 +128,7 @@ export default function EventGallery({
   hiddenBroken = 0,
   unframedUploadIds = [],
 }: EventGalleryProps) {
+  const language = useUiLanguage();
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -469,6 +472,24 @@ export default function EventGallery({
             >
               {allSelected ? 'Clear selection' : 'Select all visible'}
             </SemanticButton>
+            {selectedIds.length > 0 ? (
+              <>
+                <form action={`/api/admin/events/${eventId}/export/images`} method="post" target="_blank" style={{ display: 'contents' }}>
+                  <input type="hidden" name="kind" value="original" />
+                  {selectedIds.map((submissionId) => <input key={submissionId} type="hidden" name="submissionIds" value={submissionId} />)}
+                  <SemanticButton action="event-gallery:download-selected-originals" type="submit" variant="secondary">
+                    {imageExportText('selectedOriginals', language)} ({selectedIds.length})
+                  </SemanticButton>
+                </form>
+                <form action={`/api/admin/events/${eventId}/export/images`} method="post" target="_blank" style={{ display: 'contents' }}>
+                  <input type="hidden" name="kind" value="final" />
+                  {selectedIds.map((submissionId) => <input key={submissionId} type="hidden" name="submissionIds" value={submissionId} />)}
+                  <SemanticButton action="event-gallery:download-selected-framed" type="submit" variant="secondary">
+                    {imageExportText('selectedFramed', language)} ({selectedIds.length})
+                  </SemanticButton>
+                </form>
+              </>
+            ) : null}
             {selectedIds.length > 0 && hasFrame ? (
               <SemanticButton
                 action="event-gallery:frame-selected"

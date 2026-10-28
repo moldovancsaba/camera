@@ -13,6 +13,7 @@ import { Button, Card, Group, Stack, Text, Title } from '@/components/gds/Public
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminOperationText } from '@/lib/i18n/admin-operations';
 import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
+import { imageExportText } from '@/lib/i18n/image-exports';
 
 export default function EventExportControls({ eventId }: { eventId: string }) {
   const language = useUiLanguage();
@@ -55,6 +56,14 @@ export default function EventExportControls({ eventId }: { eventId: string }) {
                 </Button>
                 <Button component="a" href={`${base}/images?format=zip`} variant="default">
                   {t('ZIP')}
+                </Button>
+              </Group>
+              <Group grow>
+                <Button component="a" href={`${base}/images?format=zip&kind=original`} variant="default">
+                  {imageExportText('originals', language)} {t('ZIP')}
+                </Button>
+                <Button component="a" href={`${base}/images?format=zip&kind=final`} variant="default">
+                  {imageExportText('framed', language)} {t('ZIP')}
                 </Button>
               </Group>
             </Stack>

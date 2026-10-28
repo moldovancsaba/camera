@@ -129,6 +129,35 @@ test('image zip: when every picture fails the archive holds only _errors.txt', a
   assert.match(entries[0].data.toString(), /^1 image\(s\) could not be fetched:\n\nhttps:\/\/i\.example\/x\.jpg -> HTTP 500\n$/);
 });
 
+test('image zip: retries a transient server response and keeps the archive valid', async () => {
+  let calls = 0;
+  const entries = readZip(await collect(createImagesZip(
+    [image('retry', 'original', 'https://i.example/retry.jpg')],
+    async () => {
+      calls += 1;
+      if (calls === 1) return new Response('busy', { status: 503 });
+      return new Response('image bytes', { status: 200, headers: { 'content-type': 'image/jpeg' } });
+    }
+  )));
+
+  assert.equal(calls, 2);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].name, 'original/0001-retry.jpg');
+  assert.equal(entries[0].data.toString(), 'image bytes');
+  assert.equal(entries[0].crcOk, true);
+});
+
+test('image zip: selected images without originals are clearly listed separately', async () => {
+  const entries = readZip(await collect(createImagesZip(
+    [],
+    undefined,
+    ['Photo sub-missing: no unframed original is retained.']
+  )));
+
+  assert.deepEqual(entries.map((entry) => entry.name), ['_not-included.txt']);
+  assert.match(entries[0].data.toString(), /sub-missing: no unframed original is retained/);
+});
+
 test('image zip: a submission without an id still gets a name, and the same id twice never collides', async () => {
   const images = [image('', 'original', 'https://i.example/1'), image('dup', 'original', 'https://i.example/2'), image('dup', 'original', 'https://i.example/3')];
   const fetchImage = fakeHost({
