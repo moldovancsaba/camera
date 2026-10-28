@@ -23,24 +23,37 @@ test('discovers the moderation job and a selectable model before using auto, the
     if (url.endsWith('/job-types')) return new Response(JSON.stringify({ job_types: { image_moderation: { enabled: true } } }), { status: 200 });
     if (url.endsWith('/models')) return new Response(JSON.stringify({ models: [{ id: 'candidate', selectable_for: ['image_moderation'] }] }), { status: 200 });
     if (url.endsWith('/jobs') && init?.method === 'POST') return new Response(JSON.stringify({ id: 'job-1' }), { status: 202 });
+    if (url.endsWith('/jobs/job-1') && init?.method === 'DELETE') return new Response(null, { status: 204 });
     return new Response(JSON.stringify({ id: 'job-1', status: 'running' }), { status: 200 });
   };
-  const client = new CameraModerationClient({ baseUrl: DEFAULT_MODERATION_BASE_URL, apiKey }, fetcher);
+  const client = new CameraModerationClient({ baseUrl: DEFAULT_MODERATION_BASE_URL, apiKey }, fetcher, 'test');
   await client.discover();
   const jobId = await client.submit(Buffer.from('image bytes'), 'camera-idempotency-1');
   const job = await client.read(jobId);
+  await client.delete(jobId);
 
   assert.equal(jobId, 'job-1');
   assert.equal(job.status, 'running');
-  assert.deepEqual(calls.map((call) => new URL(call.url).pathname), ['/v1/job-types', '/v1/models', '/v1/jobs', '/v1/jobs/job-1']);
+  assert.deepEqual(calls.map((call) => new URL(call.url).pathname), ['/v1/job-types', '/v1/models', '/v1/jobs', '/v1/jobs/job-1', '/v1/jobs/job-1']);
   const submission = calls[2]!;
   assert.equal(new Headers(submission.init?.headers).get('authorization'), `Bearer ${apiKey}`);
+  assert.equal(new Headers(submission.init?.headers).get('X-Request-Purpose'), 'test');
   assert.equal(new Headers(submission.init?.headers).get('Idempotency-Key'), 'camera-idempotency-1');
   assert.deepEqual(JSON.parse(String(submission.init?.body)), {
     task: 'image_moderation',
     model: 'auto',
     input: { image_base64: Buffer.from('image bytes').toString('base64') },
   });
+  for (const call of calls) {
+    assert.equal(new Headers(call.init?.headers).get('authorization'), `Bearer ${apiKey}`);
+    assert.equal(new Headers(call.init?.headers).get('X-Request-Purpose'), 'test');
+  }
+  assert.equal(calls[4]!.init?.method, 'DELETE');
+});
+
+test('treats an already expired remote result as successfully cleaned up', async () => {
+  const client = new CameraModerationClient({ baseUrl: DEFAULT_MODERATION_BASE_URL, apiKey }, async () => new Response(null, { status: 404 }));
+  await assert.doesNotReject(client.delete('expired-job'));
 });
 
 test('refuses submission when the task is not permitted or no model is selectable', async () => {

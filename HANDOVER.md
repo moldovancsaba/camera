@@ -2,7 +2,7 @@
 
 ## Current change — optional photo content precheck
 
-Camera has an event-level optional content-precheck setting and a server-only, one-photo-at-a-time worker that uses the shared Hetzner job API. It attaches only validated signals for the exact photo revision and displays them in the existing Vetting screen; human approval/rejection remains authoritative. Local mocked API/worker tests cover the flow. The Camera-specific `CAMERA_MODERATION_API_KEY` is absent from the authorized local environment, so live `/job-types` and `/models`, provider integration, and deployment are not verified. Provision it in the approved secret store before enabling the option. Full details and service limits: `docs/PHOTO_CONTENT_PRECHECK.md`.
+Camera has an event-level optional content-precheck setting and a server-only, one-photo-at-a-time worker that uses the shared Hetzner job API. It attaches only validated signals for the exact photo revision and displays them in the existing Vetting screen; human approval/rejection remains authoritative. The Camera key and base URL are provisioned for the `feature/camera-hetzner-moderation` Vercel Preview environment; Vercel does not permit pulling the Secret value into local files, so live checks must run in the deployed preview. Preview requests are marked with `X-Request-Purpose: test`. This branch now deletes consumed remote results after Camera persists or discards them; the API's five-minute TTL is fallback cleanup. Redeploy and the test-event end-to-end check are still required. Full details and service limits: `docs/PHOTO_CONTENT_PRECHECK.md`.
 
 ## Current change — case-bound Camera photo erasure
 

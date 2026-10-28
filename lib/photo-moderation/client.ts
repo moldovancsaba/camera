@@ -40,9 +40,17 @@ function retryAfter(response: Response): number | undefined {
 }
 
 export class CameraModerationClient {
-  constructor(private readonly configuration: ModerationConfiguration, private readonly fetcher: typeof fetch = fetch) {}
+  constructor(
+    private readonly configuration: ModerationConfiguration,
+    private readonly fetcher: typeof fetch = fetch,
+    private readonly requestPurpose: 'test' | undefined = process.env.VERCEL_ENV === 'preview' ? 'test' : undefined,
+  ) {}
 
-  private async request(path: string, init: RequestInit = {}): Promise<{ response: Response; body: Record<string, unknown> }> {
+  private async request(
+    path: string,
+    init: RequestInit = {},
+    options: { allowEmptyBody?: boolean; allowExpiredJob?: boolean } = {},
+  ): Promise<{ response: Response; body: Record<string, unknown> }> {
     let response: Response;
     try {
       response = await this.fetcher(`${this.configuration.baseUrl}${path}`, {
@@ -51,6 +59,7 @@ export class CameraModerationClient {
         redirect: 'error',
         headers: {
           Authorization: `Bearer ${this.configuration.apiKey}`,
+          ...(this.requestPurpose ? { 'X-Request-Purpose': this.requestPurpose } : {}),
           ...(init.headers ?? {}),
         },
         signal: init.signal ?? AbortSignal.timeout(10_000),
@@ -58,8 +67,9 @@ export class CameraModerationClient {
     } catch {
       throw new ModerationServiceError('network_or_timeout', null);
     }
+    const acceptedExpiredJob = options.allowExpiredJob === true && response.status === 404;
     const body = object(await response.json().catch(() => null));
-    if (!response.ok) {
+    if (!response.ok && !acceptedExpiredJob) {
       const code = response.status === 429 ? 'capacity_busy'
         : response.status === 401 ? 'unauthorized'
           : response.status === 403 ? 'task_not_permitted'
@@ -70,8 +80,8 @@ export class CameraModerationClient {
                     : 'request_failed';
       throw new ModerationServiceError(code, response.status, retryAfter(response));
     }
-    if (!body) throw new ModerationServiceError('invalid_response', response.status);
-    return { response, body };
+    if (!body && !options.allowEmptyBody) throw new ModerationServiceError('invalid_response', response.status);
+    return { response, body: body ?? {} };
   }
 
   /** Read both allow-list and installed/selectable model inventory before the first task is submitted. */
@@ -121,6 +131,15 @@ export class CameraModerationClient {
       ...(typeof result.body.normalized_sha256 === 'string' ? { normalizedSha256: result.body.normalized_sha256 } : {}),
       ...(typeof error?.code === 'string' ? { errorCode: error.code.slice(0, 80) } : {}),
     };
+  }
+
+  /** Remove a consumed remote result; a 404 means the five-minute result TTL already removed it. */
+  async delete(jobId: string, signal?: AbortSignal): Promise<void> {
+    if (!jobId || jobId.length > 200) throw new ModerationServiceError('invalid_job_id', null);
+    await this.request(`/jobs/${encodeURIComponent(jobId)}`, {
+      method: 'DELETE',
+      ...(signal ? { signal } : {}),
+    }, { allowEmptyBody: true, allowExpiredJob: true });
   }
 }
 

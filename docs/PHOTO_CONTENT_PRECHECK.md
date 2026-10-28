@@ -1,6 +1,6 @@
 # Camera photo content precheck
 
-**Status:** implemented in this branch; live Hetzner credentials and deployment are not verified.  
+**Status:** implemented in this branch; live provider and deployed-preview verification is in progress.
 **Owner:** Camera.  
 **Boundary:** this is a moderation signal for the existing human Vetting workflow. It does not make Fanmass audience/brand analytics, change publication state, or replace a person's decision.
 
@@ -24,10 +24,10 @@ An event may opt in to a server-side precheck that looks for a bounded set of ex
    }
    ```
 
-   It also sends `Authorization: Bearer <CAMERA_MODERATION_API_KEY>` and a stable `Idempotency-Key`. It never sends the source URL, name, email, Camera photo ID, event ID, or partner ID.
+   It also sends `Authorization: Bearer <CAMERA_MODERATION_API_KEY>` and a stable `Idempotency-Key`. Vercel Preview requests carry `X-Request-Purpose: test`; production requests do not. It never sends the source URL, name, email, Camera photo ID, event ID, or partner ID.
 6. Camera stores the remote job ID and source revision on that same submission. It polls `GET /jobs/{id}` within a 42-second worker-run budget and resumes on later cron invocations if the remote job is still queued/running. A global lease and pending-job fence prevent a second Camera photo from being submitted while the first remote outcome is ambiguous.
 7. Before applying a result, Camera checks the submission is still consent-eligible, contact-complete, pending vetting, unerased, and attached to the same photo URL and source/normalized hashes. A stale result is discarded.
-8. Camera validates the result against `camera-moderation.v1`, stores the validated signal on the same submission, and shows it in the existing one-photo Vetting UI. It never writes `reviewStatus` from an AI result. A human uses the existing approve/reject controls.
+8. Camera validates the result against `camera-moderation.v1`, stores all nine categories and the exact `review_required: true` / `automated_decision: "none"` invariants on the same submission, and shows the advisory signal in the existing one-photo Vetting UI. It then sends authenticated `DELETE /jobs/{id}` to remove the consumed remote result. A missing/expired remote job is already cleaned up; a transient delete failure is logged without discarding Camera's stored result and the provider's five-minute result expiry is the fallback. Camera never writes `reviewStatus` from an AI result. A human uses the existing approve/reject controls.
 
 ## Result vocabulary
 
@@ -80,7 +80,7 @@ For operational checks, inspect the existing one-photo Vetting screen and the ag
 
 - Camera keeps the original pending photo in its own private Blob store. Only a normalized copy is sent to the external service. No arbitrary URL is sent or fetched by Hetzner.
 - Camera stores the moderation result in the same Atlas submission as the photo, linked by that submission's Mongo ID and the exact source revision. The remote API receives no identifying IDs.
-- The shared API's documented queue and results are in-memory with a 15-minute retention limit, queued jobs expire after 180 seconds, and inference is bounded to 120 seconds. It has no cancellation/delete endpoint. If Camera erases a photo after the service accepts a job, Camera discards any result and the remote task may still complete within the service's bounded window.
+- The shared API's queue and results are in-memory. Completed and failed results expire five minutes after completion/failure; queued jobs expire after 180 seconds, and inference is bounded to 120 seconds. The authenticated `DELETE /jobs/{id}` endpoint removes a consumed remote result; Camera calls it after persisting or discarding a terminal result. If that cleanup request fails, the five-minute result TTL is the fallback. DELETE is result cleanup, not a guarantee that an in-flight inference can be cancelled. If Camera erases a photo after the service accepts a job, Camera discards any result and does not let it affect review or publication.
 - This implementation requires Camera's existing timestamped consent audit and finalized guest contact. It does not add a new guest-facing consent category. Before using this external image processing for a real event, the owner must verify the existing privacy notice/consent and data-processing terms cover the transfer and retention.
 - The precheck is optional and not blocking: a human may review while it is queued or unavailable. No AI signal—including `no_flags_detected`—approves an image.
 
@@ -90,4 +90,4 @@ Turn **Content precheck** off for the event. New captures stop entering the queu
 
 ## Verification
 
-Local tests cover inventory discovery, `model: auto`, idempotency headers, result-contract validation, one-at-a-time submission, ambiguous POST handling, consent/contact gating, stale-revision discard, and localized reviewer states for every supported UI language. This is a local mocked end-to-end flow, not proof of the shared service's live behavior. The owner has not provisioned `CAMERA_MODERATION_API_KEY` in the authorized local environment; live `/job-types`, `/models`, provider E2E, deployed cron, and production event checks remain open.
+Local tests cover inventory discovery, `model: auto`, authorization and preview test-purpose headers, idempotency, terminal-result deletion, result-contract validation, one-at-a-time submission, ambiguous POST handling, consent/contact gating, stale-revision discard, and localized reviewer states for every supported UI language. These tests do not prove the shared service's live behavior. Record live `/job-types` and `/models` discovery, selected model, preview deployment, test event and end-to-end result in the matching release note after those checks pass. Never enable precheck on a production event as part of preview verification.

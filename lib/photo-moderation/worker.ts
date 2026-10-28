@@ -48,6 +48,7 @@ interface ModerationClient {
   discover(): Promise<void>;
   submit(image: Buffer, idempotencyKey: string, signal?: AbortSignal): Promise<string>;
   read(jobId: string, signal?: AbortSignal): Promise<RemoteModerationJob>;
+  delete(jobId: string, signal?: AbortSignal): Promise<void>;
 }
 
 type ModerationImageLoader = (url: string, eventMongoId: string) => Promise<NormalizedModerationImage>;
@@ -154,6 +155,19 @@ function retryableServiceError(error: ModerationServiceError): boolean {
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Best-effort remote cleanup runs only after a terminal job is consumed locally. */
+async function deleteConsumedRemoteJob(client: ModerationClient, jobId: string): Promise<void> {
+  try {
+    await client.delete(jobId, AbortSignal.timeout(8_000));
+  } catch (error) {
+    const code = error instanceof ModerationServiceError ? error.code : 'remote_delete_failed';
+    logWarn('camera.photo_moderation.remote_delete_failed', 'A consumed remote result could not be deleted; the provider five-minute expiry remains the fallback', {
+      errorCode: code.slice(0, 80),
+      jobRef: jobId.slice(-8),
+    });
+  }
 }
 
 async function safeUpdate(db: Db, row: WorkerSubmission, set: Document, unset: Document = {}): Promise<boolean> {
@@ -282,6 +296,9 @@ async function storeCompletedResult(db: Db, row: WorkerSubmission, job: RemoteMo
     'moderationPrecheck.lastErrorCode': null,
     'moderationPrecheck.result': {
       schemaVersion: parsed.schema_version,
+      schema_version: parsed.schema_version,
+      review_required: parsed.review_required,
+      automated_decision: parsed.automated_decision,
       model: parsed.model,
       signal: parsed.signal,
       flags: parsed.flags,
@@ -349,6 +366,7 @@ async function processRemoteJob(
       const outcome = await makeRetryable(db, row, new ModerationServiceError(job.errorCode ?? 'analysis_failed', 503), true);
       if (outcome === 'failed') counters.failed += 1;
     }
+    await deleteConsumedRemoteJob(client, jobId);
     await setWorkerLock(db, leaseToken, {}, { activeJobId: '', activeJobStartedAt: '', activeNextPollAt: '', pendingUntil: '' });
     return 'terminal';
   }
@@ -362,6 +380,7 @@ async function processRemoteJob(
       if (parsed?.signal === 'uncertain') counters.uncertain += 1;
     } else if (outcome === 'failed') counters.failed += 1;
   }
+  await deleteConsumedRemoteJob(client, jobId);
   await setWorkerLock(db, leaseToken, {}, { activeJobId: '', activeJobStartedAt: '', activeNextPollAt: '', pendingUntil: '' });
   return 'terminal';
 }

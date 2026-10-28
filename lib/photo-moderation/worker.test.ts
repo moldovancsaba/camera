@@ -134,6 +134,7 @@ test('does not discover or submit while the stored consent/contact gates are inc
     async discover() { calls += 1; },
     async submit() { calls += 1; return 'should-not-submit'; },
     async read() { calls += 1; throw new Error('No remote job should exist'); },
+    async delete() { calls += 1; },
   };
   const result = await runModerationPrecheckWorker(db, { client, budgetMs: 500 });
   assert.equal(result.submitted, 0);
@@ -159,10 +160,12 @@ test('runs one consent-eligible photo at a time and attaches exact per-photo res
   };
   let active = 0;
   let maxActive = 0;
+  let deletedJobs = 0;
   const client = {
     async discover() {},
     async submit() { active += 1; maxActive = Math.max(active, maxActive); return `remote-${active}`; },
     async read(id: string) { active -= 1; return { id, status: 'completed' as const, imageSha256: normalizedRevision, result }; },
+    async delete() { deletedJobs += 1; },
   };
   const previousToken = process.env.BLOB_READ_WRITE_TOKEN;
   process.env.BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_teststore_secret';
@@ -177,9 +180,14 @@ test('runs one consent-eligible photo at a time and attaches exact per-photo res
     assert.equal(outcome.flagged, 2);
     assert.equal(outcome.failed, 1);
     assert.equal(maxActive, 1);
+    assert.equal(deletedJobs, 2, 'completed results are deleted remotely only after Camera stores them');
     const rows = collections.get(COLLECTIONS.SUBMISSIONS)!;
     assert.equal((rows[0]!.moderationPrecheck as Document).status, 'completed');
-    assert.equal(((rows[0]!.moderationPrecheck as Document).result as Document).signal, 'flagged');
+    const storedResult = ((rows[0]!.moderationPrecheck as Document).result as Document);
+    assert.equal(storedResult.signal, 'flagged');
+    assert.equal(storedResult.review_required, true);
+    assert.equal(storedResult.automated_decision, 'none');
+    assert.equal(Object.keys(storedResult.categories as Document).length, 9);
     assert.equal((rows[1]!.moderationPrecheck as Document).status, 'completed');
     assert.equal((rows[2]!.moderationPrecheck as Document).status, 'failed');
     assert.equal(rows[0]!.reviewStatus, 'pending_review');
@@ -204,6 +212,7 @@ test('does not submit a second image while the first POST outcome is ambiguous',
     async discover() {},
     async submit() { submissions += 1; throw new ModerationServiceError('network_or_timeout', null); },
     async read() { throw new Error('No remote job ID is available after the simulated timeout'); },
+    async delete() { throw new Error('No remote job exists after the simulated timeout'); },
   };
   const previousToken = process.env.BLOB_READ_WRITE_TOKEN;
   process.env.BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_teststore_secret';
@@ -238,6 +247,7 @@ test('backs off the whole Camera queue after the shared service reports capacity
     async discover() {},
     async submit() { submissions += 1; throw new ModerationServiceError('capacity_busy', 429, 60); },
     async read() { throw new Error('No remote job should be created when capacity is busy'); },
+    async delete() { throw new Error('No remote job should be created when capacity is busy'); },
   };
   const previousToken = process.env.BLOB_READ_WRITE_TOKEN;
   process.env.BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_teststore_secret';
@@ -276,6 +286,7 @@ test('discards a completed signal if the source photo revision changed before re
     async discover() {},
     async submit() { return 'remote-stale'; },
     async read(id: string) { return { id, status: 'completed' as const, imageSha256: normalizedRevision, result }; },
+    async delete() {},
   };
   const previousToken = process.env.BLOB_READ_WRITE_TOKEN;
   process.env.BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_teststore_secret';

@@ -40,12 +40,34 @@ export interface PhotoModerationQueueSignal {
   status: 'queued' | 'submitting' | 'queued_remote' | 'running' | 'completed' | 'failed';
   signal?: 'flagged' | 'uncertain' | 'no_flags_detected';
   flags: string[];
+  model?: string;
+  /** Preserve the provider's mandatory no-automation invariants in the reviewer data contract. */
+  review_required?: true;
+  automated_decision?: 'none';
+  categories?: Record<PrecheckCategory, PrecheckCategorySignal>;
   evidence?: string;
+  limitations?: string;
   errorCode?: string;
 }
 
 const PRECHECK_STATUSES = new Set<PhotoModerationQueueSignal['status']>(['queued', 'submitting', 'queued_remote', 'running', 'completed', 'failed']);
-const PRECHECK_CATEGORIES = new Set(['nudity', 'sexualContent', 'middleFinger', 'hateSymbols', 'hateWords', 'alcohol', 'drugs', 'violence', 'weapons']);
+const PRECHECK_CATEGORY_KEYS = ['nudity', 'sexualContent', 'middleFinger', 'hateSymbols', 'hateWords', 'alcohol', 'drugs', 'violence', 'weapons'] as const;
+const PRECHECK_CATEGORIES = new Set<string>(PRECHECK_CATEGORY_KEYS);
+type PrecheckCategory = (typeof PRECHECK_CATEGORY_KEYS)[number];
+type PrecheckCategorySignal = 'detected' | 'not_detected' | 'uncertain';
+
+function queueCategories(value: unknown): Record<PrecheckCategory, PrecheckCategorySignal> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  if (Object.keys(source).length !== PRECHECK_CATEGORY_KEYS.length) return null;
+  const result = {} as Record<PrecheckCategory, PrecheckCategorySignal>;
+  for (const category of PRECHECK_CATEGORY_KEYS) {
+    const signal = source[category];
+    if (signal !== 'detected' && signal !== 'not_detected' && signal !== 'uncertain') return null;
+    result[category] = signal;
+  }
+  return result;
+}
 
 export function precheckSummary(precheck: PhotoModerationQueueSignal | null): string | null {
   if (!precheck) return null;
@@ -69,12 +91,18 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
   const rawResult = rawPrecheck?.result && typeof rawPrecheck.result === 'object' ? rawPrecheck.result as Document : null;
   const rawSignal = rawResult?.signal;
   const precheckStatus = rawPrecheck?.status;
+  const categories = queueCategories(rawResult?.categories);
   const precheck: PhotoModerationQueueSignal | null = typeof precheckStatus === 'string' && PRECHECK_STATUSES.has(precheckStatus as PhotoModerationQueueSignal['status'])
     ? {
         status: precheckStatus as PhotoModerationQueueSignal['status'],
         ...(rawSignal === 'flagged' || rawSignal === 'uncertain' || rawSignal === 'no_flags_detected' ? { signal: rawSignal } : {}),
         flags: Array.isArray(rawResult?.flags) ? rawResult!.flags.filter((flag): flag is string => typeof flag === 'string' && PRECHECK_CATEGORIES.has(flag)) : [],
+        ...(typeof rawResult?.model === 'string' ? { model: rawResult.model.slice(0, 160) } : {}),
+        ...(rawResult?.review_required === true ? { review_required: true as const } : {}),
+        ...(rawResult?.automated_decision === 'none' ? { automated_decision: 'none' as const } : {}),
+        ...(categories ? { categories } : {}),
         ...(typeof rawResult?.evidence === 'string' ? { evidence: rawResult.evidence.slice(0, 800) } : {}),
+        ...(typeof rawResult?.limitations === 'string' ? { limitations: rawResult.limitations.slice(0, 800) } : {}),
         ...(typeof rawPrecheck?.lastErrorCode === 'string' ? { errorCode: rawPrecheck.lastErrorCode.slice(0, 80) } : {}),
       }
     : null;
