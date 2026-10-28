@@ -8,7 +8,7 @@ import "./globals.css";
 import Providers from './providers';
 import { translate } from '@/lib/i18n';
 import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
-import { initialDocumentUiLanguage } from '@/lib/i18n/server-language';
+import { initialDocumentUiLanguage, initialUiLanguages } from '@/lib/i18n/server-language';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,16 +55,16 @@ export default async function RootLayout({
   preconnect("https://fonts.googleapis.com");
   preconnect("https://fonts.gstatic.com", { crossOrigin: "anonymous" });
   preinit(INTER_STYLESHEET, { as: "style", precedence: "default" });
-  const language = await initialDocumentUiLanguage();
+  const { documentLanguage, interfaceLanguage } = await initialUiLanguages();
   return (
-    <html lang={language} dir={uiLanguageDirection(language)}>
+    <html lang={documentLanguage} dir={uiLanguageDirection(documentLanguage)}>
       <head>
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>{children}</Providers>
+        <Providers language={interfaceLanguage} syncDocumentLanguage={documentLanguage === interfaceLanguage}>{children}</Providers>
       </body>
     </html>
   );

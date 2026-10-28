@@ -2,8 +2,10 @@
 
 /**
  * The resolved language of every client component below it (camera#352). Capture/share layouts resolve the device preference and partner/event fallback; a component
- * reads it with `useUiLanguage()` or gets the ready function from `useT()`. Outside a provider the language is English, so nothing changes where no
- * language was set. The page's own language is set on the document too, so screen readers and the browser's translate offer know it.
+ * reads it with `useUiLanguage()` or gets the ready function from `useT()`. The
+ * root layout resolves the device locale for app chrome and the event/partner
+ * fallback for capture and share screens. The document language and direction
+ * are kept in sync for screen readers and browser translation tools.
  */
 
 import { createContext, useCallback, useContext, useEffect, type ReactNode } from 'react';
@@ -15,8 +17,9 @@ const UiLanguageContext = createContext<UiLanguage>(DEFAULT_UI_LANGUAGE);
 /** The wordings an admin wrote for the event's partner or for the event, in its language (lib/i18n/overrides.ts); none outside a provider. */
 const UiTextsContext = createContext<TextOverrides | null>(null);
 
-export default function UiLanguageProvider({ language, texts = null, children }: { language: UiLanguage; texts?: TextOverrides | null; children: ReactNode }) {
+export default function UiLanguageProvider({ language, texts = null, syncDocumentLanguage = true, children }: { language: UiLanguage; texts?: TextOverrides | null; syncDocumentLanguage?: boolean; children: ReactNode }) {
   useEffect(() => {
+    if (!syncDocumentLanguage) return;
     const root = document.documentElement;
     const previous = root.lang;
     const previousDirection = root.dir;
@@ -26,7 +29,7 @@ export default function UiLanguageProvider({ language, texts = null, children }:
       root.lang = previous;
       root.dir = previousDirection;
     };
-  }, [language]);
+  }, [language, syncDocumentLanguage]);
   return (
     <UiLanguageContext.Provider value={language}>
       <UiTextsContext.Provider value={texts}>{children}</UiTextsContext.Provider>

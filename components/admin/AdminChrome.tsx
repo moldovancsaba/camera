@@ -13,6 +13,9 @@ import { useTourController } from '@/lib/tour/useTourController';
 import { getAdminTourSteps } from '@/lib/tour/config/adminTourSteps';
 import { adminContextMenu, adminContextOf, getVisibleAdminNavSections, type AdminContext, type AdminNavigationAccess } from '@/lib/adminNavigation';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminShellText } from '@/lib/i18n/admin-shell';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 
 interface AdminChromeProps {
   session: {
@@ -41,6 +44,8 @@ export function AdminChromeView({
 }: AdminChromeProps & { pathname: string }) {
   // Inside one event or partner the sidebar shows that item's own menu (issue 426); the tour then points at that menu, and starts by itself only on the main pages.
   const context = adminContextOf(pathname);
+  const language = useUiLanguage();
+  const ui = (text: string) => adminShellText(text, language);
   const contextName = useContextName(context);
   const tourController = useTourController('admin:v1', getAdminTourSteps(navigationAccess, { inContext: Boolean(context) }), { autoStart: !context });
 
@@ -56,18 +61,19 @@ export function AdminChromeView({
   const sections = getVisibleAdminNavSections(navigationAccess);
 
   const contextMenu = context ? adminContextMenu(context, pathname, navigationAccess) : null;
+  const direction = uiLanguageDirection(language);
 
   const primaryNavigation = context && contextMenu ? (
-    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-md)' }}>
+    <div lang={language} dir={direction} style={{ display: 'grid', gap: 'var(--mantine-spacing-md)' }}>
       <SemanticNavLink
         href={context.kind === 'event' ? '/admin/events' : '/admin/partners'}
         active={false}
-        label="Back to the main menu"
+        label={ui('Back to the main menu')}
         icon={<AdminIcon iconKey="arrowLeft" size={18} />}
       />
       <div data-tour-id="admin-context-menu" style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
         <div style={{ display: 'grid', gap: 2 }}>
-          <strong style={{ fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{contextMenu.title}</strong>
+          <strong style={{ fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{ui(contextMenu.title)}</strong>
           <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{contextName ?? ' '}</span>
         </div>
         <div style={{ display: 'grid', gap: 6 }}>
@@ -76,7 +82,7 @@ export function AdminChromeView({
               key={item.href}
               href={item.href}
               active={item.active}
-              label={item.label}
+              label={ui(item.label)}
               icon={<AdminIcon iconKey={item.iconKey as AdminIconKey} size={18} />}
             />
           ))}
@@ -84,7 +90,7 @@ export function AdminChromeView({
       </div>
     </div>
   ) : (
-    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
+    <div lang={language} dir={direction} style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
       {sections.map((section) => (
         <div
           key={section.title}
@@ -92,9 +98,10 @@ export function AdminChromeView({
         >
           <NavSection
             title={section.title}
+            language={language}
             items={section.items.map((item) => ({
               href: item.href,
-              label: item.label,
+              label: ui(item.label),
               icon: <AdminIcon iconKey={item.iconKey as AdminIconKey} size={18} />,
               tourId: item.tourId,
             }))}
@@ -106,7 +113,7 @@ export function AdminChromeView({
   );
 
   const accountPanel = (
-    <div data-tour-id="admin-account-panel" style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
+    <div lang={language} dir={direction} data-tour-id="admin-account-panel" style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'nowrap', gap: 'var(--mantine-spacing-sm)' }}>
         <span style={{ alignItems: 'center', background: 'var(--mantine-color-blue-light)', borderRadius: 999, display: 'inline-flex', height: 36, justifyContent: 'center', width: 36 }}>
           <IconUsers size={18} />
@@ -116,7 +123,7 @@ export function AdminChromeView({
             {session.user.name || session.user.email}
           </strong>
           <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', textTransform: 'capitalize' }}>
-            {session.appRole || 'user'}
+            {ui(session.appRole === 'superadmin' ? 'Superadmin' : session.appRole === 'admin' ? 'Admin' : session.appRole === 'none' ? 'No access' : 'User')}
           </span>
         </div>
       </div>
@@ -128,10 +135,10 @@ export function AdminChromeView({
           </span>
           <div>
             <strong>
-              Back to App
+              {ui('Back to App')}
             </strong>
             <div style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)' }}>
-              Return to Camera home
+              {ui('Return to Camera home')}
             </div>
           </div>
         </div>
@@ -143,16 +150,16 @@ export function AdminChromeView({
           </span>
           <div>
             <strong>
-              Logout
+              {ui('Logout')}
             </strong>
             <div style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)' }}>
-              End your admin session
+              {ui('End your admin session')}
             </div>
           </div>
         </div>
       </a>
       <div style={{ borderRadius: 12, padding: 'var(--mantine-spacing-sm)' }}>
-        <TourReplayButton tourId="admin:v1" controller={tourController} label="Show admin tour" />
+        <TourReplayButton tourId="admin:v1" controller={tourController} label={ui('Show admin tour')} />
       </div>
       <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', textAlign: 'center' }}>
         v{APP_VERSION}
@@ -165,9 +172,9 @@ export function AdminChromeView({
       <TourOverlay controller={tourController} />
       <GdsAppShell
         logoText="Camera"
-        headerContext="Admin Panel"
+        headerContext={<span lang={language} dir={direction}>{ui('Admin Panel')}</span>}
         headerActions={
-          <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'nowrap', gap: 'var(--mantine-spacing-sm)' }}>
+          <div lang={language} dir={direction} style={{ alignItems: 'center', display: 'flex', flexWrap: 'nowrap', gap: 'var(--mantine-spacing-sm)' }}>
             <span style={{ alignItems: 'center', background: 'var(--mantine-color-blue-light)', borderRadius: 999, display: 'inline-flex', height: 36, justifyContent: 'center', width: 36 }}>
               <IconUsers size={18} />
             </span>
@@ -176,7 +183,7 @@ export function AdminChromeView({
                 {session.user.name || session.user.email}
               </strong>
               <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', textTransform: 'capitalize' }}>
-                {session.appRole || 'user'}
+                {ui(session.appRole === 'superadmin' ? 'Superadmin' : session.appRole === 'admin' ? 'Admin' : session.appRole === 'none' ? 'No access' : 'User')}
               </span>
             </div>
           </div>
@@ -224,10 +231,12 @@ interface RenderedNavItem {
 
 function NavSection({
   title,
+  language,
   items,
   pathname,
 }: {
   title: string;
+  language: import('@/lib/i18n').UiLanguage;
   items: RenderedNavItem[];
   pathname: string;
 }) {
@@ -236,7 +245,7 @@ function NavSection({
   return (
     <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
       <strong style={{ fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-        {title}
+        {adminShellText(title, language)}
       </strong>
       <div style={{ display: 'grid', gap: 6 }}>
         {items.map((item) => {

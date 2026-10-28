@@ -1,6 +1,6 @@
 # Camera localization and accessibility delivery plan
 
-**Status:** Localization foundation implemented on 2026-10-27; full route migration, reviewed translations, and WCAG 2.2 AA evidence remain open. See [UI_LANGUAGE.md](./UI_LANGUAGE.md) and [LOCALIZATION_TRANSLATION_REVIEW.md](./LOCALIZATION_TRANSLATION_REVIEW.md) for exact coverage and translation provenance.
+**Status:** Localization foundation and shared admin navigation coverage implemented on 2026-10-28; full route migration, reviewed translations, and WCAG 2.2 AA evidence remain open. See [UI_LANGUAGE.md](./UI_LANGUAGE.md) and [LOCALIZATION_TRANSLATION_REVIEW.md](./LOCALIZATION_TRANSLATION_REVIEW.md) for exact coverage and translation provenance.
 **Scope:** Camera guest journeys, public/share surfaces, partner/event setup, and Camera administration, including user-visible status, analytics, error, and notification copy.
 **Quality target:** WCAG 2.2 Level AA across supported routes, locales, and responsive layouts.
 
@@ -18,7 +18,8 @@ The application will use one locale-resolution and message-formatting contract o
 
 - `lib/i18n/index.ts` now registers the requested locales, both Chinese scripts, both Portuguese regions, and both Serbian scripts. The English source catalog has 253 keys; each locale catalog has matching typed keys.
 - `lib/i18n/locale-negotiation.ts` parses weighted `Accept-Language` preferences and matches BCP 47 region/script variants. Capture and public share resolve a supported device language first, then partner default, then event fallback, then English.
-- `app/layout.tsx` renders locale and direction in the server document for capture/share routes. `proxy.ts` continues to preserve the existing auth, OAuth, and short-link behaviors while forwarding the pathname. `UiLanguageProvider` synchronizes `lang` and `dir` after hydration.
+- `app/layout.tsx` exposes the supported device locale through the root provider; capture/share use partner default, event fallback, then English when the device preference is unsupported. The server document uses the resolved locale only on localized capture/share routes; other routes keep English document metadata until their page copy is migrated. `proxy.ts` continues to preserve the existing auth, OAuth, and short-link behaviors while forwarding the pathname. Localized regions set their own `lang` and `dir`.
+- The shared admin navigation and account shell labels are translated in all 23 registered locale variants and have a coverage test. This is app chrome only; admin page bodies and operational surfaces remain unlocalized.
 - Partner/event `uiLanguage` schemas and API validators use the shared registry. The text and email legal editors can select the supported locale set; date and email-preview formatting use the selected locale.
 - Structural tests check locale/key parity, nonempty strings, interpolation marker parity, locale matching, and language-setting API acceptance.
 
