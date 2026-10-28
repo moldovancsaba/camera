@@ -24,25 +24,23 @@ export default function CameraSemanticButton({
 }: SemanticButtonProps) {
   const language = useUiLanguage();
   const direction = uiLanguageDirection(language);
-  const localizePack = (pack: (typeof cameraAdminVocabularyPacks)[number]) => ({
-    ...pack,
-    actions: Object.fromEntries(Object.entries(pack.actions).map(([id, action]) => [
-      id,
-      { ...action, defaultMessage: adminOperationText(action.defaultMessage, language) },
-    ])),
+  const sourceVocabulary = [
+    ...cameraAdminVocabularyPacks,
+    ...(vocabularyPacks ?? []),
+  ];
+  const actionTranslation = sourceVocabulary.some((pack) => {
+    const action = (pack.actions as Record<string, { defaultMessage: string }>)[props.action];
+    return action !== undefined && adminOperationText(action.defaultMessage, language) !== action.defaultMessage;
   });
-  const localizedVocabulary = [
-    ...cameraAdminVocabularyPacks.map(localizePack),
-    ...(vocabularyPacks ?? []).map((pack) => ({
+  const localizedVocabulary = sourceVocabulary.map((pack) => ({
       ...pack,
       actions: Object.fromEntries(Object.entries(pack.actions).map(([id, action]) => [
         id,
         { ...action, defaultMessage: adminOperationText(action.defaultMessage, language) },
       ])),
-    })),
-  ];
+    }));
   const translatedChildren = localizeNode(props.children, language);
-  const translated = typeof props.children === 'string' && translatedChildren !== props.children;
+  const translated = (typeof props.children === 'string' && translatedChildren !== props.children) || actionTranslation;
   return (
     <GdsSemanticButton
       vocabularyPacks={localizedVocabulary}
