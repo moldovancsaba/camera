@@ -31,8 +31,25 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) });
   if (!event) notFound();
 
-  const { submissions, total } = await loadGallerySubmissions(db, String(event.eventId), GALLERY_PAGE_SIZE);
+  const { submissions } = await loadGallerySubmissions(db, String(event.eventId), GALLERY_PAGE_SIZE);
   const hasFrame = (await loadGalleryFrames(db, event)).length > 0;
+  // Keep the normal/public gallery filter strict. These archive images are added only to this manager-only Camera view.
+  const managerOnlyImages = canManage
+    ? await db.collection(COLLECTIONS.SUBMISSIONS).find({
+        $and: [
+          { $or: [{ eventId: event.eventId }, { eventIds: { $in: [String(event.eventId)] } }] },
+          {
+            consentStatus: 'expired',
+            retentionStatus: 'erased',
+            'adminRecovery.state': 'available',
+            'adminRecovery.store': 'camera-mtk-recovery',
+            'adminRecovery.originalReviewStatus': 'approved',
+            isArchived: { $ne: true },
+          },
+          PRIVACY_ERASURE_ACTIVE_FILTER,
+        ],
+      }, { projection: { _id: 1, createdAt: 1, userName: 1 } }).sort({ createdAt: -1 }).limit(100).toArray()
+    : [];
   // Photos whose picture is gone are not listed (lib/media/broken.ts); the gallery says how many it hides.
   const hiddenBroken = await countBroken(db, [String(event.eventId), id]);
   // Photos an editor uploaded that have no frame yet (before the option existed, or uploaded with it off): the gallery offers to frame them in one press.
@@ -40,6 +57,29 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
     ? (await db.collection(COLLECTIONS.SUBMISSIONS).find({ eventId: event.eventId, 'metadata.adminGalleryUpload': true, 'metadata.galleryFrame': { $ne: true }, isArchived: { $ne: true }, ...PRIVACY_ERASURE_ACTIVE_FILTER }).project({ _id: 1 }).limit(500).toArray()).map((row) => String(row._id))
     : [];
   const slideshows = await db.collection(COLLECTIONS.SLIDESHOWS).find({ $or: [{ eventId: event.eventId }, { eventId: id }] }).sort({ createdAt: -1 }).toArray();
+  const galleryCards = [
+    ...submissions.map((submission) => ({
+      _id: String(submission._id),
+      imageUrl: submission.imageUrl,
+      finalImageUrl: submission.finalImageUrl,
+      previewImageUrl: submission.previewImageUrl,
+      consentStatus: submission.consentStatus,
+      userName: submission.userName,
+      userInfo: submission.userInfo ? { name: submission.userInfo.name, email: submission.userInfo.email } : null,
+      createdAt: submission.createdAt,
+      playCount: submission.playCount,
+      slideshowPlays: submission.slideshowPlays,
+      canReturnToVetting: submission.reviewStatus === 'approved' && Boolean(submission.photoReview),
+    })),
+    ...managerOnlyImages.map((submission) => ({
+      _id: String(submission._id),
+      previewImageUrl: `/api/admin/events/${id}/recovered-photos/${String(submission._id)}/image`,
+      consentStatus: 'expired',
+      userName: typeof submission.userName === 'string' ? submission.userName : 'NO USER',
+      createdAt: typeof submission.createdAt === 'string' ? submission.createdAt : '',
+      recoveryOnly: true,
+    })),
+  ];
 
   return (
     <Stack gap="xl">
@@ -55,25 +95,13 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <Title order={2}>Event Gallery</Title>
           <Text c="dimmed" mt="xs">
-            Available photos ({total}{total > submissions.length ? `, the ${submissions.length} newest are shown` : ''}). Guest photos need verified consent; vetted photos also need approval.
+            Photos of this event. Guest photos need verified consent; photos that went through vetting also need approval.
           </Text>
         </div>
         <EventGallery
           eventId={id}
           eventName={String(event.name)}
-          initialSubmissions={JSON.parse(JSON.stringify(submissions.map((submission) => ({
-            _id: submission._id,
-            imageUrl: submission.imageUrl,
-            finalImageUrl: submission.finalImageUrl,
-            previewImageUrl: submission.previewImageUrl,
-            consentStatus: submission.consentStatus,
-            userName: submission.userName,
-            userInfo: submission.userInfo ? { name: submission.userInfo.name, email: submission.userInfo.email } : null,
-            createdAt: submission.createdAt,
-            playCount: submission.playCount,
-            slideshowPlays: submission.slideshowPlays,
-            canReturnToVetting: submission.reviewStatus === 'approved' && Boolean(submission.photoReview),
-          }))))}
+          initialSubmissions={JSON.parse(JSON.stringify(galleryCards))}
           slideshows={JSON.parse(JSON.stringify(slideshows))}
           canManage={canManage}
           hasFrame={hasFrame}
