@@ -1,6 +1,6 @@
 /** Temporary Preview-only Hetzner smoke test. Remove after the authorized check. */
 
-import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { apiBadRequest, apiForbidden, apiNotFound, apiSuccess, withErrorHandler } from '@/lib/api';
@@ -74,7 +74,10 @@ const handler = withErrorHandler(async (request: NextRequest) => {
 
   const client = new CameraModerationClient(configuration);
   await client.discover(); // GET /job-types and GET /models; rejects unavailable task/model inventories.
-  const jobId = await client.submit(image, `preview-smoke-${randomUUID()}`);
+  // Repeated Preview invocations reconcile this exact smoke job instead of
+  // enqueueing another image when inference outlasts one function invocation.
+  const idempotencyKey = `preview-smoke-${createHash('sha256').update(image).digest('hex')}`;
+  const jobId = await client.submit(image, idempotencyKey);
   const deadline = Date.now() + POLL_BUDGET_MS;
   let terminal = false;
   let result: ReturnType<typeof parseCameraModerationResult> = null;
@@ -94,7 +97,8 @@ const handler = withErrorHandler(async (request: NextRequest) => {
       }
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     }
-    if (!terminal || !result) throw new ModerationServiceError('test_job_poll_timeout', null);
+    if (!terminal) return apiSuccess({ status: 'running', retryWithSameImage: true, remoteJobDeleted: false }, 202);
+    if (!result) throw new ModerationServiceError('test_result_invalid', null);
   } finally {
     if (terminal) {
       try {
