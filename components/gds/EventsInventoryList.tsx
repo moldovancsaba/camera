@@ -8,6 +8,8 @@ import {
 } from '@sovereignsquad/gds-admin/client';
 import { ResourceListGrid } from '@/components/gds/ResourceListGrid';
 import { getStatusChipContent } from '@/lib/gds/statusChipContent';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminPageText } from '@/lib/i18n/admin-pages';
 
 export interface SerializedEventRow {
   id: string;
@@ -27,17 +29,19 @@ export default function EventsInventoryList({
   events: SerializedEventRow[];
   canCreate: boolean;
 }) {
+  const language = useUiLanguage();
+  const t = (source: string) => adminPageText(source, language);
   const records: Array<AdminResourceRecord & SerializedEventRow> = events.map((event) => ({
     ...event,
     id: event.id,
     title: event.name,
     description: event.description || event.location || event.partnerName,
-    status: getStatusChipContent({ tone: event.isActive ? 'active' : 'inactive' }),
+    status: getStatusChipContent({ tone: event.isActive ? 'active' : 'inactive', label: t(event.isActive ? 'Active' : 'Inactive') }),
     metadata: [
-      { label: 'Partner', value: event.partnerName },
-      event.location ? { label: 'Location', value: event.location } : null,
-      { label: 'Date', value: event.eventDateLabel },
-      { label: 'Frames', value: String(event.frameCount) },
+      { label: t('Partner'), value: event.partnerName },
+      event.location ? { label: t('Location'), value: event.location } : null,
+      { label: t('Date'), value: event.eventDateLabel },
+      { label: t('Frames'), value: String(event.frameCount) },
     ].filter((item): item is { label: string; value: string } => Boolean(item)),
   }));
 
@@ -47,7 +51,7 @@ export default function EventsInventoryList({
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedEventRow>> = [
     {
       id: 'edit',
-      label: 'Edit',
+      label: t('Edit'),
       kind: 'secondary',
       onSelect: (event) => {
         window.location.href = `/admin/events/${event.id}/edit`;
@@ -58,12 +62,12 @@ export default function EventsInventoryList({
   if (events.length === 0) {
     return (
       <AdminResourceEmptyState
-        title="No events yet"
-        description="Get started by creating the first event app instance for a partner."
+        title={t('No events yet')}
+        description={t('Get started by creating the first event app instance for a partner.')}
         action={
           canCreate ? (
             <Link href="/admin/events/new">
-              Add Your First Event Instance
+              {t('Add Your First Event Instance')}
             </Link>
           ) : undefined
         }

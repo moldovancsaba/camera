@@ -8,6 +8,9 @@ import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 import { getVisibleAdminNavSections, type AdminNavigationAccess } from '@/lib/adminNavigation';
 import type { ActiveEventRow } from '@/lib/admin/active-events';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminPageText } from '@/lib/i18n/admin-pages';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 
 export interface DashboardAttentionMetrics {
   /** Photos waiting for approval. */
@@ -26,6 +29,8 @@ export default function AdminDashboardView({
   activeEvents: ActiveEventRow[];
   dbError?: MongoConnectionDiagnosis | null;
 }) {
+  const language = useUiLanguage();
+  const t = (source: string) => adminPageText(source, language);
   // Drop the "Dashboard" self-link from the grid — it's the page already on
   // screen. It stays in the sidebar via the same shared config.
   const sections = getVisibleAdminNavSections(navigationAccess)
@@ -34,34 +39,36 @@ export default function AdminDashboardView({
 
   return (
     <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
-      <WorkspaceHeader
-        eyebrow="Overview"
-        title="Dashboard"
-        description={
-          navigationAccess.isGlobalAdmin
-            ? 'What needs attention across every event today.'
-            : 'What needs attention across your events today.'
-        }
-        status={navigationAccess.isGlobalAdmin ? 'Global Admin' : undefined}
-      />
+      <div lang={language} dir={uiLanguageDirection(language)}>
+        <WorkspaceHeader
+          eyebrow={t('Overview')}
+          title={t('Dashboard')}
+          description={
+            navigationAccess.isGlobalAdmin
+              ? t('What needs attention across every event today.')
+              : t('What needs attention across your events today.')
+          }
+          status={navigationAccess.isGlobalAdmin ? t('Global Admin') : undefined}
+        />
+      </div>
 
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}
 
       {!dbError && metrics ? (
         <div style={{ display: 'grid', gap: 'var(--mantine-spacing-md)', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-          <Link href="/admin/vetting" style={{ color: 'inherit', textDecoration: 'none' }}>
+          <Link href="/admin/vetting" lang={language} dir={uiLanguageDirection(language)} style={{ color: 'inherit', textDecoration: 'none' }}>
             <MetricCard
-              label="Pending vetting"
+              label={t('Pending vetting')}
               value={metrics.pendingVettingCount}
-              description="Photos waiting for approval or rejection."
+              description={t('Photos waiting for approval or rejection.')}
               icon={<AdminIcon iconKey="photoScan" size={18} />}
             />
           </Link>
-          <Link href="/admin/events" style={{ color: 'inherit', textDecoration: 'none' }}>
+          <Link href="/admin/events" lang={language} dir={uiLanguageDirection(language)} style={{ color: 'inherit', textDecoration: 'none' }}>
             <MetricCard
-              label="Active events"
+              label={t('Active events')}
               value={metrics.eventsLiveCount}
-              description="Event instances currently marked active."
+              description={t('Event instances currently marked active.')}
               icon={<AdminIcon iconKey="brandDatabricks" size={18} />}
             />
           </Link>
@@ -70,7 +77,7 @@ export default function AdminDashboardView({
 
       {!dbError && activeEvents.length > 0 ? (
         <div style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
-          <strong style={{ fontSize: 'var(--mantine-font-size-sm)' }}>Active events</strong>
+          <strong lang={language} style={{ fontSize: 'var(--mantine-font-size-sm)' }}>{t('Active events')}</strong>
           <div style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
             {activeEvents.map((event) => (
               <Link
@@ -97,6 +104,7 @@ export default function AdminDashboardView({
                 </div>
                 {event.photosWaiting > 0 ? (
                   <span
+                    lang="en"
                     style={{
                       background: 'var(--mantine-color-blue-1)',
                       borderRadius: 999,
@@ -121,8 +129,8 @@ export default function AdminDashboardView({
           {sections.map((section) => (
             <div key={section.title} style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
               <div>
-                <strong style={{ fontSize: 'var(--mantine-font-size-md)' }}>{section.title}</strong>
-                <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-sm)', margin: '2px 0 0' }}>
+              <strong lang={language} style={{ fontSize: 'var(--mantine-font-size-md)' }}>{t(section.title)}</strong>
+                <p lang="en" style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-sm)', margin: '2px 0 0' }}>
                   {section.description}
                 </p>
               </div>
@@ -131,7 +139,7 @@ export default function AdminDashboardView({
                   <a
                     key={item.href}
                     href={item.href}
-                    aria-label={`Open ${item.label}`}
+                    aria-label={`${t('Open')} ${t(item.label)}`}
                     style={{
                       background: 'linear-gradient(135deg, var(--mantine-color-violet-2), var(--mantine-color-cyan-1))',
                       borderRadius: 20,
@@ -143,11 +151,13 @@ export default function AdminDashboardView({
                       textDecoration: 'none',
                     }}
                   >
-                    <ProductCard
-                      title={item.label}
-                      description={item.description}
-                      icon={<AdminIcon iconKey={item.iconKey as AdminIconKey} size={20} />}
-                    />
+                    <div lang={language} dir={uiLanguageDirection(language)}>
+                      <ProductCard
+                        title={t(item.label)}
+                        description={<span lang="en">{item.description}</span>}
+                        icon={<AdminIcon iconKey={item.iconKey as AdminIconKey} size={20} />}
+                      />
+                    </div>
                   </a>
                 ))}
               </ConsumerDashboardGrid>

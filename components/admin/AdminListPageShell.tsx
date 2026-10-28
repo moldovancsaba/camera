@@ -9,6 +9,9 @@ import { DataToolbar as GdsDataToolbar } from '@sovereignsquad/gds-core/client';
 import { AdminIcon } from '@/lib/gds/admin-icon-key';
 import type { AdminIconKey } from '@/lib/gds/admin-icon-key';
 import type { CameraStatItem } from '@/lib/gds/presentation';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminPageText } from '@/lib/i18n/admin-pages';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 
 export interface AdminListPageShellProps {
   eyebrow?: string;
@@ -50,29 +53,36 @@ export default function AdminListPageShell({
   dbError,
   children,
 }: AdminListPageShellProps) {
+  const language = useUiLanguage();
+  const localize = (value: string | undefined) => value === undefined ? undefined : adminPageText(value, language);
+
   return (
     <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
-      <WorkspaceHeader
-        eyebrow={eyebrow}
-        title={title}
-        description={description}
-        status={status}
-        primaryAction={primaryAction}
-      />
+      <div lang={language} dir={uiLanguageDirection(language)}>
+        <WorkspaceHeader
+          eyebrow={localize(eyebrow)}
+          title={localize(title) ?? title}
+          description={localize(description)}
+          status={localize(status)}
+          primaryAction={primaryAction ? { ...primaryAction, label: adminPageText(primaryAction.label, language) } : undefined}
+        />
+      </div>
 
       {!dbError && stats && stats.length > 0 ? (
-        <StatsStrip stats={stats.map(({ label, value }) => ({ label, value }))} />
+        <div lang={language} dir={uiLanguageDirection(language)}>
+          <StatsStrip stats={stats.map(({ label, value }) => ({ label: adminPageText(label, language), value }))} />
+        </div>
       ) : null}
 
       {!dbError ? beforeToolbar : null}
 
       {search ? (
-        <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
+        <div lang={language} dir={uiLanguageDirection(language)} style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
           {toolbarHint ? (
             <div style={{ alignItems: 'center', display: 'flex', gap: 'var(--mantine-spacing-xs)' }}>
               <AdminIcon iconKey="search" size={16} />
               <span style={{ fontSize: 'var(--mantine-font-size-sm)', color: 'var(--mantine-color-dimmed)' }}>
-                {toolbarHint}
+                {adminPageText(toolbarHint, language)}
               </span>
             </div>
           ) : null}
@@ -83,13 +93,13 @@ export default function AdminListPageShell({
                   <form style={{ flex: 1, minWidth: 240 }}>
                     <div style={{ alignItems: 'end', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-sm)' }}>
                       <label style={{ display: 'grid', flex: '1 1 220px', gap: 6, fontWeight: 600 }}>
-                        {search.label}
+                        {adminPageText(search.label, language)}
                         <span style={{ alignItems: 'center', display: 'flex', gap: 8 }}>
                           <AdminIcon iconKey="search" size={16} />
                           <input
                             name="search"
                             defaultValue={search.defaultValue}
-                            placeholder={search.placeholder}
+                            placeholder={adminPageText(search.placeholder, language)}
                             style={{
                               border: '1px solid var(--mantine-color-gray-4)',
                               borderRadius: 8,
@@ -106,11 +116,11 @@ export default function AdminListPageShell({
                           ))
                         : null}
                       <button type="submit">
-                        Search
+                        {adminPageText('Search', language)}
                       </button>
                       {search.defaultValue || toolbarFilters?.length ? (
                         <Link href={search.clearHref}>
-                          Clear
+                          {adminPageText('Clear', language)}
                         </Link>
                       ) : null}
                     </div>
@@ -119,7 +129,7 @@ export default function AdminListPageShell({
               </div>
             }
             activeFilters={toolbarFilters?.map((chip) => ({
-              label: `${chip.label}: ${chip.value}`,
+              label: `${adminPageText(chip.label, language)}: ${chip.value}`,
               ...(chip.removeHref
                 ? {
                     onRemove: () => {
@@ -131,7 +141,7 @@ export default function AdminListPageShell({
             createAction={
               toolbarTrailing ? (
                 <Link href={toolbarTrailing.href}>
-                  {toolbarTrailing.label}
+                  {adminPageText(toolbarTrailing.label, language)}
                 </Link>
               ) : undefined
             }

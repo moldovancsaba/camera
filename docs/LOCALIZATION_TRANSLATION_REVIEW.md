@@ -1,7 +1,8 @@
 # Camera translation review register
 
-**Snapshot:** 2026-10-27  
-**Catalog:** 253 message keys from `lib/i18n/messages.en.ts`  
+**Snapshot:** 2026-10-28
+**Guest catalog:** 253 message keys from `lib/i18n/messages.en.ts`
+**Shared admin page catalog:** 111 source phrases from `lib/i18n/admin-pages.ts`
 **Locale variants:** 23 (`en`, `hu`, `de`, `it`, `pt-BR`, `pt-PT`, `es`, `fr`, `ru`, `zh-Hans`, `zh-Hant`, `ro`, `pl`, `sk`, `hr`, `sl`, `bg`, `tr`, `ar`, `hi`, `ka`, `sr-Cyrl`, `sr-Latn`)
 
 ## Provenance and status
@@ -11,6 +12,7 @@
 - Georgian (`ka`) intentionally retains English in these five long messages because the draft translation pass did not return reliable text: `email.notApprovedBody`, `email.followUpBody`, `email.underReviewBody`, `email.welcomeBody`, and `email.arrivedBody`.
 - Placeholder parity, catalog key parity, and non-empty string checks are automated. Those checks detect structural defects; they do not establish translation accuracy, tone, cultural suitability, or legal validity.
 - A machine translation must never be treated as approval for consent, privacy, safety, or legal text. Have a qualified translator and the responsible privacy/legal reviewer approve those strings for each launch jurisdiction.
+- The 111 shared admin phrases are additional machine-translation drafts for repeated list, dashboard, login, event-empty-state, and database-alert copy. This catalog is not a complete inventory of admin UI text; page-specific literals remain outside it.
 
 ## Launch readiness
 

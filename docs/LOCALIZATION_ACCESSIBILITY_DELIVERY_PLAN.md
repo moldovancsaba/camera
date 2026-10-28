@@ -1,6 +1,6 @@
 # Camera localization and accessibility delivery plan
 
-**Status:** Localization foundation and shared admin navigation coverage implemented on 2026-10-28; full route migration, reviewed translations, and WCAG 2.2 AA evidence remain open. See [UI_LANGUAGE.md](./UI_LANGUAGE.md) and [LOCALIZATION_TRANSLATION_REVIEW.md](./LOCALIZATION_TRANSLATION_REVIEW.md) for exact coverage and translation provenance.
+**Status:** Localization foundation, admin navigation/account shell, and 111 shared admin page phrases implemented on 2026-10-28. Full route migration, reviewed translations, and WCAG 2.2 AA evidence remain open. See [UI_LANGUAGE.md](./UI_LANGUAGE.md) and [LOCALIZATION_TRANSLATION_REVIEW.md](./LOCALIZATION_TRANSLATION_REVIEW.md) for exact coverage and translation provenance.
 **Scope:** Camera guest journeys, public/share surfaces, partner/event setup, and Camera administration, including user-visible status, analytics, error, and notification copy.
 **Quality target:** WCAG 2.2 Level AA across supported routes, locales, and responsive layouts.
 

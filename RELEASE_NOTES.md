@@ -4,8 +4,9 @@
 
 - **Added:** the root provider exposes the supported device language on every route. Capture/share routes retain partner default, event fallback, then English when the device preference is unsupported; routes not yet localized keep an English document language for accurate assistive-technology pronunciation.
 - **Added:** admin navigation, event/partner context menu labels, account actions, and role labels are translated for all 23 registered locale variants, with localized region `lang`/`dir` metadata.
-- **Not complete:** page-level admin, vetting, analysis, reporting, library, and operational copy still requires catalog migration. Locale drafts still need qualified review, and full WCAG 2.2 AA evidence is outstanding.
-- **Verification:** locale catalog parity remains enforced; new admin shell coverage tests are included. Full release checks are run before PR update.
+- **Added:** 111 common admin phrases have draft translations across all 23 variants and are used by the shared list-page shell, dashboard metrics, event-list empty state, sign-in copy, and database alert title.
+- **Not complete:** most page-specific admin, vetting, analysis, reporting, library, and operational copy still requires catalog migration. Locale drafts still need qualified review, and full WCAG 2.2 AA evidence is outstanding.
+- **Verification:** this shared-page extension has not yet run the release check; rerun it before merging.
 
 ## Unreleased — case-bound Camera photo erasure
 
