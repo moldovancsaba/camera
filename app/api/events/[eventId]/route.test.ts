@@ -177,15 +177,17 @@ test('PATCH: the setting must be true or false', async (t) => {
   assert.equal(h.updates.length, 0);
 });
 
-test('PATCH: the language of the user interface is set to a language we have, cleared with an empty value, and refused otherwise', async (t) => {
+test('PATCH: the language of the user interface accepts supported locales, clears with an empty value, and refuses unknown locales', async (t) => {
   const h = mockDeps(t, { event: {}, session: ADMIN });
   const { PATCH } = await importRouteModule('patch-language');
   assert.equal((await PATCH(patchRequest({ uiLanguage: 'hu' }), params)).status, 200);
   assert.equal(h.updates[0].uiLanguage, 'hu');
   assert.equal((await PATCH(patchRequest({ uiLanguage: '' }), params)).status, 200);
   assert.equal(h.updates[1].uiLanguage, null, 'empty means the default, English');
-  for (const bad of ['de', 'HU', 7, {}]) assert.equal((await PATCH(patchRequest({ uiLanguage: bad }), params)).status, 400, String(bad));
-  assert.equal(h.updates.length, 2, 'a refused language writes nothing');
+  assert.equal((await PATCH(patchRequest({ uiLanguage: 'de' }), params)).status, 200);
+  assert.equal(h.updates[2].uiLanguage, 'de');
+  for (const bad of ['DE', 'xx', 7, {}]) assert.equal((await PATCH(patchRequest({ uiLanguage: bad }), params)).status, 400, String(bad));
+  assert.equal(h.updates.length, 3, 'a refused language writes nothing');
 });
 
 test('PATCH without a language leaves the stored language alone', async (t) => {

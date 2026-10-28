@@ -1,10 +1,10 @@
 /**
- * The list of default texts the editors show (issue 353, docs/BUILDING_BRICKS.md step 6): every key of the dictionary with its group and its English and Hungarian wording, in
+ * The list of default texts the editors show (issue 353, docs/BUILDING_BRICKS.md step 6): every key of the dictionary with its group and wording for every supported locale, in
  * the order of the files. The text editors of the three levels (the Dictionary, a partner's texts, an event's texts) are built from it. Pure; unit-tested (catalog.test.ts).
  */
 
 import { en, type MessageKey } from './messages.en';
-import { hu } from './messages.hu';
+import { DICTIONARIES, UI_LANGUAGES, type UiLanguage } from './index';
 
 /** What the editor calls each group of keys (the key's first part). A key whose group is not listed is a mistake the test catches. */
 export const TEXT_GROUPS: Record<string, string> = {
@@ -37,14 +37,20 @@ export interface CatalogEntry {
   key: MessageKey;
   group: string;
   groupLabel: string;
+  messages: Record<UiLanguage, string>;
   en: string;
-  hu: string;
 }
 
 export function textCatalog(): CatalogEntry[] {
   return (Object.keys(en) as MessageKey[]).map((key) => {
     const group = key.split('.')[0];
-    return { key, group, groupLabel: TEXT_GROUPS[group] ?? group, en: en[key], hu: hu[key] ?? en[key] };
+    return {
+      key,
+      group,
+      groupLabel: TEXT_GROUPS[group] ?? group,
+      messages: Object.fromEntries(UI_LANGUAGES.map((language) => [language, DICTIONARIES[language][key]])) as Record<UiLanguage, string>,
+      en: en[key],
+    };
   });
 }
 

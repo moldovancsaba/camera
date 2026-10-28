@@ -79,7 +79,7 @@ export default function PartnerFollowUpDefault({ partnerId }: { partnerId: strin
       </div>
       {error ? <InlineAlert title="That did not work" message={error} severity="error" /> : null}
       {saved && !dirty ? <InlineAlert title="Saved" message="The default is saved. Events that made no choice follow it from now on." severity="info" /> : null}
-      <Select label="Follow-up e-mail for the events of this partner" data={OPTIONS} value={choice} onChange={(value) => setChoice((value as Choice | null) ?? 'standard')} allowDeselect={false} disabled={stored === null || saving} />
+      <Select label="Follow-up e-mail for the events of this partner" data={OPTIONS} localizeOptionLabels value={choice} onChange={(value) => setChoice((value as Choice | null) ?? 'standard')} allowDeselect={false} disabled={stored === null || saving} />
       <Group gap="xs" wrap="wrap">
         <Button type="button" loading={saving} disabled={saving || !dirty} onClick={() => void save()}>
           Save the default

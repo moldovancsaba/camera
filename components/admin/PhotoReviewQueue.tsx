@@ -9,7 +9,7 @@
  * tabs and the list always show what the server holds, also when an answer never arrives.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,9 @@ import { WAITING_REFRESH_MS, shouldRefreshWaiting } from '@/lib/photo-vetting/au
 import type { PhotoQueueItem, QueueStatus } from '@/lib/photo-vetting/queue';
 import { chosenReasons, toggleReason } from '@/lib/photo-vetting/rejection';
 import { optionLabel, type ResolvedVocabulary } from '@/lib/photo-vetting/vocabulary';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
 
 interface PhotoReviewQueueProps {
   status: QueueStatus;
@@ -48,10 +51,10 @@ interface ReviewAnswer {
 const BULK_CONCURRENCY = 2;
 const FRAME_LABEL = { generated: 'Generated frame', own: 'Own frame', none: 'No frame' } as const;
 
-function formatDateTime(value: string): string {
+function formatDateTime(value: string, language: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleString(language, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 /** No answer within this time: the decision may still have been made, so the list is reloaded instead of guessed. */
@@ -96,6 +99,8 @@ const emailNote = (answers: ReviewAnswer[]): string => {
 
 export default function PhotoReviewQueue({ status, initialItems, canReview, vocabulary, page, pageSize, total, eventUrl, listView }: PhotoReviewQueueProps) {
   const router = useRouter();
+  const language = useUiLanguage();
+  const t = useCallback((source: string) => adminOperationText(source, language), [language]);
   // Photos decided here leave the list at once; everything else comes from the server (initialItems is fresh after each router.refresh()).
   const [decided, setDecided] = useState<string[]>([]);
   const items = useMemo(() => initialItems.filter((item) => !decided.includes(item.id)), [initialItems, decided]);
@@ -247,21 +252,21 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const pagination = (
-    <nav aria-label="Photo pages" style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-      {page > 1 ? <Link href={`${eventUrl}?photos=${status}${status === 'pending_review' && listView ? '&view=list' : ''}&page=${page - 1}`}>Previous photos</Link> : null}
-      <span aria-live="polite" style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>Page {page} of {pageCount} · showing {total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}</span>
-      {page < pageCount ? <Link href={`${eventUrl}?photos=${status}${status === 'pending_review' && listView ? '&view=list' : ''}&page=${page + 1}`}>Next photos</Link> : null}
+    <nav lang={language} dir={uiLanguageDirection(language)} aria-label={t('Photo pages')} style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+      {page > 1 ? <Link href={`${eventUrl}?photos=${status}${status === 'pending_review' && listView ? '&view=list' : ''}&page=${page - 1}`}>{t('Previous photos')}</Link> : null}
+      <span aria-live="polite" style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>{t('Page')} {page} {t('of')} {pageCount} · {t('showing')} {total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} {t('of')} {total}</span>
+      {page < pageCount ? <Link href={`${eventUrl}?photos=${status}${status === 'pending_review' && listView ? '&view=list' : ''}&page=${page + 1}`}>{t('Next photos')}</Link> : null}
     </nav>
   );
 
   if (items.length === 0) {
     return (
-      <div style={{ display: 'grid', gap: '1rem' }}>
+      <div lang={language} dir={uiLanguageDirection(language)} style={{ display: 'grid', gap: '1rem' }}>
         {notice ? <InlineAlert title={notice.title} message={notice.message} severity={notice.severity} /> : null}
         {page > 1 ? pagination : null}
         <StateBlock
           variant="empty"
-          title={status === 'pending_review' ? 'Nothing is waiting' : status === 'rejected' ? 'No rejected photos' : 'No approved photos yet'}
+          title={status === 'pending_review' ? t('Nothing is waiting') : status === 'rejected' ? t('No rejected photos') : t('No approved photos yet')}
           description={status === 'pending_review' ? 'New photos of this event appear here until they are approved or rejected. This page looks for new photos by itself every 10 seconds.' : 'Photos appear here once they have been decided.'}
         />
       </div>
@@ -269,16 +274,16 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
   }
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }} data-photo-review-queue>
+    <div lang={language} dir={uiLanguageDirection(language)} style={{ display: 'grid', gap: '1rem' }} data-photo-review-queue>
       {canDecide ? (
         <section style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             <SemanticButton action="photo-review:toggle-select-all" type="button" variant="secondary" onClick={() => setSelected(allSelected ? [] : allIds)} disabled={working}>
-              {allSelected ? 'Clear selection' : 'Select all'}
+              {allSelected ? t('Clear selection') : t('Select all')}
             </SemanticButton>
             {selected.length > 0 ? (
               <SemanticButton action="photo-review:approve-selected" type="button" onClick={() => void approve(selected)} disabled={working}>
-                {working ? (progress ?? 'Approving…') : 'Approve selected'}
+                {working ? (progress ?? t('Approving…')) : t('Approve selected')}
               </SemanticButton>
             ) : null}
           </div>
@@ -299,33 +304,33 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
           const isBusy = busy.includes(item.id);
           const isRejecting = rejecting === item.id;
           const metadata: ListingMetadataRow[] = [
-            { id: 'when', label: 'Taken', value: formatDateTime(item.createdAt), tone: 'muted' },
-            { id: 'frame', label: 'Frame', value: FRAME_LABEL[item.frameKind], tone: 'muted' },
+            { id: 'when', label: t('Taken'), value: formatDateTime(item.createdAt, language), tone: 'muted' },
+            { id: 'frame', label: t('Frame'), value: t(FRAME_LABEL[item.frameKind]), tone: 'muted' },
           ];
-          metadata.unshift({ id: item.email ? 'email' : 'identity', label: item.email ? 'Email' : 'Identity', value: item.identityLabel });
+          metadata.unshift({ id: item.email ? 'email' : 'identity', label: item.email ? t('Email') : t('Identity'), value: item.identityLabel });
           // The buttons show their fixed labels, so the card itself says that a decision is being made (it can take a few seconds).
-          if (isBusy) metadata.push({ id: 'working', label: 'Now', value: isRejecting ? 'Rejecting…' : 'Approving… please wait', tone: 'warning' });
-          if (item.status !== 'approved') metadata.push({ id: 'wall', label: 'Wall', value: item.shareOptIn ? 'shown' : 'private', tone: 'muted' });
+          if (isBusy) metadata.push({ id: 'working', label: t('Now'), value: isRejecting ? t('Rejecting…') : t('Approving… please wait'), tone: 'warning' });
+          if (item.status !== 'approved') metadata.push({ id: 'wall', label: t('Wall'), value: item.shareOptIn ? t('shown') : t('private'), tone: 'muted' });
           if (item.status === 'rejected' && item.rejectReasons.length > 0) {
             metadata.push({ id: 'why', label: 'Why', value: item.rejectReasons.map((key) => optionLabel(vocabulary, 'reject_reason', key)).join(', '), tone: 'warning' });
           }
           if (item.last) {
-            metadata.push({ id: 'last', label: item.last.action === 'approve' ? 'Approved' : item.last.action === 'reject' ? 'Rejected' : 'Returned to vetting', value: item.last.by, tone: item.last.action === 'approve' ? 'positive' : 'warning' });
+            metadata.push({ id: 'last', label: item.last.action === 'approve' ? t('Approved') : item.last.action === 'reject' ? t('Rejected') : t('Returned to vetting'), value: item.last.by, tone: item.last.action === 'approve' ? 'positive' : 'warning' });
             // The note is a row of its own: a long note beside the name squeezed the label of the row to nothing.
-            if (item.last.reason) metadata.push({ id: 'note', label: 'Note', value: item.last.reason, tone: 'muted' });
+            if (item.last.reason) metadata.push({ id: 'note', label: t('Note'), value: item.last.reason, tone: 'muted' });
           }
 
           const actions: ReactNode[] = [];
           if (canDecide && !isRejecting) {
             actions.push(
               <SemanticButton key="approve" action="photo-review:approve" type="button" size="xs" onClick={() => void approve([item.id])} disabled={isBusy}>
-                {isBusy ? 'Approving…' : 'Approve'}
+                {isBusy ? t('Approving…') : t('Approve')}
               </SemanticButton>
             );
             if (status === 'pending_review') {
               actions.push(
                 <SemanticButton key="reject" action="photo-review:reject" type="button" size="xs" variant="secondary" onClick={() => { setRejecting(item.id); setReasons([]); setRejectNote(''); }} disabled={isBusy}>
-                  Reject
+                  {t('Reject')}
                 </SemanticButton>
               );
             }
@@ -333,10 +338,10 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
           if (isRejecting) {
             actions.push(
               <SemanticButton key="confirm" action="photo-review:confirm-reject" type="button" size="xs" variant="danger" onClick={() => void reject(item.id)} disabled={isBusy || chosenReasons(reasons, vocabulary).length === 0}>
-                {isBusy ? 'Rejecting…' : 'Confirm reject'}
+                {isBusy ? t('Rejecting…') : t('Confirm reject')}
               </SemanticButton>,
               <SemanticButton key="cancel" action="photo-review:cancel-reject" type="button" size="xs" variant="secondary" onClick={() => setRejecting(null)} disabled={isBusy}>
-                Cancel
+                {t('Cancel')}
               </SemanticButton>
             );
           }
@@ -344,20 +349,20 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
             if (canReview && item.email && !item.approvalEmailSent) {
               actions.push(
                 <SemanticButton key="retry-approval-email" action="photo-review:retry-approval-email" type="button" size="xs" variant="secondary" onClick={() => void retryApprovalEmail(item.id)} disabled={isBusy}>
-                  {isBusy ? 'Sending…' : 'Send approval link'}
+                  {isBusy ? t('Sending…') : t('Send approval link')}
                 </SemanticButton>
               );
             }
             actions.push(
               <Link key="view" href={`/share/${item.id}`} style={{ textDecoration: 'none' }}>
-                <SemanticButton action="photo-review:view-photo" size="xs" variant="secondary">View</SemanticButton>
+                <SemanticButton action="photo-review:view-photo" size="xs" variant="secondary">{t('View')}</SemanticButton>
               </Link>
             );
           }
           if (canReview && (item.status === 'approved' || item.status === 'rejected')) {
             actions.push(
               <SemanticButton key="return-to-vetting" action="photo-review:return-to-vetting" type="button" size="xs" variant="secondary" onClick={() => void returnToVetting(item.id)} disabled={isBusy}>
-                {isBusy ? 'Returning…' : 'Back to vetting'}
+                {isBusy ? t('Returning…') : t('Back to vetting')}
               </SemanticButton>
             );
           }
@@ -374,14 +379,14 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, voca
                       checked={selectedSet.has(item.id)}
                       onChange={() => setSelected((current) => (current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]))}
                       disabled={isBusy}
-                      aria-label={`Select the photo of ${item.name}`}
+                      aria-label={`${t('Select the photo of')} ${item.name}`}
                       style={{ position: 'absolute', zIndex: 1, insetBlockStart: 8, insetInlineStart: 8 }}
                     />
                   ) : null}
                   {item.photoUrl ? (
-                    <Image src={item.photoUrl} alt={`Photo of ${item.name}`} width={800} height={450} unoptimized style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} />
+                    <Image src={item.photoUrl} alt={`${t('Photo of')} ${item.name}`} width={800} height={450} unoptimized style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} />
                   ) : (
-                    <div style={{ aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>No photo</div>
+                    <div style={{ aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>{t('No photo available')}</div>
                   )}
                 </div>
               }

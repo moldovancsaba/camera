@@ -16,6 +16,7 @@ import EmailTextEditor from '@/components/admin/kit/EmailTextEditor';
 import LegalPartEditor, { useLegalLevel } from '@/components/admin/kit/LegalPartEditor';
 import type { EventEmailsView } from '@/lib/email/event-emails';
 import type { LegalByLanguage } from '@/lib/email/legal-rules';
+import { isUiLanguage } from '@/lib/i18n';
 
 interface Payload<T> {
   data?: T;
@@ -255,7 +256,7 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
               { label: "the partner's legal part", legal: legal.data.inherited.partner },
             ]}
             eventId={id}
-            initialLanguage={legal.data.language === 'hu' ? 'hu' : 'en'}
+            initialLanguage={isUiLanguage(legal.data.language) ? legal.data.language : 'en'}
             busy={legal.saving}
             error={legal.saveError}
             saved={legal.saved}

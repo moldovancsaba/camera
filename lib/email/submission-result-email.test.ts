@@ -84,7 +84,7 @@ test('email routing uses the canonical finalized contact and never sends a draft
   assert.equal(resolveSubmissionResultEmailRecipient({ userId: 'anonymous', userInfo: { email: 'typed@example.com' } }).email, 'typed@example.com');
 });
 
-test('an event with no language of its own is read with its partner\'s, so its e-mails go out in that language; an event with its own keeps it; the wordings of the levels are read for the e-mails', async () => {
+test('the partner language is the configured fallback for e-mails, ahead of the event language; the wordings follow that locale', async () => {
   const { fakeDb } = await import('@/lib/library/fake-db');
   const { resolveEventForSubmission, textsOf } = await import('./submission-result-email');
   const { db } = fakeDb({
@@ -97,7 +97,7 @@ test('an event with no language of its own is read with its partner\'s, so its e
   });
   const follows = await resolveEventForSubmission(db, { eventId: 'follows' } as never);
   assert.equal(follows?.uiLanguage, 'hu');
-  assert.equal((await resolveEventForSubmission(db, { eventId: 'own' } as never))?.uiLanguage, 'en');
+  assert.equal((await resolveEventForSubmission(db, { eventId: 'own' } as never))?.uiLanguage, 'hu');
   assert.deepEqual(await textsOf(db, follows), { 'email.buttonSee': 'Nézd meg' });
   assert.equal(await textsOf(db, null), null);
 });

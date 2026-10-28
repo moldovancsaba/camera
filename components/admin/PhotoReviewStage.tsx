@@ -5,7 +5,7 @@
  * all image analytics and human corrections belong to the Fanmass result review.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -16,6 +16,9 @@ import { WAITING_REFRESH_MS, shouldRefreshWaiting } from '@/lib/photo-vetting/au
 import type { PhotoQueueItem } from '@/lib/photo-vetting/queue';
 import { chosenReasons, toggleReason } from '@/lib/photo-vetting/rejection';
 import type { ResolvedVocabulary } from '@/lib/photo-vetting/vocabulary';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
 
 interface Props {
   eventId: string;
@@ -63,6 +66,8 @@ function decisionMessage(action: 'approve' | 'reject', answer: { email?: unknown
 
 export default function PhotoReviewStage({ eventId, items, vocabulary, embedded = false, backHref, backLabel }: Props) {
   const router = useRouter();
+  const language = useUiLanguage();
+  const t = useCallback((source: string) => adminOperationText(source, language), [language]);
   const [decided, setDecided] = useState<string[]>([]);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -132,28 +137,28 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, embedded 
 
   if (!item) {
     return (
-      <div style={{ display: 'grid', gap: '1rem' }} data-photo-review-empty>
-        {notice ? <InlineAlert title="Last decision" message={notice.text} severity={notice.warning ? 'warning' : 'success'} /> : null}
+      <div lang={language} dir={uiLanguageDirection(language)} style={{ display: 'grid', gap: '1rem' }} data-photo-review-empty>
+        {notice ? <InlineAlert title={t('Last decision')} message={notice.text} severity={notice.warning ? 'warning' : 'success'} /> : null}
         {newPhotosCount > 0 ? <InlineAlert title="More photos are waiting" message={`${newPhotosCount} more ${newPhotosCount === 1 ? 'photo is' : 'photos are'} waiting for vetting.`} severity="success" /> : null}
-        <StateBlock variant="empty" title={items.length === 0 ? 'Nothing is waiting' : 'All the photos are decided'} description="New consent-eligible photos appear here automatically. Image analysis and human corrections are handled on the Photo analysis page." />
-        {embedded ? null : <Link href={backHref ?? `/admin/events/${eventId}/vetting`}>{backLabel ?? 'Back to the Vetting tab'}</Link>}
+        <StateBlock variant="empty" title={items.length === 0 ? t('Nothing is waiting') : t('All the photos are decided')} description={t('New consent-eligible photos appear here automatically. Image analysis and human corrections are handled on the Photo analysis page.')} />
+        {embedded ? null : <Link href={backHref ?? `/admin/events/${eventId}/vetting`}>{backLabel ?? t('Back to the Vetting tab')}</Link>}
       </div>
     );
   }
 
   return (
-    <section style={{ display: 'grid', gap: '1rem', maxWidth: 1500 }} data-photo-review-stage>
+    <section lang={language} dir={uiLanguageDirection(language)} style={{ display: 'grid', gap: '1rem', maxWidth: 1500 }} data-photo-review-stage>
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.5rem' }}>
-        <strong data-review-position>Photo {decided.length + 1} of {decided.length + queue.length} waiting</strong>
+        <strong data-review-position>{t('Photo')} {decided.length + 1} {t('of')} {decided.length + queue.length} {t('waiting')}</strong>
         <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{item.identityLabel}</span>
       </div>
-      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }} data-review-help>Review this photo and approve or reject it. A rejection needs at least one reason.</p>
-      {notice ? <InlineAlert title="Last decision" message={notice.text} severity={notice.warning ? 'warning' : 'success'} /> : null}
-      {error ? <InlineAlert title="That did not work" message={error} severity="error" /> : null}
+      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }} data-review-help>{t('Review this photo and approve or reject it. A rejection needs at least one reason.')}</p>
+      {notice ? <InlineAlert title={t('Last decision')} message={notice.text} severity={notice.warning ? 'warning' : 'success'} /> : null}
+      {error ? <InlineAlert title={t('That did not work')} message={error} severity="error" /> : null}
       {newPhotosCount > 0 ? <InlineAlert title="More photos are waiting" message={`${newPhotosCount} new photos will follow this one.`} severity="success" /> : null}
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'minmax(0, 2fr) minmax(18rem, 1fr)', alignItems: 'start' }}>
         <div style={{ background: 'var(--mantine-color-gray-1)', lineHeight: 0, position: 'relative', width: '100%' }}>
-          {item.photoUrl ? <Image src={item.photoUrl} alt={`Photo ${decided.length + 1}`} width={1600} height={1200} unoptimized priority draggable={false} style={{ display: 'block', height: 'auto', maxHeight: 'calc(100vh - 14rem)', maxWidth: '100%', objectFit: 'contain', width: '100%' }} /> : <div style={{ display: 'grid', minHeight: 320, placeItems: 'center' }}>No photo available</div>}
+          {item.photoUrl ? <Image src={item.photoUrl} alt={`${t('Photo')} ${decided.length + 1}`} width={1600} height={1200} unoptimized priority draggable={false} style={{ display: 'block', height: 'auto', maxHeight: 'calc(100vh - 14rem)', maxWidth: '100%', objectFit: 'contain', width: '100%' }} /> : <div style={{ display: 'grid', minHeight: 320, placeItems: 'center' }}>{t('No photo available')}</div>}
         </div>
         <aside style={{ display: 'grid', gap: '0.75rem', border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', padding: '1rem' }}>
           <strong>{item.name}</strong>
@@ -161,14 +166,14 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, embedded 
           {rejecting ? (
             <div style={{ display: 'grid', gap: '0.75rem' }} data-reject-block>
               <RejectReasonPicker vocabulary={vocabulary} reasons={reasons} onToggleReason={(key) => setReasons((current) => toggleReason(current, key))} note={note} onNote={setNote} disabled={busy} />
-              <SemanticButton action="photo-review:confirm-reject" type="button" variant="danger" disabled={busy || chosenReasons(reasons, vocabulary).length === 0} loading={busy} onClick={() => void finishDecision('reject')}>Reject photo</SemanticButton>
-              <SemanticButton action="photo-review:cancel-reject" type="button" variant="secondary" disabled={busy} onClick={() => setRejecting(false)}>Cancel</SemanticButton>
+              <SemanticButton action="photo-review:confirm-reject" type="button" variant="danger" disabled={busy || chosenReasons(reasons, vocabulary).length === 0} loading={busy} onClick={() => void finishDecision('reject')}>{t('Reject photo')}</SemanticButton>
+              <SemanticButton action="photo-review:cancel-reject" type="button" variant="secondary" disabled={busy} onClick={() => setRejecting(false)}>{t('Cancel')}</SemanticButton>
             </div>
           ) : (
             <div style={{ display: 'grid', gap: '0.5rem' }}>
-              <SemanticButton action="photo-review:approve" type="button" disabled={busy} loading={busy} onClick={() => void finishDecision('approve')}>Approve</SemanticButton>
-              <SemanticButton action="photo-review:reject" type="button" variant="secondary" disabled={busy} onClick={() => { setRejecting(true); setReasons([]); setNote(''); }}>Reject…</SemanticButton>
-              <SemanticButton action="photo-review:skip" type="button" variant="outline" disabled={busy || queue.length < 2} onClick={() => { setNotice(null); setSkipped((current) => [...current.filter((id) => id !== item.id), item.id]); }}>Skip for now</SemanticButton>
+              <SemanticButton action="photo-review:approve" type="button" disabled={busy} loading={busy} onClick={() => void finishDecision('approve')}>{t('Approve')}</SemanticButton>
+              <SemanticButton action="photo-review:reject" type="button" variant="secondary" disabled={busy} onClick={() => { setRejecting(true); setReasons([]); setNote(''); }}>{t('Reject…')}</SemanticButton>
+              <SemanticButton action="photo-review:skip" type="button" variant="outline" disabled={busy || queue.length < 2} onClick={() => { setNotice(null); setSkipped((current) => [...current.filter((id) => id !== item.id), item.id]); }}>{t('Skip for now')}</SemanticButton>
             </div>
           )}
           {item.status === 'rejected' && item.rejectReasons.length > 0 ? <p style={{ color: 'var(--mantine-color-orange-text)', margin: 0 }}>Previous rejection: {item.rejectReasons.join(', ')}</p> : null}

@@ -26,25 +26,30 @@
 //     needed. This is exactly the pattern messmass's equivalent page
 //     already uses.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AuthShell } from '@/components/gds/ClientWrappers';
 import { Button, Stack, Text } from '@/components/gds/PublicPrimitives';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminPageText } from '@/lib/i18n/admin-pages';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 
-function oauthErrorHint(code: string | undefined): string | null {
+function oauthErrorHint(code: string | undefined, t: (source: string) => string): string | null {
   if (!code) return null;
   if (code === 'session_expired') {
-    return 'Use a single browser tab for sign-in, or try again from the capture page.';
+    return t('Use a single browser tab for sign-in, or try again from the capture page.');
   }
   if (code === 'invalid_state') {
-    return 'If you had multiple login tabs open, close the extras and start sign-in once.';
+    return t('If you had multiple login tabs open, close the extras and start sign-in once.');
   }
   if (code === 'no_access') {
-    return 'Contact an admin to request access to this app.';
+    return t('Contact an admin to request access to this app.');
   }
   return null;
 }
 
 export default function AdminLoginPage() {
+  const language = useUiLanguage();
+  const t = useCallback((source: string) => adminPageText(source, language), [language]);
   const [redirecting, setRedirecting] = useState(true);
   const [signInError, setSignInError] = useState<React.ReactNode>(null);
 
@@ -100,12 +105,12 @@ export default function AdminLoginPage() {
         return;
       }
 
-      const oauthHint = oauthErrorHint(oauthError);
+      const oauthHint = oauthErrorHint(oauthError, t);
       setSignInError(
         <Stack gap="xs">
-          {oauthMessage ? <Text>{oauthMessage}</Text> : null}
+          {oauthMessage ? <Text><span lang="en">{oauthMessage}</span></Text> : null}
           {!oauthMessage && oauthError && (
-            <Text tt="capitalize">{oauthError.replace(/_/g, ' ')}</Text>
+            <Text tt="capitalize"><span lang="en">{oauthError.replace(/_/g, ' ')}</span></Text>
           )}
           {oauthHint ? <Text>{oauthHint}</Text> : null}
         </Stack>
@@ -114,17 +119,19 @@ export default function AdminLoginPage() {
     };
 
     check();
-  }, []);
+  }, [t]);
 
   if (redirecting) return null;
 
   return (
-    <AuthShell title="Camera" description="Sign in with your approved account." intent="sign-in" error={signInError}>
-      <Stack align="center" gap="md" w="100%">
-        <Button component="a" href="/api/auth/login" size="lg" fullWidth>
-          Sign In
-        </Button>
-      </Stack>
-    </AuthShell>
+    <div lang={language} dir={uiLanguageDirection(language)}>
+      <AuthShell title="Camera" description={t('Sign in with your approved account.')} intent="sign-in" error={signInError}>
+        <Stack align="center" gap="md" w="100%">
+          <Button component="a" href="/api/auth/login" size="lg" fullWidth>
+            {t('Sign In')}
+          </Button>
+        </Stack>
+      </AuthShell>
+    </div>
   );
 }

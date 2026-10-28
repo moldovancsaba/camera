@@ -10,12 +10,12 @@ test('the legal part is checked: the languages we have, text, at most the limit;
   assert.deepEqual(parseLegal(undefined), { ok: true, value: {} });
   assert.deepEqual(parseLegal(null), { ok: true, value: {} });
   assert.deepEqual(parseLegal({ en: '  Terms\r\n\r\n{terms} ', hu: '   ' }), { ok: true, value: { en: 'Terms\n\n{terms}' } });
-  for (const bad of ['x', ['x'], { de: 'x' }, { en: 7 }, { en: 'x'.repeat(LEGAL_MAX + 1) }]) assert.equal(parseLegal(bad).ok, false, JSON.stringify(bad));
+  for (const bad of ['x', ['x'], { xx: 'x' }, { en: 7 }, { en: 'x'.repeat(LEGAL_MAX + 1) }]) assert.equal(parseLegal(bad).ok, false, JSON.stringify(bad));
   assert.equal(parseLegal({ en: 'x'.repeat(LEGAL_MAX) }).ok, true);
 });
 
 test('what is stored is read tolerantly: only our languages, only text', () => {
-  assert.deepEqual(storedLegal({ en: ' Terms ', hu: 5, de: 'x' }), { en: 'Terms' });
+  assert.deepEqual(storedLegal({ en: ' Terms ', hu: 5, de: 'Terms' }), { en: 'Terms', de: 'Terms' });
   for (const bad of [undefined, null, 'x', 7, []]) assert.deepEqual(storedLegal(bad), {});
 });
 

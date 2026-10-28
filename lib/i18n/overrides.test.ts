@@ -22,7 +22,7 @@ test('what is refused: an unknown language or key, not text, too long, markup, a
   };
   refused('x');
   refused([]);
-  assert.match(refused({ de: {} }), /Unknown language/);
+  assert.match(refused({ xx: {} }), /Unknown language/);
   assert.match(refused({ en: { 'no.such.key': 'x' } }), /Unknown text/);
   assert.match(refused({ en: { 'welcome.button': 5 } }), /must be text/);
   assert.match(refused({ en: { 'welcome.button': 'x'.repeat(TEXT_MAX + 1) } }), /longer than/);
@@ -86,26 +86,24 @@ test('an event and a partner that wrote nothing have no wordings: nothing change
   assert.deepEqual(loaded.overrides, {});
 });
 
-test('the language of an event is its own, else its partner\'s, else English: an event with none follows its partner', () => {
-  assert.equal(eventLanguage({ uiLanguage: 'hu' }, { uiLanguage: 'en' }), 'hu', 'its own wins');
+test('the configured fallback is the partner language, then the event language, then English', () => {
+  assert.equal(eventLanguage({ uiLanguage: 'hu' }, { uiLanguage: 'en' }), 'en', 'partner default wins');
   assert.equal(eventLanguage({}, { uiLanguage: 'hu' }), 'hu', 'it follows the partner');
   assert.equal(eventLanguage({ uiLanguage: null }, { uiLanguage: 'hu' }), 'hu');
-  assert.equal(eventLanguage({ uiLanguage: 'de' }, { uiLanguage: 'hu' }), 'hu', 'a language we do not have counts as none');
+  assert.equal(eventLanguage({ uiLanguage: 'de' }, { uiLanguage: 'hu' }), 'hu', 'partner default wins');
   assert.equal(eventLanguage({}, {}), 'en');
   assert.equal(eventLanguage({}, null), 'en');
   assert.equal(eventLanguage(undefined, undefined), 'en');
 });
 
-test('an event document without a language gets its partner\'s, for the code that reads it from the document; an event with its own is left as it is, with no read', async () => {
-  const { db, data, calls } = fakeDb({ partners: [{ partnerId: 'P', name: 'MTK', uiLanguage: 'hu' }, { partnerId: 'Q', name: 'Other' }], events: [] });
+test('effective language uses the partner default before event fallback, without writing the stored values', async () => {
+  const { db, data } = fakeDb({ partners: [{ partnerId: 'P', name: 'MTK', uiLanguage: 'hu' }, { partnerId: 'Q', name: 'Other' }], events: [] });
   const event = (partnerId: string): { partnerId: string; uiLanguage?: unknown } => ({ partnerId });
   assert.equal((await withEffectiveLanguage(db, event('P'))).uiLanguage, 'hu');
-  assert.equal((await withEffectiveLanguage(db, event('Q'))).uiLanguage, undefined, 'a partner with none leaves the event as it is');
-  assert.equal((await withEffectiveLanguage(db, event('nobody'))).uiLanguage, undefined);
-  const before = calls.length;
-  const own = { partnerId: 'P', uiLanguage: 'en' as const };
-  assert.equal(await withEffectiveLanguage(db, own), own);
-  assert.equal(calls.length, before, 'no read for an event with its own language');
+  assert.equal((await withEffectiveLanguage(db, event('Q'))).uiLanguage, 'en', 'the final fallback is English');
+  assert.equal((await withEffectiveLanguage(db, event('nobody'))).uiLanguage, 'en');
+  const configured = { partnerId: 'P', uiLanguage: 'en' as const };
+  assert.equal((await withEffectiveLanguage(db, configured)).uiLanguage, 'hu', 'partner default wins over event fallback');
   assert.equal((data.partners[0] as { uiLanguage: string }).uiLanguage, 'hu', 'nothing is written');
 });
 

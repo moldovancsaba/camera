@@ -109,7 +109,9 @@ test('the default language of the partner\'s events: set to a language we have, 
   assert.equal((data.partners[0] as { uiLanguage?: string | null }).uiLanguage, 'hu', 'absent leaves it alone');
   assert.equal((await PATCH(patch({ uiLanguage: '' }), params)).status, 200);
   assert.equal((data.partners[0] as { uiLanguage?: string | null }).uiLanguage, null);
-  for (const bad of ['de', 'HU', 7, {}]) assert.equal((await PATCH(patch({ uiLanguage: bad }), params)).status, 400, String(bad));
+  assert.equal((await PATCH(patch({ uiLanguage: 'de' }), params)).status, 200);
+  assert.equal((data.partners[0] as { uiLanguage?: string | null }).uiLanguage, 'de');
+  for (const bad of ['DE', 'xx', 7, {}]) assert.equal((await PATCH(patch({ uiLanguage: bad }), params)).status, 400, String(bad));
 });
 
 test('the camera mode of the partner\'s events: a mode we have, cleared with an empty value, refused otherwise, left alone when absent (issue 547)', async (t) => {

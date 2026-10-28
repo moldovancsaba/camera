@@ -5,19 +5,16 @@
 
 import type { UiLanguage } from './index';
 
-const LOCALES: Record<UiLanguage, string | undefined> = { en: undefined, hu: 'hu-HU' };
-const TIME_ZONES: Record<UiLanguage, string | undefined> = { en: undefined, hu: 'Europe/Budapest' };
-
 /** The date and time of an ISO timestamp, or an empty text when it is not a date. */
 export function formatDateTime(value: string, language: UiLanguage): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString(LOCALES[language], {
+  return date.toLocaleString(language, {
     year: 'numeric',
     month: 'short',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    ...(TIME_ZONES[language] ? { timeZone: TIME_ZONES[language] } : {}),
+    ...(language === 'hu' ? { timeZone: 'Europe/Budapest' } : {}),
   });
 }

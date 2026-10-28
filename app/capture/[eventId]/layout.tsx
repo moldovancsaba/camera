@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { ObjectId } from 'mongodb';
+import { headers } from 'next/headers';
 import { loadCaptureEvent } from '@/lib/events/capture-event';
 import { pwaPageColor, pwaShortName } from '@/lib/pwa/event-manifest';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -10,9 +11,19 @@ import UiLanguageProvider from '@/components/i18n/UiLanguageProvider';
 import { normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
 import { loadEventTexts, type TextOverrides } from '@/lib/i18n/overrides';
 import { captureLoadingText } from '@/lib/i18n/capture-loading';
+import { parseAcceptLanguage } from '@/lib/i18n/locale-negotiation';
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+async function requestLanguagePreferences(): Promise<string[]> {
+  try {
+    return parseAcceptLanguage((await headers()).get('accept-language'));
+  } catch {
+    // Tests or render adapters without a Next request use the configured partner/event fallback.
+    return [];
+  }
 }
 
 function metaDescription(event: {
@@ -57,8 +68,9 @@ export async function generateMetadata({
     return { title: translate('en', 'meta.capture.notFound') };
   }
 
-  // The language of the event, or of its partner when the event has none, and the wordings written for them (issue 353); a failed read gives English and the dictionary.
-  const loaded = await loadEventTexts(await connectToDatabase(), event).catch(() => null);
+  // A supported device preference wins; otherwise use the partner default, event fallback, then English, with their saved wordings.
+  const preferences = await requestLanguagePreferences();
+  const loaded = await loadEventTexts(await connectToDatabase(), event, undefined, preferences).catch(() => null);
   const language = loaded?.language ?? normalizeUiLanguage(event.uiLanguage);
   const texts = loaded?.overrides;
   const name =
@@ -131,8 +143,9 @@ export default async function CaptureEventLayout({
   // Every page of the guest journey is drawn with the theme of the event (camera#285).
   const db = await connectToDatabase();
   const theme = await loadEventTheme(db, event);
-  // ... and in the language of the event (camera#352), with the wordings an admin wrote for the partner or the event (issue 353; none written: the code dictionary).
-  const { overrides, language } = await loadEventTexts(db, event).catch(() => ({ overrides: {}, language: normalizeUiLanguage(event.uiLanguage) }));
+  // ... in the visitor's supported device language, or the partner/event fallback, with its configured wording overrides.
+  const preferences = await requestLanguagePreferences();
+  const { overrides, language } = await loadEventTexts(db, event, undefined, preferences).catch(() => ({ overrides: {}, language: normalizeUiLanguage(event.uiLanguage) }));
   // Resolve the long capture-loading screen before the client renders. event.loading remains a separate text.
   const captureOverrides = { ...overrides, 'capture.loading': captureLoadingText(language, typeof event.loadingText === 'string' ? event.loadingText : undefined, overrides) };
   return (

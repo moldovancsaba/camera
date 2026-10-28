@@ -106,7 +106,7 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { 
         <Num label="Height" value={draft.height} onChange={(v) => set('height', v)} />
       </SimpleGrid>
       <Field label="Photos fill the window">
-        <Select value={draft.photoFit} onChange={(v) => set('photoFit', v === 'contain' ? 'contain' : 'cover')} data={[{ value: 'cover', label: 'Cover (crop to fill)' }, { value: 'contain', label: 'Contain (whole photo)' }]} />
+        <Select value={draft.photoFit} onChange={(v) => set('photoFit', v === 'contain' ? 'contain' : 'cover')} data={[{ value: 'cover', label: 'Cover (crop to fill)' }, { value: 'contain', label: 'Contain (whole photo)' }]} localizeOptionLabels />
       </Field>
 
       <Field label="QR code address" helper="Camera draws the QR code. Where it points: an https address (https:// is added when you leave it out).">

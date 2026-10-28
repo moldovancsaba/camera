@@ -6,10 +6,11 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { translate, type UiLanguage } from '@/lib/i18n';
-import { browserLanguage } from '@/lib/i18n/browser';
+import { translate } from '@/lib/i18n';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 import { Button, Card, Center, Stack, Text } from '@/components/gds/PublicPrimitives';
 
 export default function Error({
@@ -19,11 +20,8 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  // This page sits above the event and does not know its language: the browser's own decides (Hungarian for a Hungarian browser, else English; issue 352).
-  const [language, setLanguage] = useState<UiLanguage>('en');
-  useEffect(() => {
-    setLanguage(browserLanguage(typeof navigator !== 'undefined' ? navigator.languages ?? [navigator.language] : []));
-  }, []);
+  const language = useUiLanguage();
+  const direction = uiLanguageDirection(language);
   useEffect(() => {
     console.error('Application error:', error);
     // Beacon the crash to the server so it lands in structured logs / alerting
@@ -52,6 +50,7 @@ export default function Error({
   }, [error]);
 
   return (
+    <div lang={language} dir={direction}>
     <Center mih="100dvh" p="md">
       <Card withBorder radius="xl" p="xl" maw={560} w="100%">
         <Stack gap="md" align="center">
@@ -60,7 +59,7 @@ export default function Error({
           {translate(language, 'errorPage.title')}
         </Text>
         <Text c="dimmed" ta="center">
-          {error.message || translate(language, 'errorPage.fallback')}
+          {translate(language, 'errorPage.fallback')}
         </Text>
 
         <Stack gap="sm" w="100%">
@@ -80,5 +79,6 @@ export default function Error({
         </Stack>
       </Card>
     </Center>
+    </div>
   );
 }

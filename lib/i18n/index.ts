@@ -1,21 +1,49 @@
-/**
- * The language of the user interface of an event (camera#352): English by default, Hungarian for MTK. The event has one `uiLanguage`; every default text
- * of the journey comes from the dictionary of that language, and a text an editor wrote for the event wins (main rule 18). Pure and DOM-free; used by
- * server and client code alike (the client reads the language from the context set in the capture layout, components/i18n/UiLanguageProvider.tsx).
- */
+/** Canonical UI locales and message dictionaries shared by server and client. */
 
 import { en, type MessageKey } from '@/lib/i18n/messages.en';
 import { hu } from '@/lib/i18n/messages.hu';
+import { de } from '@/lib/i18n/messages.de';
+import { it } from '@/lib/i18n/messages.it';
+import { ptBR } from '@/lib/i18n/messages.pt-BR';
+import { ptPT } from '@/lib/i18n/messages.pt-PT';
+import { es } from '@/lib/i18n/messages.es';
+import { fr } from '@/lib/i18n/messages.fr';
+import { ru } from '@/lib/i18n/messages.ru';
+import { zhHans } from '@/lib/i18n/messages.zh-Hans';
+import { zhHant } from '@/lib/i18n/messages.zh-Hant';
+import { ro } from '@/lib/i18n/messages.ro';
+import { pl } from '@/lib/i18n/messages.pl';
+import { sk } from '@/lib/i18n/messages.sk';
+import { hr } from '@/lib/i18n/messages.hr';
+import { sl } from '@/lib/i18n/messages.sl';
+import { bg } from '@/lib/i18n/messages.bg';
+import { tr } from '@/lib/i18n/messages.tr';
+import { ar } from '@/lib/i18n/messages.ar';
+import { hi } from '@/lib/i18n/messages.hi';
+import { ka } from '@/lib/i18n/messages.ka';
+import { srCyrl } from '@/lib/i18n/messages.sr-Cyrl';
+import { srLatn } from '@/lib/i18n/messages.sr-Latn';
 import type { TextOverrides } from '@/lib/i18n/overrides';
 
-export const UI_LANGUAGES = ['en', 'hu'] as const;
+export const UI_LANGUAGES = [
+  'en', 'hu', 'de', 'it', 'pt-BR', 'pt-PT', 'es', 'fr', 'ru', 'zh-Hans', 'zh-Hant',
+  'ro', 'pl', 'sk', 'hr', 'sl', 'bg', 'tr', 'ar', 'hi', 'ka', 'sr-Cyrl', 'sr-Latn',
+] as const;
 export type UiLanguage = (typeof UI_LANGUAGES)[number];
 export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en';
-export const UI_LANGUAGE_LABELS: Record<UiLanguage, string> = { en: 'English', hu: 'Magyar (Hungarian)' };
+export const UI_LANGUAGE_LABELS: Record<UiLanguage, string> = {
+  en: 'English', hu: 'Magyar', de: 'Deutsch', it: 'Italiano', 'pt-BR': 'Português (Brasil)', 'pt-PT': 'Português (Portugal)',
+  es: 'Español', fr: 'Français', ru: 'Русский', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文', ro: 'Română', pl: 'Polski',
+  sk: 'Slovenčina', hr: 'Hrvatski', sl: 'Slovenščina', bg: 'Български', tr: 'Türkçe', ar: 'العربية', hi: 'हिन्दी', ka: 'ქართული',
+  'sr-Cyrl': 'Српски (ћирилица)', 'sr-Latn': 'Srpski (latinica)',
+};
 
 export type { MessageKey };
 
-const DICTIONARIES: Record<UiLanguage, Record<MessageKey, string>> = { en, hu };
+export const DICTIONARIES: Record<UiLanguage, Record<MessageKey, string>> = {
+  en, hu, de, it, 'pt-BR': ptBR, 'pt-PT': ptPT, es, fr, ru, 'zh-Hans': zhHans, 'zh-Hant': zhHant,
+  ro, pl, sk, hr, sl, bg, tr, ar, hi, ka, 'sr-Cyrl': srCyrl, 'sr-Latn': srLatn,
+};
 
 /** A stored language, or English when it is missing or not one we have. */
 export function normalizeUiLanguage(value: unknown): UiLanguage {
