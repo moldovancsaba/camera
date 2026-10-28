@@ -17,6 +17,8 @@ import {
 } from '@/lib/gds/tokens/colors';
 import { normalizeStageAspectInput } from '@/lib/slideshow/stage-aspect';
 import { parseScreenDesign } from '@/lib/slideshow/screen-design';
+import { isTrackedQrForEvent } from '@/lib/short-links/slideshow-qr';
+import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { logWarn } from '@/lib/observability/logger';
 import { scheduleWelcomeScreen } from '@/lib/screen/welcome-screen-store';
 import {
@@ -341,6 +343,19 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
         return NextResponse.json(
           { error: 'Forbidden', message: 'Partner-level Events manager access is required' },
           { status: 403 }
+        );
+      }
+    }
+    const savedDesign = updates.screenDesign as { qr?: { url?: unknown } } | null | undefined;
+    if (savedDesign?.qr?.url !== undefined) {
+      const event = await db.collection(COLLECTIONS.EVENTS).findOne(
+        { eventId: existing.eventId },
+        { projection: { _id: 1 } },
+      );
+      if (!event || !(await isTrackedQrForEvent(db, event._id.toString(), savedDesign.qr.url, defaultGoShortOrigin()))) {
+        return NextResponse.json(
+          { error: 'Use an active QR-kind tracked link for this event. Its own short URL is counted as a regular link, not as a QR scan.' },
+          { status: 400 },
         );
       }
     }

@@ -109,7 +109,7 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { 
         <Select value={draft.photoFit} onChange={(v) => set('photoFit', v === 'contain' ? 'contain' : 'cover')} data={[{ value: 'cover', label: 'Cover (crop to fill)' }, { value: 'contain', label: 'Contain (whole photo)' }]} localizeOptionLabels />
       </Field>
 
-      <Field label="QR code address" helper="Camera draws the QR code. Where it points: an https address (https:// is added when you leave it out).">
+      <Field label="QR code address" helper="Use an active QR-kind tracked link for this event so scans are counted as QR visits. The event’s own short URL is counted as a regular link. https:// is added when omitted.">
         <TextInput value={draft.qrUrl} onChange={(e) => set('qrUrl', e.target.value)} placeholder="https://go.messmass.com/…" />
       </Field>
       <SimpleGrid cols={{ base: 2, sm: 4 }}>
