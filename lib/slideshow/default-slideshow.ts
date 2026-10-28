@@ -20,6 +20,7 @@ import { DEFAULT_STAGE, renderStageOverlay, stagePalette } from '@/lib/screen/de
 import { chooseStageBackground, storeStagePick, type StageBackgroundDeps } from '@/lib/screen/stage-background';
 import { chooseQrText, storeQrTextPick } from '@/lib/library/qr-texts';
 import { createShortLink, listShortLinks } from '@/lib/short-links/store';
+import { repairDefaultSlideshowQr } from '@/lib/short-links/slideshow-qr';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { loadEventTheme } from '@/lib/theme/load';
 
@@ -66,7 +67,11 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
   if (!eventUuid || !mongoId) return { ok: false, reason: 'The event has no id.' };
 
   const existing = await findDefaultSlideshow(db, eventUuid);
-  if (existing) return { ok: true, slideshowId: String(existing.slideshowId), created: false };
+  if (existing) {
+    const repaired = await repairDefaultSlideshowQr(db, event, existing, deps.origin(), deps.now());
+    if (!repaired.ok) return repaired;
+    return { ok: true, slideshowId: String(existing.slideshowId), created: false };
+  }
 
   // The link: the event's own "Giant screen" QR link when it has one, else a new one. Its slug is the whole address on the screen.
   const links = await listShortLinks(db, mongoId);

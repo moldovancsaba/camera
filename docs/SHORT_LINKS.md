@@ -16,7 +16,9 @@ event's QR scans and link clicks. The link is `go.messmass.com/<slug>` and sends
 
 A count is a person's browser being sent on (`GET /api/go-short/[slug]`, after the redirect is sent), not a different person: a guest who scans twice
 counts twice. Not counted (`lib/short-links/device.ts`): HEAD requests, prefetches, a missing user agent, and chat-app link previews, crawlers, monitors and
-command-line tools. The phone is read from the user agent: Android, iPhone (iPad and iPod too), other.
+command-line tools. The phone is read from the user agent: Android, iPhone (iPad and iPod too), other. QR-versus-link is determined by the configured kind of
+the URL's slug, not by detecting how someone opened it. A QR must use a dedicated active `kind: "qr"` link. If an older QR and a shared link both use the event's
+own short URL, their visits were all recorded as links and cannot be separated after the fact because only daily totals were stored.
 
 ## What messmass gets
 
@@ -45,6 +47,11 @@ QR code as an SVG file (dark modules on a transparent background, any colour wit
 Android / iPhone / other for QR links), a form to add a link, and a switch to turn a link off. Routes: `GET/POST/PATCH /api/admin/events/[id]/short-links`
 and `GET .../[slug]/qr` (viewer to read, manager to change).
 
+The default slideshow QR points to an active tracked `qr` link. When an old default slideshow points the QR at the event's own short URL, the playlist repairs it
+to the event's active "Giant screen" QR link (or creates one if needed). If the event has reached its tracked-link limit and has no active QR link, repair is logged
+and photo playback continues. Screen-design saves reject first-party addresses that are not active QR-kind links for that event. The visible URL text may still
+show the readable event short URL, whose visits remain link visits.
+
 ## Checking it without touching real data
 
 messmass is production, so no test visit is counted on an event linked to messmass (CLAUDE.md section 8). What can be checked safely: a HEAD request on a link
@@ -55,5 +62,6 @@ open the Tracked links panel; the count and the "last sent" time show that the p
 ## Known limits
 
 - Counts are visits, not unique people, and "today" is the UTC day.
+- Historical visits to an event short URL that was also encoded in a QR cannot be reclassified; the aggregate has no per-visit referral/source field.
 - The last visits before a quiet period reach messmass at the next visit or panel opening (no cron).
 - The phone split is by user agent; an in-app browser that hides it counts as `other` (and so is in `visitQrCode` but in neither `qrscan` stat).

@@ -126,7 +126,8 @@ export default function ShortLinksPanel({ eventId }: { eventId: string }) {
         </h3>
         <p style={{ ...muted, margin: '0.5rem 0 0' }}>
           One link per placement (the giant screen, a poster, an email), each counted on its own. A count is a person’s browser being sent on, not a different
-          person: previews made by chat apps, crawlers and prefetches are left out. The totals are added to the event’s QR scans and link clicks in messmass
+          person: previews made by chat apps, crawlers and prefetches are left out. QR versus link is based on the tracked URL’s configured kind, not on detecting how
+          someone opened it. Use a separate QR-kind URL wherever a QR is displayed; older visits through a shared event URL cannot be split later. The totals are added to the event’s QR scans and link clicks in messmass
           {loaded.linkedToMessmass
             ? loaded.lastPush
               ? `; last sent ${new Date(loaded.lastPush).toLocaleString()}.`

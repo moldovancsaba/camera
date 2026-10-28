@@ -8,13 +8,16 @@
  */
 
 import { resolveScreenDesign } from '@/lib/slideshow/screen-design';
+import { repairDefaultSlideshowQr } from '@/lib/short-links/slideshow-qr';
+import { defaultGoShortOrigin } from '@/lib/site-hosts';
+import { scheduleWelcomeScreen } from '@/lib/screen/welcome-screen-store';
 import { loadEventTheme } from '@/lib/theme/load';
 import { brokenAddresses } from '@/lib/media/pictures';
 import { cachedStageTheme } from '@/lib/slideshow/stage-theme';
 import { stageColours } from '@/lib/slideshow/stage-colours';
 import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { ObjectId } from 'mongodb';
+import { ObjectId, type Document } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import {
@@ -248,6 +251,21 @@ export async function GET(
 
     const eventUuid = event.eventId;
     const eventMongoId = event._id!.toString();
+    if (slideshow.isDefault === true) {
+      try {
+        const repaired = await repairDefaultSlideshowQr(db, event as unknown as Document, slideshow, defaultGoShortOrigin());
+        if (repaired.ok && repaired.changed) {
+          const design = slideshow.screenDesign as { qr?: Record<string, unknown> } | undefined;
+          slideshow.screenDesign = { ...design, qr: { ...design?.qr, url: repaired.url } };
+          scheduleWelcomeScreen(event._id!);
+        } else if (!repaired.ok) {
+          logWarn('slideshow.qr_attribution_repair_failed', 'A default slideshow QR could not be assigned an active tracked QR link', { slideshowId, eventId: eventMongoId });
+        }
+      } catch {
+        // A tracking repair must never interrupt photo playback; the next playlist request will retry it.
+        logWarn('slideshow.qr_attribution_repair_failed', 'A default slideshow QR could not be checked for tracked attribution', { slideshowId, eventId: eventMongoId });
+      }
+    }
     const dbg = process.env.NODE_ENV !== 'production';
     if (dbg) {
       console.log(`[Playlist] Slideshow stored event ref: ${slideshow.eventId}`);
