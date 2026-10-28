@@ -1,6 +1,6 @@
 # Camera photo content precheck
 
-**Status:** implemented in this branch; live provider and deployed-preview verification is in progress.
+**Status:** implemented in this branch; live task/model discovery is verified in Preview, and the one-image provider smoke test is in progress.
 **Owner:** Camera.  
 **Boundary:** this is a moderation signal for the existing human Vetting workflow. It does not make Fanmass audience/brand analytics, change publication state, or replace a person's decision.
 
@@ -25,6 +25,8 @@ An event may opt in to a server-side precheck that looks for a bounded set of ex
    ```
 
    It also sends `Authorization: Bearer <CAMERA_MODERATION_API_KEY>` and a stable `Idempotency-Key`. Vercel Preview requests carry `X-Request-Purpose: test`; production requests do not. It never sends the source URL, name, email, Camera photo ID, event ID, or partner ID.
+
+   The shared router's live `/models` response uses an OpenAI-compatible `data` array, plus a `defaults` map; it does not use a top-level `models` array. The client validates the `data` entries and accepts `model: "auto"` so the provider's current task ranking stays authoritative. Live Preview discovery returned `defaults.image_moderation: "qwen3.5:0.8b"` and permitted both `image_moderation` and `image_recognition`. This value is a verification observation, not a model ID Camera pins in code.
 6. Camera stores the remote job ID and source revision on that same submission. It polls `GET /jobs/{id}` within a 42-second worker-run budget and resumes on later cron invocations if the remote job is still queued/running. A global lease and pending-job fence prevent a second Camera photo from being submitted while the first remote outcome is ambiguous.
 7. Before applying a result, Camera checks the submission is still consent-eligible, contact-complete, pending vetting, unerased, and attached to the same photo URL and source/normalized hashes. A stale result is discarded.
 8. Camera validates the result against `camera-moderation.v1`, stores all nine categories and the exact `review_required: true` / `automated_decision: "none"` invariants on the same submission, and shows the advisory signal in the existing one-photo Vetting UI. It then sends authenticated `DELETE /jobs/{id}` to remove the consumed remote result. A missing/expired remote job is already cleaned up; a transient delete failure is logged without discarding Camera's stored result and the provider's five-minute result expiry is the fallback. Camera never writes `reviewStatus` from an AI result. A human uses the existing approve/reject controls.
@@ -90,4 +92,6 @@ Turn **Content precheck** off for the event. New captures stop entering the queu
 
 ## Verification
 
-Local tests cover inventory discovery, `model: auto`, authorization and preview test-purpose headers, idempotency, terminal-result deletion, result-contract validation, one-at-a-time submission, ambiguous POST handling, consent/contact gating, stale-revision discard, and localized reviewer states for every supported UI language. These tests do not prove the shared service's live behavior. Record live `/job-types` and `/models` discovery, selected model, preview deployment, test event and end-to-end result in the matching release note after those checks pass. Never enable precheck on a production event as part of preview verification.
+Local unit tests cover inventory discovery, `model: auto`, authorization and preview test-purpose headers, idempotency, terminal-result deletion, result-contract validation, one-at-a-time submission, ambiguous POST handling, consent/contact gating, stale-revision discard, and localized reviewer states for every supported UI language. These tests do not prove the shared service's live behavior.
+
+The authorized Preview test is scoped to the active, human-vetted `messmass.com - DEMO` event (`6ad77472c1f0642d86070825`). Its content precheck setting is enabled for this test, and it had zero submissions at setup time. Preview requests must name this one event and carry `X-Request-Purpose: test`; the worker processes at most one image and refuses to poll an active job belonging to another event. No existing production event queue is drained. Record the resolved model, nine-category response, cleanup result, Preview deployment and any end-to-end limitation in the matching release note after the provider smoke test completes. A consented test submission is still needed to verify the full Camera capture-to-reviewer path; the neutral provider smoke image is not inserted into Atlas or treated as participant media.

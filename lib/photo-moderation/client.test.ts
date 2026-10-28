@@ -21,7 +21,7 @@ test('discovers the moderation job and a selectable model before using auto, the
     const url = String(input);
     calls.push({ url, init });
     if (url.endsWith('/job-types')) return new Response(JSON.stringify({ job_types: { image_moderation: { enabled: true } } }), { status: 200 });
-    if (url.endsWith('/models')) return new Response(JSON.stringify({ models: [{ id: 'candidate', selectable_for: ['image_moderation'] }] }), { status: 200 });
+    if (url.endsWith('/models')) return new Response(JSON.stringify({ data: [{ id: 'candidate', selectable_for: ['image_moderation'], default_for: ['image_moderation'] }], defaults: { image_moderation: 'candidate' } }), { status: 200 });
     if (url.endsWith('/jobs') && init?.method === 'POST') return new Response(JSON.stringify({ id: 'job-1' }), { status: 202 });
     if (url.endsWith('/jobs/job-1') && init?.method === 'DELETE') return new Response(null, { status: 204 });
     return new Response(JSON.stringify({ id: 'job-1', status: 'running' }), { status: 200 });
@@ -65,7 +65,7 @@ test('refuses submission when the task is not permitted or no model is selectabl
     count += 1;
     return new Response(JSON.stringify(count === 1
       ? { job_types: { image_moderation: { enabled: true } } }
-      : { models: [{ id: 'text-only', selectable_for: ['text'] }] }), { status: 200 });
+      : { data: [{ id: 'text-only', selectable_for: ['text'] }] }), { status: 200 });
   });
   await assert.rejects(noModel.discover(), /no_moderation_model_selectable/);
 });

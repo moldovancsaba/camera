@@ -90,7 +90,11 @@ export class CameraModerationClient {
     const taskMap = object(tasks.body.job_types);
     if (!taskMap || !object(taskMap.image_moderation)) throw new ModerationServiceError('image_moderation_not_permitted', tasks.response.status);
     const inventory = await this.request('/models');
-    const entries = Array.isArray(inventory.body.models) ? inventory.body.models : null;
+    // The shared job router returns its OpenAI-compatible model list in `data`;
+    // accept the earlier `models` envelope as a backwards-compatible shape.
+    const entries = Array.isArray(inventory.body.data)
+      ? inventory.body.data
+      : Array.isArray(inventory.body.models) ? inventory.body.models : null;
     if (!entries) throw new ModerationServiceError('model_inventory_invalid', inventory.response.status);
     const selectable = entries.some((entry) => {
       const model = object(entry);
