@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — original and selected event image exports
+
+- **Added:** event managers can download all originals or framed photos separately, and can export selected originals or framed photos from the Event Gallery.
+- **Safety:** selected exports re-check current gallery consent, approval, erasure and event-visibility rules on the server. Missing retained originals are identified in `_not-included.txt`; framed outputs are never mislabeled as originals when their source is unavailable.
+- **Reliability:** image ZIP downloads have a 20-second per-image request/body timeout, up to three attempts for transient network and server errors, and bounded concurrent fetches. Failures go into `_errors.txt`; missing sources or entries left after the 95-second work budget are listed in `_not-included.txt`, so the route can finalize within its 120-second function allowance.
+- **Verification:** dependency installation completed; `npm run type-check`, focused ESLint on touched files, `npm run gds:check`, and `npm run inventory:check` passed. Unit tests cover rendition resolution, retries and manifests. The E2E suite includes selected-export authorization/eligibility and rendition-filter cases, but was not run because this checkout has no configured local browser/database test environment. No production data or deployment was changed.
+
 ## Unreleased — app-wide locale context and translated admin chrome
 
 - **Added:** the root provider exposes the supported device language on every route. Capture/share routes retain partner default, event fallback, then English when the device preference is unsupported; routes not yet localized keep an English document language for accurate assistive-technology pronunciation.

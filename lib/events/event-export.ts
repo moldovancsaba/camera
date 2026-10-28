@@ -22,6 +22,7 @@ import type { Db } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
+import { originalSourceImageUrl } from '@/lib/submissions/original-image';
 
 export interface EventExportContext {
   /** Mongo _id string of the event. */
@@ -32,7 +33,7 @@ export interface EventExportContext {
   name: string;
 }
 
-interface ExportSubmission {
+export interface ExportSubmission {
   _id?: ObjectId;
   submissionId?: string;
   userEmail?: string;
@@ -41,6 +42,11 @@ interface ExportSubmission {
   originalImageUrl?: string;
   finalImageUrl?: string;
   submissionKind?: 'original' | 'tryon_result';
+  frameId?: string | null;
+  reframe?: unknown;
+  photoReview?: unknown;
+  imageCopies?: unknown;
+  metadata?: { adminGalleryUpload?: boolean; galleryFrame?: boolean };
   userInfo?: { name?: string; email?: string; collectedAt?: string };
   createdAt?: string;
 }
@@ -177,14 +183,54 @@ export function buildEmailRows(submissions: ExportSubmission[]): EventEmailRow[]
  * and the primary image (the result image of a stored try-on result). Duplicate
  * URLs within a single submission are collapsed so a photo is not exported twice.
  */
-export function collectEventImages(submissions: ExportSubmission[]): EventImage[] {
+/**
+ * Resolve a raw, unframed image without ever treating a known composition as an
+ * original. For legacy unframed photos the captured image itself is the source;
+ * framed photos must have a separately retained source or verified backup.
+ */
+export function originalImageUrlForExport(submission: ExportSubmission): string | null {
+  const retained = originalSourceImageUrl(submission);
+  if (retained) return retained;
+
+  const frameId = typeof submission.frameId === 'string' ? submission.frameId.trim().toLowerCase() : '';
+  const hasFrame = Boolean(submission.reframe)
+    || submission.metadata?.galleryFrame === true
+    || Boolean(frameId && frameId !== 'none');
+  if (hasFrame) return null;
+
+  return submission.imageUrl?.trim() || submission.finalImageUrl?.trim() || null;
+}
+
+/** Resolve one requested image rendition from a submission. */
+export function eventImageForSubmission(submission: ExportSubmission, kind: 'original' | 'final'): EventImage | null {
+  const url = kind === 'original'
+    ? originalImageUrlForExport(submission)
+    : submission.finalImageUrl?.trim() || submission.imageUrl?.trim() || null;
+  if (!url) return null;
+  return {
+    submissionId: submission.submissionId ?? submission._id?.toString() ?? '',
+    kind,
+    url,
+    userEmail: submission.userEmail ?? '',
+    userName: submission.userName ?? submission.userInfo?.name ?? '',
+    submissionKind: submission.submissionKind ?? 'original',
+    createdAt: submission.createdAt ?? '',
+  };
+}
+
+export function collectEventImages(submissions: ExportSubmission[], onlyKind?: 'original' | 'final'): EventImage[] {
   const images: EventImage[] = [];
 
   for (const submission of submissions) {
+    if (onlyKind) {
+      const image = eventImageForSubmission(submission, onlyKind);
+      if (image) images.push(image);
+      continue;
+    }
     const submissionId = submission.submissionId ?? submission._id?.toString() ?? '';
     const seen = new Set<string>();
     const ordered: Array<{ kind: ImageKind; url?: string }> = [
-      { kind: 'original', url: submission.originalImageUrl },
+      { kind: 'original', url: originalImageUrlForExport(submission) ?? undefined },
       { kind: 'final', url: submission.finalImageUrl },
       { kind: 'primary', url: submission.imageUrl },
     ];
