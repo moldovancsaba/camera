@@ -415,30 +415,49 @@ export async function loadFanmassEventAnalysisPage(
   const deliveries = pipelineDb.collection(DELIVERY_COLLECTION);
   const submissions = cameraDb.collection(COLLECTIONS.SUBMISSIONS);
 
-  const [totalCameraSubmissions, deletedManually, deletedAutomaticallyNoLogin, deletedAutomaticallyOther, approvedPhotos, approvedWithConsent, approvedConsentExpired, rejectedPhotos, rejectedWithConsent, approvedAwaitingConsent, rejectedAwaitingConsent, rejectedConsentExpired, approvedConsentUnknown, rejectedConsentUnknown, consentBlockedDecisions, consentPendingPhotos, consentExpiredPhotos, consentUnknownPhotos, welcomeRows, eligiblePhotos, eligibleSourceDocs, sourceDocs] = await Promise.all([
-    submissions.countDocuments(eventFilter),
-    submissions.countDocuments({ $and: [eventFilter, { analyticsDeletion: 'manual' }] }),
-    submissions.countDocuments({ $and: [eventFilter, { analyticsDeletion: 'automatic_no_login' }] }),
-    submissions.countDocuments({ $and: [eventFilter, { analyticsDeletion: 'automatic_other' }] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_ELIGIBLE_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_EXPIRED_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }, CONSENT_ELIGIBLE_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_PENDING_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }, CONSENT_PENDING_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }, CONSENT_EXPIRED_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'approved' }, CONSENT_UNKNOWN_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: 'rejected' }, CONSENT_UNKNOWN_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, { reviewStatus: { $in: ['approved', 'rejected'] } }, { $or: [CONSENT_PENDING_FILTER, CONSENT_EXPIRED_FILTER, CONSENT_UNKNOWN_FILTER] }] }),
-    submissions.countDocuments({ $and: [eventFilter, CONSENT_PENDING_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, CONSENT_EXPIRED_FILTER] }),
-    submissions.countDocuments({ $and: [eventFilter, CONSENT_UNKNOWN_FILTER] }),
+  // One event-scoped scan replaces many concurrent countDocuments calls. This
+  // keeps the counts on the same privacy boundary while avoiding a burst of
+  // competing reads on every analysis-page render.
+  const countFacet = (filter?: Document) => [
+    ...(filter ? [{ $match: filter }] : []),
+    { $count: 'count' },
+  ];
+  const [metricRows, welcomeRows, eligibleSourceDocs, sourceDocs] = await Promise.all([
+    submissions.aggregate([
+      { $match: eventFilter },
+      {
+        $facet: {
+          totalCameraSubmissions: countFacet(),
+          deletedManually: countFacet({ analyticsDeletion: 'manual' }),
+          deletedAutomaticallyNoLogin: countFacet({ analyticsDeletion: 'automatic_no_login' }),
+          deletedAutomaticallyOther: countFacet({ analyticsDeletion: 'automatic_other' }),
+          approvedPhotos: countFacet({ reviewStatus: 'approved' }),
+          approvedWithConsent: countFacet({ $and: [{ reviewStatus: 'approved' }, CONSENT_ELIGIBLE_FILTER] }),
+          approvedConsentExpired: countFacet({ $and: [{ reviewStatus: 'approved' }, CONSENT_EXPIRED_FILTER] }),
+          rejectedPhotos: countFacet({ reviewStatus: 'rejected' }),
+          rejectedWithConsent: countFacet({ $and: [{ reviewStatus: 'rejected' }, CONSENT_ELIGIBLE_FILTER] }),
+          approvedAwaitingConsent: countFacet({ $and: [{ reviewStatus: 'approved' }, CONSENT_PENDING_FILTER] }),
+          rejectedAwaitingConsent: countFacet({ $and: [{ reviewStatus: 'rejected' }, CONSENT_PENDING_FILTER] }),
+          rejectedConsentExpired: countFacet({ $and: [{ reviewStatus: 'rejected' }, CONSENT_EXPIRED_FILTER] }),
+          approvedConsentUnknown: countFacet({ $and: [{ reviewStatus: 'approved' }, CONSENT_UNKNOWN_FILTER] }),
+          rejectedConsentUnknown: countFacet({ $and: [{ reviewStatus: 'rejected' }, CONSENT_UNKNOWN_FILTER] }),
+          consentBlockedDecisions: countFacet({
+            $and: [
+              { reviewStatus: { $in: ['approved', 'rejected'] } },
+              { $or: [CONSENT_PENDING_FILTER, CONSENT_EXPIRED_FILTER, CONSENT_UNKNOWN_FILTER] },
+            ],
+          }),
+          consentPendingPhotos: countFacet(CONSENT_PENDING_FILTER),
+          consentExpiredPhotos: countFacet(CONSENT_EXPIRED_FILTER),
+          consentUnknownPhotos: countFacet(CONSENT_UNKNOWN_FILTER),
+          eligiblePhotos: countFacet(eligibleFilter),
+        },
+      },
+    ]).toArray(),
     cameraDb.collection(COLLECTIONS.JOURNEY_DAILY).aggregate([
       { $match: { eventId, name: 'step.transition', key: 'welcome>camera' } },
       { $group: { _id: null, count: { $sum: '$count' } } },
     ]).toArray(),
-    submissions.countDocuments(eligibleFilter),
     submissions.find(eligibleFilter, { projection: { _id: 1 } }).toArray(),
     submissions.find(eligibleFilter, {
       projection: {
@@ -450,6 +469,31 @@ export async function loadFanmassEventAnalysisPage(
       limit: pageSize,
     }).toArray(),
   ]);
+
+  const metrics = metricRows[0] ?? {};
+  const metric = (key: keyof typeof metrics): number => {
+    const rows = metrics[key];
+    return Array.isArray(rows) ? finiteNumber(record(rows[0])?.count) : 0;
+  };
+  const totalCameraSubmissions = metric('totalCameraSubmissions');
+  const deletedManually = metric('deletedManually');
+  const deletedAutomaticallyNoLogin = metric('deletedAutomaticallyNoLogin');
+  const deletedAutomaticallyOther = metric('deletedAutomaticallyOther');
+  const approvedPhotos = metric('approvedPhotos');
+  const approvedWithConsent = metric('approvedWithConsent');
+  const approvedConsentExpired = metric('approvedConsentExpired');
+  const rejectedPhotos = metric('rejectedPhotos');
+  const rejectedWithConsent = metric('rejectedWithConsent');
+  const approvedAwaitingConsent = metric('approvedAwaitingConsent');
+  const rejectedAwaitingConsent = metric('rejectedAwaitingConsent');
+  const rejectedConsentExpired = metric('rejectedConsentExpired');
+  const approvedConsentUnknown = metric('approvedConsentUnknown');
+  const rejectedConsentUnknown = metric('rejectedConsentUnknown');
+  const consentBlockedDecisions = metric('consentBlockedDecisions');
+  const consentPendingPhotos = metric('consentPendingPhotos');
+  const consentExpiredPhotos = metric('consentExpiredPhotos');
+  const consentUnknownPhotos = metric('consentUnknownPhotos');
+  const eligiblePhotos = metric('eligiblePhotos');
 
   // Progress counts must share the exact consent/vetting eligibility boundary
   // used for the photo list, otherwise erased or unapproved work looks live.
