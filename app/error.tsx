@@ -65,7 +65,7 @@ export default function Error({
           {translate(language, 'errorPage.title')}
         </Text>
         <Text c="dimmed" ta="center">
-          {error.message || translate(language, 'errorPage.fallback')}
+          {translate(language, 'errorPage.fallback')}
         </Text>
 
         <Stack gap="sm" w="100%">
