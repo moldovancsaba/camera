@@ -9,9 +9,9 @@ test('one page needs no pager', () => {
   assert.equal(render({ pages: 1, total: 20 }), '');
 });
 
-test('the first page has Next but no Previous link, and says which partners it shows', () => {
+test('the first page has Next but no Previous link, and shows the localized range', () => {
   const html = render();
-  assert.ok(html.includes('1–50 of 255 · page 1 of 6'));
+  assert.ok(html.includes('1–50 of 255 · Page 1 of 6'));
   assert.ok(html.includes('href="/admin/partners?page=2"') && html.includes('rel="next"'));
   assert.equal(html.includes('rel="prev"'), false);
   assert.ok(html.includes('aria-disabled="true"'));
@@ -25,7 +25,7 @@ test('a middle page links both ways; going back to page 1 drops the page from th
 
 test('the last page shows the short last range and has no Next link', () => {
   const html = render({ page: 6 });
-  assert.ok(html.includes('251–255 of 255 · page 6 of 6'));
+  assert.ok(html.includes('251–255 of 255 · Page 6 of 6'));
   assert.equal(html.includes('rel="next"'), false);
   assert.ok(html.includes('href="/admin/partners?page=5"'));
 });
