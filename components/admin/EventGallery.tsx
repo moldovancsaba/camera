@@ -41,6 +41,8 @@ interface SubmissionRecord {
   playCount?: number;
   slideshowPlays?: Record<string, SlideshowPlayInfo | undefined>;
   canReturnToVetting?: boolean;
+  /** An image that is read-only in this manager view and is not eligible for public display. */
+  recoveryOnly?: boolean;
 }
 
 interface SlideshowRecord {
@@ -146,7 +148,7 @@ export default function EventGallery({
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allVisibleIds = useMemo(
-    () => submissions.map((submission) => submissionIdOf(submission)),
+    () => submissions.filter((submission) => !submission.recoveryOnly).map((submission) => submissionIdOf(submission)),
     [submissions]
   );
   const allSelected =
@@ -188,6 +190,7 @@ export default function EventGallery({
   const onGridPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!canManage || event.button !== 0) return;
     const target = event.target as HTMLElement;
+    if (target.closest('[data-gallery-readonly]')) return;
     const onGap = event.target === event.currentTarget;
     if (!onGap && !(selectMode && !target.closest('button, input, select, textarea'))) return;
     dragRef.current = { x: event.clientX, y: event.clientY, before: selectedIds, additive: event.shiftKey || event.metaKey || event.ctrlKey, active: false };
@@ -553,7 +556,7 @@ export default function EventGallery({
         // A press that can start a dragged box must not start a text selection either.
         onMouseDown={(event) => {
           const target = event.target as HTMLElement;
-          if (canManage && (event.target === event.currentTarget || (selectMode && !target.closest('button, input, select, textarea')))) {
+          if (canManage && (event.target === event.currentTarget || (selectMode && !target.closest('button, input, select, textarea, [data-gallery-readonly]')))) {
             event.preventDefault();
             window.getSelection()?.removeAllRanges();
           }
@@ -570,7 +573,7 @@ export default function EventGallery({
           const imageUrl = submission.previewImageUrl || submission.imageUrl || submission.finalImageUrl;
           // Consent-pending photos intentionally have no public share page. Admins still need to inspect
           // their visible gallery thumbnail while the guest finishes the login-page consent step.
-          const viewHref = awaitingConsent ? imageUrl : `/share/${submission._id}`;
+          const viewHref = awaitingConsent || submission.recoveryOnly ? imageUrl : `/share/${submission._id}`;
           const selected = selectedSet.has(submissionId);
           const singleConfirm = removeState.singleConfirmId === submissionId;
           const busy = removeState.busyIds.includes(submissionId);
@@ -597,7 +600,7 @@ export default function EventGallery({
             <a key="view" href={viewHref} target={awaitingConsent ? '_blank' : undefined} rel={awaitingConsent ? 'noopener noreferrer' : undefined} style={{ textDecoration: 'none' }}>
               <SemanticButton action="event-gallery:view-submission" size="xs" variant="secondary">View</SemanticButton>
             </a>,
-            <a
+            ...(!submission.recoveryOnly ? [<a
               key="download"
               href={submission.imageUrl || submission.finalImageUrl || undefined}
               download
@@ -609,9 +612,9 @@ export default function EventGallery({
               <SemanticButton action="event-gallery:download-submission" size="xs" variant="secondary" disabled={!submission.imageUrl && !submission.finalImageUrl}>
                 Download
               </SemanticButton>
-            </a>,
+            </a>] : []),
           ];
-          if (canManage) {
+          if (canManage && !submission.recoveryOnly) {
             if (singleConfirm) {
               actions.push(
                 <SemanticButton
@@ -663,14 +666,15 @@ export default function EventGallery({
           return (
             <div
               key={submissionId}
-              data-gallery-id={submissionId}
+              data-gallery-id={submission.recoveryOnly ? undefined : submissionId}
+              data-gallery-readonly={submission.recoveryOnly ? '' : undefined}
               style={{ outline: selected ? '3px solid var(--mantine-primary-color-filled)' : undefined, outlineOffset: 2, borderRadius: '0.875rem' }}
             >
             <ListingCard
               title={displayName}
               image={
                 <div style={{ position: 'relative' }}>
-                  {canManage ? (
+                  {canManage && !submission.recoveryOnly ? (
                     <input
                       type="checkbox"
                       checked={selected}
@@ -686,7 +690,7 @@ export default function EventGallery({
                     rel={awaitingConsent ? 'noopener noreferrer' : undefined}
                     onClick={(event) => {
                       // With Shift or Ctrl/Cmd held, or in Select mode, a click on the picture selects it instead of opening it.
-                      if (canManage && (selectMode || event.shiftKey || event.metaKey || event.ctrlKey)) {
+                      if (canManage && !submission.recoveryOnly && (selectMode || event.shiftKey || event.metaKey || event.ctrlKey)) {
                         event.preventDefault();
                         selectClick(submissionId, event.shiftKey);
                       }
