@@ -47,7 +47,7 @@ The current service contract has exactly these nine category keys:
 
 Each category is `detected`, `not_detected`, or `uncertain`. The overall signal is `flagged`, `uncertain`, or `no_flags_detected`. The versioned contract also requires `review_required: true` and `automated_decision: "none"`; inconsistent or partial output is rejected. There is no numeric confidence score in the current contract.
 
-The one-photo Vetting screen displays the state, detected category names, and bounded evidence text supplied by the service. React renders evidence as text, not HTML. The service may be wrong: false positives and false negatives are possible. Hate-word coverage is English-only according to the service policy. The nine categories are the API's current capability, not a promise to identify every prohibited image or every local legal category. This precheck does not identify people, teams, brands, merchandise, emotion, age, or other Fanmass analytics.
+The one-photo Vetting screen displays the state, detected category names, and bounded evidence text supplied by the service. Status, category labels, and the human-review warning use the event's resolved UI language and have draft strings for all 23 supported locale variants. Provider-supplied evidence is shown as returned and is not machine-translated. React renders evidence as text, not HTML. The service may be wrong: false positives and false negatives are possible. Hate-word coverage is English-only according to the service policy. The nine categories are the API's current capability, not a promise to identify every prohibited image or every local legal category. This precheck does not identify people, teams, brands, merchandise, emotion, age, or other Fanmass analytics.
 
 ## Queue, retries, and failure behavior
 
@@ -90,4 +90,4 @@ Turn **Content precheck** off for the event. New captures stop entering the queu
 
 ## Verification
 
-Local tests cover inventory discovery, `model: auto`, idempotency headers, result-contract validation, one-at-a-time submission, ambiguous POST handling, consent/contact gating, and stale-revision discard. This is a local mocked end-to-end flow, not proof of the shared service's live behavior. The owner has not provisioned `CAMERA_MODERATION_API_KEY` in the authorized local environment; live `/job-types`, `/models`, provider E2E, deployed cron, and production event checks remain open.
+Local tests cover inventory discovery, `model: auto`, idempotency headers, result-contract validation, one-at-a-time submission, ambiguous POST handling, consent/contact gating, stale-revision discard, and localized reviewer states for every supported UI language. This is a local mocked end-to-end flow, not proof of the shared service's live behavior. The owner has not provisioned `CAMERA_MODERATION_API_KEY` in the authorized local environment; live `/job-types`, `/models`, provider E2E, deployed cron, and production event checks remain open.

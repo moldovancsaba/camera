@@ -146,7 +146,7 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, embedded 
     );
   }
 
-  const moderationNotice = photoPrecheckNotice(item.precheck);
+  const moderationNotice = photoPrecheckNotice(item.precheck, language);
 
   return (
     <section lang={language} dir={uiLanguageDirection(language)} style={{ display: 'grid', gap: '1rem', maxWidth: 1500 }} data-photo-review-stage>
