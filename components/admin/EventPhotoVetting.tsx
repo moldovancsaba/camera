@@ -18,6 +18,9 @@ import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
+import type { UiLanguage } from '@/lib/i18n';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
 
 const TAB_LABEL: Record<QueueStatus, string> = { pending_review: 'Waiting', rejected: 'Rejected', approved: 'Approved' };
 
@@ -32,9 +35,11 @@ interface EventPhotoVettingProps {
   /** `list` shows the Waiting list as cards instead of the one-at-a-time screen. */
   view?: 'list';
   canChangeSetting: boolean;
+  language: UiLanguage;
 }
 
-export default async function EventPhotoVetting({ db, eventMongoId, event, status, page, view, canChangeSetting }: EventPhotoVettingProps) {
+export default async function EventPhotoVetting({ db, eventMongoId, event, status, page, view, canChangeSetting, language }: EventPhotoVettingProps) {
+  const t = (source: string) => adminOperationText(source, language);
   const eventUuid = String(event.eventId ?? '');
   // The words of the event first: the photos of the queue are read with them (a custom option would otherwise make a marked photo read as unmarked).
   const vocabulary = await loadEventVocabulary(db, event);
@@ -57,16 +62,16 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
   const listHref = `/admin/events/${eventMongoId}/vetting?photos=pending_review&view=list`;
 
   return (
-    <Stack gap="lg" data-event-photo-vetting>
+    <Stack gap="lg" lang={language} dir={uiLanguageDirection(language)} data-event-photo-vetting>
       <div>
-        <Title order={2}>Photos</Title>
+          <Title order={2}>{t('Photos')}</Title>
         <Text size="sm" c="dimmed">
           While photo vetting is on, the photos of {String(event.name ?? 'this event')} wait here for approval. Approving puts the frame on the photo, publishes it and emails the user the link.
         </Text>
       </div>
 
-      <Link href={`/admin/events/${eventMongoId}/analysis`} style={{ alignSelf: 'start', fontSize: '0.875rem' }} data-photo-analysis-link>
-        Open Fanmass photo analysis
+        <Link href={`/admin/events/${eventMongoId}/analysis`} style={{ alignSelf: 'start', fontSize: '0.875rem' }} data-photo-analysis-link>
+        {t('Open Fanmass photo analysis')}
       </Link>
 
       {counts.consentPending > 0 || counts.consentUnknown > 0 ? (
@@ -128,7 +133,7 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
                     color: active ? 'var(--mantine-color-blue-7)' : 'var(--mantine-color-dimmed)',
                   }}
                 >
-                  {TAB_LABEL[tab]} ({counts[tab]})
+                  {t(TAB_LABEL[tab])} ({counts[tab]})
                 </Link>
               );
             })}

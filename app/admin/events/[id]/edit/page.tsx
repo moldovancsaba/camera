@@ -417,6 +417,7 @@ export default function EditEventPage({
               label="Button size"
               description="Controls the primary action button size across this event app."
               data={EVENT_BUTTON_SIZE_OPTIONS}
+              localizeOptionLabels
               value={buttonSize}
               onChange={(value) => setButtonSize((value as EventButtonSize) || DEFAULT_EVENT_BUTTON_SIZE)}
             />

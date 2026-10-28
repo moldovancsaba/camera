@@ -6,6 +6,7 @@ import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { isQueueStatus, type QueueStatus } from '@/lib/photo-vetting/queue';
+import { initialUiLanguages } from '@/lib/i18n/server-language';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,10 +44,11 @@ export default async function EventVettingTab({
   if (!event) notFound();
 
   const globalAdmin = isGlobalAdminSession(session);
+  const { interfaceLanguage } = await initialUiLanguages();
 
   return (
     <div style={{ display: 'grid', gap: '2.5rem' }}>
-      <EventPhotoVetting db={db} eventMongoId={id} event={event as { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown } }} status={photoStatus} page={page} view={view === 'list' ? 'list' : undefined} canChangeSetting={globalAdmin} />
+      <EventPhotoVetting db={db} eventMongoId={id} event={event as { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown } }} status={photoStatus} page={page} view={view === 'list' ? 'list' : undefined} canChangeSetting={globalAdmin} language={interfaceLanguage} />
     </div>
   );
 }

@@ -2,6 +2,9 @@
 
 import { EditorScaffold, WorkspaceHeader } from '@sovereignsquad/gds-admin/client';
 import type { ReactNode } from 'react';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 
 interface AdminEditorScaffoldProps {
   breadcrumbs?: ReactNode;
@@ -31,12 +34,16 @@ export default function AdminEditorScaffold({
   maxWidth = 960,
 }: AdminEditorScaffoldProps) {
   const resolvedForm = form ?? children;
+  const language = useUiLanguage();
+  const ui = (text: string | undefined) => text === undefined ? undefined : adminOperationText(text, language);
+  const headerCopy = [eyebrow, title, description].filter((text): text is string => Boolean(text?.trim()));
+  const headerIsLocalized = headerCopy.length > 0 && headerCopy.every((text) => ui(text) !== text);
 
   return (
-    <div style={{ marginInline: 'auto', maxWidth }}>
+    <div dir={uiLanguageDirection(language)} style={{ marginInline: 'auto', maxWidth }}>
       <EditorScaffold
         context={breadcrumbs}
-        header={<WorkspaceHeader eyebrow={eyebrow} title={title} description={description} />}
+        header={<div lang={headerIsLocalized ? language : undefined} dir={uiLanguageDirection(language)}><WorkspaceHeader eyebrow={ui(eyebrow)} title={ui(title) ?? title} description={ui(description)} /></div>}
         form={resolvedForm}
         preview={preview}
         settings={settings}

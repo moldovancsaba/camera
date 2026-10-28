@@ -3,29 +3,26 @@
 /**
  * Event export controls
  *
- * Download controls on the event detail page for:
- * - all email addresses collected against the event (deduplicated CSV)
- * - all images related to the event (URL CSV always; ZIP of files when small enough)
+ * Download controls on the event detail page for event email addresses and images.
  *
  * Downloads are plain GET links; the API routes set Content-Disposition so the
- * browser saves the file. The ZIP endpoint is capped server-side, so the hint
- * points larger events to the CSV.
+ * browser saves the file. The ZIP endpoint is capped server-side.
  */
 
 import { Button, Card, Group, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
+import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 
 export default function EventExportControls({ eventId }: { eventId: string }) {
+  const language = useUiLanguage();
+  const t = (source: string) => adminOperationText(source, language);
   const base = `/api/admin/events/${eventId}/export`;
 
   return (
-    <Card withBorder radius="lg" padding="lg">
+    <Card lang={language} dir={uiLanguageDirection(language)} withBorder radius="lg" padding="lg">
       <Stack gap="md">
-        <div>
-          <Title order={3}>Exports</Title>
-          <Text c="dimmed" size="sm">
-            Download the email addresses and images collected for this event.
-          </Text>
-        </div>
+        <Title order={3}>{t('Exports')}</Title>
 
         <div
           style={{
@@ -37,13 +34,11 @@ export default function EventExportControls({ eventId }: { eventId: string }) {
           <Card padding="md" radius="md" withBorder>
             <Stack gap="sm">
               <div>
-                <Text fw={700}>Email addresses</Text>
-                <Text c="dimmed" size="sm">
-                  Deduplicated list of every address collected from SSO sign-ins and the guest form.
-                </Text>
+                <Text fw={700}>{t('Email addresses')}</Text>
+                <Text c="dimmed" size="sm">{t('Download collected email addresses as CSV.')}</Text>
               </div>
               <Button component="a" href={`${base}/emails`} variant="light">
-                Download CSV
+                {t('Download CSV')}
               </Button>
             </Stack>
           </Card>
@@ -51,18 +46,15 @@ export default function EventExportControls({ eventId }: { eventId: string }) {
           <Card padding="md" radius="md" withBorder>
             <Stack gap="sm">
               <div>
-                <Text fw={700}>Images</Text>
-                <Text c="dimmed" size="sm">
-                  Originals and finals. The CSV lists every image URL; the ZIP
-                  bundles the actual files (smaller events only).
-                </Text>
+                <Text fw={700}>{t('Images')}</Text>
+                <Text c="dimmed" size="sm">{t('Download original and final images. CSV lists URLs; ZIP includes files for smaller events.')}</Text>
               </div>
               <Group grow>
                 <Button component="a" href={`${base}/images?format=csv`} variant="light">
-                  URL CSV
+                  {t('URL CSV')}
                 </Button>
                 <Button component="a" href={`${base}/images?format=zip`} variant="default">
-                  ZIP
+                  {t('ZIP')}
                 </Button>
               </Group>
             </Stack>

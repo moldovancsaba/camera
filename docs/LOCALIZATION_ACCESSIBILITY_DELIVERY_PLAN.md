@@ -1,6 +1,6 @@
 # Camera localization and accessibility delivery plan
 
-**Status:** Localization foundation, admin navigation/account shell, and 111 shared admin page phrases implemented on 2026-10-28. Full route migration, reviewed translations, and WCAG 2.2 AA evidence remain open. See [UI_LANGUAGE.md](./UI_LANGUAGE.md) and [LOCALIZATION_TRANSLATION_REVIEW.md](./LOCALIZATION_TRANSLATION_REVIEW.md) for exact coverage and translation provenance.
+**Status:** Localization foundation, admin navigation/account shell, 111 shared admin page phrases, 86 review/Fanmass phrases, and 21 common admin controls implemented as machine-drafted copy on 2026-10-28. Vetting/Fanmass review, shared editor controls, pager, and event export surfaces are connected. Full route migration, native review, legal approval, and WCAG 2.2 AA evidence remain open. See [UI_LANGUAGE.md](./UI_LANGUAGE.md) and [LOCALIZATION_TRANSLATION_REVIEW.md](./LOCALIZATION_TRANSLATION_REVIEW.md) for exact coverage and translation provenance.
 **Scope:** Camera guest journeys, public/share surfaces, partner/event setup, and Camera administration, including user-visible status, analytics, error, and notification copy.
 **Quality target:** WCAG 2.2 Level AA across supported routes, locales, and responsive layouts.
 
@@ -19,14 +19,14 @@ The application will use one locale-resolution and message-formatting contract o
 - `lib/i18n/index.ts` now registers the requested locales, both Chinese scripts, both Portuguese regions, and both Serbian scripts. The English source catalog has 253 keys; each locale catalog has matching typed keys.
 - `lib/i18n/locale-negotiation.ts` parses weighted `Accept-Language` preferences and matches BCP 47 region/script variants. Capture and public share resolve a supported device language first, then partner default, then event fallback, then English.
 - `app/layout.tsx` exposes the supported device locale through the root provider; capture/share use partner default, event fallback, then English when the device preference is unsupported. The server document uses the resolved locale only on localized capture/share routes; other routes keep English document metadata until their page copy is migrated. `proxy.ts` continues to preserve the existing auth, OAuth, and short-link behaviors while forwarding the pathname. Localized regions set their own `lang` and `dir`.
-- The shared admin navigation and account shell labels are translated in all 23 registered locale variants and have a coverage test. This is app chrome only; admin page bodies and operational surfaces remain unlocalized.
+- The shared admin navigation/account shell, shared admin list/dashboard vocabulary, vetting/Fanmass operations vocabulary, and common editor-control vocabulary have drafts in all 23 registered locale variants. Review pages, common fields/buttons/options, pagination, and event exports use these catalogs. This improves selected routes but does not translate all admin page bodies or operational copy.
 - Partner/event `uiLanguage` schemas and API validators use the shared registry. The text and email legal editors can select the supported locale set; date and email-preview formatting use the selected locale.
 - Structural tests check locale/key parity, nonempty strings, interpolation marker parity, locale matching, and language-setting API acceptance.
 
 ### Remaining gaps and risk
 
 - The 21 new dictionaries are machine-translated drafts, not native-reviewed copy. Georgian retains English in five long e-mail bodies. Legal, consent, privacy, and safety copy has no qualified translation approval; see `docs/LOCALIZATION_TRANSLATION_REVIEW.md`.
-- The catalog contains 253 keys, not every visible string in Camera. Most admin, vetting, analysis, reporting, library, and some API/error surfaces still contain hard-coded English. A route/component string inventory and migration are still required.
+- The guest catalog contains 253 keys and shared admin catalogs contain 218 phrases; neither is a complete inventory of every visible string in Camera. Analytics/report pages, many event/gallery/library forms, page-specific descriptions, API/error copy, and other admin surfaces still contain hard-coded English. A route/component inventory and migration are still required.
 - No full WCAG 2.2 AA or route-by-route axe audit was completed. Arabic RTL layout, font glyph/shaping coverage, screen-reader pronunciation, keyboard/touch, zoom/reflow, contrast, focus behavior, and real-device checks remain unverified.
 - There is no visitor language picker or persisted manual preference. Current public event language resolution is device-first as requested; partner/event settings are fallback values.
 - Timezone behavior is not fully independent yet: Hungarian share timestamps explicitly use Budapest, while other locales use the runtime default. Events have no canonical timezone field.

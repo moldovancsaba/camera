@@ -198,7 +198,7 @@ export default function ShortLinksPanel({ eventId }: { eventId: string }) {
             disabled={busy || full}
             required
           />
-          <Select label="Kind" data={KINDS} value={kind} onChange={(value) => setKind(value ?? 'qr')} allowDeselect={false} disabled={busy || full} />
+          <Select label="Kind" data={KINDS} localizeOptionLabels value={kind} onChange={(value) => setKind(value ?? 'qr')} allowDeselect={false} disabled={busy || full} />
           <TextInput
             label="Slug (optional)"
             description="The end of the address. Leave empty for a short random one, which keeps a QR code coarse and easy to scan."

@@ -3,6 +3,8 @@
 **Snapshot:** 2026-10-28
 **Guest catalog:** 253 message keys from `lib/i18n/messages.en.ts`
 **Shared admin page catalog:** 111 source phrases from `lib/i18n/admin-pages.ts`
+**Admin operations catalog:** 86 source phrases from `lib/i18n/admin-operations.ts`
+**Common admin controls catalog:** 21 source phrases from `lib/i18n/admin-common.ts`
 **Locale variants:** 23 (`en`, `hu`, `de`, `it`, `pt-BR`, `pt-PT`, `es`, `fr`, `ru`, `zh-Hans`, `zh-Hant`, `ro`, `pl`, `sk`, `hr`, `sl`, `bg`, `tr`, `ar`, `hi`, `ka`, `sr-Cyrl`, `sr-Latn`)
 
 ## Provenance and status
@@ -13,6 +15,7 @@
 - Placeholder parity, catalog key parity, and non-empty string checks are automated. Those checks detect structural defects; they do not establish translation accuracy, tone, cultural suitability, or legal validity.
 - A machine translation must never be treated as approval for consent, privacy, safety, or legal text. Have a qualified translator and the responsible privacy/legal reviewer approve those strings for each launch jurisdiction.
 - The 111 shared admin phrases are additional machine-translation drafts for repeated list, dashboard, login, event-empty-state, and database-alert copy. This catalog is not a complete inventory of admin UI text; page-specific literals remain outside it.
+- The 86 operation phrases and 21 common control phrases are additional machine-drafted translations used in vetting, Fanmass photo review, shared editor controls, pagination, and event exports. Shared input wrappers translate exact catalog matches only. Unmatched page copy remains in its authored language; it is not silently guessed or transformed.
 
 ## Launch readiness
 
@@ -20,4 +23,4 @@
 
 ## What is outside the catalog
 
-The 253-key catalog is not an inventory of every visible string in Camera. Most admin, vetting, analysis, reporting, library, and some error/API surfaces still contain hard-coded English. These need a route/component inventory and explicit key migration before the application can claim all-screen translation coverage.
+The catalogs are not an inventory of every visible string in Camera. Analytics/report pages, many event/gallery/library forms, page-specific descriptions, API/error copy, and other admin surfaces still contain hard-coded English. These need a route/component inventory and explicit key migration before the application can claim all-screen translation coverage. The shared-control work does not close those gaps.
