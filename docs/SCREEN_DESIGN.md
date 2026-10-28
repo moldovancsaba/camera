@@ -12,11 +12,15 @@ the player makes the stage a size container and the sizes are `cqh`/`%` units.
 
 | Part | Field | Notes |
 |---|---|---|
-| Overlay picture | `overlayImageUrl` | A 1920×1080 PNG drawn over the whole stage, transparent where the photos play. https only. Chosen in the editor with the picture picker, from the images library of the slideshow's event (PNG, WebP or SVG: a JPEG cannot be transparent), uploaded there, or pasted (docs/LIBRARIES.md); stored as the plain address. |
+| Overlay picture | `overlayImageUrl` | A 1920×1080 PNG drawn over the whole stage, transparent where the photos play. https only. Chosen with the picture picker from the partner library or uploaded into the event Images library (PNG, WebP or SVG: a JPEG cannot be transparent), or pasted; stored as the plain address (docs/LIBRARIES.md). |
 | Photo window | `window {left, top, width, height}` | Where the photos play. The photos are cropped to it (`photoFit: cover`) or shown whole (`contain`). The overlay's own rounded corners and border cover the edge of the photos. |
 | QR code | `qr {url, x, y, size, color}` | `url` is where it points (https, up to 300 characters), `x`/`y` its top left corner, `size` its side as % of the stage **width**. The server draws it as an SVG of its dark modules (level M correction), by default white, so it is light on the dark overlay like the designers' example (a QR reader that reads inverted codes scans it; a phone camera does). |
 | Texts | `texts[] {text, x, y, width, size, align, color}` | Single line, up to 8, each at most 120 characters; `size` is % of the stage height; white with a soft shadow by default. |
 | Font | `fontFamily` (optional) | The texts are written in the event's own font, from its messmass report style (a Google font, or the style's custom font file), loaded by the player. A `fontFamily` set on the design replaces it with a Google font; leave it out. |
+
+## Failover background image
+
+`Slideshow.backgroundImageUrl` is the picture behind the gradient and slide photos when the playlist is empty or letterboxed. The slideshow editor uses the event Images picker: the manager can choose an image already in the partner library or upload it into the event Images library, even before creating the slideshow. The slideshow stores the selected URL and can be cleared to return to the gradient. It is not a partner default; each event's slideshow makes its own choice.
 
 ## MTK x Vasas (2026-10-26)
 

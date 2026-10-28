@@ -1,9 +1,9 @@
 /**
  * Admin-only: put the event's frame on photos that were uploaded to its gallery (camera#488, owner report 207).
  *
- * POST { submissionIds: string[] } (at most 25 at a time): for each photo of this event that an editor uploaded and that has no frame yet, the photo is cropped to a frame's
- * shape, the frame is laid over it (the same composition as a guest's photo) and the result replaces the picture; the plain upload is kept as `originalImageUrl`. Guest
- * photos are never touched (they were framed when they were taken), and a photo that already has a frame is skipped, so pressing twice does nothing the second time.
+ * POST { submissionIds: string[], frameKey?: string, replaceExisting?: true } (at most 25 at a time): frame editor-uploaded gallery photos with event frames. Without
+ * `frameKey`, the legacy bulk action randomly frames unframed photos and skips those already framed. With `frameKey`, the chosen frame is applied; `replaceExisting` lets
+ * the per-photo picker replace a prior gallery frame, always recomposing from the retained original. Guest photos are never touched.
  * Answers which photos were framed (with their new picture) and which were skipped and why.
  */
 
@@ -14,7 +14,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { deleteImage, uploadImage } from '@/lib/imgbb/upload';
 import { fetchImageBuffer } from '@/lib/media/image-buffer';
-import { frameGalleryPhoto, loadGalleryFrames, pickGalleryFrame, type GalleryFrameDeps } from '@/lib/gallery/frame';
+import { frameGalleryPhoto, galleryFrameKey, loadGalleryFrames, pickGalleryFrame, type GalleryFrameDeps } from '@/lib/gallery/frame';
 import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { logWarn } from '@/lib/observability/logger';
@@ -42,10 +42,13 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
   const { id: eventMongoId } = await context!.params!;
   if (!ObjectId.isValid(eventMongoId)) throw apiBadRequest('Invalid event id');
 
-  const body = (await request.json().catch(() => null)) as { submissionIds?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { submissionIds?: unknown; frameKey?: unknown; replaceExisting?: unknown } | null;
   const ids = Array.isArray(body?.submissionIds) ? (body!.submissionIds as unknown[]).filter((v): v is string => typeof v === 'string' && ObjectId.isValid(v)) : [];
   if (ids.length === 0) throw apiBadRequest('submissionIds is required');
   if (ids.length > MAX_FRAMED_AT_ONCE) throw apiBadRequest(`At most ${MAX_FRAMED_AT_ONCE} photos at a time`);
+  const requestedFrameKey = typeof body?.frameKey === 'string' ? body.frameKey : null;
+  const replaceExisting = body?.replaceExisting === true;
+  if (replaceExisting && !requestedFrameKey) throw apiBadRequest('replaceExisting requires a selected frame');
 
   const db = await connectToDatabase();
   await assertGlobalAdminOrPartnerEventAccess(db, session, eventMongoId, 'manager');
@@ -55,13 +58,15 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
 
   const frames = await loadGalleryFrames(db, event);
   if (frames.length === 0) throw apiBadRequest('The event has no frame yet. Add one on its Frames page first.');
+  const requestedFrame = requestedFrameKey ? frames.find((frame) => galleryFrameKey(frame) === requestedFrameKey) : null;
+  if (requestedFrameKey && !requestedFrame) throw apiBadRequest('That frame is no longer available. Reload the gallery and choose again.');
 
   const rows = await db
     .collection(COLLECTIONS.SUBMISSIONS)
     .find({ $and: [{ _id: { $in: ids.map((v) => new ObjectId(v)) }, $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] }, PRIVACY_ERASURE_ACTIVE_FILTER] })
     .toArray();
 
-  const framed: Array<{ id: string; imageUrl: string }> = [];
+  const framed: Array<{ id: string; imageUrl: string; frameId: string | null; frameName: string | null; frameVariant: (typeof frames)[number]['variant'] }> = [];
   const skipped: Skipped[] = ids.filter((v) => !rows.some((r) => String(r._id) === v)).map((v) => ({ id: v, reason: 'not a photo of this event' }));
 
   for (const row of rows) {
@@ -71,8 +76,12 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
       skipped.push({ id, reason: 'only photos uploaded here can get a frame; guest photos were framed when they were taken' });
       continue;
     }
-    if (metadata.galleryFrame === true) {
+    if (metadata.galleryFrame === true && !replaceExisting) {
       skipped.push({ id, reason: 'already has a frame' });
+      continue;
+    }
+    if (metadata.galleryFrame === true && typeof row.originalImageUrl !== 'string') {
+      skipped.push({ id, reason: 'the original photo is unavailable, so its frame cannot be changed' });
       continue;
     }
     const sourceUrl = (row.originalImageUrl || row.imageUrl || row.finalImageUrl) as string | undefined;
@@ -81,11 +90,11 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
       continue;
     }
     try {
-      const frame = pickGalleryFrame(frames)!;
+      const frame = requestedFrame ?? pickGalleryFrame(frames)!;
       const photo = await defaultDeps.fetchImage(sourceUrl);
       const upload = await frameGalleryPhoto(photo, frame, `admin-gallery-framed-${eventUuid}-${Date.now()}`, defaultDeps);
       const updated = await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-        { _id: row._id, ...PRIVACY_ERASURE_ACTIVE_FILTER },
+        { _id: row._id, imageUrl: row.imageUrl, ...PRIVACY_ERASURE_ACTIVE_FILTER },
         {
           $set: {
             imageUrl: upload.imageUrl,
@@ -98,7 +107,7 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
             mimeType: upload.mimeType,
             frameId: frame.frameId,
             frameName: frame.frameName,
-            ...(frame.variant ? { frameVariant: frame.variant } : {}),
+            frameVariant: frame.variant,
             'metadata.finalWidth': upload.width,
             'metadata.finalHeight': upload.height,
             'metadata.finalFileSize': upload.fileSize,
@@ -112,13 +121,13 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
       if (updated.matchedCount !== 1) {
         await del(upload.imageUrl).catch(() => undefined);
         await deleteImage(upload.deleteUrl, upload.imageUrl).catch(() => false);
-        skipped.push({ id, reason: 'the photo was removed while its frame was being added' });
+        skipped.push({ id, reason: 'the photo changed or was removed while its frame was being applied' });
         continue;
       }
       runAfterResponse(async () => {
         await ensureScreenPicture(db, { _id: row._id, imageUrl: upload.imageUrl, finalImageUrl: upload.imageUrl });
       });
-      framed.push({ id, imageUrl: upload.imageUrl });
+      framed.push({ id, imageUrl: upload.imageUrl, frameId: frame.frameId, frameName: frame.frameName, frameVariant: frame.variant });
     } catch (error) {
       logWarn('gallery.frame_failed', 'The frame could not be put on a gallery photo', { submissionId: id, error: error instanceof Error ? error.message : String(error) });
       skipped.push({ id, reason: 'the frame could not be added; the photo is unchanged' });

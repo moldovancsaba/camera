@@ -56,15 +56,136 @@ const MAP: Record<UiLanguage, Record<AdminShellText, string>> = Object.fromEntri
   }),
 ) as Record<UiLanguage, Record<AdminShellText, string>>;
 
+/** Event setup's composition review and live-journey notice. */
+const EVENT_EXPERIENCE_TEXT: Record<UiLanguage, Record<string, string>> = {
+  en: {
+    'Preview and test': 'Preview and test',
+    'Open the live guest journey': 'Open the live guest journey',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.',
+  },
+  hu: {
+    'Preview and test': 'Előnézet és teszt',
+    'Open the live guest journey': 'Élő felhasználói folyamat megnyitása',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Éles esemény: az itt beküldött szelfik valódi eseménybeküldések. Az esemény hozzájárulási, ellenőrzési, közzétételi, e-mail- és analitikai beállításai vonatkoznak rájuk.',
+  },
+  de: {
+    'Preview and test': 'Vorschau und testen',
+    'Open the live guest journey': 'Live-Gästestrecke öffnen',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Live-Event: Hier eingereichte Selfies sind echte Event-Einsendungen. Es gelten die Einwilligungs-, Prüf-, Veröffentlichungs-, E-Mail- und Analyse-Einstellungen dieses Events.',
+  },
+  it: {
+    'Preview and test': 'Anteprima e test',
+    'Open the live guest journey': 'Apri il percorso ospite attivo',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Evento attivo: i selfie inviati qui sono contributi reali. Seguono le impostazioni dell’evento per consenso, verifica, pubblicazione, e-mail e analisi.',
+  },
+  'pt-BR': {
+    'Preview and test': 'Visualizar e testar',
+    'Open the live guest journey': 'Abrir a jornada real do participante',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Evento ativo: as selfies enviadas aqui são envios reais. Elas seguem as configurações de consentimento, análise, publicação, e-mail e métricas deste evento.',
+  },
+  'pt-PT': {
+    'Preview and test': 'Pré-visualizar e testar',
+    'Open the live guest journey': 'Abrir o percurso real do participante',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Evento ativo: as selfies enviadas aqui são submissões reais. Seguem as definições de consentimento, revisão, publicação, e-mail e análise deste evento.',
+  },
+  es: {
+    'Preview and test': 'Vista previa y prueba',
+    'Open the live guest journey': 'Abrir el recorrido real del participante',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Evento en directo: los selfies enviados aquí son envíos reales. Siguen la configuración de consentimiento, revisión, publicación, correo y análisis del evento.',
+  },
+  fr: {
+    'Preview and test': 'Prévisualiser et tester',
+    'Open the live guest journey': 'Ouvrir le parcours réel du participant',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Événement en direct : les selfies envoyés ici sont de vraies soumissions. Ils suivent les paramètres de consentement, de vérification, de publication, d’e-mail et d’analyse de cet événement.',
+  },
+  ru: {
+    'Preview and test': 'Предпросмотр и тестирование',
+    'Open the live guest journey': 'Открыть реальный путь участника',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Текущее событие: отправленные здесь селфи являются настоящими заявками. Для них действуют настройки согласия, проверки, публикации, электронной почты и аналитики этого события.',
+  },
+  'zh-Hans': {
+    'Preview and test': '预览和测试',
+    'Open the live guest journey': '打开实际用户流程',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': '当前活动：在此提交的自拍会作为真实活动照片保存，并遵循此活动的同意、审核、发布、邮件和分析设置。',
+  },
+  'zh-Hant': {
+    'Preview and test': '預覽與測試',
+    'Open the live guest journey': '開啟實際使用者流程',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': '目前活動：在此提交的自拍會作為真實活動照片儲存，並遵循此活動的同意、審核、發布、電子郵件與分析設定。',
+  },
+  ro: {
+    'Preview and test': 'Previzualizare și testare',
+    'Open the live guest journey': 'Deschide fluxul real al participantului',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Eveniment activ: selfie-urile trimise aici sunt înscrieri reale. Se aplică setările evenimentului pentru consimțământ, verificare, publicare, e-mail și analiză.',
+  },
+  pl: {
+    'Preview and test': 'Podgląd i testowanie',
+    'Open the live guest journey': 'Otwórz rzeczywistą ścieżkę uczestnika',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Aktywne wydarzenie: przesłane tu selfie są prawdziwymi zgłoszeniami. Obowiązują ustawienia zgód, weryfikacji, publikacji, e-maili i analityki tego wydarzenia.',
+  },
+  sk: {
+    'Preview and test': 'Náhľad a testovanie',
+    'Open the live guest journey': 'Otvoriť skutočný priebeh pre účastníka',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Aktívne podujatie: odoslané selfie sú skutočné príspevky. Platia pre ne nastavenia súhlasov, kontroly, zverejnenia, e-mailov a analýzy tohto podujatia.',
+  },
+  hr: {
+    'Preview and test': 'Pretpregled i testiranje',
+    'Open the live guest journey': 'Otvori stvarni tijek za posjetitelja',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Aktivni događaj: ovdje poslane fotografije stvarne su prijave. Na njih se primjenjuju postavke privola, provjere, objave, e-pošte i analitike ovog događaja.',
+  },
+  sl: {
+    'Preview and test': 'Predogled in preizkus',
+    'Open the live guest journey': 'Odpri dejanski potek za udeleženca',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Aktivni dogodek: tukaj oddani selfiji so resnične oddaje. Zanje veljajo nastavitve soglasij, pregleda, objave, e-pošte in analitike tega dogodka.',
+  },
+  bg: {
+    'Preview and test': 'Преглед и тестване',
+    'Open the live guest journey': 'Отвори реалния процес за участници',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Активно събитие: изпратените тук селфита са реални снимки от събитието. За тях важат настройките за съгласие, проверка, публикуване, имейл и анализ на събитието.',
+  },
+  tr: {
+    'Preview and test': 'Önizleme ve test',
+    'Open the live guest journey': 'Gerçek katılımcı akışını aç',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Canlı etkinlik: Buradan gönderilen özçekimler gerçek etkinlik gönderileridir. Etkinliğin onay, inceleme, yayın, e-posta ve analiz ayarları uygulanır.',
+  },
+  ar: {
+    'Preview and test': 'معاينة واختبار',
+    'Open the live guest journey': 'فتح رحلة المشارك الفعلية',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'فعالية مباشرة: صور السيلفي المرسلة هنا تُحفظ كصور حقيقية للفعالية، وتخضع لإعدادات الموافقة والمراجعة والنشر والبريد الإلكتروني والتحليلات الخاصة بها.',
+  },
+  hi: {
+    'Preview and test': 'पूर्वावलोकन और परीक्षण',
+    'Open the live guest journey': 'वास्तविक अतिथि प्रक्रिया खोलें',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'लाइव इवेंट: यहाँ भेजी गई सेल्फ़ी वास्तविक इवेंट फ़ोटो के रूप में सहेजी जाती हैं। उन पर इस इवेंट की सहमति, समीक्षा, प्रकाशन, ईमेल और विश्लेषण सेटिंग लागू होती हैं।',
+  },
+  ka: {
+    'Preview and test': 'წინასწარი ნახვა და ტესტირება',
+    'Open the live guest journey': 'მონაწილის რეალური გზის გახსნა',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'აქტიური ღონისძიება: აქ გამოგზავნილი სელფები რეალურ ღონისძიების ფოტოებად ინახება. მათზე ვრცელდება ამ ღონისძიების თანხმობის, შემოწმების, გამოქვეყნების, ელფოსტისა და ანალიტიკის პარამეტრები.',
+  },
+  'sr-Cyrl': {
+    'Preview and test': 'Преглед и тестирање',
+    'Open the live guest journey': 'Отвори стварни ток за учесника',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Активан догађај: овде послате селфи фотографије су стварне пријаве. На њих се примењују подешавања сагласности, провере, објављивања, имејла и аналитике овог догађаја.',
+  },
+  'sr-Latn': {
+    'Preview and test': 'Pregled i testiranje',
+    'Open the live guest journey': 'Otvori stvarni tok za učesnika',
+    'Live event: selfies submitted here are real event submissions. They follow this event’s consent, vetting, publication, email and analytics settings.': 'Aktivan događaj: ovde poslate selfi fotografije su stvarne prijave. Na njih se primenjuju podešavanja saglasnosti, provere, objavljivanja, imejla i analitike ovog događaja.',
+  },
+};
+
 export function adminShellText(text: string, language: UiLanguage): string {
   // Preserve the established context-menu casing while sharing its translation
   // with the page title entry in the main navigation.
   if (text === 'Landing pages') return MAP[language]['Landing Pages'];
+  const experienceText = EVENT_EXPERIENCE_TEXT[language]?.[text];
+  if (experienceText) return experienceText;
   return MAP[language][text as AdminShellText] ?? text;
 }
 
 export function hasAdminShellTranslation(text: string): boolean {
-  return ENGLISH.includes(text as AdminShellText) || text === 'Landing pages';
+  return ENGLISH.includes(text as AdminShellText) || text === 'Landing pages' || Object.values(EVENT_EXPERIENCE_TEXT).some((messages) => text in messages);
 }
 
 export const ADMIN_SHELL_ENGLISH_TEXTS: readonly string[] = ENGLISH;

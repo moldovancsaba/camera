@@ -1,19 +1,17 @@
 'use client';
 
 /**
- * Step 0 of the guest journey (camera#308): a picture that fills the screen, two transparent design layers at the bottom, and one clear
- * Start button in the middle. The picture is scaled to cover the screen and centred, so it fills it in portrait and in landscape alike
- * (a square photo is cropped, never stretched). In portrait both layers are as wide as the screen and sit on its bottom edge, so they always have
- * the same scale; the second layer is drawn over the first and carries its design in the bottom right corner. In landscape both are half the width
- * of the screen, the first at the left edge and the second at the right edge, still the same scale (owner, 2026-10-07: full width made them huge
- * on a phone held sideways). The giant screen (when the page has a picture for it) and the Start button are one group in the middle of the screen.
- * What the page says is the button label only: the design carries no text.
+ * Step 0 of the guest journey (camera#308). New compositions use the shared welcome element renderer, which positions image, text and the required
+ * Start button on a responsive 3×3 stage. Pages not yet saved in the visual editor keep the original background/layers/3D screen renderer below, so
+ * opening the editor alone never changes a live page. The page title is for assistive technology; visible copy is authored as text elements.
  */
 
 import Image from 'next/image';
 import FullScreenPage from '@/components/capture/FullScreenPage';
 import LedScreen3D from '@/components/capture/LedScreen3D';
 import PillButton, { safeColour } from '@/components/capture/PillButton';
+import WelcomeCompositionCanvas from '@/components/capture/WelcomeCompositionCanvas';
+import type { WelcomeElement } from '@/lib/events/welcome-composition';
 
 export interface WelcomePageConfig {
   /** Read by screen readers, not shown. */
@@ -25,6 +23,10 @@ export interface WelcomePageConfig {
   /** The picture shown on the giant screen (a CSS 3D LED wall above the Start button); left out, no screen is drawn. */
   screenImageUrl?: string;
   screenImageAlt?: string;
+  /** Present for the visual editor's flexible layout; absent keeps old pages on their exact legacy renderer. */
+  welcomeElements?: WelcomeElement[];
+  /** The event-generated welcome screen remains dynamic when referenced by an element. */
+  eventWelcomeScreenUrl?: string;
   buttonColor?: string;
   buttonTextColor?: string;
   buttonBorderColor?: string;
@@ -55,14 +57,26 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
       <h1 className="sr-only">{config.title}</h1>
       <style>{WELCOME_LAYER_CSS}</style>
 
-      {config.backgroundImageUrl ? (
+      {config.welcomeElements !== undefined ? (
+        <WelcomeCompositionCanvas
+          elements={config.welcomeElements}
+          buttonText={config.buttonText}
+          backgroundImageUrl={config.backgroundImageUrl}
+          eventWelcomeScreenUrl={config.eventWelcomeScreenUrl}
+          buttonColors={{ fill: config.buttonColor, label: config.buttonTextColor, ring: config.buttonBorderColor }}
+          onStart={onNext}
+          style={{ inset: 0, position: 'absolute' }}
+        />
+      ) : null}
+
+      {config.welcomeElements === undefined && config.backgroundImageUrl ? (
         <Image src={config.backgroundImageUrl} alt="" fill unoptimized priority sizes="100vw" style={{ objectFit: 'cover', objectPosition: 'center' }} />
       ) : null}
-      {config.bottomImageUrl ? <Image src={config.bottomImageUrl} alt="" width={600} height={400} unoptimized priority data-welcome-layer="bottom" className="welcome-layer" /> : null}
-      {config.cornerImageUrl ? <Image src={config.cornerImageUrl} alt="" width={600} height={400} unoptimized priority data-welcome-layer="corner" className="welcome-layer welcome-layer-corner" /> : null}
+      {config.welcomeElements === undefined && config.bottomImageUrl ? <Image src={config.bottomImageUrl} alt="" width={600} height={400} unoptimized priority data-welcome-layer="bottom" className="welcome-layer" /> : null}
+      {config.welcomeElements === undefined && config.cornerImageUrl ? <Image src={config.cornerImageUrl} alt="" width={600} height={400} unoptimized priority data-welcome-layer="corner" className="welcome-layer welcome-layer-corner" /> : null}
 
-      {/* The giant screen and the Start button are one group, centred in the visible screen (below the notch area). */}
-      <div
+      {/* Legacy page layout: keep its screen and Start button grouped until the visual composition has been saved. */}
+      {config.welcomeElements === undefined ? <div
         data-welcome-group
         style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 'var(--gds-safe-area-inset-top, 0px)', pointerEvents: 'none' }}
       >
@@ -76,7 +90,7 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
         >
           {config.buttonText}
         </PillButton>
-      </div>
+      </div> : null}
     </FullScreenPage>
   );
 }

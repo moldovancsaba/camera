@@ -171,7 +171,7 @@ the imgbb mirror), on the same three levels: Global Images, the partner's images
   and shows its preview, and an address that does not load says so. The picker has no form of its own, no submit button and no required field, so it
   works inside the editors' forms.
 - **Wired in** at the event level: the four welcome page pictures and the CTA page picture (page editor), the email footer picture (event editor), the
-  overlay of the screen design (slideshow editor). The check of each field is unchanged: the email footer and the overlay take an https address
+  overlay of the screen design and the slideshow failover background (slideshow editor). The check of each field is unchanged: the email footer and the overlay take an https address
   only, the page pictures are stored as given. Two fields are offered only the file types their own uploads took before (`lib/library/image-files.ts`):
   the email footer PNG, JPEG or WebP (email apps do not show SVG), the overlay PNG, WebP or SVG (a JPEG cannot be transparent where the photos play);
   an address of another type typed by hand is kept and marked.
@@ -186,7 +186,7 @@ the imgbb mirror), on the same three levels: Global Images, the partner's images
 | `GET /api/events/<id>/library?kind=images`, `POST .../upload`, `DELETE .../items/<pictureId>?kind=images` | As for frames; an upload is not assigned. |
 
 Built since this was written: the sample selfies (section Sample selfies, issue 540), the stadium backgrounds (section Stadium backgrounds), the move of the MTK pictures into the libraries (LIB-6, camera#369, below) and the QR texts of the default slideshow
-(section QR texts, camera#326). Not done: the slideshow background picture keeps its own upload. The index definitions of `images` (`lib/db/ensure-indexes.ts`) exist only once
+(section QR texts, camera#326). The slideshow failover background now uses the same event Images picker as the screen overlay: choose an image from the event's partner library, upload an event image, or clear the field. The chosen URL remains on the slideshow; no partner default is written or copied. The index definitions of `images` (`lib/db/ensure-indexes.ts`) exist only once
 `npm run db:ensure-indexes` has run; nothing depends on them.
 
 ## Sample selfies (issue 540; owner answers 255 to 260, 2026-10-10)
@@ -231,3 +231,7 @@ The short line above the QR code on the stage of an event's default slideshow, p
 - **Next:** LIB-7 the audit fixes (docs/LIBRARY_AUDIT.md: refuse deleting an item that is in use, paging of long lists).
 - A kind joins by adding it to `LIBRARY_KINDS` and `KIND_META` (`lib/library/kinds.ts`) and its uploader to `lib/library/upload.ts`; a kind that events do not
   assign (images) answers false in `isAssignedKind`.
+
+## Review compositions and test the guest journey
+
+The event Images workspace includes **Preview and test**. The links open the page-order editor, the selfie-frame composition editor, the slideshow workspace, and the event's live `/capture/<eventId>` route. Use the editors' saved previews to inspect each composition and the live capture route to walk the complete guest flow in context. The live route is a real event flow: a selfie submitted there is stored as an event submission and follows that event's normal consent, vetting, publication, email and analytics settings.

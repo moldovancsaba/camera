@@ -1,46 +1,41 @@
 # Welcome step (step 0 of the guest journey)
 
-The first thing a guest sees on an event: a picture that fills the screen, two design layers on the bottom edge and one clear Start button in
-the middle. Start leads on to the next step (the login step of a vetted event, which is placed right after it). Tracked in camera#308.
+The welcome page is the entry card for the guest journey. Its visual composition is configured per event; the Start action advances into the next configured
+step (for a vetted event, the required identity step is inserted as needed). After a photo flow completes, guests return to the camera rather than the welcome
+step. Tracked in camera#308.
 
-## What the page is made of
+## Visual composition editor
 
-Five elements, **each one optional** (owner, 2026-10-07): the giant screen (needs its picture), the left image, the right image, the background picture, and
-the Start button (always there; its text is a setting, so it can be written per event and per language). A setting that is empty means that element is not
-drawn: no screen picture, no giant screen; no left image, no left image; no right image, no right image; no background, no background (the page colour of the
-event shows). Each one stands alone, none needs another. In the admin (event, Pages, Welcome step) the fields carry these names: Start button text,
-Background picture, Left image (bottom left), Right image (bottom right), Giant screen picture (and its description for screen readers), plus the three button
-colours. `WelcomePage.test.tsx` keeps the rule ("every element is optional").
+The event Pages editor has a live composition editor. It uses one stage renderer for the admin preview and guest page, with mobile and desktop preview sizes.
+The composition has a background image plus an ordered list of image, text, and required Start-button elements. Image elements can be selected from the event
+Images library (which also offers partner images) or uploaded into that library. Text objects have editable content, width, size, weight, and colour. The Start
+button has an editable label and event-specific fill, label, and ring colours.
 
-- **Background picture** (`backgroundImageUrl`): scaled to cover the screen and centred, in portrait and in landscape; a square photo is
-  cropped, never stretched.
-- **Bottom layer** (`bottomImageUrl`) and **corner layer** (`cornerImageUrl`): transparent PNGs on the bottom edge, always at one scale. In portrait each is as
-  wide as the screen (the corner layer is drawn over the bottom one and carries its design in the bottom right corner). In landscape (the shape of the page box
-  decides, through a container query, `WELCOME_LAYER_CSS`) each is half the width of the screen: the bottom layer at the left edge, the corner layer at the right
-  edge (owner, 2026-10-07: full width made them huge on a phone held sideways, camera#318). The designers deliver both at 600×400 (3:2) with their art in the
-  lower part only (the bottom layer is a full-width blue band with the "10" and the laurel at its left, the corner layer is the club badge in its bottom right
-  corner), so in landscape the blue band ends at the middle of the screen and the badge stays in the corner.
-- **Start button** (`buttonText`, `buttonColor`, `buttonTextColor`, `buttonBorderColor`): a real button in the middle of the screen (with the giant screen above it, when there is one), 4.25 rem
-  high, uppercase, with a ring; the colours are hex values from the page's settings (the club's official colours), anything else is ignored.
-- **Giant screen** (`screenImageUrl`, `screenImageAlt`; camera#315): a 16:9 LED wall made in CSS 3D (`components/capture/LedScreen3D.tsx`): a box with a
-  bezel and depth, tilted towards the guest, swaying slowly, with a faint pixel grid and a reflection on the glass, showing the one picture above the Start
-  button. Only CSS and that picture: nothing else is downloaded, it is sharp on any screen, and it holds still for a guest whose device asks for less
-  motion. **The screen and the Start button are one group** (`data-welcome-group` in `WelcomePage`): a column, the screen above the button, centred as a
-  whole in the visible screen (horizontally and vertically, below the top inset of the notch), so on every device they sit in the middle together. The group is as
-  big as it can be: the screen is as wide as the smallest of 88% of the screen width, 90 rem, and what makes the group about 90% of the height of the page box
-  (`--led-w`, in `cqh`, 1% of the box height; `svh` is not used because it is about 100 pt too small on a phone held sideways, camera#318). So in portrait
-  it is as wide as the screen allows, and on a phone held sideways, a tablet or a desktop it fills the height, and it never touches the button or leaves the
-  screen. Leave `screenImageUrl` empty and the button alone is centred.
-  `screenImageAlt` says what the picture shows, for screen readers.
-- **Title** (`title`): read by screen readers, not shown. The design carries no text; the only words on the page are the button label.
+Each independent object uses the 3×3 stage anchors: top/middle/bottom and left/center/right. An object can instead join a parent group and choose which side
+the parent occupies. The new object is placed beside the parent with a fixed stage-relative gap; the other alignment axis inherits from the root of that group.
+Parent cycles are rejected, removing a parent also removes its descendants, and the layer list controls front-to-back order. Independent roots may overlap on
+purpose, so a later/front object can cover an earlier/back object. The Start button is always present and cannot be deleted.
+
+The saved shape is `customPages[].config.welcomeElements` (`lib/events/welcome-composition.ts`). The API validates element IDs, HTTPS image sources, geometry,
+parent references, cycles, and the single required Start button. A dynamic `event-welcome-screen` image source follows the event's generated slideshow screen
+when it is refreshed; ordinary library selections store their image URL on the event page.
+
+The stage background (`backgroundImageUrl`) stays a separate full-stage cover image, so it cannot be confused with movable foreground objects. The page title
+is still only the screen-reader heading; text objects are visible content. Give meaningful alt text to informative images and leave it empty for decorative art.
+
+## Existing page compatibility
+
+Pages without `welcomeElements` continue to use their original fixed layout: optional full-screen background, bottom and corner overlays, optional 3D LED screen,
+and a centered Start button. When an editor saves one through the visual editor for the first time, Camera converts its existing overlay URLs to editable image
+elements, converts its explicit giant-screen URL to an image object (or keeps the event-generated screen as a dynamic source), and keeps the background and button
+settings. The visual layout is stored only when the editor saves; merely opening or previewing a page does not change live event data.
 
 ## Setting it up
 
-Admin, event, Pages (custom pages): "+ Welcome (step 0)" adds the page as the first step; each picture has a picture picker: chosen from the event's
-images library (its partner's library and its own uploads, `docs/LIBRARIES.md`), uploaded there (PNG, JPEG, WebP or SVG, up to 4 MB), or pasted as an
-address, and stored as the plain address either way. A vetted event shows its default login step right after the welcome step
-(`withRequiredIdentityPage`, `lib/events/identity-page.ts`); an event with its own login page keeps it. After the last photo the guest goes
-straight to the camera again, not back to the welcome step.
+Admin, event, Pages (custom pages): "+ Welcome (step 0)" adds the page as the first step. Add image and text objects, position them with the 3×3 anchors, group
+related items, and adjust their layer order in the preview. Image uploads go to the event's Images library (PNG, JPEG, WebP or SVG, up to 4 MB), and the picker
+also offers partner-level images (`docs/LIBRARIES.md`). A vetted event shows its default login step right after the welcome step
+(`withRequiredIdentityPage`, `lib/events/identity-page.ts`); an event with its own login page keeps it.
 
 ## Pictures of MTK x Vasas (match on 2026-10-16)
 
@@ -61,8 +56,8 @@ Mantine's body colour (white), over the document background, so that wrapper sho
 after #313 had fixed only the box height). `EventThemeScope` now renders `pageColourCss` (`lib/theme/css.ts`): the document and `--mantine-color-body`
 take the event's page colour, as the messmass report does (`html` background, transparent body). A page can still end above the bar (an iOS rule for
 fixed content); what shows below it is the page colour, never white. So `FullScreenPage` is exactly the visible screen (no `min-height: 100lvh`: the
-part under the bar is not drawn, and the bottom layers anchored there were cut off, camera#317), the bottom layers sit on its bottom edge, and the giant screen
-and the Start button are one group centred in the box. Not testable on a desktop: check on a phone.
+part under the bar is not drawn, and the bottom layers anchored there were cut off, camera#317). Legacy pages anchor their bottom layers and center the old
+screen/button group inside this box. The flexible composition uses the same visible stage as its coordinate system. Not testable on a desktop: check on a phone.
 
 ## Known limits
 
