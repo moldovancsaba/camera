@@ -30,7 +30,7 @@ const handler = withErrorHandler(async (request: NextRequest) => {
 
   const configuration = moderationConfiguration();
   if (!configuration) throw new ModerationServiceError('moderation_not_configured', null);
-  const body = await request.json().catch(() => null) as { image_base64?: unknown } | null;
+  const body = await request.json().catch(() => null) as { image_base64?: unknown; discover_only?: unknown } | null;
   const encoded = body?.image_base64;
   if (typeof encoded !== 'string' || encoded.length === 0 || encoded.length > MAX_BASE64_LENGTH || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) {
     throw apiBadRequest('A base64 test image is required.');
@@ -46,6 +46,31 @@ const handler = withErrorHandler(async (request: NextRequest) => {
   }
   const eventId = typeof event.eventId === 'string' ? event.eventId : '';
   if (!eventId || await db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ eventId }) !== 0) throw apiForbidden();
+
+  if (body?.discover_only === true) {
+    const headers = { Authorization: `Bearer ${configuration.apiKey}`, 'X-Request-Purpose': 'test' };
+    const [taskResponse, modelResponse] = await Promise.all([
+      fetch(`${configuration.baseUrl}/job-types`, { headers, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10_000) }),
+      fetch(`${configuration.baseUrl}/models`, { headers, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10_000) }),
+    ]);
+    const taskBody = await taskResponse.json().catch(() => null) as Record<string, unknown> | null;
+    const modelBody = await modelResponse.json().catch(() => null) as Record<string, unknown> | null;
+    const modelList = Array.isArray(modelBody?.models) ? modelBody.models : null;
+    return apiSuccess({
+      taskStatus: taskResponse.status,
+      taskResponseKeys: taskBody ? Object.keys(taskBody) : [],
+      allowedTaskNames: taskBody?.job_types && typeof taskBody.job_types === 'object' ? Object.keys(taskBody.job_types) : [],
+      modelsStatus: modelResponse.status,
+      modelsResponseKeys: modelBody ? Object.keys(modelBody) : [],
+      modelsPropertyType: Array.isArray(modelBody?.models) ? 'array' : typeof modelBody?.models,
+      modelCount: modelList?.length ?? null,
+      modelSummary: modelList?.map((raw) => {
+        const model = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
+        return { id: model.id ?? null, selectable_for: model.selectable_for ?? null, default_for: model.default_for ?? null, blocked_reason: model.blocked_reason ?? null };
+      }) ?? [],
+      defaults: modelBody?.defaults ?? null,
+    });
+  }
 
   const client = new CameraModerationClient(configuration);
   await client.discover(); // GET /job-types and GET /models; rejects unavailable task/model inventories.
