@@ -2,36 +2,26 @@
 
 import { Children, cloneElement, createElement, forwardRef, isValidElement, type ReactNode } from 'react';
 import {
-  Anchor as MantineAnchor,
-  Badge as MantineBadge,
   Button as MantineButton,
   Checkbox as MantineCheckbox,
   ColorInput as MantineColorInput,
   FileInput as MantineFileInput,
   NumberInput as MantineNumberInput,
-  Radio as MantineRadio,
   Select as MantineSelect,
   Stack,
   Text,
   Textarea as MantineTextarea,
-  Title as MantineTitle,
   TextInput as MantineTextInput,
-  Text as MantineText,
 } from '@mantine/core';
 import type {
   ButtonProps,
-  AnchorProps,
-  BadgeProps,
   CheckboxProps,
   ColorInputProps,
   FileInputProps,
   NumberInputProps,
-  RadioProps,
   SelectProps,
   TextareaProps,
   TextInputProps,
-  TextProps,
-  TitleProps,
   PolymorphicComponentProps,
 } from '@mantine/core';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
@@ -41,6 +31,9 @@ import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 export {
   // Button is wrapped below while retaining Mantine's polymorphic props.
   Stack,
+  Text,
+  Badge,
+  Radio,
   Image,
   Paper,
   UnstyledButton,
@@ -50,36 +43,15 @@ export {
   AspectRatio,
   Center,
   Box,
+  Title,
   Breadcrumbs,
+  Anchor,
   Card,
   Alert,
   SimpleGrid,
   Grid,
   Group,
 } from '@mantine/core';
-
-/** Translate exact, app-owned text used in common Mantine display components. User/event text stays as authored. */
-function LocalizedDisplayText({ component, props }: { component: React.ComponentType<Record<string, unknown>>; props: Record<string, unknown> & { children?: ReactNode } }) {
-  const language = useUiLanguage();
-  const translated = nodeHasTranslation(props.children, language);
-  return createElement(component, {
-    ...props,
-    dir: translated ? uiLanguageDirection(language) : props.dir,
-    lang: translated ? language : props.lang,
-  }, localizedNode(props.children, language));
-}
-
-const LocalizedText = (<C = 'p'>(props: PolymorphicComponentProps<C, TextProps>) => <LocalizedDisplayText component={MantineText as unknown as React.ComponentType<Record<string, unknown>>} props={props as Record<string, unknown> & { children?: ReactNode }} />) as typeof MantineText;
-const LocalizedTitle = (<C = 'h1'>(props: PolymorphicComponentProps<C, TitleProps>) => <LocalizedDisplayText component={MantineTitle as unknown as React.ComponentType<Record<string, unknown>>} props={props as Record<string, unknown> & { children?: ReactNode }} />) as typeof MantineTitle;
-const LocalizedAnchor = (<C = 'a'>(props: PolymorphicComponentProps<C, AnchorProps>) => <LocalizedDisplayText component={MantineAnchor as unknown as React.ComponentType<Record<string, unknown>>} props={props as Record<string, unknown> & { children?: ReactNode }} />) as typeof MantineAnchor;
-const LocalizedBadge = (<C = 'div'>(props: PolymorphicComponentProps<C, BadgeProps>) => <LocalizedDisplayText component={MantineBadge as unknown as React.ComponentType<Record<string, unknown>>} props={props as Record<string, unknown> & { children?: ReactNode }} />) as typeof MantineBadge;
-const LocalizedRadio = Object.assign((props: RadioProps) => {
-  const language = useUiLanguage();
-  const translated = nodeHasTranslation(props.label, language);
-  return <MantineRadio {...props} label={localizedNode(props.label, language)} lang={translated ? language : props.lang} dir={translated ? uiLanguageDirection(language) : props.dir} />;
-}, { Group: MantineRadio.Group }) as typeof MantineRadio;
-
-export { LocalizedText as Text, LocalizedTitle as Title, LocalizedAnchor as Anchor, LocalizedBadge as Badge, LocalizedRadio as Radio };
 
 function localizedNode(value: ReactNode, language: ReturnType<typeof useUiLanguage>): ReactNode {
   return Children.map(value, (child) => {
