@@ -47,6 +47,7 @@ import { needsThemeRefresh, refreshEventTheme } from '@/lib/theme/refresh';
 import { trackedSlugExists } from '@/lib/short-links/store';
 import { journeyRecordingEnabled } from '@/lib/journey/setting';
 import { colourInputsOf, scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
+import { validateWelcomeElements } from '@/lib/events/welcome-composition';
 
 interface EventFrameDetails {
   frameId: string;
@@ -511,6 +512,11 @@ export const PATCH = withErrorHandler(async (
           throw apiBadRequest('accept pages must have checkboxText or checkboxes in config');
         }
         page.config.checkboxes = checkboxes;
+      }
+
+      if (page.pageType === 'welcome' && page.config.welcomeElements !== undefined) {
+        const welcomeError = validateWelcomeElements(page.config.welcomeElements);
+        if (welcomeError) throw apiBadRequest(welcomeError);
       }
       
       // CTA pages: checkboxText is optional (used as URL to visit)

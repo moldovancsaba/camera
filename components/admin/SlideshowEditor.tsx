@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import React, { useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { Anchor, Breadcrumbs, Button, Card, Checkbox, ColorField, Field, Group, Image, NumberInput, Radio, Select, SimpleGrid, Stack, Text, TextInput } from '@/components/gds/PublicPrimitives';
+import { Anchor, Breadcrumbs, Button, Checkbox, ColorField, Field, Group, NumberInput, Radio, Select, SimpleGrid, Stack, Text, TextInput } from '@/components/gds/PublicPrimitives';
 import { useRouter } from 'next/navigation';
 import { InlineAlert } from '@sovereignsquad/gds-core/client';
 import { FormSection } from '@sovereignsquad/gds-admin/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import ScreenDesignFields, { designFromDraft, draftFromDesign, type ScreenDesignDraft } from '@/components/admin/ScreenDesignFields';
+import ImagePicker from '@/components/admin/library/ImagePicker';
 import type { ScreenDesign } from '@/lib/slideshow/screen-design';
+import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS } from '@/lib/library/image-files';
 import {
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
   SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
@@ -73,7 +75,6 @@ export default function SlideshowEditor({
   initialSlideshow,
 }: Props) {
   const router = useRouter();
-  const bgFileInputRef = useRef<HTMLInputElement>(null);
   const [slideshowMongoId, setSlideshowMongoId] = useState(initialSlideshow?._id ?? '');
   const [slideshowId, setSlideshowId] = useState(initialSlideshow?.slideshowId ?? '');
   const [name, setName] = useState(initialSlideshow?.name ?? '');
@@ -115,7 +116,6 @@ export default function SlideshowEditor({
   // fields were changed, so a save can never clear a design by accident.
   const savedScreenDraft = useRef(JSON.stringify(screenDraft));
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -184,39 +184,6 @@ export default function SlideshowEditor({
       );
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleBackgroundFile = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !slideshowId) return;
-    setIsUploadingBackground(true);
-    setSuccess(null);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await fetch(
-        `/api/slideshows/${slideshowId}/background-image`,
-        { method: 'POST', body: formData }
-      );
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.error || payload.message || 'Failed to upload background image');
-      }
-      const nextImageUrl = String(payload.data?.imageUrl ?? '');
-      if (!nextImageUrl) throw new Error('Upload finished without an image URL.');
-      setBackgroundImageUrl(nextImageUrl);
-      setSuccess('Background image uploaded. Save the slideshow to persist it.');
-    } catch (uploadError) {
-      setError(
-        uploadError instanceof Error
-          ? uploadError.message
-          : 'Failed to upload background image'
-      );
-    } finally {
-      setIsUploadingBackground(false);
-      e.target.value = '';
     }
   };
 
@@ -438,47 +405,16 @@ export default function SlideshowEditor({
               />
             </SimpleGrid>
 
-            <Field
+            {/* Keep stage backgrounds in the event Images library so the same event/partner selection and storage flow applies before a slideshow exists. */}
+            <ImagePicker
               label="Failover background photo"
-              helper="Shown above the gradient and behind slide images in empty or letterboxed states."
-            >
-              <input
-                ref={bgFileInputRef}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={handleBackgroundFile}
-              />
-              <Group gap="xs">
-                <Button
-                  type="button"
-                  disabled={isUploadingBackground || !slideshowId}
-                  onClick={() => bgFileInputRef.current?.click()}
-                  variant="light"
-                >
-                  {isUploadingBackground ? 'Uploading...' : 'Upload image'}
-                </Button>
-                {backgroundImageUrl?.trim() ? (
-                  <Button
-                    type="button"
-                    onClick={() => setBackgroundImageUrl('')}
-                    variant="subtle"
-                  >
-                    Remove photo
-                  </Button>
-                ) : null}
-              </Group>
-              {!slideshowId ? (
-                <Text size="xs" c="dimmed">
-                  Save the slideshow once before uploading a background image.
-                </Text>
-              ) : null}
-              {backgroundImageUrl?.trim() ? (
-                <Card withBorder padding={0}>
-                  <Image src={backgroundImageUrl} alt="Background preview" h={160} fit="cover" />
-                </Card>
-              ) : null}
-            </Field>
+              helper="Shown above the gradient and behind slide images in empty or letterboxed states. Choose an image from the partner library, upload it to this event, or leave empty to use the gradient."
+              value={backgroundImageUrl}
+              onChange={setBackgroundImageUrl}
+              level={{ scope: 'event', eventId: eventMongoId }}
+              fileTypes={IMAGE_FILE_TYPES}
+              fileTypeWords={IMAGE_FILE_WORDS}
+            />
           </Section>
 
           <Section title="Screen design">

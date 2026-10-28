@@ -1962,6 +1962,8 @@ export default function EventCapturePage({
               // A picture set on the page is the page's own and wins; otherwise the page follows the one drawn from the default slideshow.
               screenImageUrl: welcomeScreenImage(currentPage.config.screenImageUrl, event?.welcomeScreen),
               screenImageAlt: currentPage.config.screenImageAlt,
+              welcomeElements: currentPage.config.welcomeElements,
+              eventWelcomeScreenUrl: event?.welcomeScreen?.url,
               buttonColor: currentPage.config.buttonColor,
               buttonTextColor: currentPage.config.buttonTextColor,
               buttonBorderColor: currentPage.config.buttonBorderColor,

@@ -14,6 +14,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
+import EventExperienceReviewPanel from '@/components/admin/EventExperienceReviewPanel';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { EventLibrary } from '@/lib/library/types';
@@ -112,7 +113,7 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
       <WorkspaceHeader
         eyebrow="Events"
         title="Event images"
-        description={`The pictures ${eventName} can use. They come from the library of ${partnerName}, or you upload them for this event only. Each picture field (welcome page, CTA page, email footer, giant screen) chooses one in its editor.`}
+        description={`The pictures ${eventName} can use. Choose from ${partnerName}'s library or upload for this event. Welcome page artwork, the CTA graphic, email footer, slideshow overlay and failover background choose from these images in their editors. Selfie frames are managed separately under Frames.`}
       />
 
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
@@ -177,6 +178,8 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
           />
         </div>
       </section>
+
+      <EventExperienceReviewPanel eventId={eventId} />
 
       <Link href={`/admin/events/${eventId}`}>← Back to Event</Link>
     </div>

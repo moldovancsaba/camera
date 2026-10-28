@@ -16,6 +16,8 @@ interface EventRecord {
   _id: string;
   name: string;
   customPages?: CustomPage[];
+  welcomeScreen?: { url?: string } | null;
+  theme?: { background?: string; font?: { family?: string } };
   journeyContext?: JourneyContext;
   acceptanceOnWhoAreYou?: boolean | null;
   galleryConsent?: boolean | null;
@@ -138,6 +140,8 @@ export default function EventJourneyPagesPage({ params }: { params: Promise<{ id
       <CustomPagesManager
         key={event.customPages?.length ?? 0}
         eventId={eventId}
+        eventWelcomeScreenUrl={event.welcomeScreen?.url}
+        eventTheme={event.theme}
         initialPages={event.customPages || []}
         journeyContext={event.journeyContext}
         acceptanceOnWhoAreYou={typeof event.acceptanceOnWhoAreYou === 'boolean' ? event.acceptanceOnWhoAreYou : null}

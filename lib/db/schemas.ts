@@ -30,6 +30,7 @@ import { ObjectId } from 'mongodb';
 import type { FrameDesign } from '@/lib/frame/context';
 import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
 import type { StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
+import type { WelcomeElement } from '@/lib/events/welcome-composition';
 
 /**
  * Collection Names
@@ -340,6 +341,8 @@ export interface CustomPage {
     cornerImageUrl?: string;      // Transparent layer drawn over the bottom one at the same scale (its design sits in the bottom right corner)
     screenImageUrl?: string;      // The picture on the giant screen drawn as a CSS 3D LED wall above the Start button (camera#315)
     screenImageAlt?: string;      // What that picture shows, for screen readers
+    /** Flexible welcome-screen composition. When present, this replaces the fixed legacy image layers. */
+    welcomeElements?: WelcomeElement[];
     buttonColor?: string;         // Start button fill, e.g. the club's official colour
     buttonTextColor?: string;     // Start button label
     buttonBorderColor?: string;   // Start button ring

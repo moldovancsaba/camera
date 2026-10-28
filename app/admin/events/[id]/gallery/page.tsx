@@ -13,7 +13,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { loadGallerySubmissions, GALLERY_PAGE_SIZE } from '@/lib/gallery/submissions';
-import { loadGalleryFrames } from '@/lib/gallery/frame';
+import { galleryFrameKey, loadGalleryFrames } from '@/lib/gallery/frame';
 import { countBroken } from '@/lib/media/broken';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
@@ -32,7 +32,13 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
   if (!event) notFound();
 
   const { submissions } = await loadGallerySubmissions(db, String(event.eventId), GALLERY_PAGE_SIZE);
-  const hasFrame = (await loadGalleryFrames(db, event)).length > 0;
+  const galleryFrames = await loadGalleryFrames(db, event);
+  const hasFrame = galleryFrames.length > 0;
+  const frameOptions = galleryFrames.map((frame, index) => ({
+    key: galleryFrameKey(frame),
+    label: frame.frameName || (frame.variant?.message ? `Frame ${index + 1}: ${frame.variant.message}` : `Frame ${index + 1}`),
+    imageUrl: frame.imageUrl,
+  }));
   // Keep the normal/public gallery filter strict. These archive images are added only to this manager-only Camera view.
   const managerOnlyImages = canManage
     ? await db.collection(COLLECTIONS.SUBMISSIONS).find({
@@ -70,6 +76,10 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
       playCount: submission.playCount,
       slideshowPlays: submission.slideshowPlays,
       canReturnToVetting: submission.reviewStatus === 'approved' && Boolean(submission.photoReview),
+      galleryFrame: (submission.metadata as { galleryFrame?: boolean } | undefined)?.galleryFrame === true,
+      galleryUpload: (submission.metadata as { adminGalleryUpload?: boolean } | undefined)?.adminGalleryUpload === true,
+      frameId: typeof submission.frameId === 'string' ? submission.frameId : null,
+      frameVariant: submission.frameVariant ?? null,
     })),
     ...managerOnlyImages.map((submission) => ({
       _id: String(submission._id),
@@ -105,6 +115,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
           slideshows={JSON.parse(JSON.stringify(slideshows))}
           canManage={canManage}
           hasFrame={hasFrame}
+          frameOptions={canManage ? frameOptions : []}
           hiddenBroken={hiddenBroken}
           unframedUploadIds={unframedUploadIds}
         />

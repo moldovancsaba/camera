@@ -90,7 +90,7 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { 
     <>
       <ImagePicker
         label="Overlay picture"
-        helper="A 16:9 picture (1920×1080) drawn over the stage, transparent where the photos play: PNG, WebP or SVG, an https address. Leave empty for a plain slideshow."
+        helper="A 16:9 picture (1920×1080) drawn over the stage, transparent where the photos play. Choose it from the partner library, upload it for this event, or paste an https address (PNG, WebP or SVG). Leave empty for a plain slideshow."
         value={draft.overlayImageUrl}
         onChange={(url) => set('overlayImageUrl', url)}
         level={{ scope: 'event', eventId: eventMongoId }}
