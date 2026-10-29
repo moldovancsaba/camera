@@ -17,7 +17,8 @@ import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
 import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import EventExperienceReviewPanel from '@/components/admin/EventExperienceReviewPanel';
-import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
+import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { EventLibrary } from '@/lib/library/types';
 
@@ -29,6 +30,10 @@ interface Payload<T> {
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
 const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
+class AdminRequestFailure extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
@@ -36,7 +41,7 @@ function errorText(error: unknown): string {
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload) throw new Error(payload?.error || `Request failed (${response.status})`);
+  if (!response.ok || !payload) throw new AdminRequestFailure(payload?.error || `Request failed (${response.status})`, response.status);
   return payload.data as T;
 }
 
@@ -48,6 +53,8 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [usageConflict, setUsageConflict] = useState<string | null>(null);
+  const { confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
     params.then((resolved) => setEventId(resolved.id));
@@ -76,14 +83,17 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
   }, [eventId, reload]);
 
   const deleteUpload = async (pictureId: string, name: string) => {
-    if (!confirm(`Delete "${name}"? It leaves the library of this event for good. A page that already shows it keeps showing it.`)) return;
+    const confirmed = await confirmDestructive({ title: 'Delete image upload', message: 'This removes the image from this event library. Replace its use or upload a copy before deleting.', targetName: name });
+    if (!confirmed) return;
     setBusy(true);
     setActionError(null);
     try {
       await call(`/api/events/${eventId}/library/items/${pictureId}?kind=images`, { method: 'DELETE' });
+      setUsageConflict(null);
       await reload();
     } catch (deleteError) {
-      setActionError(errorText(deleteError));
+      if (deleteError instanceof AdminRequestFailure && deleteError.status === 409) setUsageConflict(pictureId);
+      else setActionError(errorText(deleteError));
     } finally {
       setBusy(false);
     }
@@ -117,6 +127,7 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
         title="Event images"
         description={`The pictures ${eventName} can use. Choose from ${partnerName}'s library or upload for this event. Welcome page artwork, the CTA graphic, email footer, slideshow overlay and failover background choose from these images in their editors. Selfie frames are managed separately under Frames.`}
       />
+      {usageConflict ? <AssetUsageResolution kind="images" assetId={usageConflict} /> : null}
 
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
       {!library.partner ? <InlineAlert title="No partner" message="This event has no partner, so it has no library to take images from. You can still upload images for this event." severity="warning" /> : null}

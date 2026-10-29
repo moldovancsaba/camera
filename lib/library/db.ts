@@ -554,8 +554,8 @@ export async function updateLibraryUpload(
 export type DeleteUploadResult = { ok: true } | { ok: false; status: 400 | 404 | 409; reason: string };
 
 /**
- * Deletes an item that was uploaded at the partner level or the event level (never a global one: that is the global admins' list). An event's
- * own upload is unassigned from its event first; a partner's own upload cannot be deleted while one of its events has it assigned.
+ * Deletes an item uploaded at partner or event level. API routes must run `findAssetUsages` first and refuse while any reference remains; this
+ * helper retains its legacy cleanup as a final no-op safety net for the already-resolved case. Global uploads use the global catalog delete path.
  */
 export async function deleteLibraryUpload(db: Db, kind: LibraryKind, itemId: string, level: { scope: 'partner'; partnerId: string } | { scope: 'event'; eventId: string }): Promise<DeleteUploadResult> {
   const { idField, noun } = KIND_META[kind];

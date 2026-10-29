@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — dependency-aware visual asset deletion
+
+- **Changed:** deleting a global, partner or event frame, logo or image is refused while any indexed partner, event, assignment, slot or picture-field reference remains. A failed delete returns the exact destinations, labels, and page links; it no longer silently pulls child references or deletes an item from underneath a use.
+- **Added:** after a 409 conflict, the admin page shows a resolution panel with one link per use, refresh and pagination. Open a partner/event in a new tab, remove or replace the use, or save the source file and upload a copy at the destination; return and retry. The delete endpoint scans again before acting.
+- **Safety:** the scan includes frame/logo source URLs, event welcome-screen frame selection, library/default/slot references and known picture fields. It caps each response at 500 and keeps deletion blocked when additional references remain. Uploaded media is not deleted by removing a catalog record.
+- **Copy workflow:** the panel links to the existing source file so an administrator can save and upload a copy at the destination. Camera does not yet provide a one-click asset-clone API.
+- **Verification:** type-check, lint, GDS, inventory and production build passed. The test suite was not run. No production data action, push, merge or deployment was performed.
+
 ## Unreleased — Global → Partner → Event visual defaults
 
 - **Added:** a versioned visibility policy for logos, frames and images. A source owner can share an asset down one level; partners and events can hide inherited assets locally, and partners can stop forwarding global assets to events. Inactive or unshared assets cannot be newly selected or returned to guests.

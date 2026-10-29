@@ -15,8 +15,8 @@ const picture = (pictureId: string, extra: Record<string, unknown> = {}) => ({ p
 function setup(t: TestContext, options: { admin?: boolean } = {}) {
   const seeded = fakeDb({
     images: [picture('g1'), picture('g2'), picture('p1', { scope: 'partner', partnerId: 'P' })],
-    partners: [{ partnerId: 'P', name: 'Partner P', library: { frames: [], logos: [], images: ['g1', 'g2'] } }, { partnerId: 'Q', name: 'Partner Q' }],
-    events: [{ eventId: 'E', partnerId: 'P', emailFooterImageUrl: 'https://img.example/g1.png' }],
+    partners: [{ _id: 'partner-P', partnerId: 'P', name: 'Partner P', library: { frames: [], logos: [], images: ['g1', 'g2'] } }, { _id: 'partner-Q', partnerId: 'Q', name: 'Partner Q' }],
+    events: [{ _id: 'event-E', eventId: 'E', partnerId: 'P', name: 'Event E', emailFooterImageUrl: 'https://img.example/g1.png' }],
   });
   t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   t.mock.module('@/lib/api', {
@@ -59,15 +59,27 @@ test('PATCH needs true or false, a global image, and an image that exists', asyn
   assert.equal(data.images.every((i) => i.isActive === true), true);
 });
 
-test('DELETE removes a global image from the library and from the partner libraries; the event field keeps its address', async (t) => {
-  const { data } = setup(t);
+test('DELETE identifies partner-library and event-field references before allowing global image deletion', async (t) => {
+  const { data, db } = setup(t);
   const { DELETE } = await importRoute('delete');
+  const blocked = await DELETE(...del('g1'));
+  assert.equal(blocked.status, 409);
+  const body = (await blocked.json()) as { details: { total: number; usages: Array<{ ownerName: string; uses: string[] }> } };
+  assert.equal(body.details.total, 2);
+  assert.deepEqual(body.details.usages.map(({ ownerName, uses }) => ({ ownerName, uses })), [
+    { ownerName: 'Partner P', uses: ['In the partner library'] },
+    { ownerName: 'Event E', uses: ['Picture field: emailFooterImageUrl'] },
+  ]);
+  assert.deepEqual(data.images.map((i) => i.pictureId), ['g1', 'g2', 'p1']);
+
+  await db.collection('partners').updateOne({ partnerId: 'P' }, { $pull: { 'library.images': { $in: ['g1'] } } } as never);
+  await db.collection('events').updateOne({ eventId: 'E' }, { $set: { emailFooterImageUrl: null } });
   const response = await DELETE(...del('g1'));
   assert.equal(response.status, 200);
-  assert.deepEqual(((await response.json()) as { data: unknown }).data, { deleted: 'g1', partnersUpdated: 1 });
+  assert.deepEqual(((await response.json()) as { data: unknown }).data, { deleted: 'g1', partnersUpdated: 0 });
   assert.deepEqual(data.images.map((i) => i.pictureId), ['g2', 'p1']);
   assert.deepEqual((data.partners[0] as { library: { images: string[] } }).library.images, ['g2']);
-  assert.equal((data.events[0] as { emailFooterImageUrl: string }).emailFooterImageUrl, 'https://img.example/g1.png');
+  assert.equal((data.events[0] as { emailFooterImageUrl: string | null }).emailFooterImageUrl, null);
 });
 
 test('a user who is not a global admin can neither switch nor delete a global image', async (t) => {

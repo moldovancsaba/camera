@@ -18,7 +18,8 @@ import EnablePartnerInheritance from '@/components/admin/library/EnablePartnerIn
 import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
 import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
 import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
-import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
+import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { PartnerLibrary } from '@/lib/library/types';
 
@@ -34,6 +35,10 @@ interface Payload<T> {
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
 const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
+class AdminRequestFailure extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
@@ -41,7 +46,7 @@ function errorText(error: unknown): string {
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload?.data) throw new Error(payload?.error || `Request failed (${response.status})`);
+  if (!response.ok || !payload?.data) throw new AdminRequestFailure(payload?.error || `Request failed (${response.status})`, response.status);
   return payload.data;
 }
 
@@ -53,6 +58,8 @@ export default function PartnerImagesPage({ params }: { params: Promise<{ id: st
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [usageConflict, setUsageConflict] = useState<string | null>(null);
+  const { confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
     params.then((resolved) => setPartnerId(resolved.id));
@@ -103,11 +110,22 @@ export default function PartnerImagesPage({ params }: { params: Promise<{ id: st
     });
 
   const deleteUpload = (itemId: string, name: string) => {
-    if (!confirm(`Delete "${name}"? It leaves the library of this partner for good. A page that already shows it keeps showing it.`)) return Promise.resolve();
-    return act(async () => {
-      await call<{ deleted: string }>(`/api/partners/${partnerId}/library/items/${itemId}?kind=images`, { method: 'DELETE' });
-      await reload();
-    });
+    return (async () => {
+      const confirmed = await confirmDestructive({ title: 'Delete image upload', message: 'This removes the image from this partner library. Replace its use or upload a copy before deleting.', targetName: name });
+      if (!confirmed) return;
+      setBusy(true);
+      setActionError(null);
+      try {
+        await call<{ deleted: string }>(`/api/partners/${partnerId}/library/items/${itemId}?kind=images`, { method: 'DELETE' });
+        setUsageConflict(null);
+        await reload();
+      } catch (failure) {
+        if (failure instanceof AdminRequestFailure && failure.status === 409) setUsageConflict(itemId);
+        else setActionError(errorText(failure));
+      } finally {
+        setBusy(false);
+      }
+    })();
   };
 
   if (loading) return <StateBlock variant="loading" title="Loading the partner library..." />;
@@ -136,6 +154,7 @@ export default function PartnerImagesPage({ params }: { params: Promise<{ id: st
         title="Partner library: images"
         description={`The pictures the events of ${partner.name} can use: on the welcome page, the CTA page, in the email footer and on the giant screen. Add pictures from the global library, or upload pictures for this partner.`}
       />
+      {usageConflict ? <AssetUsageResolution kind="images" assetId={usageConflict} /> : null}
 
       {library.missing.length > 0 ? (
         <InlineAlert title="An image is missing" message={`${library.missing.length} image${library.missing.length === 1 ? '' : 's'} this partner had no longer exist${library.missing.length === 1 ? 's' : ''} in the library and ${library.missing.length === 1 ? 'is' : 'are'} not listed.`} severity="warning" />

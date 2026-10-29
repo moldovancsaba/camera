@@ -56,6 +56,7 @@ Browser / Public Screens
 - auth and session management in `lib/auth/*`
 - MongoDB access and schema helpers in `lib/db/*`
 - visual-asset ownership/visibility in `lib/visual-assets/resolve.ts` and `lib/library/db.ts`; reusable experience templates resolve in `lib/visual-assets/templates.ts` without copying parent config into child records
+- visual-asset deletion dependency discovery in `lib/library/usages.ts`; delete APIs fail with a structured 409 until the caller resolves partner/event assignments and stored picture-field references, while the authenticated usage endpoint returns scoped, paginated destination links
 - slideshow generation in `lib/slideshow/*`
 - partner-scoped access helpers in `lib/partners/*`
 - analytics in `lib/analytics/*` (pure aggregations, the only database access is `load.ts`, read only)

@@ -250,6 +250,8 @@ export const cameraAdminVocabularyPacks = [
     'delete-import': { defaultMessage: 'Delete the import', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'confirm-delete': { defaultMessage: 'Yes, delete it', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'cancel-delete': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
+    'refresh-asset-uses': { defaultMessage: 'Refresh asset uses', icon: GdsIcons.Refresh, feedback: openedFeedback },
+    'load-more-asset-uses': { defaultMessage: 'Load more asset uses', icon: GdsIcons.Add, feedback: openedFeedback },
   }),
   createGdsVocabularyPack('partner-frames', {
     'save-defaults': { defaultMessage: 'Save defaults', icon: GdsIcons.Save, feedback: savedFeedback },

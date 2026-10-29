@@ -18,9 +18,10 @@ import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
 import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
 import type { MessageArea } from '@/lib/frame/message-area';
-import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import type { EventLibrary } from '@/lib/library/types';
 
 interface Payload<T> {
@@ -31,6 +32,10 @@ interface Payload<T> {
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
 const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
+class AdminRequestFailure extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
@@ -38,7 +43,7 @@ function errorText(error: unknown): string {
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload) throw new Error(payload?.error || `Request failed (${response.status})`);
+  if (!response.ok || !payload) throw new AdminRequestFailure(payload?.error || `Request failed (${response.status})`, response.status);
   return payload.data as T;
 }
 
@@ -55,6 +60,8 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   const [panelNotice, setPanelNotice] = useState<Notice | null>(null);
   // Bumped when the messages or their frames change, so the selection setting reads them again.
   const [designVersion, setDesignVersion] = useState(0);
+  const [usageConflict, setUsageConflict] = useState<string | null>(null);
+  const { confirm, confirmDestructive } = useGdsConfirm();
   const onDesignChanged = useCallback(() => setDesignVersion((version) => version + 1), []);
 
   useEffect(() => {
@@ -99,8 +106,10 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   const assign = (frameId: string) =>
     act(() => call(`/api/events/${eventId}/frames`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frameId, isActive: true }) }));
   const remove = (frameId: string, name: string) => {
-    if (!confirm(`Remove "${name}" from this event?`)) return Promise.resolve();
-    return act(() => call(`/api/events/${eventId}/frames/${frameId}`, { method: 'DELETE' }));
+    return (async () => {
+      const confirmed = await confirm({ title: 'Remove frame from this event', message: `The event will stop offering “${name}”. The frame remains in its source library.`, confirmAction: 'confirm' });
+      if (confirmed) await act(() => call(`/api/events/${eventId}/frames/${frameId}`, { method: 'DELETE' }));
+    })();
   };
   const toggle = (frameId: string) => act(() => call(`/api/events/${eventId}/frames/${frameId}/toggle`, { method: 'PATCH' }));
   const saveMessageArea = async (frameId: string, messageArea: MessageArea | null) => {
@@ -108,9 +117,21 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
     setEditing(null);
     await reload();
   };
-  const deleteUpload = (frameId: string, name: string) => {
-    if (!confirm(`Delete "${name}"? It was uploaded for this event and is removed for good.`)) return Promise.resolve();
-    return act(() => call(`/api/events/${eventId}/library/items/${frameId}?kind=frames`, { method: 'DELETE' }));
+  const deleteUpload = async (frameId: string, name: string) => {
+    const confirmed = await confirmDestructive({ title: 'Delete frame upload', message: 'This removes the frame from this event library. Remove or replace its event assignment, or upload a copy, before deleting.', targetName: name });
+    if (!confirmed) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await call(`/api/events/${eventId}/library/items/${frameId}?kind=frames`, { method: 'DELETE' });
+      setUsageConflict(null);
+      await reload();
+    } catch (failure) {
+      if (failure instanceof AdminRequestFailure && failure.status === 409) setUsageConflict(frameId);
+      else setActionError(errorText(failure));
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (loading) return <StateBlock variant="loading" title="Loading frames..." />;
@@ -141,6 +162,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         title="Manage Event Frames"
         description={`The frames of ${eventName}. It takes them from the library of ${partnerName}, or you upload frames for this event only.`}
       />
+      {usageConflict ? <AssetUsageResolution kind="frames" assetId={usageConflict} /> : null}
 
       {/* A frame that carries messages is not a frame of the event's own (camera#366); the panel starts again when the frames change, so it offers the current ones. */}
       <GeneratedFramePanel

@@ -13,6 +13,7 @@ import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import { TAGGED_KINDS, type TaggedKind } from '@/components/admin/library/tagged-kinds';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
@@ -21,6 +22,10 @@ import type { LibraryItemView } from '@/lib/library/types';
 interface Payload<T> {
   data?: T;
   error?: string;
+}
+
+class AdminRequestFailure extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
 }
 
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))' } as const;
@@ -33,7 +38,7 @@ function errorText(error: unknown): string {
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload?.data) throw new Error(payload?.error || `Request failed (${response.status})`);
+  if (!response.ok || !payload?.data) throw new AdminRequestFailure(payload?.error || `Request failed (${response.status})`, response.status);
   return payload.data;
 }
 
@@ -45,6 +50,7 @@ export default function TaggedImagesLibrary({ kind }: { kind: TaggedKind }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
+  const [usageConflict, setUsageConflict] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setItems((await call<{ items: LibraryItemView[] }>(info.globalEndpoint)).items);
@@ -78,9 +84,22 @@ export default function TaggedImagesLibrary({ kind }: { kind: TaggedKind }) {
 
   const setActive = (pictureId: string, isActive: boolean) =>
     act(() => call(`/api/images/${pictureId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive }) }));
-  const remove = (pictureId: string) => {
+  const remove = async (pictureId: string) => {
     setDeleting(null);
-    return act(() => call(`/api/images/${pictureId}`, { method: 'DELETE' }));
+    setBusy(true);
+    setActionError(null);
+    try {
+      await call(`/api/images/${pictureId}`, { method: 'DELETE' });
+      setUsageConflict(null);
+      await reload();
+    } catch (failure) {
+      if (failure instanceof AdminRequestFailure && failure.status === 409) {
+        setUsageConflict(pictureId);
+        setActionError(null);
+      } else setActionError(errorText(failure));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const header = <WorkspaceHeader eyebrow="Resource Inventory" title={info.title} description={info.pageDescription} />;
@@ -101,6 +120,7 @@ export default function TaggedImagesLibrary({ kind }: { kind: TaggedKind }) {
     <div style={{ display: 'grid', gap: '2rem' }}>
       {header}
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
+      {usageConflict ? <AssetUsageResolution kind="images" assetId={usageConflict} /> : null}
       <section style={SECTION}>
         <div style={{ borderBottom: '1px solid var(--mantine-color-default-border)', padding: '1.5rem' }}>
           <h3 style={{ margin: 0 }}>{`In the library (${items.length}, ${active} active)`}</h3>

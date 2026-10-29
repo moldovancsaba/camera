@@ -2,7 +2,7 @@
  * One image of the global Images library (camera#368, docs/LIBRARIES.md)
  *
  * PATCH:  `{ isActive }` switches it off (no longer offered to be newly chosen; the fields that show it keep it) or on.
- * DELETE: deletes it from the library and takes it out of every partner library. The file stays, so a field that shows it keeps showing it.
+ * DELETE: removes the catalog record only when no partner, event or picture field uses it. Resolve references first; the stored file stays.
  * Global images only: an upload of a partner or an event is changed on that partner's or event's Images page. Global admins.
  */
 
@@ -28,6 +28,6 @@ export const DELETE = withErrorHandler(async (_request: NextRequest, context: { 
   const { pictureId } = await context.params;
   const db = await connectToDatabase();
   const result = await deleteGlobalImage(db, pictureId);
-  if (!result.ok) throw apiError(result.reason, result.status);
+  if (!result.ok) throw apiError(result.reason, result.status, result.status === 409 ? { kind: 'images', assetId: pictureId, usages: result.usages ?? [], total: result.total ?? 0, truncated: result.truncated ?? false } : undefined);
   return apiSuccess({ deleted: pictureId, partnersUpdated: result.partnersUpdated });
 });

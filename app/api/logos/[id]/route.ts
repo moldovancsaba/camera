@@ -9,7 +9,7 @@
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { inUseSentence, usageOfItem } from '@/lib/library/db';
+import { assetUsageRefusal, findAssetUsages } from '@/lib/library/usages';
 import {
   withErrorHandler,
   requireAdmin,
@@ -134,9 +134,10 @@ export const DELETE = withErrorHandler(async (request: NextRequest, context: Rou
 
   // A logo that an event or a partner library uses is not deleted (camera#392): it used to be pulled from every event without a word, so a live event lost its logo.
   // Switch it off instead.
-  const refusal = inUseSentence('logo', await usageOfItem(db, 'logos', String(logo.logoId)));
-  if (refusal) {
-    throw apiError(refusal, 409);
+  const imageUrls = [logo.imageUrl, logo.thumbnailUrl].filter((value): value is string => typeof value === 'string' && Boolean(value));
+  const usages = await findAssetUsages(db, 'logos', String(logo.logoId), imageUrls);
+  if (usages.usages.length || usages.truncated) {
+    throw apiError(assetUsageRefusal('logo', usages), 409, { kind: 'logos', assetId: String(logo.logoId), usages: usages.usages, total: usages.total, truncated: usages.truncated });
   }
 
   await db.collection('logos').deleteOne({ _id: new ObjectId(id) });

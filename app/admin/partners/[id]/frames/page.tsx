@@ -19,9 +19,10 @@ import EnablePartnerInheritance from '@/components/admin/library/EnablePartnerIn
 import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
 import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
 import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import DefaultSlotsPanel from '@/components/admin/DefaultSlotsPanel';
 import type { MessageArea } from '@/lib/frame/message-area';
-import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import type { PartnerLibrary } from '@/lib/library/types';
 import { cascadeText, type DefaultsCascade } from '@/lib/library/cascade-text';
 
@@ -37,6 +38,10 @@ interface Payload<T> {
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
 const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
+class AdminRequestFailure extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
@@ -44,7 +49,7 @@ function errorText(error: unknown): string {
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload?.data) throw new Error(payload?.error || `Request failed (${response.status})`);
+  if (!response.ok || !payload?.data) throw new AdminRequestFailure(payload?.error || `Request failed (${response.status})`, response.status);
   return payload.data;
 }
 
@@ -58,6 +63,8 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
   const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  const [usageConflict, setUsageConflict] = useState<{ kind: 'frames'; assetId: string } | null>(null);
+  const { confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
     params.then((resolved) => setPartnerId(resolved.id));
@@ -121,7 +128,8 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
   };
 
   const deleteUpload = async (itemId: string, name: string) => {
-    if (!confirm(`Delete "${name}"? It was uploaded for this partner and is removed for good.`)) return;
+    const confirmed = await confirmDestructive({ title: 'Delete frame upload', message: 'This removes the frame from this partner library. Resolve its event uses or upload a copy before deleting.', targetName: name });
+    if (!confirmed) return;
     setBusy(true);
     setActionError(null);
     setNotice(null);
@@ -129,7 +137,8 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
       await call<{ deleted: string }>(`/api/partners/${partnerId}/library/items/${itemId}?kind=frames`, { method: 'DELETE' });
       await reload();
     } catch (deleteError) {
-      setActionError(errorText(deleteError));
+      if (deleteError instanceof AdminRequestFailure && deleteError.status === 409) setUsageConflict({ kind: 'frames', assetId: itemId });
+      else setActionError(errorText(deleteError));
     } finally {
       setBusy(false);
     }
@@ -163,6 +172,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
         title="Partner library: frames"
         description={`The frames ${partner.name} can use. Its events take their frames from this library only: add frames from the global library, or upload frames for this partner.`}
       />
+      {usageConflict ? <AssetUsageResolution kind={usageConflict.kind} assetId={usageConflict.assetId} /> : null}
 
       {!library.saved ? (
         <InlineAlert

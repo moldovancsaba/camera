@@ -156,8 +156,7 @@ the imgbb mirror), on the same three levels: Global Images, the partner's images
   nobody had images before); `loadEventLibrary` gives an empty `assigned` and the whole library in `available` (active pictures, newest first);
   `savePartnerLibrary` writes `library.images` with the other kinds (the first save of any kind saves all of them), reports no event for a removed image
   (`removedInUse` stays empty) and refuses `defaults`; an event upload is not added to the event.
-- **Removing or deleting an image never changes a field.** The file stays in the store, so a page that shows it keeps showing it; the picker then marks
-  the address "Not in the library". Deleting a global image also takes it out of every partner library (`lib/library/images.ts`).
+- **Deleting an image is blocked while any partner, event or picture field still references it.** The delete response lists those exact locations with links to the relevant editor. Resolve each use by removing it, choosing a replacement, or saving a copy and uploading that copy at the destination level; return to the original library and retry. A successful delete removes only the catalog record; it does not delete the stored file or silently rewrite another level. Direct image fields remain unchanged until an editor changes them.
 - **Uploads:** PNG, JPEG, WebP or SVG, up to 4 MB (checked in the page before it is sent, and on the server), with the size in pixels read from the file
   (`lib/library/uploaders/images.ts`): at the global level (`POST /api/images`), for a partner and for an event.
 - **Pages:** Global Images `/admin/images` (global admins, menu Libraries: upload, switch off or on, delete; `?scope=all` lists every upload with whose it
@@ -228,7 +227,8 @@ The short line above the QR code on the stage of an event's default slideshow, p
   library"). **Applied to the MTK x Vasas event on 2026-10-08:** its two frames, its logo (in the partner library of MTK Budapest, assigned to nothing) and its six pictures (welcome page
   background, left image, right image and screen picture, e-mail footer picture, giant screen overlay: items of the event's Images library that point at the addresses the event already
   uses) are library items, and nothing a user sees changed. The old base data of that event was removed afterwards.
-- **Next:** LIB-7 the audit fixes (docs/LIBRARY_AUDIT.md: refuse deleting an item that is in use, paging of long lists).
+- **Dependency-aware deletion:** deleting a global, partner or event upload now returns a conflict instead of removing records that are still referenced. The UI shows each partner/event/location and opens the relevant settings in a new tab. Resolve the links one by one (remove, replace, or save a copy of the source and upload it at the destination), then return and retry. The server rechecks references at delete time; a failed dependency lookup or more than 500 references keeps deletion blocked. Global frames, logos and images use the same guard.
+- **Still to do:** paging of long catalog lists and any additional reference fields discovered by schema changes. This deletion flow paginates its dependency list separately; it does not change catalog paging.
 - A kind joins by adding it to `LIBRARY_KINDS` and `KIND_META` (`lib/library/kinds.ts`) and its uploader to `lib/library/upload.ts`; a kind that events do not
   assign (images) answers false in `isAssignedKind`.
 

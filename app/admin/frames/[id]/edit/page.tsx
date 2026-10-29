@@ -22,6 +22,7 @@ import {
 import { InlineAlert, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import { notifyAdminError } from '@/components/admin/notify';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import { parseMessageArea, type MessageArea } from '@/lib/frame/message-area';
 
 interface FrameRecord {
@@ -68,6 +69,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usageConflict, setUsageConflict] = useState(false);
   const { confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
@@ -130,6 +132,11 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
       const response = await fetch(`/api/frames/${id}`, { method: 'DELETE' });
       if (!response.ok) {
         const data = await response.json();
+        if (response.status === 409) {
+          setUsageConflict(true);
+          setIsDeleting(false);
+          return;
+        }
         throw new Error(data.error || 'Failed to delete frame');
       }
 
@@ -191,6 +198,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
       maxWidth={960}
     >
       {error ? <InlineAlert title="Error" message={error} severity="error" /> : null}
+      {usageConflict && frame.frameId ? <AssetUsageResolution kind="frames" assetId={frame.frameId} /> : null}
 
       <form onSubmit={handleSubmit}>
         <AdminCrudForm title="Frame settings" description="Update metadata for this frame resource.">

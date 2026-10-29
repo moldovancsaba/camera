@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GdsGrid, GdsStack, InlineAlert, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
+import { GdsGrid, GdsStack, InlineAlert, SectionPanel, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
@@ -17,6 +17,7 @@ import EnablePartnerInheritance from '@/components/admin/library/EnablePartnerIn
 import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
 import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
 import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import SlotPanel, { type SlotItem } from '@/components/admin/kit/SlotPanel';
 import type { LibraryItemView, PartnerLibrary, PartnerLibraryEntry } from '@/lib/library/types';
 import type { SlotValue } from '@/lib/slots/resolve';
@@ -45,12 +46,15 @@ interface Payload<T> {
 }
 
 const ACCEPT = 'image/png,image/jpeg,image/svg+xml,image/webp';
+class AdminRequestFailure extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
 const errorText = (error: unknown): string => (error instanceof Error ? error.message : 'An unexpected error occurred');
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload?.data) throw new Error(payload?.error || `Request failed (${response.status})`);
+  if (!response.ok || !payload?.data) throw new AdminRequestFailure(payload?.error || `Request failed (${response.status})`, response.status);
   return payload.data;
 }
 
@@ -65,6 +69,8 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [usageConflict, setUsageConflict] = useState<{ kind: 'logos'; assetId: string } | null>(null);
+  const { confirm, confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
     params.then((resolved) => setPartnerId(resolved.id));
@@ -120,9 +126,9 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
 
   const removeFromLibrary = (item: PartnerLibraryEntry) => {
     const chosen = panel?.value.items?.includes(item.id);
-    const sure = confirm(`Remove "${item.name}" from the library?${chosen ? ' It is also taken out of this partner\'s logos.' : ''} The events that already chose it keep it.`);
-    if (!sure) return;
     void run(async () => {
+      const sure = await confirm({ title: 'Remove from partner library', message: `Remove "${item.name}" from the library?${chosen ? ' It is also taken out of this partner’s logos.' : ''} The events that already chose it keep it.`, confirmAction: 'confirm' });
+      if (!sure) return;
       await call(`/api/partners/${partnerId}/library`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'logos', remove: [item.id] }) });
       await reload();
     });
@@ -130,11 +136,22 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
 
   const deleteUpload = (item: PartnerLibraryEntry) => {
     const what = item.source === 'messmass' ? 'It was imported from messmass; you can import it again later.' : 'It was uploaded for this partner and is removed for good.';
-    if (!confirm(`Delete "${item.name}"? ${what}`)) return;
-    void run(async () => {
-      await call(`/api/partners/${partnerId}/library/items/${item.id}?kind=logos`, { method: 'DELETE' });
-      await reload();
-    });
+    void (async () => {
+      const sure = await confirmDestructive({ title: 'Delete logo upload', message: `${what} Resolve its event uses or upload a copy before deleting.`, targetName: item.name });
+      if (!sure) return;
+      setBusy(true);
+      setActionError(null);
+      try {
+        await call(`/api/partners/${partnerId}/library/items/${item.id}?kind=logos`, { method: 'DELETE' });
+        setUsageConflict(null);
+        await reload();
+      } catch (failure) {
+        if (failure instanceof AdminRequestFailure && failure.status === 409) setUsageConflict({ kind: 'logos', assetId: item.id });
+        else setActionError(errorText(failure));
+      } finally {
+        setBusy(false);
+      }
+    })();
   };
 
   const importFromMessmass = () =>
@@ -174,6 +191,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
         title={`Logos: ${partner.name}`}
         description={`The logo of ${partner.name} is the default logo of all its events. They use it unless an event chooses another one. If there is more than one, a user sees one of them at random.`}
       />
+      {usageConflict ? <AssetUsageResolution kind={usageConflict.kind} assetId={usageConflict.assetId} /> : null}
 
       {notice ? <InlineAlert title={notice.title} message={notice.message} severity="info" /> : null}
 

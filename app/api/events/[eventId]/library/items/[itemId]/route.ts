@@ -1,7 +1,7 @@
 /**
  * An event's own upload (camera#361). Only an item uploaded for this event. Events managers of the partner and global admins.
  *
- * DELETE `?kind=frames`: it is unassigned from the event first.
+ * DELETE `?kind=frames|logos|images`: refused with a usage map until event references are removed or replaced. A resolved delete removes only this upload.
  * PATCH `{ kind, name?, messageArea?, isActive? }`: edit an own upload or switch it on/off for this event. Inactive assets cannot be newly selected or rendered.
  *   Generated frames that use a changed frame/message area are redrawn afterwards.
  */
@@ -14,8 +14,9 @@ import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { regenerateEventsUsingFrame } from '@/lib/frame/regenerate';
 import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiError, apiForbidden, apiNotFound } from '@/lib/api';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
-import { parseKind } from '@/lib/library/kinds';
+import { KIND_META, parseKind } from '@/lib/library/kinds';
 import { deleteLibraryUpload, itemView, updateLibraryUpload } from '@/lib/library/db';
+import { findAssetUsages } from '@/lib/library/usages';
 
 export const DELETE = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ eventId: string; itemId: string }> }) => {
   const session = await requireAuth();
@@ -28,9 +29,18 @@ export const DELETE = withErrorHandler(async (request: NextRequest, context: { p
   if (!access.allowed) throw apiForbidden('Partner-level Events manager access is required');
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(eventId) }, { projection: { eventId: 1 } });
   if (!event) throw apiNotFound('Event');
+  const item = await db.collection(KIND_META[kind].collection).findOne({ [KIND_META[kind].idField]: itemId, scope: 'event', eventId: String(event.eventId) });
+  if (item) {
+    const urls = [item.imageUrl, item.thumbnailUrl].filter((value): value is string => typeof value === 'string' && Boolean(value));
+    const dependencies = await findAssetUsages(db, kind, itemId, urls, { ownerIds: new Set([eventId]) });
+    if (dependencies.total || dependencies.truncated) throw apiError(`This ${kind === 'images' ? 'image' : kind === 'frames' ? 'frame' : 'logo'} is still used here. Open each listed place, remove or replace the use, then return and retry deletion.`, 409, { kind, assetId: itemId, usages: dependencies.usages, total: dependencies.total, truncated: dependencies.truncated });
+  }
   const result = await deleteLibraryUpload(db, kind, itemId, { scope: 'event', eventId: String(event.eventId) });
   // The reason names the kind ("Frame not found", "Image not found").
-  if (!result.ok) throw apiError(result.reason, result.status);
+  if (!result.ok) {
+    const details = result.status === 409 ? await findAssetUsages(db, kind, itemId, [], { ownerIds: new Set([eventId]) }) : null;
+    throw apiError(result.reason, result.status, details ? { kind, assetId: itemId, usages: details.usages, total: details.total, truncated: details.truncated } : undefined);
+  }
   return apiSuccess({ deleted: itemId });
 });
 
