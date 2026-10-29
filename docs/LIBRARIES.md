@@ -26,6 +26,10 @@ its own. A partner can only take items that are global. The pictures are always 
   `framesOverridden` / `logosOverridden` say that the event has its own list; the partner's defaults then no longer replace it. Uploading, removing or switching off
   a frame on an event sets `framesOverridden`.
 
+### Frame ownership cleanup (2026-10-29)
+
+Six legacy frame records that had no owner fields were normalized to the partner or event that already used them: four partner-owned records and two event-owned records. One record used by both MotoGP and the Brain Bar/AUDI F1 event remains at MotoGP partner scope and has a separate event-owned catalog record for Brain Bar. All 21 event assignments and existing partner defaults/library references were preserved; no frame media was deleted. The Global Frames inventory is now empty. New frames created through the global upload route continue to be global.
+
 ## What the partner had before the libraries (nothing is lost)
 
 A partner that has not saved a library yet has **what it already had**: its default frames and logos and the frames and logos its events already use (only global

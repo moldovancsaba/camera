@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — global frame ownership and editor loading
+
+- **Fixed:** the frame editor reads the standard API response envelope (`data.frame`) and validates the record before rendering, preventing a valid frame from crashing as “Frame not found”. Non-404 and malformed responses now show a retryable load error.
+- **Fixed:** the frame inventory no longer renders sharing actions as duplicate generic “Edit” buttons; the sharing control is an accessible GDS icon action.
+- **Changed (data):** scoped six legacy unowned frames to their verified partner/event owners, created an event-owned copy for the existing cross-partner assignment, and preserved all 21 event assignments and partner references. No media files were deleted. The Global Frames inventory is empty.
+- **Verification:** type-check, focused ESLint, GDS checks, inventory checks, production guards, production build, and `git diff --check` passed. Unit and browser tests were not run.
+
 ## Unreleased — partner-scoped event inventory
 
 - **Changed:** the partner overview shows the exact total number of related events and the 10 most recently created event cards. Its localized **Open Events** action opens the Events inventory filtered by the stable partner ID.

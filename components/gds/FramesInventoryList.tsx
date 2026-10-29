@@ -58,18 +58,15 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
   }));
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedFrameRow>> = [
     {
-      id: 'share-global',
-      label: adminOperationText('Share with partners', language),
-      kind: 'secondary',
-      disabled: (frame) => frame.scope !== 'global' || frame.shareToChildren !== false,
-      onSelect: (frame) => void updateSharing(frame.id, true),
-    },
-    {
-      id: 'stop-share-global',
-      label: adminOperationText('Stop sharing with partners', language),
-      kind: 'secondary',
-      disabled: (frame) => frame.scope !== 'global' || frame.shareToChildren === false,
-      onSelect: (frame) => void confirmStopSharing(frame.id),
+      id: 'toggle-global-sharing',
+      label: adminOperationText('Toggle sharing with partners', language),
+      // GDS maps secondary card actions to its generic Edit slot; the labeled icon avoids duplicate, misleading Edit buttons.
+      kind: 'icon',
+      disabled: (frame) => frame.scope !== 'global',
+      onSelect: (frame) => {
+        if (frame.shareToChildren === false) void updateSharing(frame.id, true);
+        else void confirmStopSharing(frame.id);
+      },
     },
     {
       id: 'edit',

@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — global frame ownership and editor loading
+
+The Global Frames inventory's six legacy records were assigned to verified partner/event owners; one cross-partner frame received an event-owned catalog copy. All 21 event assignments and partner defaults/library references remain intact, and no image files were deleted. A private EJSON snapshot was written before the transactional data change. The editor now reads the API's `data.frame` response, validates it, and separates true 404s from retryable load errors. Sharing no longer appears as duplicate Edit buttons. Camera code verification is pending; tests were not run. Tracked by Camera issue #759 on project #24.
+
 ## Current change — partner-scoped event inventory
 
 The partner overview now reports the full event count, previews the 10 most
