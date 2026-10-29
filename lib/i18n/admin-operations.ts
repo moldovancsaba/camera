@@ -1,6 +1,8 @@
 import { adminPageText } from '@/lib/i18n/admin-pages';
 import { adminCommonText } from '@/lib/i18n/admin-common';
 import { UI_LANGUAGES, type UiLanguage } from '@/lib/i18n';
+import { adminVisualAssetText } from './admin-visual-assets';
+import { adminExperienceTemplateText } from './admin-experience-templates';
 
 /**
  * Shared wording for the photo-review and Fanmass operations screens.
@@ -83,6 +85,10 @@ const EXTRA_VALUES: Record<UiLanguage, readonly string[]> = {
 const EXTRA_INDEX = new Map<string, number>(EXTRA_SOURCES.map((source, index) => [source, index]));
 
 export function adminOperationText(source: string, language: UiLanguage): string {
+  const visualAssetText = adminVisualAssetText(source, language);
+  if (visualAssetText !== null) return visualAssetText;
+  const experienceTemplateText = adminExperienceTemplateText(source, language);
+  if (experienceTemplateText !== null) return experienceTemplateText;
   const common = adminCommonText(source, language);
   if (common !== null) return common;
   const extraIndex = EXTRA_INDEX.get(source);

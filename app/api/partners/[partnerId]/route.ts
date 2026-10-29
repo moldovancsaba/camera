@@ -101,6 +101,7 @@ export const PATCH = withErrorHandler(async (
     galleryConsent,
     acceptanceOnWhoAreYou,
     consentSettings,
+    defaultExperienceTemplateId,
   } = body;
 
   const updates: Record<string, unknown> = {
@@ -162,6 +163,26 @@ export const PATCH = withErrorHandler(async (
     throw apiNotFound('Partner');
   }
 
+  const unsetFields: Record<string, ''> = {};
+  if (defaultExperienceTemplateId !== undefined) {
+    if (defaultExperienceTemplateId === 'inherit') {
+      // Missing means follow the global starter; null is an explicit opt-out.
+      unsetFields.defaultExperienceTemplateId = '';
+    } else if (defaultExperienceTemplateId === null) {
+      updates.defaultExperienceTemplateId = null;
+    } else if (typeof defaultExperienceTemplateId === 'string' && defaultExperienceTemplateId.length <= 100) {
+      const template = await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({
+        templateId: defaultExperienceTemplateId,
+        level: 'partner',
+        ownerId: String(existingPartner.partnerId),
+      });
+      if (!template) throw apiBadRequest('Choose a template owned by this partner.');
+      updates.defaultExperienceTemplateId = defaultExperienceTemplateId;
+    } else {
+      throw apiBadRequest('defaultExperienceTemplateId must be a partner template, null to disable the global default, or "inherit".');
+    }
+  }
+
   // A default frame for new events is always an item of the partner's own library (camera#361): the library page sets it.
   if (defaultFrames !== undefined) {
     if (!Array.isArray(defaultFrames) || defaultFrames.some((id) => typeof id !== 'string')) {
@@ -190,9 +211,11 @@ export const PATCH = withErrorHandler(async (
     updates.defaultLogos = logoDefaults;
   }
 
+  const update: Record<string, unknown> = { $set: updates };
+  if (Object.keys(unsetFields).length) update.$unset = unsetFields;
   const result = await db.collection(COLLECTIONS.PARTNERS).findOneAndUpdate(
     { _id: new ObjectId(partnerId) },
-    { $set: updates },
+    update,
     { returnDocument: 'after' }
   );
 

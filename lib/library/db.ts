@@ -22,6 +22,8 @@ import { parseMessageArea } from '@/lib/frame/message-area';
 import { withoutSampleSelfies } from './sample-selfie';
 import { applyLibraryEdit, assignedFromGlobal, canEventAssign, canPartnerAssign, scopeOf } from './rules';
 import type { EventLibrary, EventLibraryEntry, LibraryItemView, PartnerLibrary, PartnerLibraryEntry } from './types';
+import { resolveAssetVisibility } from '@/lib/visual-assets/resolve';
+import type { ShareableVisualAsset, VisualAssetLevelPolicy } from '@/lib/visual-assets/contracts';
 
 /** Matches the global items: a missing or null scope (everything from before the libraries) and `global`. */
 export const GLOBAL_FILTER = { $or: [{ scope: null }, { scope: 'global' }] };
@@ -48,6 +50,7 @@ export function itemView(kind: LibraryKind, doc: Document): LibraryItemView {
     ...(text(doc.source) ? { source: text(doc.source) } : {}),
     scope: scopeOf(fieldsOf(doc)),
     itemActive: doc.isActive !== false,
+    shareToChildren: doc.shareToChildren !== false,
     createdAt: urlOrNull(doc.createdAt),
     messageArea: kind === 'frames' ? parseMessageArea(doc.messageArea) : null,
   };
@@ -71,19 +74,48 @@ interface ResolvedPartnerLibrary {
   ownDocs: Document[];
   /** Ids the library lists that no longer exist in the collection. */
   missing: string[];
+  hiddenDocs: Document[];
+}
+
+function policyOf(record: Document | null | undefined): VisualAssetLevelPolicy | null {
+  const policy = record?.visualAssetPolicy;
+  if (!policy || typeof policy !== 'object') return null;
+  return policy as VisualAssetLevelPolicy;
+}
+
+function hiddenRef(policy: VisualAssetLevelPolicy | null, kind: LibraryKind, id: string): boolean {
+  return policy?.hidden?.some((ref) => ref.kind === kind && ref.id === id) ?? false;
+}
+
+function blockedRef(policy: VisualAssetLevelPolicy | null, kind: LibraryKind, id: string): boolean {
+  return policy?.blockedForChildren?.some((ref) => ref.kind === kind && ref.id === id) ?? false;
 }
 
 async function resolvePartnerLibrary(db: Db, partner: Document, kind: LibraryKind): Promise<ResolvedPartnerLibrary> {
+  const v2 = (partner.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion === 2;
+  if (v2) {
+    const partnerId = text(partner.partnerId);
+    const policy = policyOf(partner);
+    const inherited = await coll(db, kind)
+      .find({ ...GLOBAL_FILTER, ...withoutSampleSelfies(kind), isActive: { $ne: false }, shareToChildren: { $ne: false } })
+      .sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
+    const visibleGlobal = inherited.filter((doc) => !hiddenRef(policy, kind, idOf(kind, doc)));
+    const hiddenDocs = inherited.filter((doc) => hiddenRef(policy, kind, idOf(kind, doc)));
+    const ownDocs = await coll(db, kind).find({ scope: 'partner', partnerId, ...withoutSampleSelfies(kind) }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
+    return { saved: true, globalDocs: visibleGlobal, ownDocs, missing: [], hiddenDocs };
+  }
   const savedIds = partnerSavedIds(kind, partner);
   const used = savedIds ? [] : await usedByPartnerEvents(db, text(partner.partnerId), kind);
   const { ids, saved } = assignedFromGlobal({ saved: savedIds, defaults: partnerDefaultIds(kind, partner), usedByEvents: used });
   const idField = KIND_META[kind].idField;
   const found = ids.length ? await coll(db, kind).find({ [idField]: { $in: ids } }).toArray() : [];
-  // What a partner had before the libraries can include an event's own upload; that is not a partner item.
-  const globalDocs = found.filter((doc) => scopeOf(fieldsOf(doc)) === 'global');
+  // What a partner had before the libraries can include an event's own upload;
+  // that is not a partner item. An explicit source-level private setting is
+  // enforced even for legacy partner lists; a missing field stays shared.
+  const globalDocs = found.filter((doc) => scopeOf(fieldsOf(doc)) === 'global' && doc.shareToChildren !== false);
   const ownDocs = await coll(db, kind).find({ scope: 'partner', partnerId: text(partner.partnerId), ...withoutSampleSelfies(kind) }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
   const foundIds = new Set(found.map((doc) => idOf(kind, doc)));
-  return { saved, globalDocs, ownDocs, missing: ids.filter((id) => !foundIds.has(id)) };
+  return { saved, globalDocs, ownDocs, missing: ids.filter((id) => !foundIds.has(id)), hiddenDocs: [] };
 }
 
 /** Every id in a partner's library: the global items it took and its own uploads. */
@@ -100,12 +132,124 @@ export async function loadPartnerLibrary(db: Db, partner: Document, kind: Librar
   const entry = (doc: Document, via: 'assigned' | 'own'): PartnerLibraryEntry => ({ ...itemView(kind, doc), via, isDefault: defaults.has(idOf(kind, doc)) });
   const items = [...resolved.globalDocs.map((doc) => entry(doc, 'assigned')), ...resolved.ownDocs.map((doc) => entry(doc, 'own'))];
   const held = resolved.globalDocs.map((doc) => idOf(kind, doc));
-  const availableDocs = await coll(db, kind)
-    .find({ ...GLOBAL_FILTER, ...withoutSampleSelfies(kind), isActive: true, ...(held.length ? { [KIND_META[kind].idField]: { $nin: held } } : {}) })
+  const isV2 = (partner.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion === 2;
+  const availableDocs = isV2 ? [] : await coll(db, kind)
+    .find({ ...GLOBAL_FILTER, ...withoutSampleSelfies(kind), isActive: true, shareToChildren: { $ne: false }, ...(held.length ? { [KIND_META[kind].idField]: { $nin: held } } : {}) })
     .sort({ createdAt: -1 })
     .limit(LIST_LIMIT)
     .toArray();
-  return { kind, saved: resolved.saved, items, available: availableDocs.sort(byNewest).map((doc) => itemView(kind, doc)), missing: resolved.missing };
+  return { kind, saved: resolved.saved, items, ...(isV2 ? { inheritanceEnabled: true as const, policy: policyOf(partner) ?? {}, hidden: resolved.hiddenDocs.map((doc) => itemView(kind, doc)) } : {}), available: availableDocs.sort(byNewest).map((doc) => itemView(kind, doc)), missing: resolved.missing };
+}
+
+export type PartnerAssetPolicyAction = 'hide' | 'show' | 'stop-forwarding' | 'allow-forwarding';
+export type PartnerAssetPolicyResult = { ok: true; policy: VisualAssetLevelPolicy } | { ok: false; status: 400 | 404; reason: string };
+
+/**
+ * Opt a legacy partner into inherited catalogs without changing what it can
+ * currently see: legacy omissions become partner-local hides. This is the
+ * read-before-write compatibility fence until the explicit dry-run backfill.
+ */
+async function enablePartnerInheritance(db: Db, partner: Document, now: string): Promise<VisualAssetLevelPolicy> {
+  const existing = policyOf(partner);
+  if ((partner.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion === 2) return existing ?? {};
+  const hidden: Array<{ kind: LibraryKind; id: string }> = [];
+  for (const kind of LIBRARY_KINDS) {
+    const current = await resolvePartnerLibrary(db, partner, kind);
+    const currentlyHeld = new Set(current.globalDocs.map((doc) => idOf(kind, doc)));
+    const globals = await coll(db, kind).find({ ...GLOBAL_FILTER, ...withoutSampleSelfies(kind) }).limit(10_000).toArray();
+    for (const doc of globals) {
+      const id = idOf(kind, doc);
+      if (id && !currentlyHeld.has(id)) hidden.push({ kind, id });
+    }
+  }
+  const policy: VisualAssetLevelPolicy = { hidden, blockedForChildren: [] };
+  await db.collection(COLLECTIONS.PARTNERS).updateOne(
+    { partnerId: text(partner.partnerId), 'visualAssetPolicy.inheritanceVersion': { $ne: 2 } },
+    { $set: { visualAssetPolicy: { ...policy, inheritanceVersion: 2 }, updatedAt: now } },
+  );
+  return policy;
+}
+
+/** Explicit, idempotent transition from the legacy assigned catalog. */
+export async function enablePartnerAssetInheritance(db: Db, partner: Document, now: string): Promise<VisualAssetLevelPolicy> {
+  return enablePartnerInheritance(db, partner, now);
+}
+
+/** Apply a partner's local visibility/forwarding choice. Parent-level sharing
+ * remains authoritative and cannot be restored by a child. */
+export async function updatePartnerAssetPolicy(
+  db: Db,
+  partner: Document,
+  kind: LibraryKind,
+  itemId: string,
+  action: PartnerAssetPolicyAction,
+  now: string,
+): Promise<PartnerAssetPolicyResult> {
+  const item = await coll(db, kind).findOne({ [KIND_META[kind].idField]: itemId });
+  if (!item) return { ok: false, status: 404, reason: `${KIND_META[kind].noun} not found` };
+  const scope = scopeOf(fieldsOf(item));
+  if (scope === 'event' || (scope === 'partner' && text(item.partnerId) !== text(partner.partnerId))) {
+    return { ok: false, status: 400, reason: 'Only global assets and this partner’s own assets can be configured here.' };
+  }
+  if (scope === 'global' && item.shareToChildren === false) {
+    return { ok: false, status: 400, reason: 'This global asset is not shared with partners. A child cannot override its owner’s sharing setting.' };
+  }
+  if (item.isActive === false) return { ok: false, status: 400, reason: 'This asset is inactive at its source level.' };
+
+  const base = await enablePartnerInheritance(db, partner, now);
+  const update: Document = { $set: { updatedAt: now } };
+  const add: Record<string, unknown> = {};
+  const pull: Record<string, unknown> = {};
+  if (action === 'hide') add['visualAssetPolicy.hidden'] = { kind, id: itemId };
+  if (action === 'show') pull['visualAssetPolicy.hidden'] = { kind, id: itemId };
+  if (action === 'stop-forwarding') add['visualAssetPolicy.blockedForChildren'] = { kind, id: itemId };
+  if (action === 'allow-forwarding') pull['visualAssetPolicy.blockedForChildren'] = { kind, id: itemId };
+  if (Object.keys(add).length) update.$addToSet = add;
+  if (Object.keys(pull).length) update.$pull = pull;
+  await db.collection(COLLECTIONS.PARTNERS).updateOne(
+    { partnerId: text(partner.partnerId), 'visualAssetPolicy.inheritanceVersion': 2 },
+    update,
+  );
+  const saved = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: text(partner.partnerId) });
+  return { ok: true, policy: policyOf(saved) ?? base };
+}
+
+export type EventAssetPolicyResult = { ok: true; policy: VisualAssetLevelPolicy } | { ok: false; status: 400 | 404; reason: string };
+
+/** Hide/restore one inherited item in one event catalog. Event uploads remain
+ * managed through the event's own active switch and are not inherited. */
+export async function updateEventAssetPolicy(
+  db: Db,
+  event: Document,
+  kind: LibraryKind,
+  itemId: string,
+  hidden: boolean,
+  now: string,
+): Promise<EventAssetPolicyResult> {
+  const eventId = text(event.eventId);
+  const item = await coll(db, kind).findOne({ [KIND_META[kind].idField]: itemId });
+  if (!item) return { ok: false, status: 404, reason: `${KIND_META[kind].noun} not found` };
+  if (scopeOf(fieldsOf(item)) === 'event' || (scopeOf(fieldsOf(item)) === 'partner' && text(item.partnerId) !== text(event.partnerId))) {
+    return { ok: false, status: 400, reason: 'Only an inherited asset can be hidden in this event.' };
+  }
+  if (item.isActive === false || item.shareToChildren === false) return { ok: false, status: 400, reason: 'This asset is unavailable at its source level.' };
+  const partner = await partnerOf(db, event);
+  if (!partner || (partner.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion !== 2) {
+    return { ok: false, status: 400, reason: 'The partner must enable inherited asset catalogs before an event can hide inherited assets.' };
+  }
+  const partnerPolicy = policyOf(partner);
+  if (hiddenRef(partnerPolicy, kind, itemId) || blockedRef(partnerPolicy, kind, itemId)) {
+    return { ok: false, status: 400, reason: 'The partner has hidden or stopped forwarding this asset. An event cannot restore it.' };
+  }
+  const update: Document = { $set: { 'visualAssetPolicy.inheritanceVersion': 2, updatedAt: now } };
+  if (hidden) update.$addToSet = { 'visualAssetPolicy.hidden': { kind, id: itemId } };
+  else update.$pull = { 'visualAssetPolicy.hidden': { kind, id: itemId } };
+  await db.collection(COLLECTIONS.EVENTS).updateOne(
+    { eventId, partnerId: text(event.partnerId) },
+    update,
+  );
+  const saved = await db.collection(COLLECTIONS.EVENTS).findOne({ eventId, partnerId: text(event.partnerId) });
+  return { ok: true, policy: policyOf(saved) ?? {} };
 }
 
 
@@ -118,7 +262,7 @@ async function partnerOf(db: Db, event: Document): Promise<Document | null> {
 export async function loadEventLibrary(db: Db, event: Document, kind: LibraryKind): Promise<EventLibrary> {
   const eventId = text(event.eventId);
   const partner = await partnerOf(db, event);
-  const resolved = partner ? await resolvePartnerLibrary(db, partner, kind) : { saved: true, globalDocs: [], ownDocs: [], missing: [] as string[] };
+  const resolved = partner ? await resolvePartnerLibrary(db, partner, kind) : { saved: true, globalDocs: [], ownDocs: [], missing: [] as string[], hiddenDocs: [] as Document[] };
   const inPartnerLibrary = new Set([...resolved.globalDocs, ...resolved.ownDocs].map((doc) => idOf(kind, doc)));
 
   const idField = KIND_META[kind].idField;
@@ -145,12 +289,28 @@ export async function loadEventLibrary(db: Db, event: Document, kind: LibraryKin
   const ownEventDocs = await coll(db, kind).find({ scope: 'event', eventId, ...withoutSampleSelfies(kind) }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
   // A logo is assigned once per scenario, so a logo the event shows in one scenario can still be taken for another (the page filters per scenario).
   const taken = new Set(kind === 'logos' ? [] : assignedIds);
-  const candidates = [...resolved.globalDocs, ...resolved.ownDocs, ...ownEventDocs].filter((doc) => doc.isActive !== false && !taken.has(idOf(kind, doc)));
+  const isV2 = (partner?.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion === 2;
+  const partnerPolicy = policyOf(partner);
+  const eventPolicy = policyOf(event);
+  const inheritedDocs = [...resolved.globalDocs, ...resolved.ownDocs];
+  const childHiddenDocs: Document[] = [];
+  const childDocs = inheritedDocs.filter((doc) => {
+    if (doc.shareToChildren === false) return false;
+    if (!isV2) return true;
+    const id = idOf(kind, doc);
+    if (blockedRef(partnerPolicy, kind, id)) return false;
+    if (hiddenRef(eventPolicy, kind, id)) { childHiddenDocs.push(doc); return false; }
+    return true;
+  });
+  const candidates = [...childDocs, ...ownEventDocs].filter((doc) => doc.isActive !== false && !taken.has(idOf(kind, doc)));
   return {
     kind,
+    ...(isV2 ? { inheritanceEnabled: true as const, policy: eventPolicy ?? {} } : {}),
     partner: partner ? { partnerId: text(partner.partnerId), adminId: String(partner._id), name: text(partner.name) } : null,
     assigned,
+    ...(isV2 ? { hidden: childHiddenDocs.map((doc) => itemView(kind, doc)) } : {}),
     available: candidates.sort(byNewest).map((doc) => itemView(kind, doc)),
+    inactiveOwn: ownEventDocs.filter((doc) => doc.isActive === false).map((doc) => itemView(kind, doc)),
     missing,
   };
 }
@@ -164,6 +324,33 @@ export async function checkEventAssign(db: Db, event: Document, kind: LibraryKin
   if (!item) return { ok: false, status: 404, reason: `${noun[0].toUpperCase()}${noun.slice(1)} not found` };
   if (item.isActive === false) return { ok: false, status: 400, reason: `This ${noun} is switched off in the library.` };
   const partner = await partnerOf(db, event);
+  const source = scopeOf(fieldsOf(item));
+  if (source === 'event' && text(item.eventId) !== text(event.eventId)) {
+    return { ok: false, status: 400, reason: `This ${noun} belongs to another event.` };
+  }
+  if (source === 'partner' && text(item.partnerId) !== text(partner?.partnerId ?? event.partnerId)) {
+    return { ok: false, status: 400, reason: `This ${noun} belongs to another partner.` };
+  }
+  const inheritanceEnabled = (partner?.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion === 2;
+  const visible = resolveAssetVisibility({
+    asset: item as ShareableVisualAsset,
+    kind,
+    id: itemId,
+    targetLevel: 'event',
+    partnerId: partner ? text(partner.partnerId) : null,
+    eventId: text(event.eventId),
+    partnerPolicy: inheritanceEnabled ? policyOf(partner) : null,
+    eventPolicy: inheritanceEnabled ? policyOf(event) : null,
+  });
+  if (!visible.available) {
+    const reason = visible.reason === 'wrong-owner' && source === 'event'
+      ? `This ${noun} belongs to another event.`
+      : visible.reason === 'wrong-owner' && source === 'partner'
+        ? `This ${noun} belongs to another partner.`
+        : `This ${noun} is unavailable to this event (${visible.reason}).`;
+    return { ok: false, status: 400, reason };
+  }
+  if (inheritanceEnabled) return { ok: true, item };
   const resolved = partner ? await resolvePartnerLibrary(db, partner, kind) : null;
   const check = canEventAssign(fieldsOf(item), {
     noun,
@@ -219,6 +406,9 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
       const doc = byId.get(id);
       if (!doc) return { ok: false, status: 404, reason: `Unknown ${noun}: ${id}` };
       if (doc.isActive === false) return { ok: false, status: 400, reason: `This ${noun} is switched off in the library: ${text(doc.name) || id}` };
+      if (doc.shareToChildren === false) {
+        return { ok: false, status: 400, reason: `This ${noun} is not shared with partner levels: ${text(doc.name) || id}` };
+      }
       const check = canPartnerAssign(fieldsOf(doc), noun);
       if (!check.ok) return { ok: false, status: 400, reason: check.reason };
     }
@@ -314,6 +504,7 @@ export type UpdateUploadResult = { ok: true; item: Document } | { ok: false; sta
 export interface UploadChanges {
   name?: unknown;
   messageArea?: unknown;
+  isActive?: unknown;
 }
 
 /**
@@ -351,6 +542,10 @@ export async function updateLibraryUpload(
       set.messageArea = area;
     }
   }
+  if (changes.isActive !== undefined) {
+    if (typeof changes.isActive !== 'boolean') return { ok: false, status: 400, reason: 'isActive must be true or false.' };
+    set.isActive = changes.isActive;
+  }
   await coll(db, kind).updateOne({ [idField]: itemId }, Object.keys(unset).length ? { $set: set, $unset: unset } : { $set: set });
   const updated = await coll(db, kind).findOne({ [idField]: itemId });
   return { ok: true, item: updated ?? { ...item, ...set } };
@@ -359,8 +554,8 @@ export async function updateLibraryUpload(
 export type DeleteUploadResult = { ok: true } | { ok: false; status: 400 | 404 | 409; reason: string };
 
 /**
- * Deletes an item that was uploaded at the partner level or the event level (never a global one: that is the global admins' list). An event's
- * own upload is unassigned from its event first; a partner's own upload cannot be deleted while one of its events has it assigned.
+ * Deletes an item uploaded at partner or event level. API routes must run `findAssetUsages` first and refuse while any reference remains; this
+ * helper retains its legacy cleanup as a final no-op safety net for the already-resolved case. Global uploads use the global catalog delete path.
  */
 export async function deleteLibraryUpload(db: Db, kind: LibraryKind, itemId: string, level: { scope: 'partner'; partnerId: string } | { scope: 'event'; eventId: string }): Promise<DeleteUploadResult> {
   const { idField, noun } = KIND_META[kind];

@@ -119,6 +119,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     contactName: contactName?.trim() || undefined,
     logoUrl: logoUrl?.trim() || undefined,
     isActive: isActive !== undefined ? Boolean(isActive) : true,
+    // New partners use the inherited catalog contract. Existing partners are
+    // left in legacy mode until an administrator deliberately enables it.
+    visualAssetPolicy: { inheritanceVersion: 2, hidden: [], blockedForChildren: [] },
     eventCount: 0,
     frameCount: 0,
     createdBy: session.user.id,

@@ -1,5 +1,15 @@
 # Handover
 
+## Current change — dependency-aware asset deletion
+
+Global, partner and event asset delete paths now share a read-only reference scan for frames, logos and images. Conflicts return exact partner/event/field references; the admin shows paginated deep links and a source-file link for making a copy. Resolve every use in its owner workspace, then retry; the delete endpoint rechecks. No asset files are deleted by this flow, and no production data was changed. Updated runbook, library reference, architecture, audit, release notes and endpoint inventory. Static checks passed: type-check, lint, GDS, inventory and production build. The test suite was not run. No production data was changed; no push, merge or deployment was performed.
+
+## Current change — visual asset inheritance and reusable experience defaults
+
+This branch implements the Global → Partner → Event asset sharing/visibility policy for logos, frames and images, plus identity-free guest-experience templates. New partners use the new catalog contract, while existing partners remain on legacy behavior until an administrator explicitly enables inheritance; that opt-in records local hides to preserve the current catalog. New events and newly provisioned events start by inheriting their parent experience. Existing events retain their stored setup until an editor opts them in. Template presets are allow-listed, reject forbidden identity/consent/photo data, and reject known library images that are inactive, private or unavailable at their destination level. No production partner/event data was migrated and no default was changed. See `docs/VISUAL_ASSET_HIERARCHY.md` and `docs/LIBRARIES.md`.
+
+`npm run release:check` passed, including all 363 unit-test files, production guards and the production build. `npm run inventory:check` passed with 714 links and no broken references. A local production-build browser smoke test confirmed the template selector and save interaction with a mocked API on desktop and at 390 px mobile width (no horizontal overflow). The repository's disposable-database Playwright suite was not run because this worktree has no `MONGODB_URI`; no production database was used. Version remains 12.3.42 pending the coordinated fleet release decision. Project #24 issues #747–#754 track the independently executable architecture, catalog, runtime, provisioning, migration, verification and release work; migration and production rollout remain gated.
+
 ## Current change — case-bound Camera photo erasure
 
 Camera now has an internal, SSO-case-bound erasure intake, an immediate

@@ -19,6 +19,7 @@ import { checkEventAssign } from '@/lib/library/db';
 import { LOGO_PLACE_SLOTS, LOGO_SCENARIO_IDS, isOnSlotModel, resolveEventLogos, type LogoEvent, type LogoPartner } from '@/lib/slots/logo';
 import { lostItem, nextSnapshots, type Snapshots } from '@/lib/slots/snapshot';
 import { withErrorHandler } from '@/lib/api/withErrorHandler';
+import { visualAssetVisibleToEvent, type EventOwner, type PartnerOwner } from '@/lib/visual-assets/filter';
 
 type EventLogoAssignment = Event['logos'][number];
 type GroupedEventLogos = Record<LogoScenario, Array<EventLogoAssignment & Pick<Logo, 'name' | 'imageUrl' | 'thumbnailUrl'> & { level: string; lost?: boolean }>>;
@@ -177,6 +178,8 @@ export const GET = withErrorHandler(async (
       }
     }
 
+    const partner = event.partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null;
+
     const groupedLogos: GroupedEventLogos = {
       'slideshow-transition': [],
       'onboarding-thankyou': [],
@@ -186,7 +189,6 @@ export const GET = withErrorHandler(async (
 
     if (isOnSlotModel(event as LogoEvent)) {
       // An event on the slot model (camera#419): the logos of each place of use come from its chain (partner, event, place), `lib/slots/logo.ts`.
-      const partner = event.partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null;
       const resolved = resolveEventLogos(partner as LogoPartner | null, event as LogoEvent);
       const slotLogos = await logosCollection
         .find({ logoId: { $in: [...new Set(Object.values(resolved).flatMap((items) => items.map((item) => item.id)))] } })
@@ -201,11 +203,14 @@ export const GET = withErrorHandler(async (
         resolved[scenario].forEach((item, index) => {
           const logo = byId.get(item.id);
           if (logo) {
+            if (!visualAssetVisibleToEvent(logo, 'logos', item.id, event as unknown as EventOwner, partner as unknown as PartnerOwner | null)) return;
             groupedLogos[scenario as LogoScenario].push({ logoId: item.id, scenario: scenario as LogoScenario, order: index, isActive: true, addedAt: '', level: item.level, name: String(logo.name), imageUrl: String(logo.imageUrl), thumbnailUrl: logo.thumbnailUrl as string });
             return;
           }
           const lost = lostItem(snapshots, LOGO_PLACE_SLOTS[scenario], item.id);
           if (lost?.imageUrl) {
+            const snapshotAsset = { scope: lost.scope, isActive: true, shareToChildren: true, partnerId: event.partnerId, eventId: event.eventId };
+            if (!visualAssetVisibleToEvent(snapshotAsset as unknown as Document, 'logos', item.id, event as unknown as EventOwner, partner as unknown as PartnerOwner | null)) return;
             groupedLogos[scenario as LogoScenario].push({ logoId: item.id, scenario: scenario as LogoScenario, order: index, isActive: true, addedAt: '', level: item.level, lost: true, name: lost.name, imageUrl: lost.imageUrl, thumbnailUrl: lost.thumbnailUrl as string });
           }
         });
@@ -223,7 +228,7 @@ export const GET = withErrorHandler(async (
 
     for (const assignment of logoAssignments) {
       const logo = logos.find((item) => item.logoId === assignment.logoId);
-      if (logo) {
+      if (logo && visualAssetVisibleToEvent(logo as unknown as Document, 'logos', assignment.logoId, event as unknown as EventOwner, partner as unknown as PartnerOwner | null)) {
         groupedLogos[assignment.scenario].push({
           ...assignment,
           level: 'event',

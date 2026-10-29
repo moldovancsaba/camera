@@ -37,11 +37,21 @@ const del = (itemId: string) => [
   { params: Promise.resolve({ partnerId: String(PARTNER_MONGO_ID), itemId }) },
 ] as const;
 
-test("deleting a partner's own logo removes it and its rows of the defaults", async (t) => {
-  const { data } = setup(t);
+test("deleting a partner's logo requires removing its default use first", async (t) => {
+  const { data, db, calls } = setup(t);
   const { DELETE } = await importRoute('own');
+  const blocked = await DELETE(...del('lp1'));
+  assert.equal(blocked.status, 409);
+  const body = (await blocked.json()) as { details: { usages: Array<{ uses: string[] }> } };
+  assert.deepEqual(body.details.usages.flatMap((usage) => usage.uses), ['Default logo for new events']);
+  assert.deepEqual(data.logos.map((l) => l.logoId).sort(), ['lg1', 'lp1', 'lp2']);
+
+  // Simulate removing the default in partner settings; deletion must not edit it implicitly.
+  await db.collection('partners').updateOne({ partnerId: 'P' }, { $pull: { defaultLogos: { logoId: 'lp1' } } } as never);
+  calls.length = 0;
   assert.equal((await DELETE(...del('lp1'))).status, 200);
   assert.deepEqual(data.logos.map((l) => l.logoId).sort(), ['lg1', 'lp2']);
+  assert.deepEqual((data.partners[0] as { defaultLogos: Array<{ logoId: string }> }).defaultLogos.map((r) => r.logoId), ['lg1']);
   assert.deepEqual((data.partners[0] as { defaultLogos: Array<{ logoId: string }> }).defaultLogos.map((r) => r.logoId), ['lg1']);
 });
 

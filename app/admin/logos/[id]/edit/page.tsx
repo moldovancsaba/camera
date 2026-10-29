@@ -24,6 +24,7 @@ import {
 } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import { notifyAdminError } from '@/components/admin/notify';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 
 interface LogoRecord {
   _id: string;
@@ -58,6 +59,7 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usageConflict, setUsageConflict] = useState(false);
   const { confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
@@ -122,6 +124,11 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
 
       if (!response.ok) {
         const data = await response.json();
+        if (response.status === 409) {
+          setUsageConflict(true);
+          setIsDeleting(false);
+          return;
+        }
         throw new Error(data.error || 'Failed to delete logo');
       }
 
@@ -183,6 +190,7 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
       maxWidth={960}
     >
       {error ? <InlineAlert title="Error" message={error} severity="error" /> : null}
+      {usageConflict && logo.logoId ? <AssetUsageResolution kind="logos" assetId={logo.logoId} /> : null}
 
       <form onSubmit={handleSubmit}>
         <AdminCrudForm title="Logo settings" description="Update metadata for this logo resource.">

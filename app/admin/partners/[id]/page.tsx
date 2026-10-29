@@ -16,6 +16,7 @@ import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import DeletePartnerButton from '@/components/admin/DeletePartnerButton';
+import ExperienceTemplateDefaultSettings from '@/components/admin/ExperienceTemplateDefaultSettings';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
@@ -465,6 +466,15 @@ export default async function PartnerDetailPage({
             frames={partner.defaultFramesWithDetails || []}
             logos={partner.defaultLogosWithDetails || []}
           />
+
+          {canManageEvents ? (
+            <ExperienceTemplateDefaultSettings
+              level="partner"
+              resourceId={id}
+              sourceEventId={events[0]?._id.toString()}
+              canManage={Boolean(events[0])}
+            />
+          ) : null}
 
           <Card p={0}>
             <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-default-border)', padding: '1.5rem' }}>

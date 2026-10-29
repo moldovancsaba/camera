@@ -36,7 +36,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
   return payload.data;
 }
 
-export default function QrTextsLibrary() {
+export default function QrTextsLibrary({ embedded = false }: { embedded?: boolean } = {}) {
   const [items, setItems] = useState<QrTextView[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +87,14 @@ export default function QrTextsLibrary() {
     return act(() => call(`/api/qr-texts/${id}`, { method: 'DELETE' }));
   };
 
-  const header = (
+  const header = embedded ? (
+    <header id="qr-texts">
+      <h2 style={{ margin: 0 }}>QR texts</h2>
+      <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>
+        Guest-facing text shown beside the QR code on the default slideshow. These entries share the global guest-facing Dictionary workspace.
+      </p>
+    </header>
+  ) : (
     <WorkspaceHeader
       eyebrow="Resource Inventory"
       title="QR texts"

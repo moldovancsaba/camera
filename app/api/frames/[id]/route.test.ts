@@ -56,7 +56,6 @@ function setupDelete(t: TestContext, extra: { events?: Array<Record<string, unkn
   return seeded;
 }
 const del = (id = String(FRAME_OID)) => [new NextRequest(`http://localhost/api/frames/${id}`, { method: 'DELETE' }), { params: Promise.resolve({ id }) }] as const;
-const errorOf = async (response: Response) => ((await response.json()) as { error?: string }).error ?? '';
 
 test('a frame that nothing uses is deleted, and an unknown frame is not found', async (t) => {
   const { data } = setupDelete(t);
@@ -66,21 +65,30 @@ test('a frame that nothing uses is deleted, and an unknown frame is not found', 
   assert.equal(data.frames.length, 0);
 });
 
-test('a frame that an event has assigned is not deleted: the answer says how many events, and the frame stays', async (t) => {
-  const { data } = setupDelete(t, { events: [{ eventId: 'e1', frames: [{ frameId: 'f1', isActive: true }] }, { eventId: 'e2', frames: [{ frameId: 'f1', isActive: false }] }] });
+test('a frame assigned to events returns each exact destination and stays in the library', async (t) => {
+  const { data } = setupDelete(t, { events: [{ _id: new ObjectId(), eventId: 'e1', name: 'Event One', frames: [{ frameId: 'f1', isActive: true }] }, { _id: new ObjectId(), eventId: 'e2', name: 'Event Two', frames: [{ frameId: 'f1', isActive: false }] }] });
   const { DELETE } = await importRoute('delete-event');
   const response = await DELETE(...del());
   assert.equal(response.status, 409);
-  assert.match(await errorOf(response), /used by 2 events\. Switch it off instead/);
+  const body = (await response.json()) as { error: string; details?: { total?: number; usages?: Array<{ ownerName: string; uses: string[]; href: string }> } };
+  assert.match(body.error, /still used in 2 events/);
+  assert.equal(body?.details?.total, 2);
+  assert.deepEqual(body?.details?.usages?.map(({ ownerName, uses }) => ({ ownerName, uses })), [
+    { ownerName: 'Event One', uses: ['Assigned event frame'] },
+    { ownerName: 'Event Two', uses: ['Assigned event frame'] },
+  ]);
   assert.equal(data.frames.length, 1);
 });
 
 test('a frame that a partner library holds, or a partner makes a default, is not deleted either', async (t) => {
-  const { data } = setupDelete(t, { partners: [{ partnerId: 'P', defaultFrames: ['f1'], library: { frames: ['f1'], logos: [] } }] });
+  const { data } = setupDelete(t, { partners: [{ _id: new ObjectId(), partnerId: 'P', name: 'Partner P', defaultFrames: ['f1'], library: { frames: ['f1'], logos: [] } }] });
   const { DELETE } = await importRoute('delete-partner');
   const response = await DELETE(...del());
   assert.equal(response.status, 409);
-  assert.match(await errorOf(response), /1 partner library, 1 partner that makes it a default for new events/);
+  const body = (await response.json()) as { error: string; details?: { total?: number; usages?: Array<{ ownerName: string; uses: string[]; href: string }> } };
+  assert.match(body.error, /still used in 1 partner/);
+  assert.equal(body?.details?.total, 1, 'the library and default are resolved from the partner settings page');
+  assert.deepEqual(body?.details?.usages?.[0]?.uses, ['In the partner library · Default for new events']);
   assert.equal(data.frames.length, 1);
 });
 

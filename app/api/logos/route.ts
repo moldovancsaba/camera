@@ -163,6 +163,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     isActive,
     usageCount: 0,
     scope: 'global',
+    // Sharing is explicit: a new global logo stays private to its source catalog until an admin shares it.
+    shareToChildren: false,
     createdBy: session.user.id,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

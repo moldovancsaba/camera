@@ -38,12 +38,12 @@ function seed() {
     ],
     frames: [{ frameId: 'f1', name: 'Frame f1', imageUrl: 'https://store.example.test/f1.png', isActive: true }],
     logos: [{ logoId: 'l1', name: 'Logo l1', imageUrl: 'https://store.example.test/l1.png', isActive: true }],
-    partners: [{ partnerId: 'P', name: 'Partner P', defaultFrames: ['f1'], defaultLogos: [{ logoId: 'l1', scenario: 'loading-capture', order: 0 }] }, { partnerId: 'OTHER', name: 'Other partner' }],
+    partners: [{ _id: 'partner-P', partnerId: 'P', name: 'Partner P', defaultFrames: ['f1'], defaultLogos: [{ logoId: 'l1', scenario: 'loading-capture', order: 0 }] }, { _id: 'partner-OTHER', partnerId: 'OTHER', name: 'Other partner' }],
     events: [
       // A stray `images` list on an event is not an assignment: images are never assigned.
-      { eventId: 'E', partnerId: 'P', name: 'Event E', frames: [{ frameId: 'f1', isActive: true }], images: [{ pictureId: 'g2' }], emailFooterImageUrl: URL_OF('g1') },
-      { eventId: 'OTHER-EVENT', partnerId: 'P', name: 'Other event', frames: [] },
-      { eventId: 'LONE', name: 'Event without a partner' },
+      { _id: 'event-E', eventId: 'E', partnerId: 'P', name: 'Event E', frames: [{ frameId: 'f1', isActive: true }], images: [{ pictureId: 'g2' }], emailFooterImageUrl: URL_OF('g1') },
+      { _id: 'event-OTHER', eventId: 'OTHER-EVENT', partnerId: 'P', name: 'Other event', frames: [] },
+      { _id: 'event-LONE', eventId: 'LONE', name: 'Event without a partner' },
     ],
   });
 }
@@ -170,7 +170,18 @@ test('an SVG is taken, with its size from the file; a global upload carries scop
   assert.equal(result.ok, true);
   const doc = data.images.at(-1) as Record<string, unknown>;
   assert.deepEqual([doc.width, doc.height, doc.mimeType, doc.scope, doc.partnerId, doc.eventId], [40, 20, 'image/svg+xml', 'global', undefined, undefined]);
+  assert.equal(doc.shareToChildren, false, 'new global assets require an explicit share action');
   assert.equal(stored[0].contentType, 'image/svg+xml');
+});
+
+test('new partner uploads are private to the partner until it shares them with events', async () => {
+  const { db, data } = seed();
+  stored.length = 0;
+  const result = await createLibraryItem(db, {
+    kind: 'images', file: await pngFile('partner.png', 32, 18), name: 'Partner-only image', createdBy: 'u1', owner: { scope: 'partner', partnerId: 'P' },
+  });
+  assert.equal(result.ok, true);
+  assert.equal((data.images.at(-1) as Record<string, unknown>).shareToChildren, false);
 });
 
 test('a GIF, a file over 4 MB and an empty name are refused before anything is stored', async () => {
@@ -211,14 +222,22 @@ test('a global image is switched off and on; an upload of a partner or an event 
   assert.deepEqual([unknown.ok, unknown.ok ? 0 : unknown.status], [false, 404]);
 });
 
-test('deleting a global image takes it out of every partner library; the fields that show it keep their address', async () => {
+test('a global image cannot be deleted until the partner library and direct event field references are resolved', async () => {
   const { db, data } = seed();
   await savePartnerLibrary(db, partner(), 'images', { add: ['g1', 'g2'] }, NOW);
+  const blocked = await deleteGlobalImage(db, 'g1');
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.ok ? 0 : blocked.status, 409);
+  assert.equal(blocked.ok ? 0 : blocked.total, 2, 'the partner library and event email footer are both identified');
+  assert.equal(data.images.some((i) => i.pictureId === 'g1'), true, 'the catalog entry remains while either use exists');
+
+  await db.collection('partners').updateOne({ partnerId: 'P' }, { $pull: { 'library.images': { $in: ['g1'] } } } as never);
+  await db.collection('events').updateOne({ eventId: 'E' }, { $set: { emailFooterImageUrl: null } });
   const result = await deleteGlobalImage(db, 'g1');
-  assert.deepEqual(result, { ok: true, partnersUpdated: 1 });
+  assert.deepEqual(result, { ok: true, partnersUpdated: 0 });
   assert.deepEqual((data.partners[0] as { library: { images: string[] } }).library.images, ['g2']);
   assert.equal(data.images.some((i) => i.pictureId === 'g1'), false);
-  assert.equal((data.events[0] as Record<string, unknown>).emailFooterImageUrl, URL_OF('g1'));
+  assert.equal((data.events[0] as Record<string, unknown>).emailFooterImageUrl, null);
   assert.equal((await deleteGlobalImage(db, 'e1')).ok, false, 'an event upload is deleted on its event page');
 });
 

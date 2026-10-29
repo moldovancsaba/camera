@@ -1,6 +1,6 @@
 /**
  * A database of plain arrays for the tests of the libraries: just the calls lib/library and its routes make (find with sort and limit,
- * findOne, countDocuments, insertOne (a duplicate `_id` is refused, as MongoDB does), updateOne with $set, $push and $pull (and `upsert` with plain filters), updateMany with $set, $unset and $pull (also on a dotted path such as
+ * findOne, countDocuments, insertOne (a duplicate `_id` is refused, as MongoDB does), updateOne with $set, $push, $addToSet and $pull (and `upsert` with plain filters), updateMany with $set, $unset and $pull (also on a dotted path such as
  * `library.images`), deleteOne). Filters: equality (null matches a missing field),
  * $in, $nin, $ne, $exists, $or, $not (as the only operator of a field) and dotted paths through arrays (`frames.frameId`; a plain value also matches an array that holds it); $set (also `frames.$.isActive` and `imageCopies.$`, the whole matched element), $unset, $push and $pull; $inc and
  * $setOnInsert on an update or an upsert, insertMany, createIndex (recorded, nothing indexed) and bulkWrite (updateOne and insertOne operations) for the journey recording. Not part of the app.
@@ -101,6 +101,16 @@ function getPath(doc: Doc, path: string): unknown {
   return path.split('.').reduce<unknown>((at, part) => (at && typeof at === 'object' ? (at as Doc)[part] : undefined), doc);
 }
 
+function addToSet(doc: Doc, path: string, value: unknown): void {
+  const current = getPath(doc, path);
+  const list = Array.isArray(current) ? [...current] : [];
+  const values = value && typeof value === 'object' && Array.isArray((value as Doc).$each) ? (value as Doc).$each as unknown[] : [value];
+  for (const candidate of values) {
+    if (!list.some((item) => JSON.stringify(item) === JSON.stringify(candidate))) list.push(candidate);
+  }
+  setPath(doc, path, list);
+}
+
 function setPath(doc: Doc, path: string, value: unknown, filter: Doc = {}): void {
   const parts = path.split('.');
   let target = doc;
@@ -144,6 +154,7 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
       const each = value && typeof value === 'object' && Array.isArray((value as Doc).$each) ? ((value as Doc).$each as unknown[]) : [value];
       doc[path] = [...arr, ...each];
     }
+    for (const [path, value] of Object.entries((update.$addToSet as Doc) ?? {})) addToSet(doc, path, value);
     for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) pullFrom(doc, path, cond);
     return { matchedCount: 1, modifiedCount: 1 };
   };
@@ -207,6 +218,7 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           const docs = list(name).filter((d) => matches(d, filter));
           for (const doc of docs) {
             for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
+            for (const [path, value] of Object.entries((update.$addToSet as Doc) ?? {})) addToSet(doc, path, value);
             for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) pullFrom(doc, path, cond);
             for (const path of Object.keys((update.$unset as Doc) ?? {})) unsetPath(doc, path);
           }

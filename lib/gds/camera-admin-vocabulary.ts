@@ -5,6 +5,25 @@ const deletedFeedback = { icon: GdsIcons.Delete, color: 'red', messageId: 'gds.f
 const openedFeedback = { icon: GdsIcons.Eye, color: 'teal', messageId: 'gds.feedback.opened' } as const;
 
 export const cameraAdminVocabularyPacks = [
+  createGdsVocabularyPack('visual-assets', {
+    enable: { defaultMessage: 'Use inherited asset sharing', icon: GdsIcons.Link, feedback: savedFeedback },
+    hide: { defaultMessage: 'Hide from this level', icon: GdsIcons.EyeOff, feedback: savedFeedback },
+    show: { defaultMessage: 'Show at this level', icon: GdsIcons.Eye, feedback: savedFeedback },
+    'stop-forwarding': { defaultMessage: 'Stop sharing with events', icon: GdsIcons.Link, feedback: savedFeedback },
+    'allow-forwarding': { defaultMessage: 'Share with events', icon: GdsIcons.Link, feedback: savedFeedback },
+    'share-to-children': { defaultMessage: 'Share with child levels', icon: GdsIcons.Link, feedback: savedFeedback },
+    'stop-sharing-to-children': { defaultMessage: 'Stop sharing with child levels', icon: GdsIcons.Link, feedback: savedFeedback },
+    'share-global': { defaultMessage: 'Share with partners', icon: GdsIcons.Link, feedback: savedFeedback },
+    'stop-share-global': { defaultMessage: 'Stop sharing with partners', icon: GdsIcons.Link, feedback: savedFeedback },
+  }),
+  createGdsVocabularyPack('experience-template', {
+    'global-save': { defaultMessage: 'Save choice', icon: GdsIcons.Save, feedback: savedFeedback },
+    'partner-save': { defaultMessage: 'Save choice', icon: GdsIcons.Save, feedback: savedFeedback },
+    'event-save': { defaultMessage: 'Save choice', icon: GdsIcons.Save, feedback: savedFeedback },
+    'global-create': { defaultMessage: 'Create template from this event', icon: GdsIcons.Add, feedback: savedFeedback },
+    'partner-create': { defaultMessage: 'Create template from this event', icon: GdsIcons.Add, feedback: savedFeedback },
+    'event-create': { defaultMessage: 'Create template from this event', icon: GdsIcons.Add, feedback: savedFeedback },
+  }),
   createGdsVocabularyPack('users', {
     promote: { defaultMessage: 'Promote', icon: GdsIcons.Users, feedback: savedFeedback },
     demote: { defaultMessage: 'Demote', icon: GdsIcons.Users, feedback: savedFeedback },
@@ -231,6 +250,8 @@ export const cameraAdminVocabularyPacks = [
     'delete-import': { defaultMessage: 'Delete the import', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'confirm-delete': { defaultMessage: 'Yes, delete it', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'cancel-delete': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
+    'refresh-asset-uses': { defaultMessage: 'Refresh asset uses', icon: GdsIcons.Refresh, feedback: openedFeedback },
+    'load-more-asset-uses': { defaultMessage: 'Load more asset uses', icon: GdsIcons.Add, feedback: openedFeedback },
   }),
   createGdsVocabularyPack('partner-frames', {
     'save-defaults': { defaultMessage: 'Save defaults', icon: GdsIcons.Save, feedback: savedFeedback },

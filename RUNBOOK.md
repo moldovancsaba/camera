@@ -10,6 +10,20 @@ deleted; no `dev`/`preview` branch exists. Every push to `main` deploys. Policy
 and current practice (PRs recommended; most changes are pushed directly) in
 [docs/BRANCHING.md](docs/BRANCHING.md).
 
+## Visual asset inheritance and experience defaults
+
+The Global → Partner → Event catalog and experience-template system is described in [docs/VISUAL_ASSET_HIERARCHY.md](docs/VISUAL_ASSET_HIERARCHY.md). New partners use the version-2 catalog contract and new events inherit it. Existing partners are intentionally not migrated automatically.
+
+To enable a legacy partner, open its Frames, Logos or Images library and use **Enable inherited catalog**. The server derives local hide references from the current catalog before it enables version 2, preserving the existing visible set. Verify all three libraries and the event's existing assignments after the save. This is an explicit partner-level opt-in; do not bulk-enable production partners from a migration script without a read-only inventory, dry run, backup and reviewed report.
+
+Parent asset changes take effect immediately for descendants that still follow that parent. If an asset becomes unavailable, descendants cannot override that restriction; re-share or reactivate it at its owner to restore availability. Hiding an asset at a child changes only that child's catalog and never deletes media or existing assignments.
+
+Deleting an asset is a two-pass operation. A 409 means Camera found references and has not deleted the catalog row or media file. Use the conflict panel's links to open each named partner/event setting, remove the reference, select a replacement, or upload a saved copy at its new owner level. Return to the original asset page, refresh the usage list, and retry Delete. The server repeats the scan at deletion time; do not manually edit MongoDB references to bypass the guard. If the list says it has more than 500 uses, resolve all pages before retrying. If a known field is missing from the list, keep the asset and report the field/path so the scanner can be updated.
+
+Experience templates are managed from Global Settings → Experience defaults, Partner → Experience defaults, and Event → Edit → Experience defaults. Set the global selection first; optionally create and select a partner template; then confirm the event is set to follow its parent or select an event template. The event editor preserves historical local configuration until an editor opts in. If a parent selection is disabled, the event's stored configuration remains in use. Template writes and selections are reversible through their settings pages. Selected templates cannot be deleted; remove their references first. There is no job queue or external service for template application.
+
+For release, run `npm run db:ensure-indexes` through the normal approved database-index procedure to create the unique experience-template key. Do not run production migrations, change production defaults, or bulk-opt-in partners as part of a code-only deployment. Verify authorization, template selection, known library asset scope checks, guest response stripping, and keyboard/screen-reader states before opening the change for merge review.
+
 ## Deploying to production
 
 Production deploys from git: every push to `main` builds and promotes
@@ -249,7 +263,7 @@ panel and the backfill follow (camera#235 to #238).
 - **The event emoji as the logo (camera#274):** a partner with no logo gets the first emoji of the event title in the logo spot (see the
   plan, decision 17). Images drawn with an older drawing code are drawn again by "Redraw the older images" on `/admin/frames/generated`
   (dry run first; it only touches images, never the snapshot).
-- **Rolling the frame out to existing events (camera#238):** `/admin/frames/generated` (Libraries, "Generated Frames",
+- **Rolling the frame out to existing events (camera#238):** `/admin/frames/generated` (Blocks, "Generated Frames",
   global admin only), API `POST /api/admin/frame-backfill`. It covers every event with no active frame of its own and no
   generated images; events with an own active frame are never touched, events with images are skipped, so it can be
   repeated and continued. Order:

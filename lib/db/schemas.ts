@@ -31,6 +31,7 @@ import type { FrameDesign } from '@/lib/frame/context';
 import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
 import type { StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 import type { WelcomeElement } from '@/lib/events/welcome-composition';
+import type { ExperienceTemplate, ExperienceTemplateSelection, VisualAssetLevelPolicy } from '@/lib/visual-assets/contracts';
 
 /**
  * Collection Names
@@ -69,6 +70,8 @@ export const COLLECTIONS = {
   /** Server-side OAuth/session payload; browser holds only a small pointer cookie (`v:2`). */
   WEB_SESSIONS: 'web_sessions',
   ADMIN_SETTINGS: 'admin_settings',
+  /** Reusable, identity-free visual/event experience templates (lib/visual-assets). */
+  EXPERIENCE_TEMPLATES: 'experience_templates',
   /** What the people who manage the service did and every refused or failed request (issue 517, lib/activity/log.ts); kept until the weekly export after the one that sent it. */
   ACTIVITY_LOG: 'activity_log',
   /** One row for every weekly export that was sent: the period it covers, the rows, when (lib/activity/export.ts). */
@@ -199,6 +202,10 @@ export interface Partner {
    * had before (its defaults and what its events use) counts as its library until the first save.
    */
   library?: { frames?: string[]; logos?: string[]; images?: string[] };
+  /** Versioned parent→child asset visibility policy; missing remains on the legacy resolver until backfill. */
+  visualAssetPolicy?: VisualAssetLevelPolicy & { inheritanceVersion?: 2 };
+  /** Partner-level starter experience; null explicitly disables the inherited global starter. */
+  defaultExperienceTemplateId?: string | null;
   defaultFrames?: string[];          // Default frame IDs to assign to new events (always items of the partner's library)
   defaultLogos?: Array<{             // Default logo assignments for new events
     logoId: string;                  // Reference to logo
@@ -216,6 +223,12 @@ export interface Partner {
   createdBy: string;                 // Admin user ID from SSO who created this partner
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
+}
+
+/** Reusable, identity-free experience configuration saved from an event. */
+export interface ExperienceTemplateRecord extends ExperienceTemplate {
+  _id?: ObjectId;
+  createdAt: string;
 }
 
 // ============================================================================
@@ -429,6 +442,10 @@ export interface Event {
   partnerId: string;                 // Reference to parent partner
   partnerName: string;               // Cached partner name for display and filtering
   messmassEventId?: string;          // Cross-ref to the messmass event/project (_id) — shared identity; read by fanmass
+  /** Event-level visual visibility overrides. Hidden inherited assets remain unavailable; only this event's catalog is affected. */
+  visualAssetPolicy?: VisualAssetLevelPolicy & { inheritanceVersion?: 2 };
+  /** `inherit` follows the partner/global default; `template` selects a local event template and stops inheriting its config. */
+  experienceTemplate?: ExperienceTemplateSelection | null;
   savetheworldEventId?: string;      // Cross-ref to the savetheworld provisioning call — shared identity, idempotency key
   
   // Event details
@@ -591,6 +608,8 @@ export interface Logo {
 
   // Who owns the logo (camera#361): missing scope = global, the library admins fill. See lib/library.
   scope?: 'global' | 'partner' | 'event';
+  /** Parent-controlled sharing boundary. Missing preserves the pre-inheritance availability semantics. */
+  shareToChildren?: boolean;
   partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
   eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
   // A logo that was not uploaded (camera#367): 'messmass' for the partner's logo imported from messmass, and the address it came from.
@@ -635,6 +654,8 @@ export interface Frame {
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   // Who owns the frame (camera#361): missing scope = global. See lib/library.
   scope?: 'global' | 'partner' | 'event';
+  /** Parent-controlled sharing boundary. Missing preserves the pre-inheritance availability semantics. */
+  shareToChildren?: boolean;
   partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
   eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
   /**
@@ -673,6 +694,8 @@ export interface LibraryImage {
   tags?: string[];
   // Who owns the picture: missing scope = global. See lib/library.
   scope?: 'global' | 'partner' | 'event';
+  /** Parent-controlled sharing boundary. Missing preserves the pre-inheritance availability semantics. */
+  shareToChildren?: boolean;
   partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
   eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
 }

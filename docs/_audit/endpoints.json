@@ -61,10 +61,12 @@
   {"path": "/api/e2e/bootstrap", "methods": ["POST"], "file": "app/api/e2e/bootstrap/route.ts", "auth_markers": [], "no_auth_marker": true},
   {"path": "/api/e2e/cleanup", "methods": ["POST"], "file": "app/api/e2e/cleanup/route.ts", "auth_markers": [], "no_auth_marker": true},
   {"path": "/api/events/[eventId]/email-legal", "methods": ["GET", "PUT"], "file": "app/api/events/[eventId]/email-legal/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/events/[eventId]/experience-template", "methods": ["GET", "PATCH"], "file": "app/api/events/[eventId]/experience-template/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/events/[eventId]/frames/[frameId]", "methods": ["DELETE"], "file": "app/api/events/[eventId]/frames/[frameId]/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/events/[eventId]/frames/[frameId]/toggle", "methods": ["PATCH"], "file": "app/api/events/[eventId]/frames/[frameId]/toggle/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/events/[eventId]/frames", "methods": ["POST"], "file": "app/api/events/[eventId]/frames/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/events/[eventId]/library/items/[itemId]", "methods": ["PATCH", "DELETE"], "file": "app/api/events/[eventId]/library/items/[itemId]/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/events/[eventId]/library/policy", "methods": ["PATCH"], "file": "app/api/events/[eventId]/library/policy/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/events/[eventId]/library", "methods": ["GET"], "file": "app/api/events/[eventId]/library/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/events/[eventId]/library/upload", "methods": ["POST"], "file": "app/api/events/[eventId]/library/upload/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/events/[eventId]/logo-slots/keep", "methods": ["POST"], "file": "app/api/events/[eventId]/logo-slots/keep/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
@@ -121,9 +123,11 @@
   {"path": "/api/observability/slideshow-diagnostic", "methods": ["POST"], "file": "app/api/observability/slideshow-diagnostic/route.ts", "auth_markers": [], "no_auth_marker": true},
   {"path": "/api/partners/[partnerId]/email-defaults", "methods": ["GET", "PUT"], "file": "app/api/partners/[partnerId]/email-defaults/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/partners/[partnerId]/email-legal", "methods": ["GET", "PUT"], "file": "app/api/partners/[partnerId]/email-legal/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/partners/[partnerId]/experience-template", "methods": ["GET", "PATCH"], "file": "app/api/partners/[partnerId]/experience-template/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/partners/[partnerId]/frame-slots", "methods": ["GET", "POST", "PUT"], "file": "app/api/partners/[partnerId]/frame-slots/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/partners/[partnerId]/library/import-messmass-logo", "methods": ["GET", "POST"], "file": "app/api/partners/[partnerId]/library/import-messmass-logo/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/partners/[partnerId]/library/items/[itemId]", "methods": ["PATCH", "DELETE"], "file": "app/api/partners/[partnerId]/library/items/[itemId]/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/partners/[partnerId]/library/policy", "methods": ["POST", "PATCH"], "file": "app/api/partners/[partnerId]/library/policy/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/partners/[partnerId]/library", "methods": ["GET", "PUT"], "file": "app/api/partners/[partnerId]/library/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/partners/[partnerId]/library/upload", "methods": ["POST"], "file": "app/api/partners/[partnerId]/library/upload/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/partners/[partnerId]/logo-slot", "methods": ["GET", "PUT"], "file": "app/api/partners/[partnerId]/logo-slot/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
@@ -156,6 +160,11 @@
   {"path": "/api/submissions", "methods": ["GET", "POST"], "file": "app/api/submissions/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/upload-logo", "methods": ["POST"], "file": "app/api/upload-logo/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/uploads/original", "methods": ["POST"], "file": "app/api/uploads/original/route.ts", "auth_markers": [], "no_auth_marker": true},
-  {"path": "/api/uploads/temporary-capture", "methods": ["POST"], "file": "app/api/uploads/temporary-capture/route.ts", "auth_markers": [], "no_auth_marker": true}
+  {"path": "/api/uploads/temporary-capture", "methods": ["POST"], "file": "app/api/uploads/temporary-capture/route.ts", "auth_markers": [], "no_auth_marker": true},
+  {"path": "/api/visual-assets/[kind]/[assetId]/sharing", "methods": ["PATCH"], "file": "app/api/visual-assets/[kind]/[assetId]/sharing/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/visual-assets/[kind]/[assetId]/usages", "methods": ["GET"], "file": "app/api/visual-assets/[kind]/[assetId]/usages/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/visual-assets/templates/[templateId]", "methods": ["PATCH", "DELETE"], "file": "app/api/visual-assets/templates/[templateId]/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/visual-assets/templates/default", "methods": ["GET", "PATCH"], "file": "app/api/visual-assets/templates/default/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
+  {"path": "/api/visual-assets/templates", "methods": ["GET", "POST"], "file": "app/api/visual-assets/templates/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false}
  ]
 }

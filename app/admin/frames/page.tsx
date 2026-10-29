@@ -24,6 +24,7 @@ interface FrameListItem {
   description?: string;
   category?: string;
   isActive: boolean;
+  shareToChildren?: boolean;
   scope?: 'global' | 'partner' | 'event';
   ownershipLevel?: 'global' | 'partner' | 'event';
   partnerId?: string | null;
@@ -170,6 +171,7 @@ export default async function FramesPage({
         category: frame.category ?? null,
         imageUrl: frame.imageUrl,
         isActive: Boolean(frame.isActive),
+        shareToChildren: frame.shareToChildren !== false,
         scope,
         usageCount: (frame.frameId ? assignmentsByFrameId.get(frame.frameId) : 0) ?? 0,
         partnerId: frame.partnerId ?? null,
