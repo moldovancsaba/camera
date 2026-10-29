@@ -12,6 +12,7 @@ import { ObjectId } from 'mongodb';
 import { AccentPanel, AccessSummary, StatsStrip } from '@/components/gds/ClientWrappers';
 import { Badge, Breadcrumbs, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import PartnerEventsOpenAll from '@/components/admin/PartnerEventsOpenAll';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
@@ -139,6 +140,7 @@ export default async function PartnerDetailPage({
   let submissions: SubmissionDoc[] = [];
   let partnerAccessAssignments: PartnerAccessAssignmentDoc[] = [];
   let participantCount = 0;
+  let partnerEventCount = 0;
   let dbError: string | null = null;
   const session = await getSession();
   const canManagePartner = isGlobalAdminSession(session);
@@ -173,12 +175,18 @@ export default async function PartnerDetailPage({
       );
     }
 
-    events = (await db
-      .collection(COLLECTIONS.EVENTS)
-      .find({ partnerId: partner.partnerId })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray()) as unknown as EventDoc[];
+    const partnerEventQuery = { partnerId: partner.partnerId };
+    const [partnerEvents, totalPartnerEvents] = await Promise.all([
+      db
+        .collection(COLLECTIONS.EVENTS)
+        .find(partnerEventQuery)
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .toArray(),
+      db.collection(COLLECTIONS.EVENTS).countDocuments(partnerEventQuery),
+    ]);
+    events = partnerEvents as unknown as EventDoc[];
+    partnerEventCount = totalPartnerEvents;
 
     submissions = (await db
       .collection(COLLECTIONS.SUBMISSIONS)
@@ -311,7 +319,7 @@ export default async function PartnerDetailPage({
 
       <StatsStrip
         stats={[
-          { label: 'Events', value: events.length },
+          { label: 'Events', value: partnerEventCount },
           { label: 'Frames', value: partner.frameCount || 0 },
           { label: 'Photos', value: submissions.length },
           { label: 'Participants', value: participantCount },
@@ -428,7 +436,7 @@ export default async function PartnerDetailPage({
               <Title order={3} mb="md">
                 Danger Zone
               </Title>
-              <DeletePartnerButton partnerId={id} partnerName={partner.name} hasEvents={events.length > 0} eventCount={events.length} />
+              <DeletePartnerButton partnerId={id} partnerName={partner.name} hasEvents={partnerEventCount > 0} eventCount={partnerEventCount} />
             </Card>
           ) : null}
         </Stack>
@@ -484,11 +492,14 @@ export default async function PartnerDetailPage({
                   Event app instances that inherit this partner’s defaults and can override them when needed.
                 </Text>
               </div>
-              {canManageEvents ? (
-                <Link href={`/admin/events/new?partnerId=${partner.partnerId}`} style={{ textDecoration: 'none' }}>
-                  <Button>+ Add Event</Button>
-                </Link>
-              ) : null}
+              <Group gap="sm" wrap="wrap">
+                <PartnerEventsOpenAll partnerId={partner.partnerId} partnerName={partner.name} eventCount={partnerEventCount} />
+                {canManageEvents ? (
+                  <Link href={`/admin/events/new?partnerId=${encodeURIComponent(partner.partnerId)}`} style={{ textDecoration: 'none' }}>
+                    <Button>+ Add Event</Button>
+                  </Link>
+                ) : null}
+              </Group>
             </Group>
 
             {events.length === 0 ? (

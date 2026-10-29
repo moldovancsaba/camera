@@ -144,6 +144,8 @@ Partner detail pages are the primary daily operational surface. They expose:
 - partner gallery context
 - partner user assignments
 
+The partner overview loads the 10 most recently created related events for a compact preview and separately counts all events by the partner's stable `partnerId`. **Open Events** navigates to `/admin/events?partnerId=<partnerId>`. The Events inventory applies that value as an exact ID filter, combines it with optional name/search filters, and pages results 50 at a time. Its query still intersects the signed-in user's authorized partner IDs; an unauthorized partner ID produces no event rows or partner-name lookup. Page/search/filter links preserve the partner scope, while each active filter can be removed independently.
+
 ### App surfaces
 
 - Events inventory and event instance detail
