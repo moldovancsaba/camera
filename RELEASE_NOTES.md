@@ -7,7 +7,7 @@
 - **Changed:** locale selectors display native language names followed by their English names in parentheses.
 - **Accessibility and security:** the preference form uses the GDS selector and semantic actions, exposes loading/error/success states, announces success, and limits authenticated APIs to the current admin's own preference.
 - **Documentation:** updated analytics capacity notes, language resolution and account-settings operations.
-- **Verification:** `npm run release:check` passed, including 367/367 unit-test files, production guards, and the production build; `npm run inventory:check` passed with 716 links and no broken references. A local production-build Playwright check passed for the account selector/save at 1440px and 390px and confirmed the Analytics page presents a database error instead of crashing when storage is unavailable; account APIs were mocked and no database was used. GitHub Verify passed on PR #764. The PR is not merged or production-verified yet.
+- **Verification:** `npm run release:check` passed, including 367/367 unit-test files, production guards, and the production build; `npm run inventory:check` passed with 716 links and no broken references. A local production-build Playwright check passed for the account selector/save at 1440px and 390px and confirmed the Analytics page presents a database error instead of crashing when storage is unavailable; account APIs were mocked and no database was used. GitHub Verify passed on PR #764, merged 2026-10-29. Production behavior was not independently verified.
 
 ## Unreleased — scoped journey and email navigation
 
