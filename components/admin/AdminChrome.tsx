@@ -15,6 +15,7 @@ import { adminContextMenu, adminContextOf, getVisibleAdminNavSections, type Admi
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminShellText } from '@/lib/i18n/admin-shell';
+import { adminAccountText } from '@/lib/i18n/admin-account';
 import { uiLanguageDirection } from '@/lib/i18n/locale-negotiation';
 
 interface AdminChromeProps {
@@ -144,6 +145,12 @@ export function AdminChromeView({
         </div>
       </div>
       <hr style={{ border: 0, borderTop: '1px solid var(--mantine-color-gray-3)', margin: 0 }} />
+      <SemanticNavLink
+        href="/admin/account"
+        active={pathname === '/admin/account'}
+        label={adminAccountText('Account settings', language)}
+        icon={<AdminIcon iconKey="user" size={18} />}
+      />
       <Link href="/" style={{ borderRadius: 12, color: 'inherit', display: 'block', padding: 'var(--mantine-spacing-sm)', textDecoration: 'none' }}>
         <div style={{ alignItems: 'center', display: 'flex', gap: 'var(--mantine-spacing-sm)' }}>
           <span style={{ alignItems: 'center', background: 'var(--mantine-color-blue-light)', borderRadius: 999, display: 'inline-flex', height: 34, justifyContent: 'center', width: 34 }}>

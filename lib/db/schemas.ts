@@ -59,6 +59,8 @@ export const COLLECTIONS = {
   /** The follow-up e-mail of an event, one row for each event and e-mail address (epic 463, lib/email/follow-up.ts): the claim that keeps it to one, and whether it went. The `_id` is a hash of the event and the address, so the row holds no address. */
   EMAIL_FOLLOW_UPS: 'email_follow_ups',
   USERS_CACHE: 'users_cache',
+  /** A minimal, per-SSO-subject admin preference record; guest language remains event configuration. */
+  ADMIN_USER_PREFERENCES: 'admin_user_preferences',
   SLIDESHOWS: 'slideshows',
   SLIDESHOW_LAYOUTS: 'slideshow_layouts',
   /** Tracked short links, one per placement (camera#320); their hits are counted in SHORT_LINK_HITS. */
@@ -123,6 +125,14 @@ export interface AdminCardDisplaySettings {
   };
   updatedAt: string;
   updatedBy: string | null;
+}
+
+/** Per-user interface preference keyed by the stable SSO subject; no profile fields are copied. */
+export interface AdminUserPreferences {
+  _id: string;
+  uiLanguage: UiLanguage | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ============================================================================

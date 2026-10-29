@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — analytics large-history handling and admin language settings
+
+- **Fixed:** all-events Analytics now computes maximum durations with a linear scan rather than expanding an unbounded history into function arguments, avoiding a JavaScript argument-limit crash while retaining uncapped counts.
+- **Added:** signed-in administrators can choose an interface language in Account settings. The preference is stored under the SSO subject only, applies before the admin page renders, and can be reset to browser language.
+- **Changed:** locale selectors display native language names followed by their English names in parentheses.
+- **Accessibility and security:** the preference form uses the GDS selector and semantic actions, exposes loading/error/success states, announces success, and limits authenticated APIs to the current admin's own preference.
+- **Documentation:** updated analytics capacity notes, language resolution and account-settings operations.
+- **Verification:** `npm run release:check` passed, including 367/367 unit-test files, production guards, and the production build; `npm run inventory:check` passed with 716 links and no broken references. A local production-build Playwright check passed for the account selector/save at 1440px and 390px and confirmed the Analytics page presents a database error instead of crashing when storage is unavailable; account APIs were mocked and no database was used. GitHub Verify passed on PR #764. The PR is not merged or production-verified yet.
+
 ## Unreleased — scoped journey and email navigation
 
 - **Changed:** the global, partner, and event guest-flow destinations are labeled **Global User Journey**, **Partner User Journey**, and **Event User Journey**. The partner shortcut jumps to its inherited journey defaults on the partner overview; the event link opens the page-order editor.

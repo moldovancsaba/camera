@@ -18,6 +18,7 @@
   {"file": "TECH_STACK.md", "title": "Tech Stack"},
   {"file": "assets/frame-fonts/README.md", "title": "Frame fonts"},
   {"file": "business_requirements.md", "title": "Seyu 2.0 \u2013 SaaS version \u2014 Business & vendor requirements"},
+  {"file": "docs/ADMIN_ACCOUNT_SETTINGS.md", "title": "Camera admin account settings"},
   {"file": "docs/ADMIN_UX_AUDIT_AND_DELIVERY_PLAN.md", "title": "Camera admin UX audit and delivery plan"},
   {"file": "docs/AI_TRAINING_PURPOSE_AND_CONSENT_DRAFT.md", "title": "Historical draft: using annotated photos to train automatic annotation"},
   {"file": "docs/ANALYTICS.md", "title": "Analytics (issue 521)"},

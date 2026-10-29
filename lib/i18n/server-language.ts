@@ -3,6 +3,9 @@ import { headers } from 'next/headers';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { getSession } from '@/lib/auth/session';
+import { getAdminNavigationAccess } from '@/lib/partners/authorization';
+import { readAdminUiLanguagePreference } from '@/lib/account/preferences';
 import { loadCaptureEvent } from '@/lib/events/capture-event';
 import { findShareSubmission } from '@/lib/submissions/share-lookup';
 import { DEFAULT_UI_LANGUAGE, type UiLanguage } from '@/lib/i18n';
@@ -42,6 +45,19 @@ async function configuredLanguageForPath(pathname: string): Promise<UiLanguage |
   return (await loadEventTexts(db, event)).language;
 }
 
+/** Resolve a preference only for the signed-in user's own authorized admin workspace. */
+async function savedAdminLanguageForPath(pathname: string): Promise<UiLanguage | null> {
+  if (!/^\/admin(?:\/|$)/.test(pathname) || /^\/admin\/login(?:\/|$)/.test(pathname)) return null;
+  const session = await getSession();
+  const userId = typeof session?.user?.id === 'string' ? session.user.id.trim() : '';
+  if (!session || !userId || session.appAccess === false) return null;
+
+  const db = await connectToDatabase();
+  const access = await getAdminNavigationAccess(db, session);
+  if (!access.isGlobalAdmin && !access.hasAnyPartnerAccess) return null;
+  return readAdminUiLanguagePreference(db, userId);
+}
+
 /** Resolve the document language and client interface locale before the root layout renders. */
 export async function initialUiLanguages(): Promise<InitialUiLanguages> {
   try {
@@ -49,10 +65,18 @@ export async function initialUiLanguages(): Promise<InitialUiLanguages> {
     const pathname = requestHeaders.get('x-camera-pathname') ?? '';
     const preferences = parseAcceptLanguage(requestHeaders.get('accept-language'));
     const deviceLanguage = deviceUiLanguage(preferences);
+    let adminPreference: UiLanguage | null = null;
+    try {
+      adminPreference = await savedAdminLanguageForPath(pathname);
+    } catch {
+      // A preference read outage must not block the admin workspace; use the
+      // request's negotiated device locale as the normal fallback.
+      console.warn('Could not resolve saved admin language; using device language.');
+    }
     const configuredFallback = !deviceLanguage && /^\/(capture|share)\//.test(pathname)
       ? await configuredLanguageForPath(pathname)
       : null;
-    return initialUiLanguagesForPath(pathname, deviceLanguage, configuredFallback);
+    return initialUiLanguagesForPath(pathname, deviceLanguage, configuredFallback, adminPreference);
   } catch {
     return { documentLanguage: DEFAULT_UI_LANGUAGE, interfaceLanguage: DEFAULT_UI_LANGUAGE };
   }

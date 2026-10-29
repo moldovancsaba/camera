@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { en } from './messages.en';
-import { DEFAULT_UI_LANGUAGE, DICTIONARIES, isUiLanguage, normalizeUiLanguage, textOr, translate, UI_LANGUAGES } from './index';
+import { DEFAULT_UI_LANGUAGE, DICTIONARIES, isUiLanguage, normalizeUiLanguage, textOr, translate, UI_LANGUAGES, uiLanguageOptionLabel } from './index';
 
 test('English is the default and anything that is not a known language is English', () => {
   assert.equal(DEFAULT_UI_LANGUAGE, 'en');
@@ -15,6 +15,13 @@ test('English is the default and anything that is not a known language is Englis
 test('every language has exactly the keys of the English dictionary, and no text is empty', () => {
   for (const language of UI_LANGUAGES) assert.deepEqual(Object.keys(DICTIONARIES[language]).sort(), Object.keys(en).sort(), language);
   for (const language of UI_LANGUAGES) for (const key of Object.keys(en) as Array<keyof typeof en>) assert.ok(translate(language, key).trim(), `${language} ${key}`);
+});
+
+test('language selectors show native and English names for all supported locales', () => {
+  assert.equal(uiLanguageOptionLabel('en'), 'English');
+  assert.equal(uiLanguageOptionLabel('hu'), 'Magyar (Hungarian)');
+  assert.equal(uiLanguageOptionLabel('zh-Hant'), '繁體中文 (Traditional Chinese)');
+  for (const language of UI_LANGUAGES) assert.ok(uiLanguageOptionLabel(language).includes('(') || language === 'en', language);
 });
 
 test('a text is translated, and its {values} are filled in; a marker without a value stays', () => {

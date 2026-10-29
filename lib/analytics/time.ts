@@ -61,6 +61,16 @@ export function average(values: readonly number[]): number | null {
   return values.length > 0 ? Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10 : null;
 }
 
+/** Largest value without spreading an entire event history into function arguments. */
+export function maximum(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  let result = values[0];
+  for (let index = 1; index < values.length; index += 1) {
+    if (values[index] > result) result = values[index];
+  }
+  return result;
+}
+
 export function median(values: readonly number[]): number | null {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);

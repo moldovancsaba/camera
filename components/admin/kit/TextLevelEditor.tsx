@@ -12,7 +12,7 @@ import { GdsInline, GdsStack, InlineAlert, LabelTag, MetadataText, SectionPanel 
 import { AdminSelect, AdminTextInput } from '@sovereignsquad/gds-admin/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { groupedCatalog } from '@/lib/i18n/catalog';
-import { isUiLanguage, UI_LANGUAGES, UI_LANGUAGE_LABELS, type UiLanguage } from '@/lib/i18n';
+import { isUiLanguage, UI_LANGUAGES, UI_LANGUAGE_LABELS, uiLanguageOptionLabel, type UiLanguage } from '@/lib/i18n';
 import { TEXT_MAX, markersOf, type TextOverrides, type TextsByLanguage } from '@/lib/i18n/overrides';
 
 export interface InheritedLevel {
@@ -88,7 +88,7 @@ export default function TextLevelEditor({ own, inherited, initialLanguage = 'en'
           label="Language"
           value={language}
           onChange={(next) => { if (isUiLanguage(next)) setLanguage(next); }}
-          data={UI_LANGUAGES.map((code) => ({ value: code, label: UI_LANGUAGE_LABELS[code] }))}
+          data={UI_LANGUAGES.map((code) => ({ value: code, label: uiLanguageOptionLabel(code) }))}
         />
         <AdminTextInput name="text-search" label="Find a text" value={search} onChange={setSearch} placeholder="Part of a text or its name" />
         <SemanticButton action="texts:save" loading={busy} disabled={busy || !dirty || anyProblem} onClick={() => void onSave(clean(draft))}>

@@ -13,7 +13,7 @@
 
 import { optionLabel, STANDARD_VOCABULARY, type ResolvedVocabulary } from '@/lib/photo-vetting/vocabulary';
 import type { PhotoFacts } from './facts';
-import { average, dayInRange, daysBetween, localParts, median, secondsBetween } from './time';
+import { average, dayInRange, daysBetween, localParts, maximum, median, secondsBetween } from './time';
 
 export interface Tally {
   id: string;
@@ -208,7 +208,7 @@ function fixedTally(ids: readonly string[], labels: Record<string, string>, valu
 }
 
 function durationStats(seconds: readonly number[]): DurationStats {
-  return { count: seconds.length, totalSeconds: seconds.reduce((sum, value) => sum + value, 0), avgSeconds: average(seconds), medianSeconds: median(seconds), maxSeconds: seconds.length > 0 ? Math.max(...seconds) : null };
+  return { count: seconds.length, totalSeconds: seconds.reduce((sum, value) => sum + value, 0), avgSeconds: average(seconds), medianSeconds: median(seconds), maxSeconds: maximum(seconds) };
 }
 
 /** The photos the report counts for a range, and how many were left out. */
@@ -402,7 +402,7 @@ export function buildEventReport(input: ReportInput, options: ReportOptions): Ev
       waiting: waitingPhotos.length,
       notVetted: userPhotos.length - approved - rejected - waitingPhotos.length,
       approvalRate: approved + rejected > 0 ? approved / (approved + rejected) : null,
-      oldestWaitingSeconds: waitingAges.length > 0 ? Math.max(...waitingAges) : null,
+      oldestWaitingSeconds: maximum(waitingAges),
       waitingAgeBuckets: [
         { id: 'under-15m', label: 'Under 15 minutes', count: waitingAges.filter((seconds) => seconds < 15 * 60).length },
         { id: '15m-1h', label: '15 minutes to 1 hour', count: waitingAges.filter((seconds) => seconds >= 15 * 60 && seconds < 60 * 60).length },
