@@ -7,10 +7,13 @@ The all-events analytics report no longer spreads unbounded duration arrays into
 history. Locale selectors now show each native name with its English name in
 parentheses. Signed-in admins can choose a persistent interface language from
 Account settings; it is stored by SSO subject only and remains independent from
-guest language. The preference endpoint and route are covered by unit tests.
-Production analytics logs were not available, so the scale defect is verified
-from the code path and regression tests; a different production error would need
-its specific server diagnostic to identify. See `docs/ANALYTICS.md`,
+guest language. The preference API and language resolver have unit coverage. A
+local production-build browser check passed at 1440px and 390px, including the
+save interaction; the Analytics page rendered its database-failure state without
+reaching the global error page when tested without a database. Production
+analytics logs were not available, so the scale defect is verified from the code
+path and regression tests; a different production error would need its specific
+server diagnostic to identify. See `docs/ANALYTICS.md`,
 `docs/ADMIN_ACCOUNT_SETTINGS.md`, and `docs/UI_LANGUAGE.md`.
 
 ## Current change — partner-scoped event inventory
