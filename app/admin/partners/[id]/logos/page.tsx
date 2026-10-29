@@ -246,8 +246,8 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
                 note={chosen.has(item.id) ? "One of this partner's logos." : undefined}
                 actions={
                   <>
-                    {library.inheritanceEnabled && item.via === 'assigned' ? <VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="logos" id={item.id} scope="global" shareToChildren={item.shareToChildren} blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'logos' && ref.id === item.id)} onSaved={reload} /> : null}
-                    {library.inheritanceEnabled && item.via === 'own' ? <ShareToChildrenToggle kind="logos" id={item.id} shareToChildren={item.shareToChildren} disabled={!item.itemActive} onSaved={reload} /> : null}
+                    {item.via === 'assigned' ? <VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="logos" id={item.id} scope="global" shareToChildren={item.shareToChildren} blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'logos' && ref.id === item.id)} onSaved={reload} /> : null}
+                    {item.via === 'own' ? <ShareToChildrenToggle kind="logos" id={item.id} shareToChildren={item.shareToChildren} childAudience="events" disabled={!item.itemActive} onSaved={reload} /> : null}
                     {item.via === 'own' ? <LibraryUploadActiveToggle level="partner" ownerId={partnerId} kind="logos" id={item.id} itemActive={item.itemActive} shareToChildren={item.shareToChildren} onSaved={reload} /> : null}
                     {item.via === 'own' ? (
                       <SemanticButton action={item.source === 'messmass' ? 'library:delete-import' : 'library:delete-upload'} variant="danger" size="xs" disabled={busy} onClick={() => deleteUpload(item)}>

@@ -257,7 +257,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                             Delete upload
                           </SemanticButton>
                         ) : null}
-                        {library.inheritanceEnabled && entry.scope !== 'event' && entry.stillInPartnerLibrary ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={entry.id} scope={entry.scope} hidden={library.policy?.hidden?.some((ref) => ref.kind === 'frames' && ref.id === entry.id)} onSaved={reload} /> : null}
+                        {entry.scope !== 'event' && entry.stillInPartnerLibrary ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={entry.id} scope={entry.scope} hidden={library.policy?.hidden?.some((ref) => ref.kind === 'frames' && ref.id === entry.id)} onSaved={reload} /> : null}
                       </>
                     }
                   >
@@ -302,7 +302,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                   actions={
                     <>
                       <SemanticButton action="event-frames:assign" size="xs" disabled={busy} onClick={() => void assign(item.id)}>Assign frame</SemanticButton>
-                      {library.inheritanceEnabled && item.scope !== 'event' ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} onSaved={reload} /> : null}
+                      {item.scope !== 'event' ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} onSaved={reload} /> : null}
                     </>
                   }
                 />

@@ -234,10 +234,18 @@ export async function updateEventAssetPolicy(
   }
   if (item.isActive === false || item.shareToChildren === false) return { ok: false, status: 400, reason: 'This asset is unavailable at its source level.' };
   const partner = await partnerOf(db, event);
-  if (!partner || (partner.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion !== 2) {
-    return { ok: false, status: 400, reason: 'The partner must enable inherited asset catalogs before an event can hide inherited assets.' };
+  if (!partner) return { ok: false, status: 400, reason: 'The event needs a partner before it can hide inherited assets.' };
+  // A safe compatibility transition snapshots the legacy partner's visible
+  // global catalog into local hides before enabling child-level event choices.
+  // This keeps the effective catalog unchanged while making the control usable.
+  if ((partner.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion !== 2) {
+    await enablePartnerInheritance(db, partner, now);
   }
-  const partnerPolicy = policyOf(partner);
+  const currentPartner = await partnerOf(db, event);
+  if ((currentPartner?.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion !== 2) {
+    return { ok: false, status: 400, reason: 'The partner catalog could not be prepared for event-level visibility.' };
+  }
+  const partnerPolicy = policyOf(currentPartner);
   if (hiddenRef(partnerPolicy, kind, itemId) || blockedRef(partnerPolicy, kind, itemId)) {
     return { ok: false, status: 400, reason: 'The partner has hidden or stopped forwarding this asset. An event cannot restore it.' };
   }

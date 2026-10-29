@@ -160,7 +160,7 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
                   scope={item.scope}
                   actions={
                     <>
-                      {library.inheritanceEnabled && item.scope !== 'event' ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="images" id={item.id} scope={item.scope} onSaved={reload} /> : null}
+                      {item.scope !== 'event' ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="images" id={item.id} scope={item.scope} onSaved={reload} /> : null}
                       {item.scope === 'event' ? <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(item.id, item.name)}>Delete upload</SemanticButton> : null}
                     </>
                   }

@@ -48,6 +48,14 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Logo request failed';
 }
 
+function isLogoRecord(value: unknown): value is LogoRecord {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<LogoRecord>;
+  return typeof candidate._id === 'string'
+    && typeof candidate.name === 'string'
+    && typeof candidate.imageUrl === 'string';
+}
+
 export default function EditLogoPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
@@ -59,17 +67,32 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [usageConflict, setUsageConflict] = useState(false);
   const { confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
     async function fetchLogo() {
+      setLogo(null);
+      setIsLoading(true);
+      setNotFound(false);
+      setError(null);
       try {
         const response = await fetch(`/api/logos/${id}`);
-        if (!response.ok) throw new Error('Logo not found');
-        const data = await response.json();
-        // Handle wrapped response
-        const logoData = (data.logo || data.data?.logo || data) as LogoRecord;
+        const payload = await response.json().catch(() => null) as {
+          data?: { logo?: unknown };
+          error?: string;
+        } | null;
+        if (!response.ok) {
+          setNotFound(response.status === 404);
+          throw new Error(payload?.error || (response.status === 404 ? 'Logo not found' : 'Could not load logo'));
+        }
+
+        const logoData = payload?.data?.logo;
+        if (!isLogoRecord(logoData)) {
+          throw new Error('The logo response was incomplete. Refresh the page and try again.');
+        }
         setLogo(logoData);
         setName(logoData.name);
         setDescription(logoData.description ?? '');
@@ -82,7 +105,7 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
     }
 
     void fetchLogo();
-  }, [id]);
+  }, [id, loadAttempt]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -162,14 +185,28 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
     return (
       <StateBlock
         variant="error"
-        title="Logo not found"
+        title={notFound ? 'Logo not found' : 'Could not load logo'}
         description={error || undefined}
         action={
-          <Link href="/admin/logos" style={{ textDecoration: 'none' }}>
-            <SemanticButton action="logos:back-to-list" variant="secondary">
-              Back to logos
+          notFound ? (
+            <Link href="/admin/logos" style={{ textDecoration: 'none' }}>
+              <SemanticButton action="logos:back-to-list" variant="secondary">
+                Back to logos
+              </SemanticButton>
+            </Link>
+          ) : (
+            <SemanticButton
+              action="logos:retry-load"
+              variant="secondary"
+              onClick={() => {
+                setError(null);
+                setIsLoading(true);
+                setLoadAttempt((attempt) => attempt + 1);
+              }}
+            >
+              Try again
             </SemanticButton>
-          </Link>
+          )
         }
       />
     );

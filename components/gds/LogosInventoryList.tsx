@@ -67,18 +67,15 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
   }));
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedLogoRow>> = [
     {
-      id: 'share-global',
-      label: adminOperationText('Share with partners', language),
-      kind: 'secondary',
-      disabled: (logo) => logo.scope !== 'global' || logo.shareToChildren !== false,
-      onSelect: (logo) => void updateSharing(logo.logoId, true),
-    },
-    {
-      id: 'stop-share-global',
-      label: adminOperationText('Stop sharing with partners', language),
-      kind: 'secondary',
-      disabled: (logo) => logo.scope !== 'global' || logo.shareToChildren === false,
-      onSelect: (logo) => void confirmStopSharing(logo.logoId),
+      id: 'toggle-global-sharing',
+      label: adminOperationText('Toggle sharing with partners', language),
+      // GDS maps secondary card actions to its generic Edit slot; the labeled icon avoids duplicate, misleading Edit buttons.
+      kind: 'icon',
+      disabled: (logo) => logo.scope !== 'global',
+      onSelect: (logo) => {
+        if (logo.shareToChildren === false) void updateSharing(logo.logoId, true);
+        else void confirmStopSharing(logo.logoId);
+      },
     },
     {
       id: 'edit',
