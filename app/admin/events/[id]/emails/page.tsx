@@ -8,6 +8,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { GdsStack, InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import { Button, Checkbox, Group, TextInput } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
@@ -17,6 +18,7 @@ import LegalPartEditor, { useLegalLevel } from '@/components/admin/kit/LegalPart
 import type { EventEmailsView } from '@/lib/email/event-emails';
 import type { LegalByLanguage } from '@/lib/email/legal-rules';
 import { isUiLanguage } from '@/lib/i18n';
+import { adminShellText } from '@/lib/i18n/admin-shell';
 
 interface Payload<T> {
   data?: T;
@@ -64,6 +66,7 @@ function FollowUpNote({ view, on }: { view: EventEmailsView; on: boolean }) {
 
 export default function EventEmailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const language = useUiLanguage();
   const url = `/api/admin/events/${id}/emails`;
   const [view, setView] = useState<EventEmailsView | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -164,11 +167,11 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
         <span aria-hidden> / </span>
         <Link href={`/admin/events/${id}`}>{view.eventName}</Link>
         <span aria-hidden> / </span>
-        <span>Emails</span>
+        <span>{adminShellText('Event Email', language)}</span>
       </nav>
       <WorkspaceHeader
         eyebrow="Events"
-        title={`Emails: ${view.eventName}`}
+        title={`${adminShellText('Event Email', language)}: ${view.eventName}`}
         description="The five e-mails a user can get from this event. A switch or a text you do not touch follows the default; what you change is this event's own. Welcome, arrived and follow up are off by default."
       />
 

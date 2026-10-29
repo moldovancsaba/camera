@@ -115,8 +115,8 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
       },
       {
         href: '/admin/frames/generated',
-        label: 'Generated Frames',
-        description: 'Configure the generated default frame used by events without their own frame.',
+        label: 'Generated Frame Rollout',
+        description: 'Dry-run and apply the generated default frame to events that do not have their own.',
         iconKey: 'frame',
         isVisible: (access) => access.isGlobalAdmin,
       },
@@ -162,6 +162,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         iconKey: 'adjustments',
         isVisible: (access) => access.isGlobalAdmin,
       },
+      {
+        href: '/admin/settings/emails',
+        label: 'Global Email',
+        description: 'Global legal and follow-up email settings inherited by partners and events.',
+        iconKey: 'mail',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
     ],
   },
   {
@@ -189,6 +196,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         iconKey: 'photoScan',
         isVisible: (access) => access.isGlobalAdmin,
       },
+      {
+        href: '/admin/settings/experience',
+        label: 'Global User Journey',
+        description: 'Choose the reusable guest journey inherited by partners and events.',
+        iconKey: 'layoutDashboard',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
     ],
   },
   {
@@ -196,24 +210,10 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
     description: 'Shared application defaults and account access.',
     items: [
       {
-        href: '/admin/settings/experience',
-        label: 'Experience defaults',
-        description: 'Experience defaults',
-        iconKey: 'adjustments',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
         href: '/admin/settings/defaults',
         label: 'Journey defaults',
         description: 'Default user-journey settings applied to events that follow global defaults.',
         iconKey: 'adjustments',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
-        href: '/admin/settings/emails',
-        label: 'Emails',
-        description: 'The e-mails to the users: the general legal part every partner and event follows, and the follow-up e-mails a week after an event.',
-        iconKey: 'mail',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
@@ -251,7 +251,8 @@ export interface AdminContext {
 
 /** `/admin/events/<id>` and everything under it is the event's context, `/admin/partners/<id>` the partner's; `new` and every other path are the main menu. */
 export function adminContextOf(pathname: string): AdminContext | null {
-  const match = /^\/admin\/(events|partners)\/([^/?#]+)(?:\/|$)/.exec(pathname);
+  const route = pathname.split(/[?#]/)[0];
+  const match = /^\/admin\/(events|partners)\/([^/?#]+)(?:\/|$)/.exec(route);
   if (!match || match[2] === 'new') return null;
   return { kind: match[1] === 'events' ? 'event' : 'partner', id: match[2] };
 }
@@ -279,32 +280,40 @@ const everyone = () => true;
 export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { section: 'Overview', label: 'Overview', description: 'The event at a glance.', iconKey: 'layoutDashboard', path: '', isVisible: everyone },
   { section: 'Org', label: 'Edit', description: 'The event details and capture experience settings.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
-  { section: 'Content', label: 'Pages of the user journey', description: 'Choose, edit and order the pages guests see for this event.', iconKey: 'layoutDashboard', path: '/pages', isVisible: everyone },
+  { section: 'Content', label: 'Event User Journey', description: 'Choose, edit and order the pages guests see for this event.', iconKey: 'layoutDashboard', path: '/pages', isVisible: everyone },
   { section: 'Operations', label: 'Vetting', description: 'Photos waiting for approval.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
   { section: 'Operations', label: 'Photo analysis', description: 'Analyse photos after vetting, or analyse all eligible photos when vetting is off.', iconKey: 'photoScan', path: '/analysis', isVisible: everyone },
-  { section: 'Blocks', label: 'Vetting words', description: 'The words the reviewer describes a photo with at this event: gender, age, emotion, items and the reasons for a rejection.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
-  { section: 'Content', label: 'Gallery', description: 'The photos of the event: upload, select several at once, remove.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
+  { section: 'Blocks', label: 'Event Vetting words', description: 'The words the reviewer describes a photo with at this event: gender, age, emotion, items and the reasons for a rejection.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
+  { section: 'Content', label: 'Event Gallery', description: 'The photos of the event: upload, select several at once, remove.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
   { section: 'Operations', label: 'Analytics', description: 'Photos, vetting, users, screens, e-mails and consents of the event.', iconKey: 'brandDatabricks', path: '/analytics', isVisible: everyone },
-  { section: 'Blocks', label: 'Logos', description: 'The logo of the event and of each place it shows.', iconKey: 'photo', path: '/logos', isVisible: everyone },
-  { section: 'Blocks', label: 'Frames', description: 'The frames of the event.', iconKey: 'frame', path: '/frames', isVisible: everyone },
-  { section: 'Blocks', label: 'Images', description: 'The pictures the event can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
-  { section: 'Blocks', label: 'Texts', description: 'The wording of the default texts for this event.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
-  { section: 'Settings', label: 'Emails', description: 'The five e-mails the users get, their texts, the legal part and the sender.', iconKey: 'mail', path: '/emails', isVisible: everyone },
-  { section: 'Content', label: 'Slideshows', description: 'The slideshows and the welcome page screen.', iconKey: 'photoScan', path: '#slideshows', also: ['/slideshows', '/layouts'], isVisible: everyone },
-  { section: 'Content', label: 'Landing pages', description: 'The landing pages of the event.', iconKey: 'world', path: '#landing-pages', also: ['/landing-pages'], isVisible: everyone },
+  { section: 'Blocks', label: 'Event Logos', description: 'The logo of the event and of each place it shows.', iconKey: 'photo', path: '/logos', isVisible: everyone },
+  { section: 'Blocks', label: 'Event Frames', description: 'The frames of the event.', iconKey: 'frame', path: '/frames', isVisible: everyone },
+  { section: 'Blocks', label: 'Event Frame Slots', description: 'The slots used to compose this event’s generated frames.', iconKey: 'frame', path: '/frame-slots', isVisible: everyone },
+  { section: 'Blocks', label: 'Event Images', description: 'The pictures the event can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
+  { section: 'Blocks', label: 'Event Selfies', description: 'The sample selfie shown on this event’s welcome screen.', iconKey: 'photo', path: '/selfies', isVisible: everyone },
+  { section: 'Blocks', label: 'Event Stadiums', description: 'The stadium backgrounds available to this event’s default slideshow.', iconKey: 'photo', path: '/stadiums', isVisible: everyone },
+  { section: 'Blocks', label: 'Event Dictionary', description: 'Guest-facing text overrides for this event; blank values follow the partner or global dictionary.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
+  { section: 'Blocks', label: 'Event Email', description: 'The five e-mails the users get, their texts, the legal part and the sender.', iconKey: 'mail', path: '/emails', isVisible: everyone },
+  { section: 'Content', label: 'Event Slideshows', description: 'The slideshows and the welcome page screen.', iconKey: 'photoScan', path: '#slideshows', also: ['/slideshows', '/layouts'], isVisible: everyone },
+  { section: 'Content', label: 'Event Landing Pages', description: 'The landing pages of the event.', iconKey: 'world', path: '#landing-pages', also: ['/landing-pages'], isVisible: everyone },
 ];
 
 /** The partner menu: its pages. Its events and its users are cards on the overview that lead to the events list and the users page, which are main-menu pages, so they are not items here. */
 export const PARTNER_CONTEXT_MENU: AdminContextItem[] = [
   { section: 'Overview', label: 'Overview', description: 'The partner at a glance.', iconKey: 'buildingStore', path: '', isVisible: everyone },
   { section: 'Org', label: 'Edit', description: 'The partner settings.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
-  { section: 'Blocks', label: 'Logos', description: 'The logo of the partner: the default of all its events.', iconKey: 'photo', path: '/logos', isVisible: everyone },
-  { section: 'Blocks', label: 'Frames', description: 'The frames of the partner.', iconKey: 'frame', path: '/frames', isVisible: everyone },
-  { section: 'Blocks', label: 'Images', description: 'The pictures the partner and its events can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
-  { section: 'Blocks', label: 'Pictures', description: 'The default pictures of the welcome page, the CTA page and the e-mails of all events of the partner.', iconKey: 'photo', path: '/pictures', isVisible: everyone },
-  { section: 'Blocks', label: 'Texts', description: 'The wording of the default texts for all events of the partner.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
-  { section: 'Settings', label: 'Emails', description: 'The legal part of the e-mails of all events of the partner.', iconKey: 'mail', path: '/emails', isVisible: everyone },
-  { section: 'Blocks', label: 'Vetting words', description: 'The words the reviewer describes a photo with, for all events of the partner.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
+  { section: 'Content', label: 'Partner User Journey', description: 'Choose the reusable guest journey inherited by this partner’s events.', iconKey: 'layoutDashboard', path: '#partner-user-journey', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Images', description: 'The pictures the partner and its events can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Frames', description: 'The frames of the partner.', iconKey: 'frame', path: '/frames', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Frame Slots', description: 'The default slots used to compose generated frames for this partner’s events.', iconKey: 'frame', path: '/frame-slots', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Logos', description: 'The logo of the partner: the default of all its events.', iconKey: 'photo', path: '/logos', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Selfies', description: 'The sample selfie shown on this partner’s events until they choose their own.', iconKey: 'photo', path: '/selfies', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Stadiums', description: 'The stadium backgrounds available to this partner’s events.', iconKey: 'photo', path: '/stadiums', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Pictures', description: 'The default welcome, CTA, and e-mail pictures used by this partner’s events.', iconKey: 'photo', path: '/pictures', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Dictionary', description: 'Guest-facing text overrides for this partner; blank values follow the global dictionary.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Email', description: 'The legal part of the e-mails of all events of the partner.', iconKey: 'mail', path: '/emails', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Vetting words', description: 'The words the reviewer describes a photo with, for all events of the partner.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
+  { section: 'Content', label: 'Partner Gallery', description: 'All photos captured across this partner’s events.', iconKey: 'photoScan', path: '#partner-gallery', isVisible: everyone },
 ];
 
 export interface AdminContextMenu {
@@ -317,14 +326,21 @@ export interface AdminContextMenu {
 export function adminContextMenu(context: AdminContext, pathname: string, access: AdminNavigationAccess): AdminContextMenu {
   const base = `/admin/${context.kind === 'event' ? 'events' : 'partners'}/${context.id}`;
   const defs = context.kind === 'event' ? EVENT_CONTEXT_MENU : PARTNER_CONTEXT_MENU;
-  const clean = pathname.split(/[?#]/)[0].replace(/\/$/, '');
+  const [pathAndQuery, hashPart] = pathname.split('#', 2);
+  const clean = pathAndQuery.split('?')[0].replace(/\/$/, '');
+  const currentHash = hashPart ? `#${hashPart}` : '';
   const inside = (relative: string) => clean === base + relative || clean.startsWith(`${base}${relative}/`);
   const items = defs
       .filter((item) => item.isVisible(access))
       .map((item) => {
-        const own = item.path.startsWith('#') ? '' : item.path;
+        const [ownPath, itemHash] = item.path.split('#', 2);
+        const own = ownPath || '';
         // The overview is active only on its own address; an item that points at a section of it is active on the pages that section opens, never on the overview itself.
-        const active = item.path === '' ? clean === base : [own, ...(item.also ?? [])].filter(Boolean).some(inside);
+        const active = item.path === ''
+          ? clean === base && !currentHash
+          : itemHash
+            ? (clean === base + own && currentHash === `#${itemHash}`) || (item.also ?? []).some(inside)
+            : [own, ...(item.also ?? [])].filter(Boolean).some(inside);
         return { section: item.section, label: item.label, href: base + item.path, iconKey: item.iconKey, active, tourId: item.tourId };
       });
   const groupOrder: AdminNavGroup[] = ['Overview', 'Org', 'Operations', 'Blocks', 'Content', 'Settings'];

@@ -84,6 +84,33 @@ const NAV_GROUP_LABELS: Record<UiLanguage, Record<'Org' | 'Blocks' | 'Content', 
   'sr-Latn': { Org: 'Organizacija', Blocks: 'Blokovi', Content: 'Sadržaj' },
 };
 
+/** Scoped journey and email destinations in the global, partner and event menus. */
+const SCOPED_NAV_LABELS: Record<UiLanguage, Record<string, string>> = {
+  en: { 'Global User Journey': 'Global User Journey', 'Partner User Journey': 'Partner User Journey', 'Event User Journey': 'Event User Journey', 'Global Email': 'Global Email', 'Partner Email': 'Partner Email', 'Event Email': 'Event Email', 'Generated Frame Rollout': 'Generated Frame Rollout' },
+  hu: { 'Global User Journey': 'Globális felhasználói útvonal', 'Partner User Journey': 'Partner felhasználói útvonal', 'Event User Journey': 'Esemény felhasználói útvonala', 'Global Email': 'Globális e-mail', 'Partner Email': 'Partner e-mail', 'Event Email': 'Esemény e-mail', 'Generated Frame Rollout': 'Generált keretek kiosztása' },
+  de: { 'Global User Journey': 'Globale Nutzerreise', 'Partner User Journey': 'Partner-Nutzerreise', 'Event User Journey': 'Event-Nutzerreise', 'Global Email': 'Globale E-Mail', 'Partner Email': 'Partner-E-Mail', 'Event Email': 'Event-E-Mail', 'Generated Frame Rollout': 'Rollout generierter Rahmen' },
+  it: { 'Global User Journey': 'Percorso utente globale', 'Partner User Journey': 'Percorso utente del partner', 'Event User Journey': 'Percorso utente dell’evento', 'Global Email': 'E-mail globali', 'Partner Email': 'E-mail del partner', 'Event Email': 'E-mail dell’evento', 'Generated Frame Rollout': 'Distribuzione delle cornici generate' },
+  'pt-BR': { 'Global User Journey': 'Jornada global do usuário', 'Partner User Journey': 'Jornada do usuário do parceiro', 'Event User Journey': 'Jornada do usuário do evento', 'Global Email': 'E-mail global', 'Partner Email': 'E-mail do parceiro', 'Event Email': 'E-mail do evento', 'Generated Frame Rollout': 'Aplicação de molduras geradas' },
+  'pt-PT': { 'Global User Journey': 'Percurso global do utilizador', 'Partner User Journey': 'Percurso do utilizador do parceiro', 'Event User Journey': 'Percurso do utilizador do evento', 'Global Email': 'E-mail global', 'Partner Email': 'E-mail do parceiro', 'Event Email': 'E-mail do evento', 'Generated Frame Rollout': 'Aplicação de molduras geradas' },
+  es: { 'Global User Journey': 'Recorrido global del usuario', 'Partner User Journey': 'Recorrido del usuario del socio', 'Event User Journey': 'Recorrido del usuario del evento', 'Global Email': 'Correo global', 'Partner Email': 'Correo del socio', 'Event Email': 'Correo del evento', 'Generated Frame Rollout': 'Despliegue de marcos generados' },
+  fr: { 'Global User Journey': 'Parcours utilisateur global', 'Partner User Journey': 'Parcours utilisateur du partenaire', 'Event User Journey': 'Parcours utilisateur de l’événement', 'Global Email': 'E-mail global', 'Partner Email': 'E-mail du partenaire', 'Event Email': 'E-mail de l’événement', 'Generated Frame Rollout': 'Déploiement des cadres générés' },
+  ru: { 'Global User Journey': 'Глобальный путь пользователя', 'Partner User Journey': 'Путь пользователя партнёра', 'Event User Journey': 'Путь пользователя события', 'Global Email': 'Общая почта', 'Partner Email': 'Почта партнёра', 'Event Email': 'Почта события', 'Generated Frame Rollout': 'Развёртывание созданных рамок' },
+  'zh-Hans': { 'Global User Journey': '全局用户流程', 'Partner User Journey': '合作伙伴用户流程', 'Event User Journey': '活动用户流程', 'Global Email': '全局邮件', 'Partner Email': '合作伙伴邮件', 'Event Email': '活动邮件', 'Generated Frame Rollout': '生成相框部署' },
+  'zh-Hant': { 'Global User Journey': '全域使用者流程', 'Partner User Journey': '合作夥伴使用者流程', 'Event User Journey': '活動使用者流程', 'Global Email': '全域電子郵件', 'Partner Email': '合作夥伴電子郵件', 'Event Email': '活動電子郵件', 'Generated Frame Rollout': '產生相框部署' },
+  ro: { 'Global User Journey': 'Parcurs global al utilizatorului', 'Partner User Journey': 'Parcursul utilizatorului partenerului', 'Event User Journey': 'Parcursul utilizatorului la eveniment', 'Global Email': 'E-mail global', 'Partner Email': 'E-mailul partenerului', 'Event Email': 'E-mailul evenimentului', 'Generated Frame Rollout': 'Implementarea ramelor generate' },
+  pl: { 'Global User Journey': 'Globalna ścieżka użytkownika', 'Partner User Journey': 'Ścieżka użytkownika partnera', 'Event User Journey': 'Ścieżka użytkownika wydarzenia', 'Global Email': 'E-mail globalny', 'Partner Email': 'E-mail partnera', 'Event Email': 'E-mail wydarzenia', 'Generated Frame Rollout': 'Wdrożenie wygenerowanych ramek' },
+  sk: { 'Global User Journey': 'Globálna používateľská cesta', 'Partner User Journey': 'Používateľská cesta partnera', 'Event User Journey': 'Používateľská cesta podujatia', 'Global Email': 'Globálny e-mail', 'Partner Email': 'E-mail partnera', 'Event Email': 'E-mail podujatia', 'Generated Frame Rollout': 'Nasadenie vytvorených rámov' },
+  hr: { 'Global User Journey': 'Globalni korisnički tijek', 'Partner User Journey': 'Korisnički tijek partnera', 'Event User Journey': 'Korisnički tijek događaja', 'Global Email': 'Globalna e-pošta', 'Partner Email': 'E-pošta partnera', 'Event Email': 'E-pošta događaja', 'Generated Frame Rollout': 'Uvođenje generiranih okvira' },
+  sl: { 'Global User Journey': 'Globalna uporabniška pot', 'Partner User Journey': 'Uporabniška pot partnerja', 'Event User Journey': 'Uporabniška pot dogodka', 'Global Email': 'Globalna e-pošta', 'Partner Email': 'E-pošta partnerja', 'Event Email': 'E-pošta dogodka', 'Generated Frame Rollout': 'Uvedba ustvarjenih okvirjev' },
+  bg: { 'Global User Journey': 'Глобален потребителски път', 'Partner User Journey': 'Потребителски път на партньора', 'Event User Journey': 'Потребителски път на събитието', 'Global Email': 'Глобален имейл', 'Partner Email': 'Имейл на партньора', 'Event Email': 'Имейл на събитието', 'Generated Frame Rollout': 'Внедряване на генерирани рамки' },
+  tr: { 'Global User Journey': 'Genel kullanıcı yolculuğu', 'Partner User Journey': 'İş ortağı kullanıcı yolculuğu', 'Event User Journey': 'Etkinlik kullanıcı yolculuğu', 'Global Email': 'Genel e-posta', 'Partner Email': 'İş ortağı e-postası', 'Event Email': 'Etkinlik e-postası', 'Generated Frame Rollout': 'Oluşturulan çerçevelerin dağıtımı' },
+  ar: { 'Global User Journey': 'رحلة المستخدم العامة', 'Partner User Journey': 'رحلة مستخدم الشريك', 'Event User Journey': 'رحلة مستخدم الفعالية', 'Global Email': 'البريد الإلكتروني العام', 'Partner Email': 'بريد الشريك الإلكتروني', 'Event Email': 'بريد الفعالية الإلكتروني', 'Generated Frame Rollout': 'تطبيق الإطارات المُنشأة' },
+  hi: { 'Global User Journey': 'वैश्विक उपयोगकर्ता यात्रा', 'Partner User Journey': 'भागीदार उपयोगकर्ता यात्रा', 'Event User Journey': 'कार्यक्रम उपयोगकर्ता यात्रा', 'Global Email': 'वैश्विक ईमेल', 'Partner Email': 'भागीदार ईमेल', 'Event Email': 'कार्यक्रम ईमेल', 'Generated Frame Rollout': 'बनाए गए फ़्रेम लागू करना' },
+  ka: { 'Global User Journey': 'მომხმარებლის გლობალური გზა', 'Partner User Journey': 'პარტნიორის მომხმარებლის გზა', 'Event User Journey': 'ღონისძიების მომხმარებლის გზა', 'Global Email': 'გლობალური ელფოსტა', 'Partner Email': 'პარტნიორის ელფოსტა', 'Event Email': 'ღონისძიების ელფოსტა', 'Generated Frame Rollout': 'შექმნილი ჩარჩოების დანერგვა' },
+  'sr-Cyrl': { 'Global User Journey': 'Глобални кориснички ток', 'Partner User Journey': 'Кориснички ток партнера', 'Event User Journey': 'Кориснички ток догађаја', 'Global Email': 'Глобални имејл', 'Partner Email': 'Имејл партнера', 'Event Email': 'Имејл догађаја', 'Generated Frame Rollout': 'Увођење генерисаних оквира' },
+  'sr-Latn': { 'Global User Journey': 'Globalni korisnički tok', 'Partner User Journey': 'Korisnički tok partnera', 'Event User Journey': 'Korisnički tok događaja', 'Global Email': 'Globalni imejl', 'Partner Email': 'Imejl partnera', 'Event Email': 'Imejl događaja', 'Generated Frame Rollout': 'Uvođenje generisanih okvira' },
+};
+
 /** Scoped global entries reuse the reviewed wording already used by their editors. */
 const GLOBAL_NAV_LABEL_BASE: Record<string, AdminShellText> = {
   'Global Dictionary': 'Dictionary',
@@ -217,6 +244,21 @@ const EVENT_EXPERIENCE_TEXT: Record<UiLanguage, Record<string, string>> = {
 export function adminShellText(text: string, language: UiLanguage): string {
   const navGroup = NAV_GROUP_LABELS[language][text as keyof (typeof NAV_GROUP_LABELS)[UiLanguage]];
   if (navGroup) return navGroup;
+  const scopedLabel = SCOPED_NAV_LABELS[language][text];
+  if (scopedLabel) return scopedLabel;
+  const scopedResource = /^(Partner|Event) (Images|Frames|Frame Slots|Logos|Selfies|Stadiums|Pictures|Dictionary|Vetting words|Landing Pages|Slideshows|Gallery)$/.exec(text);
+  if (scopedResource) {
+    const [, scope, resource] = scopedResource;
+    const prefix = MAP[language][scope as AdminShellText] ?? scope;
+    const resourceText: AdminShellText = resource === 'Frame Slots' ? 'Frame slots'
+      : resource === 'Selfies' ? 'Sample selfies'
+        : resource === 'Stadiums' ? 'Stadium backgrounds'
+          : resource as AdminShellText;
+    const translated = language === 'en' && (resource === 'Selfies' || resource === 'Stadiums')
+      ? resource
+      : MAP[language][resourceText] ?? resource;
+    return `${prefix} ${translated}`;
+  }
   const globalBase = GLOBAL_NAV_LABEL_BASE[text];
   if (globalBase) return language === 'en' ? text : MAP[language][globalBase];
   // Preserve the established context-menu casing while sharing its translation
@@ -232,6 +274,8 @@ export function adminShellText(text: string, language: UiLanguage): string {
 export function hasAdminShellTranslation(text: string): boolean {
   return ENGLISH.includes(text as AdminShellText)
     || text in NAV_GROUP_LABELS.en
+    || text in SCOPED_NAV_LABELS.en
+    || /^(Partner|Event) (Images|Frames|Frame Slots|Logos|Selfies|Stadiums|Pictures|Dictionary|Vetting words|Landing Pages|Slideshows|Gallery)$/.test(text)
     || text in GLOBAL_NAV_LABEL_BASE
     || text === 'Landing pages'
     || adminExperienceTemplateText(text, 'en') !== null

@@ -476,12 +476,15 @@ export default async function PartnerDetailPage({
           />
 
           {canManageEvents ? (
-            <ExperienceTemplateDefaultSettings
-              level="partner"
-              resourceId={id}
-              sourceEventId={events[0]?._id.toString()}
-              canManage={Boolean(events[0])}
-            />
+            <div id="partner-user-journey" style={{ scrollMarginTop: '1.5rem' }}>
+              <ExperienceTemplateDefaultSettings
+                level="partner"
+                resourceId={id}
+                sourceEventId={events[0]?._id.toString()}
+                canManage={Boolean(events[0])}
+                sectionTitle="Partner User Journey"
+              />
+            </div>
           ) : null}
 
           <Card p={0}>
@@ -567,7 +570,7 @@ export default async function PartnerDetailPage({
         </Stack>
       </SimpleGrid>
 
-      <Card p={0}>
+      <Card id="partner-gallery" p={0} style={{ scrollMarginTop: '1.5rem' }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <Title order={2}>Partner Gallery</Title>
           <Text c="dimmed" mt="xs">
