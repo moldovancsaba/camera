@@ -20,14 +20,14 @@ test('the context comes from the path: an event, a partner, or the main menu', (
 
 test('a global admin and a partner user see the same items of the event menu, Analytics included (issue 521: the numbers of the event are for its managers)', () => {
   const labels = (access: AdminNavigationAccess) => adminContextMenu({ kind: 'event', id: ID }, `/admin/events/${ID}`, access).items.map((item) => item.label);
-  assert.deepEqual(labels(GLOBAL_ADMIN), ['Overview', 'Edit', 'Pages of the user journey', 'Vetting', 'Photo analysis', 'Vetting words', 'Gallery', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
-  assert.deepEqual(labels(PARTNER_USER), ['Overview', 'Edit', 'Pages of the user journey', 'Vetting', 'Photo analysis', 'Vetting words', 'Gallery', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
+  assert.deepEqual(labels(GLOBAL_ADMIN), ['Overview', 'Edit', 'Event User Journey', 'Vetting', 'Photo analysis', 'Vetting words', 'Gallery', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Event Email', 'Slideshows', 'Landing pages']);
+  assert.deepEqual(labels(PARTNER_USER), ['Overview', 'Edit', 'Event User Journey', 'Vetting', 'Photo analysis', 'Vetting words', 'Gallery', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Event Email', 'Slideshows', 'Landing pages']);
 });
 
 test('the partner menu has its own pages', () => {
   const menu = adminContextMenu({ kind: 'partner', id: ID }, `/admin/partners/${ID}`, GLOBAL_ADMIN);
-  assert.deepEqual(menu.items.map((item) => item.label), ['Overview', 'Edit', 'Logos', 'Frames', 'Images', 'Pictures', 'Texts', 'Emails', 'Vetting words']);
-  assert.deepEqual(menu.items.map((item) => item.href), [`/admin/partners/${ID}`, `/admin/partners/${ID}/edit`, `/admin/partners/${ID}/logos`, `/admin/partners/${ID}/frames`, `/admin/partners/${ID}/images`, `/admin/partners/${ID}/pictures`, `/admin/partners/${ID}/texts`, `/admin/partners/${ID}/emails`, `/admin/partners/${ID}/annotation-words`]);
+  assert.deepEqual(menu.items.map((item) => item.label), ['Overview', 'Edit', 'Partner User Journey', 'Logos', 'Frames', 'Images', 'Pictures', 'Texts', 'Partner Email', 'Vetting words']);
+  assert.deepEqual(menu.items.map((item) => item.href), [`/admin/partners/${ID}`, `/admin/partners/${ID}/edit`, `/admin/partners/${ID}#partner-user-journey`, `/admin/partners/${ID}/logos`, `/admin/partners/${ID}/frames`, `/admin/partners/${ID}/images`, `/admin/partners/${ID}/pictures`, `/admin/partners/${ID}/texts`, `/admin/partners/${ID}/emails`, `/admin/partners/${ID}/annotation-words`]);
 });
 
 const activeLabels = (pathname: string, kind: 'event' | 'partner' = 'event') =>
@@ -43,7 +43,7 @@ test('exactly one item is active, and the overview is active only on its own add
   assert.deepEqual(activeLabels(`/admin/events/${ID}/annotation-words`), ['Vetting words']);
   assert.deepEqual(activeLabels(`/admin/partners/${ID}/annotation-words`, 'partner'), ['Vetting words']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/edit`), ['Edit']);
-  assert.deepEqual(activeLabels(`/admin/events/${ID}/pages`), ['Pages of the user journey']);
+  assert.deepEqual(activeLabels(`/admin/events/${ID}/pages`), ['Event User Journey']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/slideshows/new`), ['Slideshows']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/slideshows/abc123`), ['Slideshows']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/layouts/abc123`), ['Slideshows']);
