@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { average, dayInRange, daysBetween, defaultTimeZone, formatDuration, localParts, median, resolveTimeZone, secondsBetween } from './time';
+import { average, dayInRange, daysBetween, defaultTimeZone, formatDuration, localParts, maximum, median, resolveTimeZone, secondsBetween } from './time';
 
 test('a time is put on the day and hour of the clock of the chosen time zone, so the match evening stays one evening', () => {
   // 21:30 UTC on 16 October is 23:30 in Budapest (summer time, UTC+2); 22:30 UTC is already the 17th, 00:30, there.
@@ -40,6 +40,13 @@ test('average and median', () => {
   assert.equal(median([]), null);
   assert.equal(median([5, 1, 3]), 3);
   assert.equal(median([1, 2, 3, 10]), 2.5);
+});
+
+test('maximum handles full event histories without spreading them into function arguments', () => {
+  assert.equal(maximum([]), null);
+  assert.equal(maximum([-4, -1, -8]), -1);
+  const history = Array.from({ length: 200_000 }, (_, index) => index - 100_000);
+  assert.equal(maximum(history), 99_999);
 });
 
 test('the end day of a range is included (the old report compared a plain date with a time and left it out)', () => {

@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
-import { UI_LANGUAGES, UI_LANGUAGE_LABELS, normalizeUiLanguage } from '@/lib/i18n';
+import { UI_LANGUAGES, normalizeUiLanguage, uiLanguageOptionLabel } from '@/lib/i18n';
 import { CAMERA_MODES, CAMERA_MODE_LABELS, DEFAULT_CAMERA_MODE, isCameraMode } from '@/lib/camera/mode';
 import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type CheckboxMode, type StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 import CheckboxSettingsFields, { type CheckboxModes } from '@/components/admin/CheckboxSettingsFields';
@@ -242,7 +242,7 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
               <select name="uiLanguage" defaultValue={normalizeUiLanguage(partner?.uiLanguage)} style={{ minHeight: 44, padding: '0 0.75rem' }}>
                 {UI_LANGUAGES.map((language) => (
                   <option key={language} value={language}>
-                    {UI_LANGUAGE_LABELS[language]}
+                    {uiLanguageOptionLabel(language)}
                   </option>
                 ))}
               </select>

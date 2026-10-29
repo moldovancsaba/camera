@@ -9,6 +9,7 @@ import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { loadAllEventsAnalytics, type AllEventsAnalytics } from '@/lib/analytics/load';
 import { analyticsHref, parseAnalyticsQuery } from '@/lib/analytics/query';
 import { formatCount } from '@/lib/analytics/format';
+import AnalyticsLoadError from '@/components/admin/analytics/AnalyticsLoadError';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -20,23 +21,34 @@ const FALLBACK_ZONE = 'Europe/Budapest';
  */
 export default async function AllEventsAnalyticsPage({ searchParams }: { searchParams: SearchParams }) {
   const query = parseAnalyticsQuery(searchParams, FALLBACK_ZONE);
-  const db = await connectToDatabase().catch(() => null);
+  let db: Awaited<ReturnType<typeof connectToDatabase>> | null = null;
+  let dbError = null;
+  try {
+    db = await connectToDatabase();
+  } catch (error) {
+    dbError = serializeMongoError(error);
+  }
 
   if (db && query.eventId) {
-    const event = await db
-      .collection(COLLECTIONS.EVENTS)
-      .findOne({ $or: [{ eventId: query.eventId }, ...(ObjectId.isValid(query.eventId) ? [{ _id: new ObjectId(query.eventId) }] : [])] }, { projection: { _id: 1 } });
-    if (event) redirect(analyticsHref(`/admin/events/${String(event._id)}/analytics`, { ...query, eventId: '' }, {}, FALLBACK_ZONE));
+    let matchingEvent: { _id: unknown } | null = null;
+    try {
+      matchingEvent = await db
+        .collection(COLLECTIONS.EVENTS)
+        .findOne({ $or: [{ eventId: query.eventId }, ...(ObjectId.isValid(query.eventId) ? [{ _id: new ObjectId(query.eventId) }] : [])] }, { projection: { _id: 1 } });
+    } catch (error) {
+      // A failed optional redirect lookup should not take down the all-events report.
+      console.error('Could not resolve the requested analytics event:', error);
+    }
+    if (matchingEvent) redirect(analyticsHref(`/admin/events/${String(matchingEvent._id)}/analytics`, { ...query, eventId: '' }, {}, FALLBACK_ZONE));
   }
 
   let analytics: AllEventsAnalytics | null = null;
-  let dbError = null;
+  let reportError = false;
   try {
-    if (!db) throw new Error('The database is not reachable');
-    analytics = await loadAllEventsAnalytics(db, { timeZone: query.timeZone, from: query.from, to: query.to });
+    if (db) analytics = await loadAllEventsAnalytics(db, { timeZone: query.timeZone, from: query.from, to: query.to });
   } catch (error) {
     console.error('Error loading the analytics of all events:', error);
-    dbError = serializeMongoError(error);
+    reportError = true;
   }
 
   const report = analytics?.report;
@@ -58,7 +70,11 @@ export default async function AllEventsAnalyticsPage({ searchParams }: { searchP
       beforeToolbar={<EventPicker basePath="/admin/analytics" />}
       dbError={dbError}
     >
-      {analytics ? <AnalyticsView basePath="/admin/analytics" query={query} defaultTimeZone={FALLBACK_ZONE} report={analytics.report} table={analytics.table} crossEventReturning={analytics.crossEventReturning} /> : null}
+      {reportError ? (
+        <AnalyticsLoadError />
+      ) : analytics ? (
+        <AnalyticsView basePath="/admin/analytics" query={query} defaultTimeZone={FALLBACK_ZONE} report={analytics.report} table={analytics.table} crossEventReturning={analytics.crossEventReturning} />
+      ) : null}
     </AdminListPageShell>
   );
 }

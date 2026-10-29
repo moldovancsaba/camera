@@ -1,5 +1,18 @@
 # Handover
 
+## Current change — analytics scale failure and per-user admin language
+
+The all-events analytics report no longer spreads unbounded duration arrays into
+`Math.max`; that could throw at JavaScript's argument-count limit on a large
+history. Locale selectors now show each native name with its English name in
+parentheses. Signed-in admins can choose a persistent interface language from
+Account settings; it is stored by SSO subject only and remains independent from
+guest language. The preference endpoint and route are covered by unit tests.
+Production analytics logs were not available, so the scale defect is verified
+from the code path and regression tests; a different production error would need
+its specific server diagnostic to identify. See `docs/ANALYTICS.md`,
+`docs/ADMIN_ACCOUNT_SETTINGS.md`, and `docs/UI_LANGUAGE.md`.
+
 ## Current change — partner-scoped event inventory
 
 The partner overview now reports the full event count, previews the 10 most

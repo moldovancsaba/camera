@@ -273,6 +273,10 @@ doesn't want the authenticated `AdminShell` chrome (v2.19.0, PR #99).
 
 Event Analytics reads submission, review, consent, registration, screen and tracked-link records through `lib/analytics/load.ts`; `lib/analytics/report.ts` computes photo, vetting and photo-based user measures, and `lib/analytics/export.ts` exports the same report. The event-only Journey tab reads the allow-listed events in `lib/journey/events.ts`: visits, reached steps and transitions, upload outcomes/duration bands, bounded SSO callback outcomes, CTA actions/return signals, consent interactions and share actions. Daily rollups in `journey_daily` retain event counts plus completed-journey duration sums/sample counts; raw rows in `journey_events` have a 30-day TTL. The browser keeps only an event-scoped start timestamp in session storage to measure across an SSO reload. Journey rows do not include a person ID, IP address, retained user agent, name, e-mail, photo or URL. Tracked-link slugs are separately allow-listed and stored on attributed submissions. Global admin all-event repeat cohorts are computed in memory and returned only as aggregates. The Messmass sender uses additive `camera_` totals for the new measures and remains off by default. The admin switch can stop Journey collection. See [docs/ANALYTICS_DATA_DICTIONARY.md](docs/ANALYTICS_DATA_DICTIONARY.md) for each metric's source, denominator, limitation and retention.
 
+Analytics duration maxima use a bounded-memory scan instead of a variadic argument spread, so large histories do not fail at the JavaScript argument-count limit. The page still reads narrow projected photo facts without a row cap and retains them in memory for exact cross-photo aggregation.
+
+Admin interface language preferences are stored in `admin_user_preferences`, keyed by the SSO subject and containing only `uiLanguage` plus timestamps. `lib/i18n/server-language.ts` loads the preference only for a signed-in, authorized admin and resolves the locale before the root document renders. The authenticated `/api/account/preferences` endpoint can read or update only the current user's locale. This preference does not alter partner/event guest language configuration. See `docs/ADMIN_ACCOUNT_SETTINGS.md` and `docs/UI_LANGUAGE.md`.
+
 The system uses mixed identifier semantics by design.
 
 ### Mongo `_id`
@@ -328,6 +332,7 @@ Core collections:
 - `landing_page_css_presets`
 - `partner_user_access`
 - `users_cache`
+- `admin_user_preferences` (per-SSO-subject admin interface locale; no profile fields)
 - `web_sessions`
 - `admin_settings`
 

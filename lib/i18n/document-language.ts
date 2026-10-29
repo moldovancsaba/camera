@@ -17,10 +17,18 @@ export function initialUiLanguagesForPath(
   pathname: string,
   deviceLanguage: UiLanguage | null,
   configuredFallback: UiLanguage | null = null,
+  adminPreference: UiLanguage | null = null,
 ): InitialUiLanguages {
   const localizedPage = /^\/(capture|share)\//.test(pathname);
   if (localizedPage) {
     const language = deviceLanguage ?? configuredFallback ?? DEFAULT_UI_LANGUAGE;
+    return { documentLanguage: language, interfaceLanguage: language };
+  }
+  // Admin pages resolve a signed-in user's saved preference before the
+  // browser fallback; the login page remains device-language first.
+  const authenticatedAdminPage = /^\/admin(?:\/|$)/.test(pathname) && !/^\/admin\/login(?:\/|$)/.test(pathname);
+  if (authenticatedAdminPage) {
+    const language = adminPreference ?? deviceLanguage ?? DEFAULT_UI_LANGUAGE;
     return { documentLanguage: language, interfaceLanguage: language };
   }
   return {
