@@ -65,6 +65,12 @@ Every new GDS primitive should define:
 
 The active manifest enforces the `@mantine/core` import boundary for `app/admin/**` and `components/gds/**`. Any new exception must be narrow, owned, time-boxed where possible, and documented in `gds-adoption.json`.
 
+### Admin interactive-control boundaries
+
+Every actionable control and editable field inside `AdminChrome` must have a visible boundary so staff can distinguish controls from nearby text. The shared rules live in `app/globals.css` under `[data-camera-admin]`, use GDS semantic color tokens, and cover both package-backed controls and native rich-text toolbar controls. Pages should not add local border overrides.
+
+The shared layer changes only the control edge. GDS continues to own control fill, text, disabled appearance, hover behavior, keyboard focus rings, forced-colors behavior, and reduced motion. Guest-facing compositions rendered inside an editor opt out with `data-admin-guest-preview` so their preview remains faithful to the actual guest flow.
+
 ## Exception Rules
 
 Use [docs/GDS_EXCEPTION_STANDARD.md](GDS_EXCEPTION_STANDARD.md) whenever a surface cannot consume direct package contracts.
