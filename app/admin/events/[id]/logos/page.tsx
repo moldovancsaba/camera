@@ -9,7 +9,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GdsGrid, GdsStack, InlineAlert, LabelTag, SectionPanel, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { GdsGrid, GdsStack, InlineAlert, SectionPanel, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import SlotPanel, { type SlotItem } from '@/components/admin/kit/SlotPanel';
@@ -223,7 +224,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
           <GdsStack gap="md">
             {panels.inactiveUploads.length > 0 ? <SectionPanel title={`Switched off (${panels.inactiveUploads.length})`} description="These event uploads cannot be selected or shown until switched on again.">
               <GdsGrid columns="auto-fill" minColumnWidth="aside" gap="md">
-                {panels.inactiveUploads.map((item) => <GdsStack key={item.id} gap="sm"><span>{item.name}</span><LabelTag tone="warning" label="Switched off" /><LibraryUploadActiveToggle level="event" ownerId={eventId} kind="logos" id={item.id} itemActive={false} onSaved={reload} /></GdsStack>)}
+                {panels.inactiveUploads.map((item) => <GdsStack key={item.id} gap="sm"><span>{item.name}</span><VisibilityStatusIcon isVisible={false} /><LibraryUploadActiveToggle level="event" ownerId={eventId} kind="logos" id={item.id} itemActive={false} onSaved={reload} /></GdsStack>)}
               </GdsGrid>
             </SectionPanel> : null}
             {uploads.map((item) => (

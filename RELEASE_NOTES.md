@@ -1,5 +1,20 @@
 # RELEASE_NOTES.md
 
+## Unreleased — icon-based visibility indicators
+
+- **Changed:** replaced repetitive Active/Inactive and switched-off status badges across event, partner, and visual-asset admin views with a green Material Icons eye for visible items and a red eye-off for hidden items. The saved status values and visibility behavior are unchanged.
+- **Accessibility:** each icon has a localized accessible name and a title. Active form controls, access-grant status, and explanatory copy retain text where an eye would be misleading or where the words explain a consequence.
+- **Audit:** added `docs/ADMIN_ICON_AUDIT.md` with the inspected surfaces, safe icon candidates, and rules for retaining accessible meaning.
+- **Verification:** `npm run gds:validate-manifest`, `npm run gds:check`, `npm run type-check`, `npm run lint`, `npm run inventory:check`, `npm run verify:production-guards`, and `npm run build` passed. Unit and browser test suites were not run.
+
+## Unreleased — consistent workspace navigation and service tools
+
+- **Changed:** global, partner, and event sidebars now share one section order and one ordered block list, preventing Vetting words, Email, and other block links from drifting between scopes.
+- **Moved:** one-time rollout/backfill and media-health tools from everyday navigation and the Slideshows page to global **Settings → Service**. Existing Generated Frame Rollout and Photo Vetting Rollout URLs redirect to their Service sections.
+- **Added:** event sidebars show an access-checked link to the event’s partner; partner sidebars show an access-checked link to that partner’s filtered Events inventory.
+- **Not implemented:** partner Landing Pages and Slideshows do not have partner-owned data or APIs; their current records are event-owned. The navigation keeps those links absent until partner default behavior and URL/slug rules are decided and implemented.
+- **Verification:** local production build, type-check, lint, GDS manifest/boundary checks, production-guard check, inventory/link check (716 links; none broken), and `git diff --check` passed. Unit and browser tests were not run.
+
 ## Unreleased — analytics large-history handling and admin language settings
 
 - **Fixed:** all-events Analytics now computes maximum durations with a linear scan rather than expanding an unbounded history into function arguments, avoiding a JavaScript argument-limit crash while retaining uncapped counts.

@@ -16,6 +16,7 @@ import {
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
 import StyleInheritanceIndicator from './StyleInheritanceIndicator';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import type { ButtonColourSource } from '@/lib/theme/event-theme';
 
 interface FrameAssignment {
@@ -274,9 +275,7 @@ export default function StyleSections({
                       <code style={{ color: 'var(--mantine-color-dimmed)', display: 'block', fontSize: '0.75rem', overflow: 'hidden', textAlign: 'center', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
                         {frameAssignment.frameId}
                       </code>
-                      <strong style={{ fontSize: '0.75rem' }}>
-                        {frameAssignment.isActive ? 'Active' : 'Inactive'}
-                      </strong>
+                      <VisibilityStatusIcon isVisible={frameAssignment.isActive} />
                     </div>
                   </article>
                 );

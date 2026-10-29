@@ -19,7 +19,8 @@ import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPoli
 import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
 import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
-import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { PartnerLibrary } from '@/lib/library/types';
 
@@ -183,7 +184,7 @@ export default function PartnerImagesPage({ params }: { params: Promise<{ id: st
                   thumbnailUrl={item.thumbnailUrl}
                   noun="image"
                   scope={item.scope}
-                  badges={!item.itemActive ? <LabelTag tone="warning" label="Switched off at the partner" /> : null}
+                  badges={!item.itemActive ? <VisibilityStatusIcon isVisible={false} /> : null}
                   actions={
                     <>
                       {library.inheritanceEnabled && item.via === 'assigned' ? <VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="images" id={item.id} scope="global" shareToChildren={item.shareToChildren} hidden={false} blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'images' && ref.id === item.id)} onSaved={reload} /> : null}
@@ -208,7 +209,7 @@ export default function PartnerImagesPage({ params }: { params: Promise<{ id: st
           <h3 id="hidden-partner-images-heading" style={{ margin: 0 }}>Hidden at this partner ({library.hidden.length})</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These global images stay in the global library and are hidden only for this partner and its events.</p>
         </div>
-        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="image" scope="global" actions={<VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="images" id={item.id} scope="global" hidden onSaved={reload} />} />)}</div></div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="image" scope="global" badges={<VisibilityStatusIcon isVisible={false} />} actions={<VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="images" id={item.id} scope="global" hidden onSaved={reload} />} />)}</div></div>
       </section> : null}
 
       {!library.inheritanceEnabled ? <section style={SECTION}>

@@ -13,7 +13,8 @@ import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
 import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
-import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { GlobalImageEntry } from '@/lib/library/types';
 
@@ -151,7 +152,7 @@ export default function GlobalImagesLibrary({ showAll }: { showAll: boolean }) {
                   thumbnailUrl={item.thumbnailUrl}
                   noun="image"
                   scope={item.scope}
-                  badges={!item.itemActive ? <LabelTag tone="warning" label="Switched off" /> : null}
+                  badges={!item.itemActive ? <VisibilityStatusIcon isVisible={false} /> : null}
                   note={item.owner ? `Uploaded for ${item.owner.name}; changed on the Images page of that ${item.owner.level}.` : null}
                   actions={
                     item.scope === 'global' ? (

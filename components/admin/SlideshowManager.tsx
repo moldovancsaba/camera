@@ -14,6 +14,7 @@ import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@ta
 import { EmptyState, LabelTag } from '@sovereignsquad/gds-core/client';
 import WelcomeScreenCard from '@/components/admin/WelcomeScreenCard';
 import DefaultStageCard from '@/components/admin/DefaultStageCard';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 
 interface Slideshow {
   _id: string;
@@ -141,7 +142,7 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
                 <div>
                   <strong>{slideshow.name}</strong>
                   <div style={{ marginTop: '0.25rem' }}>
-                    <LabelTag tone={slideshow.isActive ? 'success' : 'neutral'} label={slideshow.isActive ? 'Active' : 'Inactive'} />
+                    <VisibilityStatusIcon isVisible={slideshow.isActive} />
                     {slideshow.isDefault ? <LabelTag tone="info" label="Default" /> : null}
                   </div>
                 </div>

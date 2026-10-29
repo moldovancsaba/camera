@@ -15,6 +15,7 @@ import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import EnablePartnerInheritance from '@/components/admin/library/EnablePartnerInheritance';
 import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
 import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
@@ -265,7 +266,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
       </SectionPanel>
       {library.inheritanceEnabled && library.hidden?.length ? <SectionPanel title={`Hidden at this partner (${library.hidden.length})`} description="These global logos stay in the global library and are hidden only for this partner and its events.">
         <GdsGrid columns="auto-fill" minColumnWidth="aside" gap="md">
-          {library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="logo" scope="global" actions={<VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="logos" id={item.id} scope="global" hidden blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'logos' && ref.id === item.id)} onSaved={reload} />} />)}
+          {library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="logo" scope="global" badges={<VisibilityStatusIcon isVisible={false} />} actions={<VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="logos" id={item.id} scope="global" hidden blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'logos' && ref.id === item.id)} onSaved={reload} />} />)}
         </GdsGrid>
       </SectionPanel> : null}
     </GdsStack>

@@ -84,6 +84,33 @@ const NAV_GROUP_LABELS: Record<UiLanguage, Record<'Org' | 'Blocks' | 'Content', 
   'sr-Latn': { Org: 'Organizacija', Blocks: 'Blokovi', Content: 'Sadržaj' },
 };
 
+/** Small labels added by the shared service/settings navigation. */
+const NAV_ITEM_LABELS: Record<UiLanguage, Record<string, string>> = {
+  en: { Service: 'Service', 'Experience defaults': 'Experience defaults' },
+  hu: { Service: 'Szolgáltatás', 'Experience defaults': 'Élménybeállítások' },
+  de: { Service: 'Service', 'Experience defaults': 'Erlebnisvorgaben' },
+  it: { Service: 'Servizio', 'Experience defaults': 'Impostazioni esperienza' },
+  'pt-BR': { Service: 'Serviço', 'Experience defaults': 'Padrões da experiência' },
+  'pt-PT': { Service: 'Serviço', 'Experience defaults': 'Predefinições da experiência' },
+  es: { Service: 'Servicio', 'Experience defaults': 'Configuración de experiencia' },
+  fr: { Service: 'Service', 'Experience defaults': 'Paramètres de l’expérience' },
+  ru: { Service: 'Сервис', 'Experience defaults': 'Настройки опыта' },
+  'zh-Hans': { Service: '服务', 'Experience defaults': '体验默认设置' },
+  'zh-Hant': { Service: '服務', 'Experience defaults': '體驗預設設定' },
+  ro: { Service: 'Serviciu', 'Experience defaults': 'Setări prestabilite ale experienței' },
+  pl: { Service: 'Serwis', 'Experience defaults': 'Domyślne ustawienia doświadczenia' },
+  sk: { Service: 'Servis', 'Experience defaults': 'Predvolené nastavenia zážitku' },
+  hr: { Service: 'Servis', 'Experience defaults': 'Zadane postavke iskustva' },
+  sl: { Service: 'Storitev', 'Experience defaults': 'Privzete nastavitve izkušnje' },
+  bg: { Service: 'Сервиз', 'Experience defaults': 'Настройки по подразбиране на изживяването' },
+  tr: { Service: 'Hizmet', 'Experience defaults': 'Deneyim varsayılanları' },
+  ar: { Service: 'الخدمة', 'Experience defaults': 'الإعدادات الافتراضية للتجربة' },
+  hi: { Service: 'सेवा', 'Experience defaults': 'अनुभव के डिफ़ॉल्ट' },
+  ka: { Service: 'სერვისი', 'Experience defaults': 'გამოცდილების ნაგულისხმევი პარამეტრები' },
+  'sr-Cyrl': { Service: 'Сервис', 'Experience defaults': 'Подразумевана подешавања доживљаја' },
+  'sr-Latn': { Service: 'Servis', 'Experience defaults': 'Podrazumevana podešavanja doživljaja' },
+};
+
 /** Scoped journey and email destinations in the global, partner and event menus. */
 const SCOPED_NAV_LABELS: Record<UiLanguage, Record<string, string>> = {
   en: { 'Global User Journey': 'Global User Journey', 'Partner User Journey': 'Partner User Journey', 'Event User Journey': 'Event User Journey', 'Global Email': 'Global Email', 'Partner Email': 'Partner Email', 'Event Email': 'Event Email', 'Generated Frame Rollout': 'Generated Frame Rollout' },
@@ -242,6 +269,8 @@ const EVENT_EXPERIENCE_TEXT: Record<UiLanguage, Record<string, string>> = {
 };
 
 export function adminShellText(text: string, language: UiLanguage): string {
+  const navItem = NAV_ITEM_LABELS[language][text];
+  if (navItem) return navItem;
   const navGroup = NAV_GROUP_LABELS[language][text as keyof (typeof NAV_GROUP_LABELS)[UiLanguage]];
   if (navGroup) return navGroup;
   const scopedLabel = SCOPED_NAV_LABELS[language][text];
@@ -273,6 +302,7 @@ export function adminShellText(text: string, language: UiLanguage): string {
 
 export function hasAdminShellTranslation(text: string): boolean {
   return ENGLISH.includes(text as AdminShellText)
+    || text in NAV_ITEM_LABELS.en
     || text in NAV_GROUP_LABELS.en
     || text in SCOPED_NAV_LABELS.en
     || /^(Partner|Event) (Images|Frames|Frame Slots|Logos|Selfies|Stadiums|Pictures|Dictionary|Vetting words|Landing Pages|Slideshows|Gallery)$/.test(text)

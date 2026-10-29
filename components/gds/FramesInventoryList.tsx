@@ -47,7 +47,7 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
         tone: frame.scope === 'event' ? 'active' : frame.scope === 'partner' ? 'info' : 'inactive',
         label: frame.scope === 'global' ? 'Global' : frame.scope === 'partner' ? 'Partner' : 'Event',
       },
-      { tone: frame.isActive ? 'active' : 'inactive' }
+      { tone: frame.isActive ? 'active' : 'inactive', visibility: frame.isActive }
     ),
     metadata: [
       { label: 'Category', value: frame.category || 'general' },

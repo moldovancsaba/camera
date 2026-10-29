@@ -10,8 +10,9 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
 import { AccentPanel, AccessSummary, StatsStrip } from '@/components/gds/ClientWrappers';
-import { Badge, Breadcrumbs, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
+import { Breadcrumbs, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import PartnerEventsOpenAll from '@/components/admin/PartnerEventsOpenAll';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
@@ -298,7 +299,7 @@ export default async function PartnerDetailPage({
         eyebrow="Camera Core"
         title={partner.name}
         description={partner.description}
-        status={partner.isActive ? 'Active' : 'Inactive'}
+        status={<VisibilityStatusIcon isVisible={partner.isActive === true} />}
         actions={
           <>
             {canManagePartner ? (
@@ -557,9 +558,7 @@ export default async function PartnerDetailPage({
                       </Group>
                     </Stack>
                     <Group gap="sm" justify="flex-end">
-                      <Badge color={event.isActive ? 'green' : 'gray'}>
-                        {event.isActive ? '● Active' : '○ Inactive'}
-                      </Badge>
+                      <VisibilityStatusIcon isVisible={event.isActive === true} />
                       {canManageEvents ? <Link href={`/admin/events/${event._id}/edit`}>Edit</Link> : null}
                     </Group>
                   </Group>

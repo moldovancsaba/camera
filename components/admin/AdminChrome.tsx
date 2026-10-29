@@ -57,7 +57,7 @@ export function AdminChromeView({
   const context = adminContextOf(pathname);
   const language = useUiLanguage();
   const ui = (text: string) => adminShellText(text, language);
-  const contextName = useContextName(context);
+  const contextInfo = useContextInfo(context);
   const tourController = useTourController('admin:v1', getAdminTourSteps(navigationAccess, { inContext: Boolean(context) }), { autoStart: !context });
 
   useEffect(() => {
@@ -82,10 +82,26 @@ export function AdminChromeView({
         label={ui('Back to the main menu')}
         icon={<AdminIcon iconKey="arrowLeft" size={18} />}
       />
+      {context.kind === 'event' && contextInfo?.partnerHref ? (
+        <SemanticNavLink
+          href={contextInfo.partnerHref}
+          active={false}
+          label={ui('Partner')}
+          icon={<AdminIcon iconKey="buildingStore" size={18} />}
+        />
+      ) : null}
+      {context.kind === 'partner' && contextInfo?.eventsHref ? (
+        <SemanticNavLink
+          href={contextInfo.eventsHref}
+          active={false}
+          label={ui('Events')}
+          icon={<AdminIcon iconKey="brandDatabricks" size={18} />}
+        />
+      ) : null}
       <div data-tour-id="admin-context-menu" style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
         <div style={{ display: 'grid', gap: 2 }}>
           <strong style={{ fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{ui(contextMenu.title)}</strong>
-          <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{contextName ?? ' '}</span>
+          <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{contextInfo?.name ?? ' '}</span>
         </div>
         <div style={{ display: 'grid', gap: 'var(--mantine-spacing-md)' }}>
           {contextMenu.sections.map((section) => (
@@ -221,28 +237,34 @@ export function AdminChromeView({
 }
 
 /**
- * The name of the event or partner whose menu is shown, from a small access-checked call (the page the user is on loads the record too, but the sidebar sits above every page).
- * Asked once per event or partner: moving between its pages keeps the name.
+ * Name and relationship links for the current workspace, from one access-checked call.
+ * Event and partner links are returned only when the signed-in user can open the destination.
  */
-function useContextName(context: AdminContext | null): string | null {
+interface ContextNavigationInfo {
+  name: string;
+  partnerHref?: string | null;
+  eventsHref?: string | null;
+}
+
+function useContextInfo(context: AdminContext | null): ContextNavigationInfo | null {
   const kind = context?.kind;
   const id = context?.id;
   const key = kind && id ? `${kind}:${id}` : null;
-  const [loaded, setLoaded] = useState<{ key: string; name: string } | null>(null);
+  const [loaded, setLoaded] = useState<{ key: string; info: ContextNavigationInfo } | null>(null);
   useEffect(() => {
     if (!key || !kind || !id) return;
     let cancelled = false;
     fetch(`/api/admin/nav-context?kind=${kind}&id=${id}`)
-      .then((response) => (response.ok ? (response.json() as Promise<{ data?: { name?: string } }>) : null))
+      .then((response) => (response.ok ? (response.json() as Promise<{ data?: ContextNavigationInfo }>) : null))
       .then((body) => {
-        if (!cancelled && body?.data?.name) setLoaded({ key, name: body.data.name });
+        if (!cancelled && body?.data?.name) setLoaded({ key, info: body.data });
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, [key, kind, id]);
-  return loaded && loaded.key === key ? loaded.name : null;
+  return loaded && loaded.key === key ? loaded.info : null;
 }
 
 interface RenderedNavItem {

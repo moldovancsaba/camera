@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Badge, Button, Code, Select, Text, TextInput } from '@/components/gds/PublicPrimitives';
 import { Group, InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import type { ShortLinkView } from '@/lib/short-links/view';
 import type { LinkCounts } from '@/lib/short-links/store';
 
@@ -152,7 +153,7 @@ export default function ShortLinksPanel({ eventId }: { eventId: string }) {
                 <Group gap="xs" wrap="wrap">
                   <Text fw={600}>{link.placement}</Text>
                   <Badge variant="light">{link.kind === 'qr' ? 'QR code' : 'Link'}</Badge>
-                  {link.active ? null : <Badge color="red" variant="light">Off</Badge>}
+                  <VisibilityStatusIcon isVisible={link.active} />
                 </Group>
                 <Group gap="xs" wrap="wrap">
                   <Code>{link.url}</Code>

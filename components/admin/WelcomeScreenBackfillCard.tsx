@@ -13,6 +13,7 @@
 
 import { useRef, useState } from 'react';
 import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import { Button, Checkbox, Group } from '@/components/gds/PublicPrimitives';
 import type { BackfillChange, BackfillPlan, BackfillResult, BackfillRow, BackfillRun } from '@/lib/screen/welcome-backfill';
 
@@ -175,7 +176,7 @@ export default function WelcomeScreenBackfillCard() {
                       <span style={muted}>{[row.partnerName, row.eventDate ? row.eventDate.slice(0, 10) : 'no date'].filter(Boolean).join(' · ')}</span>
                       <span style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
                         {row.upcoming ? <LabelTag tone="info" label="Upcoming" /> : null}
-                        {row.isActive ? null : <LabelTag tone="neutral" label="Inactive" />}
+                        {row.isActive ? null : <VisibilityStatusIcon isVisible={false} />}
                         <LabelTag tone={change.tone} label={change.label} />
                         <LabelTag tone="neutral" label={row.hasDefaultSlideshow ? 'Has its slideshow' : 'Slideshow to be made'} />
                       </span>

@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
 import { Breadcrumbs, Card, Stack, Text } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import FanmassPhotoResultsList from '@/components/admin/FanmassPhotoResultsList';
 import FanmassStatusAutoRefresh from '@/components/admin/FanmassStatusAutoRefresh';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -140,7 +141,7 @@ export default async function EventPhotoAnalysisPage({
         eyebrow="Events"
         title={String(event.name ?? 'Event') + ' — Photo analysis'}
         description="Review Fanmass findings and correct or confirm the same per-photo analysis. Human corrections remain linked to the exact AI result revision."
-        status={event.isActive === false ? 'Inactive' : 'Active'}
+        status={<VisibilityStatusIcon isVisible={event.isActive !== false} />}
       />
 
       {!data ? (

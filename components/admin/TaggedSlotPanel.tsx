@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { GdsGrid, GdsStack, LabelTag, MediaPreviewCard, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import SlotPanel, { type SlotItem } from '@/components/admin/kit/SlotPanel';
 import { TAGGED_KINDS, type TaggedKind } from '@/components/admin/library/tagged-kinds';
 import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
@@ -109,7 +110,7 @@ export default function TaggedSlotPanel({ kind, level, id, onChanged }: { kind: 
         <GdsGrid columns="auto-fill" minColumnWidth="aside" gap="md">
           {panel.inactiveOwnItems?.map((item) => (
             <GdsStack key={item.id} gap="sm">
-              <MediaPreviewCard title={item.name} src={item.imageUrl ?? undefined} thumbnailSrc={item.thumbnailUrl ?? undefined} alt={item.name} status={<LabelTag tone="warning" label="Switched off" />} hideWhenNoMedia={false} />
+              <MediaPreviewCard title={item.name} src={item.imageUrl ?? undefined} thumbnailSrc={item.thumbnailUrl ?? undefined} alt={item.name} status={<VisibilityStatusIcon isVisible={false} />} hideWhenNoMedia={false} />
               <LibraryUploadActiveToggle level="event" ownerId={id} kind="images" id={item.id} itemActive={false} disabled={busy} onSaved={reload} />
             </GdsStack>
           ))}
