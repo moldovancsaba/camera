@@ -170,7 +170,18 @@ test('an SVG is taken, with its size from the file; a global upload carries scop
   assert.equal(result.ok, true);
   const doc = data.images.at(-1) as Record<string, unknown>;
   assert.deepEqual([doc.width, doc.height, doc.mimeType, doc.scope, doc.partnerId, doc.eventId], [40, 20, 'image/svg+xml', 'global', undefined, undefined]);
+  assert.equal(doc.shareToChildren, false, 'new global assets require an explicit share action');
   assert.equal(stored[0].contentType, 'image/svg+xml');
+});
+
+test('new partner uploads are private to the partner until it shares them with events', async () => {
+  const { db, data } = seed();
+  stored.length = 0;
+  const result = await createLibraryItem(db, {
+    kind: 'images', file: await pngFile('partner.png', 32, 18), name: 'Partner-only image', createdBy: 'u1', owner: { scope: 'partner', partnerId: 'P' },
+  });
+  assert.equal(result.ok, true);
+  assert.equal((data.images.at(-1) as Record<string, unknown>).shareToChildren, false);
 });
 
 test('a GIF, a file over 4 MB and an empty name are refused before anything is stored', async () => {

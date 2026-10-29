@@ -2,8 +2,8 @@
  * An event's own upload (camera#361). Only an item uploaded for this event. Events managers of the partner and global admins.
  *
  * DELETE `?kind=frames`: it is unassigned from the event first.
- * PATCH `{ kind, name?, messageArea? }` (camera#366): rename it, or say where a message is written on it (null removes the message area). The events whose messages
- *   are written on this frame are redrawn afterwards.
+ * PATCH `{ kind, name?, messageArea?, isActive? }`: edit an own upload or switch it on/off for this event. Inactive assets cannot be newly selected or rendered.
+ *   Generated frames that use a changed frame/message area are redrawn afterwards.
  */
 
 import { NextRequest } from 'next/server';
@@ -41,14 +41,14 @@ export const PATCH = withErrorHandler(async (request: NextRequest, context: { pa
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const kind = parseKind(body?.kind);
   if (!body || !kind) throw apiBadRequest('kind must be frames, logos or images');
-  if (body.name === undefined && body.messageArea === undefined) throw apiBadRequest('Nothing to change: send name or messageArea');
+  if (body.name === undefined && body.messageArea === undefined && body.isActive === undefined) throw apiBadRequest('Nothing to change: send name, messageArea or isActive');
   const db = await connectToDatabase();
   const access = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
   if (!access.allowed) throw apiForbidden('Partner-level Events manager access is required');
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(eventId) }, { projection: { eventId: 1 } });
   if (!event) throw apiNotFound('Event');
-  const result = await updateLibraryUpload(db, kind, itemId, { scope: 'event', eventId: String(event.eventId) }, { name: body.name, messageArea: body.messageArea }, generateTimestamp());
+  const result = await updateLibraryUpload(db, kind, itemId, { scope: 'event', eventId: String(event.eventId) }, { name: body.name, messageArea: body.messageArea, isActive: body.isActive }, generateTimestamp());
   if (!result.ok) throw result.status === 404 ? apiNotFound(kind === 'frames' ? 'Frame' : kind === 'logos' ? 'Logo' : 'Image') : apiError(result.reason, result.status);
-  if (body.messageArea !== undefined) afterResponse(() => regenerateEventsUsingFrame(db, itemId).then((done) => { if (done.failed.length) console.error('Frame images could not be redrawn', done.failed); }));
+  if (kind === 'frames' && (body.messageArea !== undefined || body.isActive !== undefined)) afterResponse(() => regenerateEventsUsingFrame(db, itemId).then((done) => { if (done.failed.length) console.error('Frame images could not be redrawn', done.failed); }));
   return apiSuccess({ item: itemView(kind, result.item) });
 });

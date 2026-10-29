@@ -179,6 +179,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     description: description?.trim() || undefined,
     partnerId: partner.partnerId,
     partnerName: partner.name,
+    ...(partner.visualAssetPolicy?.inheritanceVersion === 2
+      ? { visualAssetPolicy: { inheritanceVersion: 2, hidden: [] } }
+      : {}),
     eventDate: eventDate?.trim() || undefined,
     location: location?.trim() || undefined,
     loadingText: loadingText?.trim() || undefined,
@@ -186,6 +189,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     logoUrl: logoUrl?.trim() || undefined,
     showLogo: Boolean(showLogo),
     // Inherited defaults from partner
+    experienceTemplate: { mode: 'inherit' },
     brandColor: inheritedDefaults.brandColor,
     brandBorderColor: inheritedDefaults.brandBorderColor,
     visualSettings: normalizeEventVisualSettings(visualSettings),

@@ -14,8 +14,10 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
+import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
+import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import EventExperienceReviewPanel from '@/components/admin/EventExperienceReviewPanel';
-import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { EventLibrary } from '@/lib/library/types';
 
@@ -146,11 +148,10 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
                   noun="image"
                   scope={item.scope}
                   actions={
-                    item.scope === 'event' ? (
-                      <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(item.id, item.name)}>
-                        Delete upload
-                      </SemanticButton>
-                    ) : null
+                    <>
+                      {library.inheritanceEnabled && item.scope !== 'event' ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="images" id={item.id} scope={item.scope} onSaved={reload} /> : null}
+                      {item.scope === 'event' ? <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(item.id, item.name)}>Delete upload</SemanticButton> : null}
+                    </>
                   }
                 />
               ))}
@@ -158,6 +159,22 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
       </section>
+
+      {library.inheritanceEnabled && library.hidden?.length ? <section style={SECTION} aria-labelledby="hidden-event-images-heading">
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+          <h3 id="hidden-event-images-heading" style={{ margin: 0 }}>Hidden at this event ({library.hidden.length})</h3>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Restore an item here without changing its partner or global sharing rules.</p>
+        </div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="image" scope={item.scope} actions={<VisualAssetPolicyActions level="event" ownerId={eventId} kind="images" id={item.id} scope={item.scope} hidden onSaved={reload} />} />)}</div></div>
+      </section> : null}
+
+      {library.inactiveOwn.length > 0 ? <section style={SECTION} aria-labelledby="inactive-event-images-heading">
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+          <h3 id="inactive-event-images-heading" style={{ margin: 0 }}>Switched off at this event ({library.inactiveOwn.length})</h3>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These event uploads are unavailable in this event. Switch one on to make it selectable again.</p>
+        </div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.inactiveOwn.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="image" scope="event" badges={<LabelTag tone="warning" label="Switched off" />} actions={<LibraryUploadActiveToggle level="event" ownerId={eventId} kind="images" id={item.id} itemActive={false} onSaved={reload} />} />)}</div></div>
+      </section> : null}
 
       <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>

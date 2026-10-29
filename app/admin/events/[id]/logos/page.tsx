@@ -9,10 +9,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GdsStack, InlineAlert, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
+import { GdsGrid, GdsStack, InlineAlert, LabelTag, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import SlotPanel, { type SlotItem } from '@/components/admin/kit/SlotPanel';
+import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import type { SlotMode, SlotValue } from '@/lib/slots/resolve';
 
 interface Payload<T> {
@@ -34,6 +35,7 @@ interface Panels {
   partner: { partnerId: string; adminId: string; name: string } | null;
   slots: PanelData[];
   candidates: Array<SlotItem & { scope: string }>;
+  inactiveUploads: Array<SlotItem & { scope: string }>;
 }
 
 const ACCEPT = 'image/png,image/jpeg,image/svg+xml,image/webp';
@@ -206,9 +208,14 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
         <GdsStack gap="md">{PLACES.map((place) => render(place.slotId, place.title, place.description, 'the event'))}</GdsStack>
       </SectionPanel>
 
-      {uploads.length > 0 ? (
+      {uploads.length > 0 || panels.inactiveUploads.length > 0 ? (
         <SectionPanel title="Uploaded for this event" description="Logos only this event can use. Deleting one takes it out of every place that uses it.">
-          <GdsStack gap="sm">
+          <GdsStack gap="md">
+            {panels.inactiveUploads.length > 0 ? <SectionPanel title={`Switched off (${panels.inactiveUploads.length})`} description="These event uploads cannot be selected or shown until switched on again.">
+              <GdsGrid columns="auto-fill" minColumnWidth="aside" gap="md">
+                {panels.inactiveUploads.map((item) => <GdsStack key={item.id} gap="sm"><span>{item.name}</span><LabelTag tone="warning" label="Switched off" /><LibraryUploadActiveToggle level="event" ownerId={eventId} kind="logos" id={item.id} itemActive={false} onSaved={reload} /></GdsStack>)}
+              </GdsGrid>
+            </SectionPanel> : null}
             {uploads.map((item) => (
               <div key={item.id} style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
                 <span>{item.name}</span>

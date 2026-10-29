@@ -98,6 +98,9 @@ export async function createLibraryItem(db: Db, input: UploadInput): Promise<Upl
     },
     file
   );
+  // Sharing is an explicit parent decision. Keep new global and partner uploads
+  // local until their owner shares them; missing legacy fields keep their historic access.
+  if (item.scope === 'global' || item.scope === 'partner') item.shareToChildren = false;
   await db.collection(KIND_META[input.kind].collection).insertOne(item);
   return { ok: true, item };
 }

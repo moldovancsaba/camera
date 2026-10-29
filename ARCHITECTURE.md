@@ -1,7 +1,7 @@
 # Architecture
 
 **Version**: 12.3.42  
-**Last Updated**: 2026-10-23
+**Last Updated**: 2026-10-29
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -11,7 +11,8 @@ Camera is no longer just a flat event-photo tool. The system now behaves as:
 
 - **Camera Core**
   - partners
-  - visual resources
+  - visual resources with one-way Global → Partner → Event availability and local hide policies
+  - reusable guest-experience defaults resolved at read time
   - landing pages
   - galleries / submissions
   - slideshow systems
@@ -54,6 +55,7 @@ Browser / Public Screens
 
 - auth and session management in `lib/auth/*`
 - MongoDB access and schema helpers in `lib/db/*`
+- visual-asset ownership/visibility in `lib/visual-assets/resolve.ts` and `lib/library/db.ts`; reusable experience templates resolve in `lib/visual-assets/templates.ts` without copying parent config into child records
 - slideshow generation in `lib/slideshow/*`
 - partner-scoped access helpers in `lib/partners/*`
 - analytics in `lib/analytics/*` (pure aggregations, the only database access is `load.ts`, read only)
@@ -70,6 +72,12 @@ Browser / Public Screens
 - external SSO service
 - Resend (transactional email)
 - optional Upstash Redis for shared rate limiting
+
+### Visual asset ownership and experience defaults
+
+Frames, logos and images use explicit source ownership and a Global → Partner → Event visibility chain (`lib/visual-assets/`). Source-level `isActive` and `shareToChildren` govern availability; partner/event `visualAssetPolicy` records local hides and forwarding blocks. Existing partner records remain on the legacy catalog path until an administrator opts them into policy version 2, which first records hides for anything the existing partner catalog did not contain. Newly created partners use version 2; new events inherit their partner's policy.
+
+Reusable guest configuration is stored in `experience_templates`, with a unique `templateId` index. The single global selection is in `admin_settings`; a partner can follow it, select a partner template overlay or disable it; an event can inherit, select a local event template or preserve its locally stored legacy configuration. Runtime resolution is global → partner → event overrides and is applied to public event data only after the allow-list and library visibility checks. Admin selection metadata is stripped from guest responses. Template config does not contain identity, consent receipts, submission records, analytics or photo data. See `docs/VISUAL_ASSET_HIERARCHY.md` for contracts, APIs, safe opt-in, rollback and release gates.
 
 ### Picture-backed CTA pages
 

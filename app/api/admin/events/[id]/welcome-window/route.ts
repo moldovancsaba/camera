@@ -17,6 +17,7 @@ import { ensureDefaultSlideshow } from '@/lib/slideshow/default-slideshow';
 import { ensureWelcomeScreen } from '@/lib/screen/welcome-screen-store';
 import { parseWindowRequest, windowState } from '@/lib/screen/welcome-window';
 import { eligiblePhoto } from '@/lib/screen/welcome-photo';
+import { selectionWithExperienceOverrides } from '@/lib/visual-assets/templates';
 
 type RouteContext = { params?: Promise<{ id: string }> };
 
@@ -57,7 +58,16 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
           : { $set: { updatedAt: now }, $unset: { 'welcomeWindow.source': '', 'welcomeWindow.photoId': '' } };
     await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: new ObjectId(id) }, update);
   }
-  if (composition) await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: new ObjectId(id) }, { $set: { welcomeScreenComposition: composition } });
+  if (composition) {
+    const experienceTemplate = selectionWithExperienceOverrides(
+      event.experienceTemplate,
+      { welcomeScreenComposition: composition },
+    );
+    await db.collection(COLLECTIONS.EVENTS).updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { welcomeScreenComposition: composition, ...(experienceTemplate ? { experienceTemplate } : {}) } },
+    );
+  }
   const current = (await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) })) ?? event;
   const slideshow = await ensureDefaultSlideshow(db, current);
   if (!slideshow.ok) return apiError(slideshow.reason, 503);

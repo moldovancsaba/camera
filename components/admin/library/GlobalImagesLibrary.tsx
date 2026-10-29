@@ -11,6 +11,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
+import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { GlobalImageEntry } from '@/lib/library/types';
@@ -133,6 +134,7 @@ export default function GlobalImagesLibrary({ showAll }: { showAll: boolean }) {
                   actions={
                     item.scope === 'global' ? (
                       <>
+                        <ShareToChildrenToggle kind="images" id={item.id} shareToChildren={item.shareToChildren} onSaved={reload} />
                         <SemanticButton action={item.itemActive ? 'library:switch-off' : 'library:switch-on'} variant="secondary" size="xs" disabled={busy} onClick={() => void setActive(item.id, !item.itemActive)}>
                           {item.itemActive ? 'Switch off' : 'Switch on'}
                         </SemanticButton>

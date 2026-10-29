@@ -10,6 +10,18 @@ deleted; no `dev`/`preview` branch exists. Every push to `main` deploys. Policy
 and current practice (PRs recommended; most changes are pushed directly) in
 [docs/BRANCHING.md](docs/BRANCHING.md).
 
+## Visual asset inheritance and experience defaults
+
+The Global → Partner → Event catalog and experience-template system is described in [docs/VISUAL_ASSET_HIERARCHY.md](docs/VISUAL_ASSET_HIERARCHY.md). New partners use the version-2 catalog contract and new events inherit it. Existing partners are intentionally not migrated automatically.
+
+To enable a legacy partner, open its Frames, Logos or Images library and use **Enable inherited catalog**. The server derives local hide references from the current catalog before it enables version 2, preserving the existing visible set. Verify all three libraries and the event's existing assignments after the save. This is an explicit partner-level opt-in; do not bulk-enable production partners from a migration script without a read-only inventory, dry run, backup and reviewed report.
+
+Parent asset changes take effect immediately for descendants that still follow that parent. If an asset becomes unavailable, descendants cannot override that restriction; re-share or reactivate it at its owner to restore availability. Hiding an asset at a child changes only that child's catalog and never deletes media or existing assignments.
+
+Experience templates are managed from Global Settings → Experience defaults, Partner → Experience defaults, and Event → Edit → Experience defaults. Set the global selection first; optionally create and select a partner template; then confirm the event is set to follow its parent or select an event template. The event editor preserves historical local configuration until an editor opts in. If a parent selection is disabled, the event's stored configuration remains in use. Template writes and selections are reversible through their settings pages. Selected templates cannot be deleted; remove their references first. There is no job queue or external service for template application.
+
+For release, run `npm run db:ensure-indexes` through the normal approved database-index procedure to create the unique experience-template key. Do not run production migrations, change production defaults, or bulk-opt-in partners as part of a code-only deployment. Verify authorization, template selection, known library asset scope checks, guest response stripping, and keyboard/screen-reader states before opening the change for merge review.
+
 ## Deploying to production
 
 Production deploys from git: every push to `main` builds and promotes

@@ -16,6 +16,8 @@ import FrameSelectionPanel from '@/components/admin/FrameSelectionPanel';
 import FrameSlotsPanel from '@/components/admin/FrameSlotsPanel';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
+import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
+import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
 import type { MessageArea } from '@/lib/frame/message-area';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
@@ -221,6 +223,9 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                           Remove frame
                         </SemanticButton>
                         {entry.scope === 'event' ? (
+                          <LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={entry.id} itemActive={entry.itemActive} onSaved={reload} />
+                        ) : null}
+                        {entry.scope === 'event' ? (
                           <SemanticButton action="library:message-area" variant="secondary" size="xs" disabled={busy} onClick={() => setEditing(editing === entry.id ? null : entry.id)}>
                             Message area
                           </SemanticButton>
@@ -230,6 +235,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                             Delete upload
                           </SemanticButton>
                         ) : null}
+                        {library.inheritanceEnabled && entry.scope !== 'event' && entry.stillInPartnerLibrary ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={entry.id} scope={entry.scope} hidden={library.policy?.hidden?.some((ref) => ref.kind === 'frames' && ref.id === entry.id)} onSaved={reload} /> : null}
                       </>
                     }
                   >
@@ -272,9 +278,10 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                   scope={item.scope}
                   badges={item.messageArea ? <LabelTag tone="info" label="Carries messages" /> : undefined}
                   actions={
-                    <SemanticButton action="event-frames:assign" size="xs" disabled={busy} onClick={() => void assign(item.id)}>
-                      Assign frame
-                    </SemanticButton>
+                    <>
+                      <SemanticButton action="event-frames:assign" size="xs" disabled={busy} onClick={() => void assign(item.id)}>Assign frame</SemanticButton>
+                      {library.inheritanceEnabled && item.scope !== 'event' ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} onSaved={reload} /> : null}
+                    </>
                   }
                 />
               ))}
@@ -282,6 +289,22 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
       </section>
+
+      {library.inheritanceEnabled && library.hidden?.length ? <section style={SECTION} aria-labelledby="hidden-event-frames-heading">
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+          <h3 id="hidden-event-frames-heading" style={{ margin: 0 }}>Hidden at this event ({library.hidden.length})</h3>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Restore a frame here without changing its partner or global sharing rules.</p>
+        </div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope={item.scope} actions={<VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} hidden onSaved={reload} />} />)}</div></div>
+      </section> : null}
+
+      {library.inactiveOwn.some((item) => !library.assigned.some((entry) => entry.id === item.id)) ? <section style={SECTION} aria-labelledby="inactive-event-frames-heading">
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+          <h3 id="inactive-event-frames-heading" style={{ margin: 0 }}>Switched off at this event</h3>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These event uploads are not assigned. Switch one on to make it available again.</p>
+        </div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.inactiveOwn.filter((item) => !library.assigned.some((entry) => entry.id === item.id)).map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope="event" badges={<LabelTag tone="warning" label="Switched off" />} actions={<LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={item.id} itemActive={false} onSaved={reload} />} />)}</div></div>
+      </section> : null}
 
       <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>

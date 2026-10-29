@@ -14,6 +14,10 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
+import EnablePartnerInheritance from '@/components/admin/library/EnablePartnerInheritance';
+import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
+import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
+import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { PartnerLibrary } from '@/lib/library/types';
@@ -137,6 +141,8 @@ export default function PartnerImagesPage({ params }: { params: Promise<{ id: st
         <InlineAlert title="An image is missing" message={`${library.missing.length} image${library.missing.length === 1 ? '' : 's'} this partner had no longer exist${library.missing.length === 1 ? 's' : ''} in the library and ${library.missing.length === 1 ? 'is' : 'are'} not listed.`} severity="warning" />
       ) : null}
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
+      {!library.inheritanceEnabled ? <InlineAlert title="Legacy catalog" message="Enable inherited catalogs to use the global → partner → event sharing rules. Existing choices are kept during this transition." severity="info" /> : null}
+      {!library.inheritanceEnabled ? <EnablePartnerInheritance partnerId={partnerId} onSaved={reload} /> : null}
 
       <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
@@ -158,17 +164,18 @@ export default function PartnerImagesPage({ params }: { params: Promise<{ id: st
                   thumbnailUrl={item.thumbnailUrl}
                   noun="image"
                   scope={item.scope}
-                  badges={!item.itemActive ? <LabelTag tone="warning" label="Switched off in the library" /> : null}
+                  badges={!item.itemActive ? <LabelTag tone="warning" label="Switched off at the partner" /> : null}
                   actions={
-                    item.via === 'own' ? (
-                      <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(item.id, item.name)}>
-                        Delete upload
-                      </SemanticButton>
-                    ) : (
-                      <SemanticButton action="library:remove" variant="danger" size="xs" disabled={busy} onClick={() => void edit({ remove: [item.id] })}>
-                        Remove from library
-                      </SemanticButton>
-                    )
+                    <>
+                      {library.inheritanceEnabled && item.via === 'assigned' ? <VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="images" id={item.id} scope="global" shareToChildren={item.shareToChildren} hidden={false} blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'images' && ref.id === item.id)} onSaved={reload} /> : null}
+                      {item.via === 'own' ? <LibraryUploadActiveToggle level="partner" ownerId={partnerId} kind="images" id={item.id} itemActive={item.itemActive} shareToChildren={item.shareToChildren} onSaved={reload} /> : null}
+                      {library.inheritanceEnabled && item.via === 'own' ? <ShareToChildrenToggle kind="images" id={item.id} shareToChildren={item.shareToChildren} disabled={!item.itemActive} onSaved={reload} /> : null}
+                      {item.via === 'own' ? (
+                        <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(item.id, item.name)}>Delete upload</SemanticButton>
+                      ) : (
+                        <SemanticButton action="library:remove" variant="danger" size="xs" disabled={busy} onClick={() => void edit({ remove: [item.id] })}>Remove from library</SemanticButton>
+                      )}
+                    </>
                   }
                 />
               ))}
@@ -177,7 +184,15 @@ export default function PartnerImagesPage({ params }: { params: Promise<{ id: st
         </div>
       </section>
 
-      <section style={SECTION}>
+      {library.inheritanceEnabled && library.hidden?.length ? <section style={SECTION} aria-labelledby="hidden-partner-images-heading">
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+          <h3 id="hidden-partner-images-heading" style={{ margin: 0 }}>Hidden at this partner ({library.hidden.length})</h3>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These global images stay in the global library and are hidden only for this partner and its events.</p>
+        </div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="image" scope="global" actions={<VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="images" id={item.id} scope="global" hidden onSaved={reload} />} />)}</div></div>
+      </section> : null}
+
+      {!library.inheritanceEnabled ? <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Add from the global library ({library.available.length})</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Pictures collected by the global admins that {partner.name} does not have yet.</p>
@@ -205,7 +220,7 @@ export default function PartnerImagesPage({ params }: { params: Promise<{ id: st
             </div>
           )}
         </div>
-      </section>
+      </section> : null}
 
       <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>

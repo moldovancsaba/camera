@@ -18,6 +18,8 @@ import { eventSlotsFromLegacy, isOnSlotModel, type LogoEvent, type LogoPartner }
 import { parseSlotValue, type StoreResult } from './logo-store';
 import { resolvePartnerPictures, resolvePictures } from './picture-slot';
 import { slotMode, type ResolvedItem, type SlotMode, type SlotValue } from './resolve';
+import { resolveAssetVisibility } from '@/lib/visual-assets/resolve';
+import type { VisualAssetLevelPolicy } from '@/lib/visual-assets/contracts';
 
 const LIST_LIMIT = 500;
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
@@ -41,6 +43,10 @@ export interface PicturePanel {
   effective: PictureItemView[];
   /** What the editor can pick. */
   candidates: PictureItemView[];
+  /** Partner-owned tagged uploads whose owner can share them with child events. */
+  shareableItems?: PictureItemView[];
+  /** Event-owned tagged uploads switched off at source, retained for restoration. */
+  inactiveOwnItems?: PictureItemView[];
   /** The name of the level above, for the screen; null at the top. */
   parentName: string | null;
 }
@@ -65,15 +71,44 @@ async function partnerOf(db: Db, event: Document): Promise<Document | null> {
   return partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId }) : null;
 }
 
+function inheritanceEnabled(record: Document | null | undefined): boolean {
+  return (record?.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion === 2;
+}
+
+function visibleToPartner(doc: Document, id: string, partner: Document): boolean {
+  return resolveAssetVisibility({
+    asset: doc,
+    kind: 'images',
+    id,
+    targetLevel: 'partner',
+    partnerId: text(partner.partnerId),
+    partnerPolicy: inheritanceEnabled(partner) ? partner.visualAssetPolicy as VisualAssetLevelPolicy : null,
+  }).available;
+}
+
+function visibleToEvent(doc: Document, id: string, event: Document, partner: Document | null): boolean {
+  const policiesEnabled = inheritanceEnabled(partner);
+  return resolveAssetVisibility({
+    asset: doc,
+    kind: 'images',
+    id,
+    targetLevel: 'event',
+    partnerId: partner ? text(partner.partnerId) : text(event.partnerId),
+    eventId: text(event.eventId),
+    partnerPolicy: policiesEnabled ? partner?.visualAssetPolicy as VisualAssetLevelPolicy | null : null,
+    eventPolicy: policiesEnabled ? event.visualAssetPolicy as VisualAssetLevelPolicy | null : null,
+  }).available;
+}
+
 export function taggedPictureStore({ slot, tag }: TaggedPictureKind) {
   /** The active global pictures of the kind, newest first: the global default set. */
-  async function globalDocs(db: Db): Promise<Document[]> {
-    const docs = await images(db).find({ ...GLOBAL_FILTER, tags: tag, isActive: true }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
-    return docs.sort(byNewest);
+  async function globalDocs(db: Db, partner?: Document | null): Promise<Document[]> {
+    const docs = await images(db).find({ ...GLOBAL_FILTER, tags: tag, isActive: true, shareToChildren: { $ne: false } }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
+    return docs.filter((doc) => !partner || visibleToPartner(doc, text(doc.pictureId), partner)).sort(byNewest);
   }
 
-  async function globalIds(db: Db): Promise<string[]> {
-    return (await globalDocs(db)).map((doc) => text(doc.pictureId)).filter(Boolean);
+  async function globalIds(db: Db, partner?: Document | null): Promise<string[]> {
+    return (await globalDocs(db, partner)).map((doc) => text(doc.pictureId)).filter(Boolean);
   }
 
   /** A partner's own uploads of the kind, newest first. */
@@ -95,12 +130,13 @@ export function taggedPictureStore({ slot, tag }: TaggedPictureKind) {
 
   /** What an event uses now: the resolved ids, in order, as documents (active ones that still exist). */
   async function resolveEventDocs(db: Db, event: Document): Promise<Document[]> {
-    const [ids, partner] = await Promise.all([globalIds(db), partnerOf(db, event)]);
+    const partner = await partnerOf(db, event);
+    const ids = await globalIds(db, partner);
     const resolved = resolvePictures(slot, ids, partner as LogoPartner | null, event as LogoEvent);
     const docs = await docsByIds(db, resolved.map((item) => item.id));
     return resolved.flatMap((item) => {
       const doc = docs.get(item.id);
-      return doc && doc.isActive !== false ? [doc] : [];
+      return doc && doc.isActive !== false && visibleToEvent(doc, item.id, event, partner) ? [doc] : [];
     });
   }
 
@@ -110,7 +146,7 @@ export function taggedPictureStore({ slot, tag }: TaggedPictureKind) {
     if (!doc) return { ok: false, status: 404, reason: `Unknown ${tag.replace(/-/g, ' ')}: ${id}` };
     if (doc.isActive === false) return { ok: false, status: 400, reason: `This ${tag.replace(/-/g, ' ')} is switched off: ${text(doc.name) || id}` };
     const scope = scopeOf(fieldsOf(doc));
-    if (scope === 'global') return { ok: true, value: null };
+    if (scope === 'global' && visibleToPartner(doc, id, partner)) return { ok: true, value: null };
     if (scope === 'partner' && text(doc.partnerId) === text(partner.partnerId)) return { ok: true, value: null };
     return { ok: false, status: 400, reason: `This ${tag.replace(/-/g, ' ')} belongs to another partner or to an event.` };
   }
@@ -124,7 +160,13 @@ export function taggedPictureStore({ slot, tag }: TaggedPictureKind) {
     if (scopeOf(fieldsOf(doc)) === 'event') {
       return text(doc.eventId) === text(event.eventId) ? { ok: true, value: null } : { ok: false, status: 400, reason: `This ${noun} belongs to another event.` };
     }
-    const available = new Set([...resolvePartnerPictures(slot, ids, partner as LogoPartner | null).map((item) => item.id), ...(partner ? (await partnerOwnDocs(db, partner)).map((own) => text(own.pictureId)) : [])]);
+    const partnerUsed = resolvePartnerPictures(slot, ids, partner as LogoPartner | null);
+    const ownPartnerDocs = partner ? await partnerOwnDocs(db, partner) : [];
+    const partnerDocs = await docsByIds(db, [...partnerUsed.map((item) => item.id), ...ownPartnerDocs.map((own) => text(own.pictureId))]);
+    const available = new Set([
+      ...partnerUsed.filter((item) => { const inherited = partnerDocs.get(item.id); return Boolean(inherited && visibleToEvent(inherited, item.id, event, partner)); }).map((item) => item.id),
+      ...ownPartnerDocs.filter((own) => visibleToEvent(own, text(own.pictureId), event, partner)).map((own) => text(own.pictureId)),
+    ]);
     return available.has(id) ? { ok: true, value: null } : { ok: false, status: 400, reason: `This ${noun} is not in the partner’s ${noun}s, so the event cannot take it.` };
   }
 
@@ -145,7 +187,8 @@ export function taggedPictureStore({ slot, tag }: TaggedPictureKind) {
   async function setEvent(db: Db, event: Document, input: unknown, now: string): Promise<StoreResult<{ value: SlotValue; seeded: boolean }>> {
     const parsed = parseSlotValue(input);
     if (!parsed.ok) return parsed;
-    const [partner, ids] = await Promise.all([partnerOf(db, event), globalIds(db)]);
+    const partner = await partnerOf(db, event);
+    const ids = await globalIds(db, partner);
     for (const id of parsed.value.items ?? []) {
       const allowed = await checkEventPick(db, event, partner, ids, id);
       if (!allowed.ok) return allowed;
@@ -172,40 +215,61 @@ export function taggedPictureStore({ slot, tag }: TaggedPictureKind) {
 
   /** The panel of a partner: the global set is its default; it can pick any active global picture or its own uploads. */
   async function loadPartnerPanel(db: Db, partner: Document): Promise<PicturePanel> {
-    const [globals, ownDocs] = await Promise.all([globalDocs(db), partnerOwnDocs(db, partner)]);
+    const [globals, ownDocs] = await Promise.all([globalDocs(db, partner), partnerOwnDocs(db, partner)]);
     const ids = globals.map((doc) => text(doc.pictureId));
     const value = ((partner.slots as Record<string, SlotValue> | undefined)?.[slot] ?? {}) as SlotValue;
     const docs = new Map([...globals, ...ownDocs, ...(await docsByIds(db, value.items ?? [])).values()].map((doc) => [text(doc.pictureId), doc]));
     const chosen = new Set(value.items ?? []);
+    const visibleChosen = (value.items ?? []).filter((id) => {
+      const doc = docs.get(id);
+      return Boolean(doc && visibleToPartner(doc, id, partner));
+    });
     return {
       value,
       mode: slotMode(value),
       defaultItems: withView(ids.map((id) => ({ id, level: 'global' })), docs),
-      ownItems: withView((value.items ?? []).map((id) => ({ id, level: 'partner' })), docs),
-      effective: withView(resolvePartnerPictures(slot, ids, partner as LogoPartner), docs),
-      candidates: [...globals, ...ownDocs].filter((doc) => !chosen.has(text(doc.pictureId))).map((doc) => ({ ...itemView('images', doc), level: scopeOf(fieldsOf(doc)) === 'global' ? 'global' : 'partner' })),
+      ownItems: withView(visibleChosen.map((id) => ({ id, level: 'partner' })), docs),
+      effective: withView(resolvePartnerPictures(slot, ids, partner as LogoPartner).filter((item) => {
+        const doc = docs.get(item.id);
+        return Boolean(doc && visibleToPartner(doc, item.id, partner));
+      }), docs),
+      candidates: [...globals, ...ownDocs].filter((doc) => doc.isActive !== false && !chosen.has(text(doc.pictureId))).map((doc) => ({ ...itemView('images', doc), level: scopeOf(fieldsOf(doc)) === 'global' ? 'global' : 'partner' })),
+      shareableItems: ownDocs.map((doc) => ({ ...itemView('images', doc), level: 'partner' })),
       parentName: 'the global library',
     };
   }
 
   /** The panel of an event: what its partner uses is its default; it can pick what the partner has or its own uploads. */
   async function loadEventPanel(db: Db, event: Document): Promise<PicturePanel & { partner: { name: string } | null }> {
-    const [globals, partner, ownDocs] = await Promise.all([globalDocs(db), partnerOf(db, event), eventOwnDocs(db, event)]);
+    const [partner, ownDocs] = await Promise.all([partnerOf(db, event), eventOwnDocs(db, event)]);
+    const globals = await globalDocs(db, partner);
     const ids = globals.map((doc) => text(doc.pictureId));
     const partnerOwn = partner ? await partnerOwnDocs(db, partner) : [];
     const value = ((event.slots as Record<string, SlotValue> | undefined)?.[slot] ?? {}) as SlotValue;
     const partnerUsed = resolvePartnerPictures(slot, ids, partner as LogoPartner | null);
     const wanted = [...new Set([...partnerUsed.map((item) => item.id), ...(value.items ?? [])])];
     const docs = new Map([...globals, ...partnerOwn, ...ownDocs, ...(await docsByIds(db, wanted)).values()].map((doc) => [text(doc.pictureId), doc]));
+    const visiblePartnerUsed = partnerUsed.filter((item) => {
+      const doc = docs.get(item.id);
+      return Boolean(doc && visibleToEvent(doc, item.id, event, partner));
+    });
     const chosen = new Set(value.items ?? []);
-    const available = [...new Map([...partnerUsed.map((item) => [item.id, docs.get(item.id)] as const), ...partnerOwn.map((doc) => [text(doc.pictureId), doc] as const), ...ownDocs.map((doc) => [text(doc.pictureId), doc] as const)]).values()].filter((doc): doc is Document => Boolean(doc));
+    const available = [...new Map([...visiblePartnerUsed.map((item) => [item.id, docs.get(item.id)] as const), ...partnerOwn.map((doc) => [text(doc.pictureId), doc] as const), ...ownDocs.map((doc) => [text(doc.pictureId), doc] as const)]).values()].filter((doc): doc is Document => Boolean(doc));
+    const visibleChosen = (value.items ?? []).filter((id) => {
+      const doc = docs.get(id);
+      return Boolean(doc && visibleToEvent(doc, id, event, partner));
+    });
     return {
       value,
       mode: slotMode(value),
-      defaultItems: withView(partnerUsed, docs),
-      ownItems: withView((value.items ?? []).map((id) => ({ id, level: 'event' })), docs),
-      effective: withView(resolvePictures(slot, ids, partner as LogoPartner | null, event as LogoEvent), docs),
-      candidates: available.filter((doc) => doc.isActive !== false && !chosen.has(text(doc.pictureId))).map((doc) => ({ ...itemView('images', doc), level: scopeOf(fieldsOf(doc)) })),
+      defaultItems: withView(visiblePartnerUsed, docs),
+      ownItems: withView(visibleChosen.map((id) => ({ id, level: 'event' })), docs),
+      effective: withView(resolvePictures(slot, ids, partner as LogoPartner | null, event as LogoEvent).filter((item) => {
+        const doc = docs.get(item.id);
+        return Boolean(doc && visibleToEvent(doc, item.id, event, partner));
+      }), docs),
+      candidates: available.filter((doc) => doc.isActive !== false && visibleToEvent(doc, text(doc.pictureId), event, partner) && !chosen.has(text(doc.pictureId))).map((doc) => ({ ...itemView('images', doc), level: scopeOf(fieldsOf(doc)) })),
+      inactiveOwnItems: ownDocs.filter((doc) => doc.isActive === false).map((doc) => ({ ...itemView('images', doc), level: 'event' })),
       parentName: partner ? 'the partner' : 'the global library',
       partner: partner ? { name: text(partner.name) } : null,
     };

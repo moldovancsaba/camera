@@ -48,6 +48,8 @@ import { trackedSlugExists } from '@/lib/short-links/store';
 import { journeyRecordingEnabled } from '@/lib/journey/setting';
 import { colourInputsOf, scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
 import { validateWelcomeElements } from '@/lib/events/welcome-composition';
+import { filterUnavailableVisualAssetUrls, visualAssetVisibleToEvent } from '@/lib/visual-assets/filter';
+import { applyExperienceConfig, parseExperienceTemplateSelection, resolveEventExperienceConfig, selectionWithExperienceOverrides } from '@/lib/visual-assets/templates';
 
 interface EventFrameDetails {
   frameId: string;
@@ -138,6 +140,9 @@ export const GET = withErrorHandler(async (
   // This enriches event.frames[] with full frame data (name, thumbnailUrl, etc.)
   // A guest is not sent a frame whose picture is gone (issue 514); an admin still sees every frame, to fix it.
   const forGuest = request.nextUrl.searchParams.get('audience') === 'guest';
+  const eventPartner = typeof event.partnerId === 'string' && event.partnerId
+    ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId })
+    : null;
   const brokenPictures = forGuest ? await brokenAddresses(db) : new Set<string>();
   if (event.frames && event.frames.length > 0) {
     const frameIds = event.frames.map((frame) => frame.frameId);
@@ -146,9 +151,16 @@ export const GET = withErrorHandler(async (
       .find({ frameId: { $in: frameIds } })
       .toArray() as unknown as EventFrameDetails[];
     
-    // Map frame details to each assignment
-    event.frames = event.frames.filter((assignment) => !brokenPictures.has(frames.find((frame) => frame.frameId === assignment.frameId)?.imageUrl ?? '')).map((assignment) => {
-      const frameDetails = frames.find((frame) => frame.frameId === assignment.frameId);
+    const frameById = new Map(frames.map((frame) => [frame.frameId, frame]));
+    // Map frame details to each assignment. Under v2 inheritance a parent
+    // hide, disabled source asset, or stopped sharing boundary removes it from
+    // the guest response even when an old event assignment still references it.
+    event.frames = event.frames.filter((assignment) => {
+      const frame = frameById.get(assignment.frameId);
+      if (forGuest && frame && !visualAssetVisibleToEvent(frame as unknown as Record<string, unknown>, 'frames', assignment.frameId, event, eventPartner as unknown as Record<string, unknown> | null)) return false;
+      return !brokenPictures.has(frame?.imageUrl ?? '');
+    }).map((assignment) => {
+      const frameDetails = frameById.get(assignment.frameId);
       return {
         ...assignment,
         frameDetails: frameDetails ? {
@@ -173,7 +185,20 @@ export const GET = withErrorHandler(async (
   // `photoVetting` (who changed it, when) is admin data: guests get `photoVettingRequired`, and when asked as a guest
   // (`?audience=guest`, the capture page) a vetted event with no "who are you" page before the photo gets the default one first:
   // every vetted event asks for an email or a social login (camera#264). The admin editor reads the stored pages, never this one.
-  const { frameDesign, photoVetting, ...publicEvent } = event;
+  const resolvedExperience = await resolveEventExperienceConfig(
+    db,
+    event as unknown as Record<string, unknown>,
+    eventPartner as unknown as Record<string, unknown> | null,
+  );
+  const eventWithExperience = applyExperienceConfig(event as unknown as Record<string, unknown>, resolvedExperience);
+  const guestSafeEvent = forGuest
+    ? await filterUnavailableVisualAssetUrls(db, eventWithExperience, event, eventPartner as unknown as Record<string, unknown> | null)
+    : eventWithExperience;
+  const { frameDesign, photoVetting, ...publicEvent } = guestSafeEvent;
+  // Template selection is admin configuration; only its resolved experience
+  // belongs in the public capture payload.
+  delete publicEvent.experienceTemplate;
+  delete publicEvent.effectiveExperienceTemplateId;
   const vettingRequired = photoVettingRequired({ photoVetting: photoVetting as { required?: unknown } | undefined });
 
   // The look of the guest pages (camera#285): the messmass style snapshot of the event, or for an event without one camera's own
@@ -189,12 +214,15 @@ export const GET = withErrorHandler(async (
   // The page editor asks too (camera#378): it shows the journey from the same function, so it needs to know which defaults the event gets.
   const consentDefault = eventGetsDefaults(event as { journeyDefaults?: unknown }, await getDefaultsRollout(db));
   // The default welcome page needs the picture drawn from the event's default slideshow (issue 327): an event without it gets none.
-  const hasWelcomeScreen = typeof (event as { welcomeScreen?: { url?: unknown } }).welcomeScreen?.url === 'string';
+  const hasWelcomeScreen = typeof (guestSafeEvent as { welcomeScreen?: { url?: unknown } }).welcomeScreen?.url === 'string';
   // The wordings an admin wrote for the event's partner or for the event, in its language: the default pages use them (lib/i18n/overrides.ts, issue 353). None written: an empty object.
   // The language is the event's own, or its partner's when the event has none (the partner's default language).
-  const { overrides: texts, language, partner } = await loadEventTexts(db, event as unknown as Record<string, unknown>);
+  const { overrides: texts, language, partner } = await loadEventTexts(db, event as unknown as Record<string, unknown>, eventPartner);
   // A picture field a page left empty shows the partner's default picture, at read time and never stored (lib/events/partner-pictures.ts, issue 368).
-  const partnerPictures = storedPartnerPictures(partner?.pictures);
+  const storedPictures = storedPartnerPictures(partner?.pictures);
+  const partnerPictures = forGuest
+    ? await filterUnavailableVisualAssetUrls(db, storedPictures, event, partner as unknown as Record<string, unknown> | null)
+    : storedPictures;
   // What the event gets for every kind of checkbox (issue 558, lib/events/checkbox-settings.ts): its own choice, else its partner's, else the standard (what the journey always did).
   // Resolve the two legacy checkbox choices from the event as well as consentSettings. Omitting these fields here made a guest follow the partner/standard setting even when the event had chosen its own value.
   const checkboxes = effectiveCheckboxes(event as { consentSettings?: unknown; acceptanceOnWhoAreYou?: unknown; galleryConsent?: unknown }, partner);
@@ -219,7 +247,7 @@ export const GET = withErrorHandler(async (
       frameSelectionTiles,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
       // A guest gets the consent checkboxes that are switched on only (issue 558): a page whose checkboxes are all off is not a step, and the acceptance on the Who-are-you page is the effective value (event, partner, standard).
-      ...(forGuest ? { customPages: withShownCheckboxes(withPartnerPictures(withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, defaultOrders: event.defaultPageOrders as Record<string, number> | undefined, documents: chosenDocuments(checkboxes) }), partnerPictures)), acceptanceOnWhoAreYou: checkboxes.acceptance.shown } : {}),
+      ...(forGuest ? { customPages: withShownCheckboxes(withPartnerPictures(withDefaultJourneyPages((guestSafeEvent.customPages ?? []) as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, defaultOrders: event.defaultPageOrders as Record<string, number> | undefined, documents: chosenDocuments(checkboxes) }), partnerPictures)), acceptanceOnWhoAreYou: checkboxes.acceptance.shown } : {}),
       photoVettingRequired: vettingRequired,
       // How the photo is taken (issue 547): the event's own choice, else its partner's, else the standard. `cameraMode` stays the stored choice, which the editor shows.
       effectiveCameraMode: effectiveCameraMode(event as { cameraMode?: unknown }, partner),
@@ -237,9 +265,9 @@ export const GET = withErrorHandler(async (
       journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, ...(chosenDocuments(checkboxes) ? { documents: chosenDocuments(checkboxes) } : {}), ...(event.defaultPageOrders ? { defaultOrders: event.defaultPageOrders as Record<string, number> } : {}) },
       _id: event._id.toString(),
       generatedFrame: captureFrameOf({
-        frames: event.frames,
+        frames: guestSafeEvent.frames as EventFrameAssignment[] | undefined,
         frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'],
-        frameSelection: event.frameSelection,
+        frameSelection: guestSafeEvent.frameSelection as Parameters<typeof captureFrameOf>[0]['frameSelection'],
       }),
     })
   });
@@ -319,6 +347,7 @@ export const PATCH = withErrorHandler(async (
     acceptanceOnWhoAreYou,
     defaultPageOrders,
     frameMessageSelectionDisplay,
+    experienceTemplate,
   } = body;
 
   // Build update object with only provided fields
@@ -460,6 +489,20 @@ export const PATCH = withErrorHandler(async (
     updateFields.sharePage = normalizeEventSharePageSettings(sharePage);
   }
 
+  if (experienceTemplate !== undefined) {
+    const parsed = parseExperienceTemplateSelection(experienceTemplate);
+    if (!parsed.ok) throw apiBadRequest(parsed.reason);
+    if (parsed.value.mode === 'template' && typeof parsed.value.templateId === 'string') {
+      const template = await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({
+        templateId: parsed.value.templateId,
+        level: 'event',
+        ownerId: String(event.eventId),
+      });
+      if (!template) throw apiBadRequest('Choose a template owned by this event.');
+    }
+    updateFields.experienceTemplate = parsed.value;
+  }
+
   // Handle customPages array
   // Validates page structure and ensures proper ordering
   if (customPages !== undefined) {
@@ -531,6 +574,15 @@ export const PATCH = withErrorHandler(async (
 
     updateFields.customPages = customPages;
   }
+
+  // An event that follows a default keeps later event-level edits as local
+  // overrides. Old events without an explicit template selection stay on their
+  // stored configuration until an editor chooses to inherit a default.
+  const templateOverrides = selectionWithExperienceOverrides(
+    (updateFields.experienceTemplate ?? event.experienceTemplate) as import('@/lib/visual-assets/contracts').ExperienceTemplateSelection | null | undefined,
+    updateFields,
+  );
+  if (templateOverrides) updateFields.experienceTemplate = templateOverrides;
 
   // Update event in database
   const result = await db

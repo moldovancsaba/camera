@@ -161,6 +161,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
     description: 'App-wide admin UI preferences, shared by every admin.',
     items: [
       {
+        href: '/admin/settings/experience',
+        label: 'Experience defaults',
+        description: 'Experience defaults',
+        iconKey: 'adjustments',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+      {
         href: '/admin/settings/defaults',
         label: 'Journey defaults',
         description: 'The one switch that gives existing events the journey defaults, such as the consent page.',

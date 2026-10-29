@@ -13,6 +13,10 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
+import EnablePartnerInheritance from '@/components/admin/library/EnablePartnerInheritance';
+import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
+import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
+import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import SlotPanel, { type SlotItem } from '@/components/admin/kit/SlotPanel';
 import type { LibraryItemView, PartnerLibrary, PartnerLibraryEntry } from '@/lib/library/types';
 import type { SlotValue } from '@/lib/slots/resolve';
@@ -155,6 +159,8 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
 
   return (
     <GdsStack gap="lg">
+      {!library.inheritanceEnabled ? <InlineAlert title="Legacy catalog" message="Enable inherited catalogs to use the global → partner → event sharing rules. Existing choices are kept during this transition." severity="info" /> : null}
+      {!library.inheritanceEnabled ? <EnablePartnerInheritance partnerId={partnerId} onSaved={reload} /> : null}
       <nav aria-label="Breadcrumb">
         <Link href="/admin/partners">Partners</Link>
         <span aria-hidden> / </span>
@@ -221,21 +227,29 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
                 source={item.source}
                 note={chosen.has(item.id) ? "One of this partner's logos." : undefined}
                 actions={
-                  item.via === 'own' ? (
-                    <SemanticButton action={item.source === 'messmass' ? 'library:delete-import' : 'library:delete-upload'} variant="danger" size="xs" disabled={busy} onClick={() => deleteUpload(item)}>
-                      {item.source === 'messmass' ? 'Delete the import' : 'Delete upload'}
-                    </SemanticButton>
-                  ) : (
-                    <SemanticButton action="library:remove" variant="danger" size="xs" disabled={busy} onClick={() => removeFromLibrary(item)}>
-                      Remove from library
-                    </SemanticButton>
-                  )
+                  <>
+                    {library.inheritanceEnabled && item.via === 'assigned' ? <VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="logos" id={item.id} scope="global" shareToChildren={item.shareToChildren} blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'logos' && ref.id === item.id)} onSaved={reload} /> : null}
+                    {library.inheritanceEnabled && item.via === 'own' ? <ShareToChildrenToggle kind="logos" id={item.id} shareToChildren={item.shareToChildren} disabled={!item.itemActive} onSaved={reload} /> : null}
+                    {item.via === 'own' ? <LibraryUploadActiveToggle level="partner" ownerId={partnerId} kind="logos" id={item.id} itemActive={item.itemActive} shareToChildren={item.shareToChildren} onSaved={reload} /> : null}
+                    {item.via === 'own' ? (
+                      <SemanticButton action={item.source === 'messmass' ? 'library:delete-import' : 'library:delete-upload'} variant="danger" size="xs" disabled={busy} onClick={() => deleteUpload(item)}>
+                        {item.source === 'messmass' ? 'Delete the import' : 'Delete upload'}
+                      </SemanticButton>
+                    ) : (
+                      <SemanticButton action="library:remove" variant="danger" size="xs" disabled={busy} onClick={() => removeFromLibrary(item)}>Remove from library</SemanticButton>
+                    )}
+                  </>
                 }
               />
             ))}
           </GdsGrid>
         )}
       </SectionPanel>
+      {library.inheritanceEnabled && library.hidden?.length ? <SectionPanel title={`Hidden at this partner (${library.hidden.length})`} description="These global logos stay in the global library and are hidden only for this partner and its events.">
+        <GdsGrid columns="auto-fill" minColumnWidth="aside" gap="md">
+          {library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="logo" scope="global" actions={<VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="logos" id={item.id} scope="global" hidden blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'logos' && ref.id === item.id)} onSaved={reload} />} />)}
+        </GdsGrid>
+      </SectionPanel> : null}
     </GdsStack>
   );
 }

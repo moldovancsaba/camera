@@ -15,6 +15,10 @@ import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
+import EnablePartnerInheritance from '@/components/admin/library/EnablePartnerInheritance';
+import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
+import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
+import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import DefaultSlotsPanel from '@/components/admin/DefaultSlotsPanel';
 import type { MessageArea } from '@/lib/frame/message-area';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
@@ -172,6 +176,8 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
       ) : null}
       {notice ? <InlineAlert title={notice.title} message={notice.message} severity="info" /> : null}
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
+      {!library.inheritanceEnabled ? <InlineAlert title="Legacy catalog" message="Enable inherited catalogs to use the global → partner → event sharing rules. Existing choices are kept during this transition." severity="info" /> : null}
+      {!library.inheritanceEnabled ? <EnablePartnerInheritance partnerId={partnerId} onSaved={reload} /> : null}
 
       <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
@@ -199,11 +205,14 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                     <>
                       {item.messageArea ? <LabelTag tone="info" label="Carries messages" /> : null}
                       {item.isDefault ? <LabelTag tone="success" label="Default for new events" /> : null}
-                      {!item.itemActive ? <LabelTag tone="warning" label="Switched off in the library" /> : null}
+                      {!item.itemActive ? <LabelTag tone="warning" label="Switched off at the partner" /> : null}
                     </>
                   }
                   actions={
                     <>
+                      {library.inheritanceEnabled && item.via === 'assigned' ? <VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="frames" id={item.id} scope="global" shareToChildren={item.shareToChildren} blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'frames' && ref.id === item.id)} onSaved={reload} /> : null}
+                      {library.inheritanceEnabled && item.via === 'own' ? <ShareToChildrenToggle kind="frames" id={item.id} shareToChildren={item.shareToChildren} disabled={!item.itemActive} onSaved={reload} /> : null}
+                      {item.via === 'own' ? <LibraryUploadActiveToggle level="partner" ownerId={partnerId} kind="frames" id={item.id} itemActive={item.itemActive} shareToChildren={item.shareToChildren} onSaved={reload} /> : null}
                       {item.isDefault ? (
                         <SemanticButton action="library:default-off" variant="secondary" size="xs" disabled={busy} onClick={() => void edit({ defaults: defaults.filter((id) => id !== item.id) })}>
                           Remove the default
@@ -240,7 +249,15 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
         </div>
       </section>
 
-      <section style={SECTION}>
+      {library.inheritanceEnabled && library.hidden?.length ? <section style={SECTION} aria-labelledby="hidden-partner-frames-heading">
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+          <h3 id="hidden-partner-frames-heading" style={{ margin: 0 }}>Hidden at this partner ({library.hidden.length})</h3>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These global frames stay in the global library and are hidden only for this partner and its events.</p>
+        </div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope="global" actions={<VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="frames" id={item.id} scope="global" hidden blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'frames' && ref.id === item.id)} onSaved={reload} />} />)}</div></div>
+      </section> : null}
+
+      {!library.inheritanceEnabled ? <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Add from the global library ({library.available.length})</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Frames collected by the global admins that {partner.name} does not have yet.</p>
@@ -269,7 +286,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
             </div>
           )}
         </div>
-      </section>
+      </section> : null}
 
       <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>

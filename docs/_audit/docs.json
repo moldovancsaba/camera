@@ -79,6 +79,7 @@
   {"file": "docs/TRYON_OPERATIONS.md", "title": "Try-On Operations"},
   {"file": "docs/TRYON_REMOVED.md", "title": "Try-on integration: what existed, why it was removed, how to rebuild it as an add-on"},
   {"file": "docs/UI_LANGUAGE.md", "title": "Camera UI language behavior"},
+  {"file": "docs/VISUAL_ASSET_HIERARCHY.md", "title": "Visual assets and experience defaults"},
   {"file": "docs/WELCOME_AND_DEFAULTS_PLAN.md", "title": "Welcome page, default slideshow, global defaults and page defaults (plan)"},
   {"file": "docs/WELCOME_SCREEN_PHOTO_PLAN.md", "title": "A selfie in the welcome page screen (plan)"},
   {"file": "docs/WELCOME_STEP.md", "title": "Welcome step (step 0 of the guest journey)"},

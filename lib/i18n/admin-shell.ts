@@ -1,4 +1,5 @@
 import { UI_LANGUAGES, type UiLanguage } from '@/lib/i18n';
+import { adminExperienceTemplateText } from './admin-experience-templates';
 
 /**
  * Short labels used by the shared admin navigation and account shell. Kept
@@ -181,11 +182,16 @@ export function adminShellText(text: string, language: UiLanguage): string {
   if (text === 'Landing pages') return MAP[language]['Landing Pages'];
   const experienceText = EVENT_EXPERIENCE_TEXT[language]?.[text];
   if (experienceText) return experienceText;
+  const templateText = adminExperienceTemplateText(text, language);
+  if (templateText !== null) return templateText;
   return MAP[language][text as AdminShellText] ?? text;
 }
 
 export function hasAdminShellTranslation(text: string): boolean {
-  return ENGLISH.includes(text as AdminShellText) || text === 'Landing pages' || Object.values(EVENT_EXPERIENCE_TEXT).some((messages) => text in messages);
+  return ENGLISH.includes(text as AdminShellText)
+    || text === 'Landing pages'
+    || adminExperienceTemplateText(text, 'en') !== null
+    || Object.values(EVENT_EXPERIENCE_TEXT).some((messages) => text in messages);
 }
 
 export const ADMIN_SHELL_ENGLISH_TEXTS: readonly string[] = ENGLISH;

@@ -1,5 +1,15 @@
 # RELEASE_NOTES.md
 
+## Unreleased — Global → Partner → Event visual defaults
+
+- **Added:** a versioned visibility policy for logos, frames and images. A source owner can share an asset down one level; partners and events can hide inherited assets locally, and partners can stop forwarding global assets to events. Inactive or unshared assets cannot be newly selected or returned to guests.
+- **Added:** reusable guest-experience templates with a global default, optional partner overlay/opt-out and event-level inheritance, independent template or local opt-out. Resolution happens at read time; new partners/events begin on the new default path while existing partner/event data keeps its prior behavior until an explicit opt-in.
+- **Safety:** enabling an existing partner computes local hides from its prior library before turning on inheritance. Template config is allow-listed and excludes identity, consent, submissions, analytics and photo data. Known library assets are checked for ownership, sharing and active state before a reusable preset can be saved. Admin template metadata is removed from the public event response.
+- **UX:** global, partner and event selectors use Camera GDS controls and semantic button actions, with localized labels, save/error states and confirmation for changes that stop child sharing.
+- **Documentation:** added `docs/VISUAL_ASSET_HIERARCHY.md`; aligned the library reference, architecture, runbook and handover with the staged migration and rollback behavior.
+- **Not done:** historical partners have not been opted in or backfilled; no production defaults were changed. GitHub Verify, reviewed production opt-in/backfill, and production release remain outstanding.
+- **Verification:** `npm run release:check` passed, including 363/363 unit-test files, production guards and a production build. `npm run inventory:check` passed (714 links, none broken). A local production-build browser smoke test confirmed the global template selector loads and saves through a mocked API at desktop and 390 px mobile widths with no horizontal overflow. The disposable-database Playwright suite could not run because this worktree has no `MONGODB_URI`; no production database was used.
+
 ## Unreleased — original and selected event image exports
 
 - **Added:** event managers can download all originals or framed photos separately, and can export selected originals or framed photos from the Event Gallery.

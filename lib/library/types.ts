@@ -4,6 +4,7 @@
 
 import type { MessageArea } from '@/lib/frame/message-area';
 import type { LibraryKind, LibraryScope } from './kinds';
+import type { VisualAssetLevelPolicy } from '@/lib/visual-assets/contracts';
 
 /** What the pages need of an item: its picture, name and owner. */
 export interface LibraryItemView {
@@ -18,6 +19,8 @@ export interface LibraryItemView {
   scope: LibraryScope;
   /** The item's own switch in the library (an inactive item cannot be newly taken). */
   itemActive: boolean;
+  /** Whether the asset's owner currently shares it with the next level. Missing legacy values resolve to true. */
+  shareToChildren?: boolean;
   createdAt: string | null;
   /** A frame that carries the messages of an event (camera#366): where the message is written. Null for a complete frame and for the other kinds. */
   messageArea: MessageArea | null;
@@ -31,9 +34,14 @@ export interface PartnerLibraryEntry extends LibraryItemView {
 
 export interface PartnerLibrary {
   kind: LibraryKind;
+  /** Present after a partner is safely transitioned from legacy assignments to inherited catalogs. */
+  inheritanceEnabled?: true;
+  policy?: VisualAssetLevelPolicy;
   /** False while the list is computed from what the partner had before the libraries; the first save makes it the partner's own list. */
   saved: boolean;
   items: PartnerLibraryEntry[];
+  /** Inherited assets hidden at this partner. They remain available at the source level and other partners. */
+  hidden?: LibraryItemView[];
   /** Active items of the global library the partner does not have yet. */
   available: LibraryItemView[];
   missing: string[];
@@ -48,11 +56,17 @@ export interface EventLibraryEntry extends LibraryItemView {
 
 export interface EventLibrary {
   kind: LibraryKind;
+  inheritanceEnabled?: true;
+  policy?: VisualAssetLevelPolicy;
   /** `adminId` is the Mongo id the admin pages use in their addresses. */
   partner: { partnerId: string; adminId: string; name: string } | null;
   assigned: EventLibraryEntry[];
+  /** Inherited assets hidden at this event; parent-level restrictions are not included because they cannot be overridden here. */
+  hidden?: LibraryItemView[];
   /** Taken-able items: the partner's library items and the event's own uploads that the event has not assigned. */
   available: LibraryItemView[];
+  /** Event-owned uploads switched off at source, retained so a manager can restore them. */
+  inactiveOwn: LibraryItemView[];
   /** Assignments whose item no longer exists in the library. */
   missing: Array<{ id: string; assignment: Record<string, unknown> }>;
 }
