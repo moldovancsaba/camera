@@ -115,8 +115,8 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
       },
       {
         href: '/admin/frames/generated',
-        label: 'Generated Frames',
-        description: 'Configure the generated default frame used by events without their own frame.',
+        label: 'Generated Frame Rollout',
+        description: 'Dry-run and apply the generated default frame to events that do not have their own.',
         iconKey: 'frame',
         isVisible: (access) => access.isGlobalAdmin,
       },
@@ -162,6 +162,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         iconKey: 'adjustments',
         isVisible: (access) => access.isGlobalAdmin,
       },
+      {
+        href: '/admin/settings/emails',
+        label: 'Global Email',
+        description: 'Global legal and follow-up email settings inherited by partners and events.',
+        iconKey: 'mail',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
     ],
   },
   {
@@ -189,6 +196,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         iconKey: 'photoScan',
         isVisible: (access) => access.isGlobalAdmin,
       },
+      {
+        href: '/admin/settings/experience',
+        label: 'Global User Journey',
+        description: 'Choose the reusable guest journey inherited by partners and events.',
+        iconKey: 'layoutDashboard',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
     ],
   },
   {
@@ -196,24 +210,10 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
     description: 'Shared application defaults and account access.',
     items: [
       {
-        href: '/admin/settings/experience',
-        label: 'Experience defaults',
-        description: 'Experience defaults',
-        iconKey: 'adjustments',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
         href: '/admin/settings/defaults',
         label: 'Journey defaults',
         description: 'Default user-journey settings applied to events that follow global defaults.',
         iconKey: 'adjustments',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
-        href: '/admin/settings/emails',
-        label: 'Emails',
-        description: 'The e-mails to the users: the general legal part every partner and event follows, and the follow-up e-mails a week after an event.',
-        iconKey: 'mail',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
@@ -279,7 +279,7 @@ const everyone = () => true;
 export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { section: 'Overview', label: 'Overview', description: 'The event at a glance.', iconKey: 'layoutDashboard', path: '', isVisible: everyone },
   { section: 'Org', label: 'Edit', description: 'The event details and capture experience settings.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
-  { section: 'Content', label: 'Pages of the user journey', description: 'Choose, edit and order the pages guests see for this event.', iconKey: 'layoutDashboard', path: '/pages', isVisible: everyone },
+  { section: 'Content', label: 'Event User Journey', description: 'Choose, edit and order the pages guests see for this event.', iconKey: 'layoutDashboard', path: '/pages', isVisible: everyone },
   { section: 'Operations', label: 'Vetting', description: 'Photos waiting for approval.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
   { section: 'Operations', label: 'Photo analysis', description: 'Analyse photos after vetting, or analyse all eligible photos when vetting is off.', iconKey: 'photoScan', path: '/analysis', isVisible: everyone },
   { section: 'Blocks', label: 'Vetting words', description: 'The words the reviewer describes a photo with at this event: gender, age, emotion, items and the reasons for a rejection.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
@@ -289,7 +289,7 @@ export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { section: 'Blocks', label: 'Frames', description: 'The frames of the event.', iconKey: 'frame', path: '/frames', isVisible: everyone },
   { section: 'Blocks', label: 'Images', description: 'The pictures the event can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
   { section: 'Blocks', label: 'Texts', description: 'The wording of the default texts for this event.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
-  { section: 'Settings', label: 'Emails', description: 'The five e-mails the users get, their texts, the legal part and the sender.', iconKey: 'mail', path: '/emails', isVisible: everyone },
+  { section: 'Blocks', label: 'Event Email', description: 'The five e-mails the users get, their texts, the legal part and the sender.', iconKey: 'mail', path: '/emails', isVisible: everyone },
   { section: 'Content', label: 'Slideshows', description: 'The slideshows and the welcome page screen.', iconKey: 'photoScan', path: '#slideshows', also: ['/slideshows', '/layouts'], isVisible: everyone },
   { section: 'Content', label: 'Landing pages', description: 'The landing pages of the event.', iconKey: 'world', path: '#landing-pages', also: ['/landing-pages'], isVisible: everyone },
 ];
@@ -298,12 +298,13 @@ export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
 export const PARTNER_CONTEXT_MENU: AdminContextItem[] = [
   { section: 'Overview', label: 'Overview', description: 'The partner at a glance.', iconKey: 'buildingStore', path: '', isVisible: everyone },
   { section: 'Org', label: 'Edit', description: 'The partner settings.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
+  { section: 'Content', label: 'Partner User Journey', description: 'Choose the reusable guest journey inherited by this partner’s events.', iconKey: 'layoutDashboard', path: '#partner-user-journey', isVisible: everyone },
   { section: 'Blocks', label: 'Logos', description: 'The logo of the partner: the default of all its events.', iconKey: 'photo', path: '/logos', isVisible: everyone },
   { section: 'Blocks', label: 'Frames', description: 'The frames of the partner.', iconKey: 'frame', path: '/frames', isVisible: everyone },
   { section: 'Blocks', label: 'Images', description: 'The pictures the partner and its events can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
   { section: 'Blocks', label: 'Pictures', description: 'The default pictures of the welcome page, the CTA page and the e-mails of all events of the partner.', iconKey: 'photo', path: '/pictures', isVisible: everyone },
   { section: 'Blocks', label: 'Texts', description: 'The wording of the default texts for all events of the partner.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
-  { section: 'Settings', label: 'Emails', description: 'The legal part of the e-mails of all events of the partner.', iconKey: 'mail', path: '/emails', isVisible: everyone },
+  { section: 'Blocks', label: 'Partner Email', description: 'The legal part of the e-mails of all events of the partner.', iconKey: 'mail', path: '/emails', isVisible: everyone },
   { section: 'Blocks', label: 'Vetting words', description: 'The words the reviewer describes a photo with, for all events of the partner.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
 ];
 

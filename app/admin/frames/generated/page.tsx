@@ -16,8 +16,8 @@ export default async function GeneratedFramesRolloutPage() {
 
   return (
     <AdminListPageShell
-      eyebrow="Libraries"
-      title="Generated frames"
+      eyebrow="Blocks"
+      title="Generated Frame Rollout"
       description="Give every event without a frame of its own the generated default frame. Dry run first. Global admin only."
       primaryAction={{ href: '/admin/frames', label: 'Global Frames' }}
       dbError={null}

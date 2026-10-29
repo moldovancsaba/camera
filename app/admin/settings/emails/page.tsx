@@ -6,20 +6,23 @@
  */
 
 import { GdsStack, InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminShellText } from '@/lib/i18n/admin-shell';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import FollowUpEmailsCard from '@/components/admin/FollowUpEmailsCard';
 import LegalPartEditor, { useLegalLevel } from '@/components/admin/kit/LegalPartEditor';
 import type { LegalByLanguage } from '@/lib/email/legal-rules';
 
 export default function GeneralEmailsPage() {
+  const language = useUiLanguage();
   const { data, loading, error, saveError, saving, saved, save } = useLegalLevel<{ legal: LegalByLanguage }>('/api/admin/emails/legal');
   if (loading) return <StateBlock variant="loading" title="Loading the e-mail settings..." />;
   if (error || !data) return <InlineAlert title="Error" message={error || 'The e-mail settings could not be loaded'} severity="error" />;
   return (
     <GdsStack gap="lg">
       <WorkspaceHeader
-        eyebrow="Settings"
-        title="Emails"
+        eyebrow={adminShellText('Blocks', language)}
+        title={adminShellText('Global Email', language)}
         description="The e-mails the users get. The legal part below is added as small print after the message and the button of every e-mail, for every event whose partner or itself has not written another. A partner can write its own for all its events, and an event its own."
       />
       <LegalPartEditor own={data.legal} inherited={[]} busy={saving} error={saveError} saved={saved} onSave={save} />

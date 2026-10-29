@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — scoped journey and email navigation
+
+- **Changed:** the global, partner, and event guest-flow destinations are labeled **Global User Journey**, **Partner User Journey**, and **Event User Journey**. The partner shortcut jumps to its inherited journey defaults on the partner overview; the event link opens the page-order editor.
+- **Changed:** global, partner, and event email destinations are labeled by scope and grouped under **Blocks**. The underlying routes and email settings are unchanged.
+- **Clarified:** **Generated Frame Rollout** is the global-admin dry-run/apply console that assigns the generated default frame to eligible events without their own frame; it is not the generated-frame asset library.
+- **Localization:** added navigation-label translations for all 23 supported admin locales.
+- **Verification:** TypeScript, ESLint, GDS manifest/boundary checks, link inventory, and production build passed. Unit tests were not run.
+
 ## Unreleased — partner-scoped event inventory
 
 - **Changed:** the partner overview shows the exact total number of related events and the 10 most recently created event cards. Its localized **Open Events** action opens the Events inventory filtered by the stable partner ID.

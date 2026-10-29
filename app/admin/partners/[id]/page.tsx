@@ -476,12 +476,15 @@ export default async function PartnerDetailPage({
           />
 
           {canManageEvents ? (
-            <ExperienceTemplateDefaultSettings
-              level="partner"
-              resourceId={id}
-              sourceEventId={events[0]?._id.toString()}
-              canManage={Boolean(events[0])}
-            />
+            <div id="partner-user-journey" style={{ scrollMarginTop: '1.5rem' }}>
+              <ExperienceTemplateDefaultSettings
+                level="partner"
+                resourceId={id}
+                sourceEventId={events[0]?._id.toString()}
+                canManage={Boolean(events[0])}
+                sectionTitle="Partner User Journey"
+              />
+            </div>
           ) : null}
 
           <Card p={0}>

@@ -264,7 +264,7 @@ export default async function EventDetailPage({
             ) : null}
             {canManageEvent ? (
               <Link href={`/admin/events/${id}/pages`} style={{ textDecoration: 'none' }}>
-                <Button variant="light">Pages of the user journey</Button>
+                <Button variant="light">Event User Journey</Button>
               </Link>
             ) : null}
             {canManageEvent ? <DeleteEventButton eventId={id} eventName={event.name} /> : null}

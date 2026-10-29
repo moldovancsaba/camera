@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { Anchor, Breadcrumbs, Button, Stack, Text } from '@/components/gds/PublicPrimitives';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
@@ -11,6 +12,7 @@ import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import type { CustomPage, FrameMessageSelectionDisplay } from '@/lib/db/schemas';
 import type { JourneyContext } from '@/lib/events/journey';
 import type { EffectiveCheckboxes, StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
+import { adminShellText } from '@/lib/i18n/admin-shell';
 
 interface EventRecord {
   _id: string;
@@ -47,6 +49,8 @@ async function readEvent(eventId: string): Promise<EventRecord> {
 
 export default function EventJourneyPagesPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const language = useUiLanguage();
+  const journeyTitle = adminShellText('Event User Journey', language);
   const [eventId, setEventId] = useState('');
   const [event, setEvent] = useState<EventRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,13 +130,13 @@ export default function EventJourneyPagesPage({ params }: { params: Promise<{ id
   return (
     <EditorScaffold
       eyebrow="Events"
-      title={`${event.name} — Pages of the user journey`}
+      title={`${event.name} — ${journeyTitle}`}
       description="Choose, edit and order the pages guests see for this event."
       breadcrumbs={(
         <Breadcrumbs>
           <Anchor component={Link} href="/admin/events" size="sm">Events</Anchor>
           <Anchor component={Link} href={`/admin/events/${eventId}`} size="sm">{event.name}</Anchor>
-          <Text size="sm">Pages of the user journey</Text>
+          <Text size="sm">{journeyTitle}</Text>
         </Breadcrumbs>
       )}
     >

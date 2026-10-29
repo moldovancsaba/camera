@@ -5,6 +5,7 @@ import { AdminSelect, AdminTextInput } from '@sovereignsquad/gds-admin/client';
 import { GdsInline, GdsStack, InlineAlert, MetadataText, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminShellText } from '@/lib/i18n/admin-shell';
 import { adminOperationText } from '@/lib/i18n/admin-operations';
 import type { ExperienceTemplate } from '@/lib/visual-assets/contracts';
 
@@ -18,6 +19,7 @@ interface Props {
   /** Save a reusable snapshot from this event when the user can manage it. */
   sourceEventId?: string;
   canManage?: boolean;
+  sectionTitle?: 'Global User Journey' | 'Partner User Journey';
 }
 
 function apiData<T>(payload: unknown): T {
@@ -27,7 +29,7 @@ function apiData<T>(payload: unknown): T {
   return data;
 }
 
-export default function ExperienceTemplateDefaultSettings({ level, resourceId, sourceEventId, canManage = false }: Props) {
+export default function ExperienceTemplateDefaultSettings({ level, resourceId, sourceEventId, canManage = false, sectionTitle }: Props) {
   const language = useUiLanguage();
   const ui = (text: string) => adminOperationText(text, language);
   const endpoint = level === 'global' ? '/api/visual-assets/templates/default' : `/api/partners/${encodeURIComponent(resourceId ?? '')}/experience-template`;
@@ -124,7 +126,7 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
   if (loading) return <StateBlock variant="loading" title={ui('Loading experience settings')} />;
 
   return (
-    <SectionPanel title={ui('Experience defaults')} description={ui('Choose the reusable guest experience at this level. Child levels follow it until they choose their own.')}>
+    <SectionPanel title={sectionTitle ? adminShellText(sectionTitle, language) : ui('Experience defaults')} description={ui('Choose the reusable guest experience at this level. Child levels follow it until they choose their own.')}>
       <GdsStack gap="md">
         {error ? <InlineAlert title={ui('Experience defaults')} message={error} severity="error" /> : null}
         {saved && !dirty ? <InlineAlert title={ui('Saved.')} severity="info" /> : null}

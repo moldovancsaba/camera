@@ -19,7 +19,7 @@ export default function EventExperienceReviewPanel({ eventId }: { eventId: strin
         <Title id="event-experience-review-title" order={2}>2. {t('Preview and test')}</Title>
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
           <Button component={Link} href={`${base}/pages`} variant="light" fullWidth>
-            {t('Pages of the user journey')}
+            {t('Event User Journey')}
           </Button>
           <Button component={Link} href={`${base}/frames`} variant="light" fullWidth>
             {t('Frames')}
