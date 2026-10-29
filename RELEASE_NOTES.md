@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — partner-scoped event inventory
+
+- **Changed:** the partner overview shows the exact total number of related events and the 10 most recently created event cards. Its localized **Open Events** action opens the Events inventory filtered by the stable partner ID.
+- **Added:** the Events inventory accepts an exact `partnerId` filter and paginates all matching events 50 at a time. Search, partner filters, page links, and filter removal retain their intended scope; non-global users remain limited to their authorized partner IDs.
+- **Corrected:** partner deletion warnings and overview totals use the full event count, not the limited preview list.
+- **Verification:** TypeScript, ESLint, GDS manifest/boundary checks, link inventory, and production build passed. Unit tests were not run in this session.
+
 ## Unreleased — grouped admin navigation
 
 - **Changed:** regrouped the global sidebar into Overview, Org, Operations, Blocks, Content, and Settings. Partner and event sidebars use the same section taxonomy and show the pages available at that level.

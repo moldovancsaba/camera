@@ -1,5 +1,16 @@
 # Handover
 
+## Current change — partner-scoped event inventory
+
+The partner overview now reports the full event count, previews the 10 most
+recent events, and links to a paginated Events inventory filtered by the
+partner's stable ID. The inventory returns all matching events in pages of 50,
+retains search and filter state, and intersects results with each user's active
+partner permissions. Partner deletion guards use the full event count. TypeScript,
+lint, GDS, inventory, production guards, and build passed; unit tests were not run
+in this session. No production data was changed. See
+`docs/PARTNER_EVENT_INVENTORY.md`.
+
 ## Current change — dependency-aware asset deletion
 
 Global, partner and event asset delete paths now share a read-only reference scan for frames, logos and images. Conflicts return exact partner/event/field references; the admin shows paginated deep links and a source-file link for making a copy. Resolve every use in its owner workspace, then retry; the delete endpoint rechecks. No asset files are deleted by this flow, and no production data was changed. Updated runbook, library reference, architecture, audit, release notes and endpoint inventory. Static checks passed: type-check, lint, GDS, inventory and production build. The test suite was not run. No production data was changed; no push, merge or deployment was performed.

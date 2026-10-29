@@ -24,6 +24,10 @@ Experience templates are managed from Global Settings → Experience defaults, P
 
 For release, run `npm run db:ensure-indexes` through the normal approved database-index procedure to create the unique experience-template key. Do not run production migrations, change production defaults, or bulk-opt-in partners as part of a code-only deployment. Verify authorization, template selection, known library asset scope checks, guest response stripping, and keyboard/screen-reader states before opening the change for merge review.
 
+## Finding every event for a partner
+
+The partner overview shows the total event count and a compact preview of its 10 most recently created events. Use **Open Events** to open the Events inventory scoped by the partner's stable ID. The inventory shows 50 matching events per page; use the page links to continue through the full set. Event name/location search remains scoped to that partner, and the partner/search filter chips can be removed independently. The **Clear** action returns to the unfiltered Events inventory. Partner-scoped users continue to see only events covered by their active assignments. The overview count and partner-delete guard use the complete count, not the preview size. See [Partner event inventory](docs/PARTNER_EVENT_INVENTORY.md).
+
 ## Deploying to production
 
 Production deploys from git: every push to `main` builds and promotes

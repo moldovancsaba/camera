@@ -13,11 +13,14 @@ import {
 } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
+import ListPager from '@/components/admin/ListPager';
 import EventsInventoryList, { type SerializedEventRow } from '@/components/gds/EventsInventoryList';
 import { formatAdminDate, mongoIdString } from '@/lib/gds/serialize-admin-rows';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
+import { pageNumber } from '@/lib/partners/list';
 
 export const dynamic = 'force-dynamic';
+const EVENTS_PAGE_SIZE = 50;
 
 interface EventListItem {
   _id?: unknown;
@@ -34,7 +37,7 @@ interface EventListItem {
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ search?: string; partner?: string }>;
+  searchParams?: Promise<{ search?: string; partner?: string; partnerId?: string; page?: string }>;
 }) {
   const session = await getSession();
   if (!session) {
@@ -45,11 +48,17 @@ export default async function EventsPage({
   let matchingEventCount = 0;
   let partnerCount = 0;
   let assignedFrameCount = 0;
+  let page = 1;
+  let pages = 1;
+  let partnerNameFilter = '';
   let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
   const partnerFilter =
     typeof resolvedSearchParams?.partner === 'string' ? resolvedSearchParams.partner.trim() : '';
+  const partnerIdFilter =
+    typeof resolvedSearchParams?.partnerId === 'string' ? resolvedSearchParams.partnerId.trim() : '';
+  const requestedPage = typeof resolvedSearchParams?.page === 'string' ? resolvedSearchParams.page : undefined;
   let canCreate = isGlobalAdminSession(session);
 
   try {
@@ -79,17 +88,24 @@ export default async function EventsPage({
         $options: 'i',
       };
     }
-    if (!isGlobalAdminSession(session)) {
+    if (partnerIdFilter) {
+      const partnerIsAccessible = isGlobalAdminSession(session) || accessiblePartnerIds.includes(partnerIdFilter);
+      query.partnerId = partnerIsAccessible ? partnerIdFilter : { $in: [] };
+      if (partnerIsAccessible) {
+        const selectedPartner = await db.collection(COLLECTIONS.PARTNERS).findOne(
+          { partnerId: partnerIdFilter },
+          { projection: { name: 1 } }
+        ) as { name?: string } | null;
+        partnerNameFilter = selectedPartner?.name || partnerIdFilter;
+      } else {
+        // Keep a forged or stale partner filter empty without revealing partner details.
+        partnerNameFilter = partnerIdFilter;
+      }
+    } else if (!isGlobalAdminSession(session)) {
       query.partnerId = { $in: accessiblePartnerIds };
     }
 
-    const [events, totalEvents, frameAssignments] = await Promise.all([
-      db
-        .collection(COLLECTIONS.EVENTS)
-        .find(query)
-        .sort({ eventDate: -1, createdAt: -1 })
-        .limit(100)
-        .toArray() as Promise<unknown[]>,
+    const [totalEvents, frameAssignments] = await Promise.all([
       db.collection(COLLECTIONS.EVENTS).countDocuments(query),
       db
         .collection(COLLECTIONS.EVENTS)
@@ -110,9 +126,19 @@ export default async function EventsPage({
     ]);
     matchingEventCount = totalEvents;
     assignedFrameCount = frameAssignments[0]?.total ?? 0;
+    pages = Math.max(1, Math.ceil(matchingEventCount / EVENTS_PAGE_SIZE));
+    page = pageNumber(requestedPage, pages);
+
+    const events = (await db
+      .collection(COLLECTIONS.EVENTS)
+      .find(query)
+      .sort({ eventDate: -1, createdAt: -1 })
+      .skip((page - 1) * EVENTS_PAGE_SIZE)
+      .limit(EVENTS_PAGE_SIZE)
+      .toArray()) as unknown as EventListItem[];
 
     eventRows = [];
-    for (const event of events as EventListItem[]) {
+    for (const event of events) {
       const id = mongoIdString(event._id);
       if (!id) continue;
       eventRows.push({
@@ -137,6 +163,25 @@ export default async function EventsPage({
     dbError = serializeMongoError(error);
   }
 
+  const hrefWithout = (key: 'search' | 'partner' | 'partnerId') => {
+    const params = new URLSearchParams();
+    if (key !== 'search' && search) params.set('search', search);
+    if (key !== 'partner' && partnerFilter) params.set('partner', partnerFilter);
+    if (key !== 'partnerId' && partnerIdFilter) params.set('partnerId', partnerIdFilter);
+    const queryString = params.toString();
+    return queryString ? `/admin/events?${queryString}` : '/admin/events';
+  };
+  const toolbarFilters = [
+    ...(partnerIdFilter
+      ? [{ label: 'Partner', value: partnerNameFilter || partnerIdFilter, removeHref: hrefWithout('partnerId') }]
+      : []),
+    ...(partnerFilter ? [{ label: 'Partner', value: partnerFilter, removeHref: hrefWithout('partner') }] : []),
+    ...(search ? [{ label: 'Search', value: search, removeHref: hrefWithout('search') }] : []),
+  ];
+  const pagerQuery = Object.fromEntries(
+    Object.entries({ search, partner: partnerFilter, partnerId: partnerIdFilter }).filter(([, value]) => value)
+  );
+
   return (
     <AdminListPageShell
       eyebrow="Apps"
@@ -149,7 +194,7 @@ export default async function EventsPage({
       stats={
         !dbError
           ? [
-              { label: search || partnerFilter ? 'Matching Events' : 'Event Instances', value: matchingEventCount, iconKey: 'calendarEvent' },
+              { label: search || partnerFilter || partnerIdFilter ? 'Matching Events' : 'Event Instances', value: matchingEventCount, iconKey: 'calendarEvent' },
               { label: 'Active Partners', value: partnerCount, iconKey: 'buildingStore' },
               {
                 label: 'Assigned Frames',
@@ -160,24 +205,22 @@ export default async function EventsPage({
           : undefined
       }
       toolbarHint="Create new event instances from a partner workspace whenever possible so the inheritance context stays explicit."
-      toolbarFilters={
-        partnerFilter
-          ? [{ label: 'Partner', value: partnerFilter }]
-          : search
-            ? [{ label: 'Search', value: search }]
-            : undefined
-      }
       toolbarTrailing={{ href: '/admin/partners', label: 'Open Partners' }}
       search={{
         defaultValue: search,
         label: 'Search',
         placeholder: 'Event name, description, or location',
         clearHref: '/admin/events',
-        hiddenFields: partnerFilter ? { partner: partnerFilter } : undefined,
+        hiddenFields: {
+          ...(partnerFilter ? { partner: partnerFilter } : {}),
+          ...(partnerIdFilter ? { partnerId: partnerIdFilter } : {}),
+        },
       }}
+      toolbarFilters={toolbarFilters.length ? toolbarFilters : undefined}
       dbError={dbError}
     >
       <EventsInventoryList events={eventRows} canCreate={canCreate} />
+      {!dbError ? <ListPager basePath="/admin/events" query={pagerQuery} page={page} pages={pages} total={matchingEventCount} pageSize={EVENTS_PAGE_SIZE} /> : null}
     </AdminListPageShell>
   );
 }
