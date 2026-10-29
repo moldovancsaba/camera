@@ -37,7 +37,7 @@ export default function SlideshowsInventoryList({
     id: slideshow.id,
     title: slideshow.name,
     description: `/slideshow/${slideshow.slideshowId}`,
-    status: getStatusChipContent({ tone: slideshow.isActive ? 'active' : 'inactive' }),
+    status: getStatusChipContent({ tone: slideshow.isActive ? 'active' : 'inactive', visibility: slideshow.isActive }),
     metadata: [
       { label: 'Event', value: slideshow.eventName },
       { label: 'Partner', value: slideshow.partnerName || 'Unknown partner' },

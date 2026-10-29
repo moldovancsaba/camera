@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { Button, Select, TextInput } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
@@ -136,7 +137,7 @@ export default function QrTextsLibrary({ embedded = false }: { embedded?: boolea
                   <strong>{item.text}</strong>
                   <span style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
                     <LabelTag tone="neutral" label={item.language === 'hu' ? 'Hungarian' : 'English'} />
-                    {item.isActive ? <LabelTag tone="success" label="Active" /> : <LabelTag tone="warning" label="Switched off" />}
+                    <VisibilityStatusIcon isVisible={item.isActive} />
                   </span>
                   {deleting === item.id ? <span style={{ fontSize: '0.8125rem' }}>Delete it for good? Events that have it keep it on their stage.</span> : null}
                 </div>

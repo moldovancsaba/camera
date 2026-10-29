@@ -15,7 +15,8 @@ import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
 import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import { TAGGED_KINDS, type TaggedKind } from '@/components/admin/library/tagged-kinds';
-import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { LibraryItemView } from '@/lib/library/types';
 
@@ -139,7 +140,7 @@ export default function TaggedImagesLibrary({ kind }: { kind: TaggedKind }) {
                   thumbnailUrl={item.thumbnailUrl}
                   noun={info.noun}
                   scope={item.scope}
-                  badges={!item.itemActive ? <LabelTag tone="warning" label="Switched off" /> : null}
+                  badges={!item.itemActive ? <VisibilityStatusIcon isVisible={false} /> : null}
                   actions={
                     deleting?.id === item.id ? (
                       // The question sits on the card it is about, not at the top of a long page (CLAUDE.md section 5).

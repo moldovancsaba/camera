@@ -21,6 +21,7 @@ import AssetUsageResolution from '@/components/admin/library/AssetUsageResolutio
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
 import type { MessageArea } from '@/lib/frame/message-area';
 import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import type { EventLibrary } from '@/lib/library/types';
 
 interface Payload<T> {
@@ -227,10 +228,10 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                     note={entry.messageArea ? 'Users never pick this frame: the messages of this event are written on it.' : undefined}
                     badges={
                       <>
-                        <LabelTag tone={active ? 'success' : 'neutral'} label={active ? 'Active' : 'Inactive'} />
+                        <VisibilityStatusIcon isVisible={active} />
                         {entry.messageArea ? <LabelTag tone="info" label="Carries messages" /> : null}
                         {!entry.stillInPartnerLibrary ? <LabelTag tone="warning" label="No longer in the partner library" /> : null}
-                        {!entry.itemActive ? <LabelTag tone="warning" label="Switched off in the library" /> : null}
+                        {!entry.itemActive ? <VisibilityStatusIcon isVisible={false} /> : null}
                       </>
                     }
                     actions={
@@ -314,7 +315,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
           <h3 id="hidden-event-frames-heading" style={{ margin: 0 }}>Hidden at this event ({library.hidden.length})</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Restore a frame here without changing its partner or global sharing rules.</p>
         </div>
-        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope={item.scope} actions={<VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} hidden onSaved={reload} />} />)}</div></div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope={item.scope} badges={<VisibilityStatusIcon isVisible={false} />} actions={<VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} hidden onSaved={reload} />} />)}</div></div>
       </section> : null}
 
       {library.inactiveOwn.some((item) => !library.assigned.some((entry) => entry.id === item.id)) ? <section style={SECTION} aria-labelledby="inactive-event-frames-heading">
@@ -322,7 +323,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
           <h3 id="inactive-event-frames-heading" style={{ margin: 0 }}>Switched off at this event</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These event uploads are not assigned. Switch one on to make it available again.</p>
         </div>
-        <div style={{ padding: '1rem' }}><div style={GRID}>{library.inactiveOwn.filter((item) => !library.assigned.some((entry) => entry.id === item.id)).map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope="event" badges={<LabelTag tone="warning" label="Switched off" />} actions={<LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={item.id} itemActive={false} onSaved={reload} />} />)}</div></div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.inactiveOwn.filter((item) => !library.assigned.some((entry) => entry.id === item.id)).map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope="event" badges={<VisibilityStatusIcon isVisible={false} />} actions={<LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={item.id} itemActive={false} onSaved={reload} />} />)}</div></div>
       </section> : null}
 
       <section style={SECTION}>

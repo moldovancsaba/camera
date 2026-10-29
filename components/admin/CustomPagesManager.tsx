@@ -15,6 +15,7 @@
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, type FrameMessageSelectionDisplay, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
@@ -565,7 +566,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
                     #{index + 1}
                       </code>
                       <LabelTag tone="neutral" label={page.pageType} />
-                      {page.isActive ? null : <LabelTag tone="warning" label="Switched off: users do not see it" />}
+                      {page.isActive ? null : <VisibilityStatusIcon isVisible={false} />}
                     </div>
                     <strong style={{ fontSize: '0.875rem' }}>
                     {page.config.title || '[Untitled]'}

@@ -22,6 +22,7 @@ import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadA
 import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import type { MessageArea } from '@/lib/frame/message-area';
 import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import type { PartnerLibrary } from '@/lib/library/types';
 import { cascadeText, type DefaultsCascade } from '@/lib/library/cascade-text';
 
@@ -214,7 +215,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                     <>
                       {item.messageArea ? <LabelTag tone="info" label="Carries messages" /> : null}
                       {item.isDefault ? <LabelTag tone="success" label="Default for new events" /> : null}
-                      {!item.itemActive ? <LabelTag tone="warning" label="Switched off at the partner" /> : null}
+                      {!item.itemActive ? <VisibilityStatusIcon isVisible={false} /> : null}
                     </>
                   }
                   actions={
@@ -263,7 +264,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
           <h3 id="hidden-partner-frames-heading" style={{ margin: 0 }}>Hidden at this partner ({library.hidden.length})</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These global frames stay in the global library and are hidden only for this partner and its events.</p>
         </div>
-        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope="global" actions={<VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="frames" id={item.id} scope="global" hidden blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'frames' && ref.id === item.id)} onSaved={reload} />} />)}</div></div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope="global" badges={<VisibilityStatusIcon isVisible={false} />} actions={<VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="frames" id={item.id} scope="global" hidden blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'frames' && ref.id === item.id)} onSaved={reload} />} />)}</div></div>
       </section> : null}
 
       {!library.inheritanceEnabled ? <section style={SECTION}>

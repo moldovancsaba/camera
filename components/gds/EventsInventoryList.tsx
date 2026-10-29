@@ -36,7 +36,7 @@ export default function EventsInventoryList({
     id: event.id,
     title: event.name,
     description: event.description || event.location || event.partnerName,
-    status: getStatusChipContent({ tone: event.isActive ? 'active' : 'inactive', label: t(event.isActive ? 'Active' : 'Inactive') }),
+    status: getStatusChipContent({ tone: event.isActive ? 'active' : 'inactive', visibility: event.isActive }),
     metadata: [
       { label: t('Partner'), value: event.partnerName },
       event.location ? { label: t('Location'), value: event.location } : null,
