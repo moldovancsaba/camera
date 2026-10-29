@@ -32,7 +32,17 @@ interface AdminChromeProps {
 // closeMobileNavigation has been removed because GdsAppShell handles mobile menu collapse natively
 
 export default function AdminChrome(props: AdminChromeProps) {
-  return <AdminChromeView {...props} pathname={usePathname()} />;
+  const pathname = usePathname();
+  const [address, setAddress] = useState(pathname);
+
+  useEffect(() => {
+    const updateAddress = () => setAddress(`${window.location.pathname}${window.location.search}${window.location.hash}`);
+    updateAddress();
+    window.addEventListener('hashchange', updateAddress);
+    return () => window.removeEventListener('hashchange', updateAddress);
+  }, [pathname]);
+
+  return <AdminChromeView {...props} pathname={address} />;
 }
 
 /** The chrome for the path it is given (the page's own address); split off so the menus can be checked for any path. */

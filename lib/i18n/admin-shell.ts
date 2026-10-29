@@ -246,6 +246,19 @@ export function adminShellText(text: string, language: UiLanguage): string {
   if (navGroup) return navGroup;
   const scopedLabel = SCOPED_NAV_LABELS[language][text];
   if (scopedLabel) return scopedLabel;
+  const scopedResource = /^(Partner|Event) (Images|Frames|Frame Slots|Logos|Selfies|Stadiums|Pictures|Dictionary|Vetting words|Landing Pages|Slideshows|Gallery)$/.exec(text);
+  if (scopedResource) {
+    const [, scope, resource] = scopedResource;
+    const prefix = MAP[language][scope as AdminShellText] ?? scope;
+    const resourceText: AdminShellText = resource === 'Frame Slots' ? 'Frame slots'
+      : resource === 'Selfies' ? 'Sample selfies'
+        : resource === 'Stadiums' ? 'Stadium backgrounds'
+          : resource as AdminShellText;
+    const translated = language === 'en' && (resource === 'Selfies' || resource === 'Stadiums')
+      ? resource
+      : MAP[language][resourceText] ?? resource;
+    return `${prefix} ${translated}`;
+  }
   const globalBase = GLOBAL_NAV_LABEL_BASE[text];
   if (globalBase) return language === 'en' ? text : MAP[language][globalBase];
   // Preserve the established context-menu casing while sharing its translation
@@ -262,6 +275,7 @@ export function hasAdminShellTranslation(text: string): boolean {
   return ENGLISH.includes(text as AdminShellText)
     || text in NAV_GROUP_LABELS.en
     || text in SCOPED_NAV_LABELS.en
+    || /^(Partner|Event) (Images|Frames|Frame Slots|Logos|Selfies|Stadiums|Pictures|Dictionary|Vetting words|Landing Pages|Slideshows|Gallery)$/.test(text)
     || text in GLOBAL_NAV_LABEL_BASE
     || text === 'Landing pages'
     || adminExperienceTemplateText(text, 'en') !== null
