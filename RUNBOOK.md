@@ -263,7 +263,7 @@ panel and the backfill follow (camera#235 to #238).
 - **The event emoji as the logo (camera#274):** a partner with no logo gets the first emoji of the event title in the logo spot (see the
   plan, decision 17). Images drawn with an older drawing code are drawn again by "Redraw the older images" on `/admin/frames/generated`
   (dry run first; it only touches images, never the snapshot).
-- **Rolling the frame out to existing events (camera#238):** `/admin/frames/generated` (Libraries, "Generated Frames",
+- **Rolling the frame out to existing events (camera#238):** `/admin/frames/generated` (Blocks, "Generated Frames",
   global admin only), API `POST /api/admin/frame-backfill`. It covers every event with no active frame of its own and no
   generated images; events with an own active frame are never touched, events with images are skipped, so it can be
   repeated and continued. Order:

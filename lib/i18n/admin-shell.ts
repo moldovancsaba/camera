@@ -57,6 +57,44 @@ const MAP: Record<UiLanguage, Record<AdminShellText, string>> = Object.fromEntri
   }),
 ) as Record<UiLanguage, Record<AdminShellText, string>>;
 
+/** New information-architecture group names, translated for every admin locale. */
+const NAV_GROUP_LABELS: Record<UiLanguage, Record<'Org' | 'Blocks' | 'Content', string>> = {
+  en: { Org: 'Org', Blocks: 'Blocks', Content: 'Content' },
+  hu: { Org: 'Szervezet', Blocks: 'Építőelemek', Content: 'Tartalom' },
+  de: { Org: 'Organisation', Blocks: 'Bausteine', Content: 'Inhalte' },
+  it: { Org: 'Organizzazione', Blocks: 'Elementi', Content: 'Contenuti' },
+  'pt-BR': { Org: 'Organização', Blocks: 'Blocos', Content: 'Conteúdo' },
+  'pt-PT': { Org: 'Organização', Blocks: 'Blocos', Content: 'Conteúdo' },
+  es: { Org: 'Organización', Blocks: 'Bloques', Content: 'Contenido' },
+  fr: { Org: 'Organisation', Blocks: 'Éléments', Content: 'Contenu' },
+  ru: { Org: 'Организация', Blocks: 'Блоки', Content: 'Контент' },
+  'zh-Hans': { Org: '组织', Blocks: '模块', Content: '内容' },
+  'zh-Hant': { Org: '組織', Blocks: '區塊', Content: '內容' },
+  ro: { Org: 'Organizație', Blocks: 'Blocuri', Content: 'Conținut' },
+  pl: { Org: 'Organizacja', Blocks: 'Bloki', Content: 'Treść' },
+  sk: { Org: 'Organizácia', Blocks: 'Bloky', Content: 'Obsah' },
+  hr: { Org: 'Organizacija', Blocks: 'Blokovi', Content: 'Sadržaj' },
+  sl: { Org: 'Organizacija', Blocks: 'Bloki', Content: 'Vsebina' },
+  bg: { Org: 'Организация', Blocks: 'Блокове', Content: 'Съдържание' },
+  tr: { Org: 'Organizasyon', Blocks: 'Bloklar', Content: 'İçerik' },
+  ar: { Org: 'المؤسسة', Blocks: 'الكتل', Content: 'المحتوى' },
+  hi: { Org: 'संगठन', Blocks: 'ब्लॉक', Content: 'सामग्री' },
+  ka: { Org: 'ორგანიზაცია', Blocks: 'ბლოკები', Content: 'შიგთავსი' },
+  'sr-Cyrl': { Org: 'Организација', Blocks: 'Блокови', Content: 'Садржај' },
+  'sr-Latn': { Org: 'Organizacija', Blocks: 'Blokovi', Content: 'Sadržaj' },
+};
+
+/** Scoped global entries reuse the reviewed wording already used by their editors. */
+const GLOBAL_NAV_LABEL_BASE: Record<string, AdminShellText> = {
+  'Global Dictionary': 'Dictionary',
+  'Global Frame Slots': 'Frame slots',
+  'Global Selfies': 'Sample selfies',
+  'Global Stadiums': 'Stadium backgrounds',
+  'Global Vetting words': 'Vetting words',
+  'Global Landing Pages': 'Landing Pages',
+  'Global Slideshows': 'Slideshows',
+};
+
 /** Event setup's composition review and live-journey notice. */
 const EVENT_EXPERIENCE_TEXT: Record<UiLanguage, Record<string, string>> = {
   en: {
@@ -177,6 +215,10 @@ const EVENT_EXPERIENCE_TEXT: Record<UiLanguage, Record<string, string>> = {
 };
 
 export function adminShellText(text: string, language: UiLanguage): string {
+  const navGroup = NAV_GROUP_LABELS[language][text as keyof (typeof NAV_GROUP_LABELS)[UiLanguage]];
+  if (navGroup) return navGroup;
+  const globalBase = GLOBAL_NAV_LABEL_BASE[text];
+  if (globalBase) return language === 'en' ? text : MAP[language][globalBase];
   // Preserve the established context-menu casing while sharing its translation
   // with the page title entry in the main navigation.
   if (text === 'Landing pages') return MAP[language]['Landing Pages'];
@@ -189,6 +231,8 @@ export function adminShellText(text: string, language: UiLanguage): string {
 
 export function hasAdminShellTranslation(text: string): boolean {
   return ENGLISH.includes(text as AdminShellText)
+    || text in NAV_GROUP_LABELS.en
+    || text in GLOBAL_NAV_LABEL_BASE
     || text === 'Landing pages'
     || adminExperienceTemplateText(text, 'en') !== null
     || Object.values(EVENT_EXPERIENCE_TEXT).some((messages) => text in messages);

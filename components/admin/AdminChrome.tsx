@@ -76,14 +76,20 @@ export function AdminChromeView({
           <strong style={{ fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{ui(contextMenu.title)}</strong>
           <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{contextName ?? ' '}</span>
         </div>
-        <div style={{ display: 'grid', gap: 6 }}>
-          {contextMenu.items.map((item) => (
-            <SemanticNavLink
-              key={item.href}
-              href={item.href}
-              active={item.active}
-              label={ui(item.label)}
-              icon={<AdminIcon iconKey={item.iconKey as AdminIconKey} size={18} />}
+        <div style={{ display: 'grid', gap: 'var(--mantine-spacing-md)' }}>
+          {contextMenu.sections.map((section) => (
+            <NavSection
+              key={section.title}
+              title={section.title}
+              language={language}
+              items={section.items.map((item) => ({
+                href: item.href,
+                label: ui(item.label),
+                icon: <AdminIcon iconKey={item.iconKey as AdminIconKey} size={18} />,
+                active: item.active,
+                tourId: item.tourId,
+              }))}
+              pathname={pathname}
             />
           ))}
         </div>
@@ -94,7 +100,7 @@ export function AdminChromeView({
       {sections.map((section) => (
         <div
           key={section.title}
-          data-tour-id={section.title === 'Libraries' ? 'admin-resource-inventory' : undefined}
+          data-tour-id={section.title === 'Blocks' ? 'admin-resource-inventory' : undefined}
         >
           <NavSection
             title={section.title}
@@ -226,6 +232,7 @@ interface RenderedNavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  active?: boolean;
   tourId?: string;
 }
 
@@ -249,7 +256,7 @@ function NavSection({
       </strong>
       <div style={{ display: 'grid', gap: 6 }}>
         {items.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + '/');
+          const active = item.active ?? (pathname === item.href || pathname.startsWith(item.href + '/'));
           return (
             <SemanticNavLink
               key={item.href}

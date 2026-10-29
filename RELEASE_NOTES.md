@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — grouped admin navigation
+
+- **Changed:** regrouped the global sidebar into Overview, Org, Operations, Blocks, Content, and Settings. Partner and event sidebars use the same section taxonomy and show the pages available at that level.
+- **Changed:** moved the activity log into Overview; moved partner/event management into Org; grouped global visual resources and guest-facing text under Blocks; placed global landing pages, slideshows, and galleries under Content; kept defaults, e-mails, and users under Settings.
+- **Changed:** the Global Dictionary page now embeds the QR-text editor; the former `/admin/qr-texts` page redirects to the QR-text section. The Global Admin Texts entry is omitted because no editor page exists yet.
+- **Verification:** `git diff --check` passed. The test suite, type-check, and production build were not run in this session.
+
 ## Unreleased — dependency-aware visual asset deletion
 
 - **Changed:** deleting a global, partner or event frame, logo or image is refused while any indexed partner, event, assignment, slot or picture-field reference remains. A failed delete returns the exact destinations, labels, and page links; it no longer silently pulls child references or deletes an item from underneath a use.
