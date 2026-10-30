@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { ObjectId } from 'mongodb';
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { loadCaptureEvent } from '@/lib/events/capture-event';
+import { inactiveEventSelfiesPath } from '@/lib/events/inactive-event-destination';
 import { pwaPageColor, pwaShortName } from '@/lib/pwa/event-manifest';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { loadEventTheme } from '@/lib/theme/load';
@@ -140,6 +142,7 @@ export default async function CaptureEventLayout({
   const { eventId } = await params;
   const event = await loadCaptureEvent(eventId);
   if (!event) return children;
+  if (event.isActive === false) redirect(inactiveEventSelfiesPath(event));
   // Every page of the guest journey is drawn with the theme of the event (camera#285).
   const db = await connectToDatabase();
   const theme = await loadEventTheme(db, event);

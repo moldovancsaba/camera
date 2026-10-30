@@ -36,6 +36,24 @@ test('an unknown event is a 404', async (t) => {
   assert.equal((await call(GET, eventId)).status, 404);
 });
 
+test('an inactive event manifest redirects to the event selfies page without loading its theme', async (t) => {
+  t.mock.module('@/lib/events/capture-event', {
+    exports: { loadCaptureEvent: async () => ({ _id: new ObjectId(eventId), isActive: false, greatestHitsSlug: 'event-selfies' }) },
+  });
+  t.mock.module('@/lib/db/mongodb', {
+    exports: { connectToDatabase: async () => { throw new Error('inactive event must redirect before theme loading'); } },
+  });
+  t.mock.module('@/lib/theme/load', {
+    exports: { loadEventTheme: async () => { throw new Error('inactive event must redirect before theme loading'); } },
+  });
+
+  const { GET } = await importRouteModule('inactive-event');
+  const res = await call(GET, eventId);
+
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), `http://localhost/greatest-hits/event-selfies`);
+});
+
 test('a known event gets its own manifest, served as a manifest with a short shared cache', async (t) => {
   t.mock.module('@/lib/events/capture-event', {
     exports: { loadCaptureEvent: async () => ({ name: 'Summer Fest', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) },

@@ -74,3 +74,25 @@ test('a malformed event id gets a plain title and no manifest', async (t) => {
   assert.equal(metadata.title, 'Capture');
   assert.equal(metadata.manifest, undefined);
 });
+
+test('an inactive event redirects the guest journey before loading its theme or UI', async (t) => {
+  const eventMongoId = new ObjectId();
+  t.mock.module('next/navigation', {
+    exports: { redirect: (path: string) => { throw new Error(`redirect:${path}`); } },
+  });
+  t.mock.module('@/lib/events/capture-event', {
+    exports: { loadCaptureEvent: async () => ({ _id: eventMongoId, isActive: false, greatestHitsSlug: 'event-selfies' }) },
+  });
+  t.mock.module('@/lib/db/mongodb', {
+    exports: { connectToDatabase: async () => { throw new Error('inactive event must redirect before database theme loading'); } },
+  });
+  t.mock.module('@/lib/theme/load', {
+    exports: { loadEventTheme: async () => { throw new Error('inactive event must redirect before theme loading'); } },
+  });
+
+  const { default: layout } = await importLayout('inactive');
+  await assert.rejects(
+    layout({ children: null, params: Promise.resolve({ eventId }) }),
+    /redirect:\/greatest-hits\/event-selfies/,
+  );
+});

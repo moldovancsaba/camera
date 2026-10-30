@@ -106,11 +106,19 @@ export async function hasTrackedLinks(db: Db, eventId: string): Promise<boolean>
 }
 
 /** An active tracked link by slug, with the event it leads to (null for an unknown, inactive or orphaned link). */
-export async function resolveTrackedLink(db: Db, slug: string): Promise<{ link: ShortLinkDoc; event: { _id: ObjectId; messmassEventId?: string | null } } | null> {
+export async function resolveTrackedLink(db: Db, slug: string): Promise<{
+  link: ShortLinkDoc;
+  event: { _id: ObjectId; messmassEventId?: string | null; isActive?: boolean; greatestHitsSlug?: string | null };
+} | null> {
   const link = await db.collection<ShortLinkDoc>(COLLECTIONS.SHORT_LINKS).findOne({ slug, active: { $ne: false } });
   if (!link || !ObjectId.isValid(link.eventId)) return null;
-  const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(link.eventId) }, { projection: { _id: 1, messmassEventId: 1 } });
-  return event ? { link, event: event as { _id: ObjectId; messmassEventId?: string | null } } : null;
+  const event = await db.collection(COLLECTIONS.EVENTS).findOne(
+    { _id: new ObjectId(link.eventId) },
+    { projection: { _id: 1, messmassEventId: 1, isActive: 1, greatestHitsSlug: 1 } },
+  );
+  return event
+    ? { link, event: event as { _id: ObjectId; messmassEventId?: string | null; isActive?: boolean; greatestHitsSlug?: string | null } }
+    : null;
 }
 
 /** One counted visit: a row per link, day (UTC) and kind of phone, bumped by one. */
