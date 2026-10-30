@@ -8,7 +8,7 @@
 - **Added:** event controls to apply/reset to the partner default, choose an event default landing page, and open/copy the event landing URL.
 - **Security and recovery:** partner writes require partner Events manager access, event changes require event manager access, and no partner template data is exposed in public APIs. Landing-page materialization is idempotent and uses event-specific target/QR/capture data.
 - **Documentation:** added `docs/PARTNER_CONTENT_DEFAULTS.md` and updated the current architecture and navigation delivery notes.
-- **Verification:** targeted landing-default and slideshow-default unit tests and TypeScript pass. Full release checks remain to be run.
+- **Verification:** GDS manifest and boundary checks, type-check, lint, all 368 unit test files, production guards, production build, and repository inventory check pass.
 
 ## Unreleased — icon-based visibility indicators
 
