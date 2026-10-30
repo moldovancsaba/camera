@@ -22,6 +22,7 @@ import { deviceMetadataOf } from '@/lib/device/coarse';
 import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import { sanitizeFrameVariant, type RecordedFrameVariant } from '@/lib/frame/capture';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
+import { photoModerationPrecheckEnabled } from '@/lib/events/photo-moderation';
 import { effectiveGalleryConsent, galleryChoice } from '@/lib/events/gallery-consent';
 import { effectiveCheckboxes } from '@/lib/events/checkbox-settings';
 import { GALLERY_MISSING_MESSAGE, mayRefuse, missingRequiredConsent, type GuardEvent } from '@/lib/events/consent-guard';
@@ -149,8 +150,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const vettingEvent =
     typeof eventId === 'string' && eventId.trim()
       ? ((await db.collection(COLLECTIONS.EVENTS).findOne(buildEventLookupFilterByIdentifier(eventId), {
-          projection: { eventId: 1, messmassEventId: 1, photoVetting: 1, galleryConsent: 1, partnerId: 1, consentSettings: 1, acceptanceOnWhoAreYou: 1, customPages: 1, journeyDefaults: 1, defaultPageOrders: 1, shortUrlSlug: 1 },
-        })) as (GuardEvent & { _id: unknown; galleryConsent?: unknown; partnerId?: unknown; journeyDefaults?: unknown }) | null)
+          projection: { eventId: 1, messmassEventId: 1, photoVetting: 1, photoModerationPrecheck: 1, galleryConsent: 1, partnerId: 1, consentSettings: 1, acceptanceOnWhoAreYou: 1, customPages: 1, journeyDefaults: 1, defaultPageOrders: 1, shortUrlSlug: 1 },
+        })) as (GuardEvent & { _id: unknown; galleryConsent?: unknown; partnerId?: unknown; journeyDefaults?: unknown; photoModerationPrecheck?: { enabled?: unknown } }) | null)
       : null;
   const vetted = photoVettingRequired(vettingEvent);
   // Source attribution is accepted only when it names a real tracked link for this event (or its own short address).
@@ -346,6 +347,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           at: createdAt,
         })
       : awaitingGuestContact(createdAt);
+    // Snapshot the event's precheck choice when this private pending photo is saved. Consent/contact holds may
+    // finish later in the capture journey, so the durable intent can wait on the submission; the worker itself
+    // rechecks the consent audit, finalized contact, retention fence, and pending-vetting state before any send.
+    const moderationPrecheckRequested = vetted
+      && photoModerationPrecheckEnabled(vettingEvent)
+      && Boolean(vettingEvent?._id);
     // What the request and the event's setting make of the public gallery choice: `shareOptIn` (eligible for the wall) and the evidence of a ticked box.
     const wall = galleryChoice(gallerySetting, { shareOptIn, publicGalleryConsentVersion }, createdAt, galleryRequired);
     let identity: ReturnType<typeof guestIdentity> = null;
@@ -358,6 +365,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         throw apiBadRequest(storeError instanceof Error ? storeError.message : 'The photo could not be stored');
       }
     }
+    const queueModerationPrecheck = moderationPrecheckRequested && typeof pendingPhoto?.url === 'string';
 
     // Save submission to database
     const submission = {
@@ -409,6 +417,17 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
               shareOptIn: wall.shareOptIn,
               submittedAt: createdAt,
             },
+            ...(queueModerationPrecheck ? {
+              moderationPrecheck: {
+                enabledAtCapture: true as const,
+                status: 'queued' as const,
+                photoUrl: pendingPhoto!.url,
+                eventMongoId: String(vettingEvent!._id),
+                queuedAt: createdAt,
+                attempts: 0,
+                generation: 1,
+              },
+            } : {}),
             shareToken: newShareToken(),
             reviewHistory: [],
           }),

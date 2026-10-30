@@ -23,6 +23,29 @@ test('a waiting photo shows its private photo and the guest; a try-on request he
   assert.equal('tryOnRequested' in item, false);
 });
 
+test('reviewer queue preserves every validated moderation field and both no-automation invariants', () => {
+  const categories = {
+    nudity: 'not_detected', sexualContent: 'not_detected', middleFinger: 'not_detected',
+    hateSymbols: 'not_detected', hateWords: 'not_detected', alcohol: 'uncertain',
+    drugs: 'not_detected', violence: 'not_detected', weapons: 'not_detected',
+  } as const;
+  const item = toPhotoQueueItem({
+    ...base(),
+    moderationPrecheck: {
+      status: 'completed',
+      result: {
+        model: 'qwen3.5:0.8b', review_required: true, automated_decision: 'none',
+        signal: 'uncertain', flags: [], categories, evidence: 'Possible ambiguity.', limitations: 'Screening only.',
+      },
+    },
+  });
+  assert.deepEqual(item.precheck, {
+    status: 'completed', signal: 'uncertain', flags: [], model: 'qwen3.5:0.8b',
+    review_required: true, automated_decision: 'none', categories,
+    evidence: 'Possible ambiguity.', limitations: 'Screening only.',
+  });
+});
+
 test('an approved photo shows the real picture and the last decision', () => {
   const item = toPhotoQueueItem({
     ...base(),

@@ -14,6 +14,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { RejectReasonPicker } from '@/components/admin/ReviewChoices';
 import { WAITING_REFRESH_MS, shouldRefreshWaiting } from '@/lib/photo-vetting/auto-refresh';
 import type { PhotoQueueItem } from '@/lib/photo-vetting/queue';
+import { photoPrecheckNotice } from '@/lib/photo-vetting/precheck-notice';
 import { chosenReasons, toggleReason } from '@/lib/photo-vetting/rejection';
 import type { ResolvedVocabulary } from '@/lib/photo-vetting/vocabulary';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
@@ -35,7 +36,6 @@ interface DecisionNotice {
 }
 
 const ANSWER_TIMEOUT_MS = 120_000;
-
 async function decide(id: string, body: { action: 'approve' } | { action: 'reject'; reasons: string[]; reason?: string }) {
   let response: Response;
   try {
@@ -146,16 +146,19 @@ export default function PhotoReviewStage({ eventId, items, vocabulary, embedded 
     );
   }
 
+  const moderationNotice = photoPrecheckNotice(item.precheck, language);
+
   return (
     <section lang={language} dir={uiLanguageDirection(language)} style={{ display: 'grid', gap: '1rem', maxWidth: 1500 }} data-photo-review-stage>
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.5rem' }}>
         <strong data-review-position>{t('Photo')} {decided.length + 1} {t('of')} {decided.length + queue.length} {t('waiting')}</strong>
         <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{item.identityLabel}</span>
       </div>
-      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }} data-review-help>{t('Review this photo and approve or reject it. A rejection needs at least one reason.')}</p>
+      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }} data-review-help>{t('Review this photo and approve or reject it. A rejection needs at least one reason.')} {t('AI precheck is advisory; all decisions remain with the reviewer.')}</p>
       {notice ? <InlineAlert title={t('Last decision')} message={notice.text} severity={notice.warning ? 'warning' : 'success'} /> : null}
       {error ? <InlineAlert title={t('That did not work')} message={error} severity="error" /> : null}
       {newPhotosCount > 0 ? <InlineAlert title="More photos are waiting" message={`${newPhotosCount} new photos will follow this one.`} severity="success" /> : null}
+      {moderationNotice ? <InlineAlert title={moderationNotice.title} message={moderationNotice.message} severity={moderationNotice.severity} /> : null}
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'minmax(0, 2fr) minmax(18rem, 1fr)', alignItems: 'start' }}>
         <div style={{ background: 'var(--mantine-color-gray-1)', lineHeight: 0, position: 'relative', width: '100%' }}>
           {item.photoUrl ? <Image src={item.photoUrl} alt={`${t('Photo')} ${decided.length + 1}`} width={1600} height={1200} unoptimized priority draggable={false} style={{ display: 'block', height: 'auto', maxHeight: 'calc(100vh - 14rem)', maxWidth: '100%', objectFit: 'contain', width: '100%' }} /> : <div style={{ display: 'grid', minHeight: 320, placeItems: 'center' }}>{t('No photo available')}</div>}

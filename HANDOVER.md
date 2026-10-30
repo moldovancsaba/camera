@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — optional photo content precheck
+
+Camera has an event-level optional content-precheck setting and a server-only, one-photo-at-a-time worker that uses the shared Hetzner job API. It attaches only validated signals for the exact photo revision and displays them in the existing Vetting screen; human approval/rejection remains authoritative. The Camera key and base URL are provisioned in Vercel for the moderation Preview; the secret remains server-side. Preview requests are marked with `X-Request-Purpose: test`. Consumed remote results are deleted after Camera persists or discards them; the API's five-minute TTL is fallback cleanup. Redeployment and the test-event end-to-end check remain required. Full details and service limits: `docs/PHOTO_CONTENT_PRECHECK.md`.
+
 ## Current change — global asset inventory, editors and cross-level sharing
 
 The Global Frames inventory's six legacy records were assigned to verified partner/event owners; one cross-partner frame received an event-owned catalog copy. All 21 frame assignments and partner defaults/library references remain intact. The four legacy global logo records were moved to their verified partner/event owners; the MotoGP logo used by a second partner received a partner-owned catalog copy, with all event and default assignments preserved. The Global Frames and Global Logos inventories are empty; no image files were deleted. Private EJSON snapshots were written before both transactional data changes. The frame and logo editors validate API responses and distinguish true 404s from retryable load errors. Global → Partner and Partner → Event share controls are available for frames, logos, images and tagged pictures, including legacy catalogs; event hide actions preserve the current catalog during the compatibility transition. Static checks and the production build passed on this branch; tests were not run in this pass. Tracked by Camera issue #759 on project #24.

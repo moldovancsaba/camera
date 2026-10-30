@@ -491,6 +491,8 @@ export interface Event {
   // Photo vetting (camera#263): with `required` a guest's photo is saved pending and reaches the share page, slideshows and feeds only
   // after an event manager or admin approves it. Only a global admin changes it. A missing setting means not required.
   photoVetting?: { required: boolean; updatedAt?: string; updatedBy?: string | null };
+  /** Optional advisory scan of new, consent-eligible pending photos; it never changes the human vetting decision. */
+  photoModerationPrecheck?: { enabled: boolean; updatedAt?: string; updatedBy?: string | null };
   notifications?: {
     submissionResultEmailEnabled?: boolean; // Legacy master switch: stored off turns the old switches off; missing follows the defaults of the five types (lib/email/types.ts)
     /** The five e-mails (epic 463, lib/email/types.ts): a switch, a subject and a message each; absent follows the default. */
@@ -922,6 +924,35 @@ export interface Submission {
     returnedWasPubliclyVisible?: boolean;
     // Older documents may also hold `tryOn`; the removed integration no longer reads or writes it.
   } | null;
+  /** Server-only Hetzner moderation signal for the exact pending photo revision; never an approval/rejection decision. */
+  moderationPrecheck?: {
+    enabledAtCapture: true;
+    status: 'queued' | 'submitting' | 'queued_remote' | 'running' | 'completed' | 'failed';
+    photoUrl: string;
+    sourceRevision?: string;
+    normalizedRevision?: string;
+    idempotencyKey?: string;
+    jobId?: string;
+    queuedAt: string;
+    startedAt?: string;
+    completedAt?: string;
+    attempts: number;
+    nextAttemptAt?: string;
+    leaseToken?: string;
+    lastErrorCode?: string;
+    result?: {
+      schemaVersion: 'camera-moderation.v1';
+      model: string;
+      signal: 'flagged' | 'uncertain' | 'no_flags_detected';
+      flags: string[];
+      categories: Record<string, 'detected' | 'not_detected' | 'uncertain'>;
+      evidence: string;
+      limitations: string;
+      completedAt: string;
+      sourceRevision: string;
+      normalizedRevision: string;
+    };
+  };
   shareToken?: string | null;        // Opaque share id of a vetted photo (/share/<token>); older photos use their database id
   /** Human review and optional correction of one exact Fanmass result revision; Fanmass remains the immutable source. */
   fanmassAnalysisReview?: {

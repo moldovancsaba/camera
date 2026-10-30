@@ -25,6 +25,10 @@
       "schedule": "* * * * *"
     },
     {
+      "path": "/api/internal/photo-moderation-precheck",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/internal/follow-up-emails",
       "schedule": "0 7 * * *"
     }

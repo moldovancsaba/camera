@@ -377,6 +377,31 @@ test('a vetted event stores a capture without a registered user as NO USER', asy
   }
 });
 
+test('a selected precheck waits on the private submission until later consent/contact completion', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead, { event: {
+      ...VETTED,
+      photoModerationPrecheck: { enabled: true },
+      customPages: [{ pageId: 'consent', pageType: 'accept', order: -1, isActive: true, config: { title: 'Terms', buttonText: 'Continue', checkboxes: [{ text: 'I accept', required: true }] } }, PHOTO_PAGE],
+    } });
+    const { POST } = await importRouteModule('moderation-intent-before-consent');
+    assert.equal((await POST(submissionRequest())).status, 201);
+    const doc = h.inserted[0] as Record<string, unknown> & { moderationPrecheck: Record<string, unknown> };
+    assert.equal(doc.consentStatus, 'pending');
+    assert.equal((doc.guestContact as { status: string }).status, 'awaiting_contact');
+    assert.equal(doc.reviewStatus, 'pending_review');
+    assert.equal(doc.moderationPrecheck.status, 'queued');
+    assert.equal(doc.moderationPrecheck.enabledAtCapture, true);
+    assert.match(String(doc.moderationPrecheck.photoUrl), /^https:\/\/teststoreid\.public\.blob\.vercel-storage\.com\/pending\//);
+    assert.equal(h.uploads, 0, 'the photo remains in the private pending store');
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
 test('a social login is enough: the email of the logged-in user is the guest', async (t) => {
   const restore = withStoreToken();
   const quiet = silence();

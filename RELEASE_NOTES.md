@@ -106,7 +106,18 @@
 - **Added:** admin navigation, event/partner context menu labels, account actions, and role labels are translated for all 23 registered locale variants, with localized region `lang`/`dir` metadata.
 - **Added:** 111 common admin phrases have draft translations across all 23 variants and are used by the shared list-page shell, dashboard metrics, event-list empty state, sign-in copy, and database alert title.
 - **Not complete:** most page-specific admin, vetting, analysis, reporting, library, and operational copy still requires catalog migration. Locale drafts still need qualified review, and full WCAG 2.2 AA evidence is outstanding.
-- **Verification:** this shared-page extension has not yet run the release check; rerun it before merging.
+- **Verification:** the full release check passed in PR #739 before this branch was rebased.
+
+## Unreleased — optional Hetzner photo content precheck (2026-10-27)
+
+- **Added:** an event-level optional content-precheck setting and a server-only, scheduled worker that discovers the permitted job/model inventory, submits `image_moderation` with `model: auto`, and stores a validated result on the exact pending Camera submission revision.
+- **Reviewer flow:** the existing one-photo Vetting screen shows queued/running, flagged, uncertain, clear-signal, retrying, or unavailable states. Every photo still requires a human approve/reject action; AI output cannot publish or reject it.
+- **Localization:** reviewer state, category, and advisory copy follow the resolved event language and have draft strings for all 23 supported locale variants. Provider-supplied evidence remains in the language returned by the service.
+- **Safety:** only consent-audited, finalized-contact, pending-vetting photos enter the queue. Camera sends normalized image bytes without URL or participant/event identifiers, uses an idempotency key, a global worker lease and bounded retry/poll windows, then rechecks eligibility and the image hash before storing the result.
+- **Cleanup:** Camera now calls authenticated `DELETE /jobs/{id}` after it persists or discards a terminal result. Consumed results otherwise expire after five minutes; deleting a result does not cancel active inference.
+- **Configuration:** `CAMERA_MODERATION_API_KEY` and `CAMERA_MODERATION_BASE_URL` are provisioned in Vercel for Production, Development, and Preview branch `feature/camera-hetzner-moderation`. The secret is not pullable into local files. The test preview must be redeployed before live verification. Preview API calls carry `X-Request-Purpose: test`.
+- **Limit:** provider false negatives/positives, no numeric confidence, and English-only hate-word coverage remain; no flags never means safe. Production event operation is not part of this test-preview verification. Record `/job-types`, `/models`, resolved model, deployment URL, test event, and end-to-end outcomes here once checked.
+- **Verification:** local mocked unit/type checks and the required live preview workflow are tracked separately; no successful live test is claimed until the deployment and designated test-event checks are observed.
 
 ## Unreleased — case-bound Camera photo erasure
 
