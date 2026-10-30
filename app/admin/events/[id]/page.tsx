@@ -28,6 +28,7 @@ import { loadGallerySubmissions } from '@/lib/gallery/submissions';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { collectEventSpecificStats, type EventSpecificStats } from '@/lib/events/stats';
+import { parseMessmassStylePalette, type MessmassStylePalette } from '@/lib/theme/messmass-style-palette';
 
 interface EventFrameDetails {
   frameId: string;
@@ -146,6 +147,7 @@ export default async function EventDetailPage({
   let landingPages: LandingPageDoc[] = [];
   let eventStats: EventSpecificStats | null = null;
   let themeColours: ThemeColours | null = null;
+  let messmassStyle: MessmassStylePalette | null = null;
   let dbError: string | null = null;
   const session = await getSession();
   let canManageEvent = isGlobalAdminSession(session);
@@ -167,6 +169,8 @@ export default async function EventDetailPage({
     }
 
     partner = (await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId })) as PartnerDoc | null;
+    const styleContext = (event as unknown as { frameDesign?: { context?: { style?: unknown } } }).frameDesign?.context?.style;
+    messmassStyle = parseMessmassStylePalette(styleContext);
     eventStats = await collectEventSpecificStats(db, event.eventId);
     // The colours the guests really get, from the same function the guest pages use, and where they come from (camera#380).
     try {
@@ -420,6 +424,8 @@ export default async function EventDetailPage({
           brandBorderColor={event.brandBorderColor}
           brandColorsOverridden={event.brandColorsOverridden}
           themeColours={themeColours ?? undefined}
+          messmassStyle={messmassStyle}
+          messmassLinked={Boolean(event.messmassEventId)}
           frames={event.frames?.map((frame) => ({
             frameId: frame.frameId,
             isActive: frame.isActive !== false,

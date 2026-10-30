@@ -18,6 +18,7 @@ import {
 import StyleInheritanceIndicator from './StyleInheritanceIndicator';
 import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import type { ButtonColourSource } from '@/lib/theme/event-theme';
+import type { MessmassStylePalette } from '@/lib/theme/messmass-style-palette';
 
 interface FrameAssignment {
   frameId: string;
@@ -75,6 +76,10 @@ interface StyleSectionsProps {
   brandColorsOverridden?: boolean;
   /** Event only: the colours the guests really get and their source. */
   themeColours?: ThemeColours;
+  /** Raw Messmass style snapshot that supplies the event's guest-page palette. */
+  messmassStyle?: MessmassStylePalette | null;
+  /** Whether this owner has a Messmass identity linked, for a useful unavailable state. */
+  messmassLinked?: boolean;
   frames?: FrameAssignment[];
   framesOverridden?: boolean;
   logos?: LogoAssignment[];
@@ -125,6 +130,68 @@ function ScenarioCountCard({
   );
 }
 
+function MessmassStylePaletteCard({
+  style,
+  linked,
+}: {
+  style: MessmassStylePalette | null | undefined;
+  linked: boolean;
+}) {
+  const colors = style ? [
+    { label: 'Hero background', value: style.heroBackground },
+    { label: 'Heading text', value: style.headingColor },
+    ...(style.page ? [
+      { label: 'Page background', value: style.page.pageBackground },
+      { label: 'Page text', value: style.page.textColor },
+      { label: 'Card background', value: style.page.cardBackground },
+      { label: 'Card border', value: style.page.cardBorder },
+      { label: 'Button background', value: style.page.buttonBackground },
+      { label: 'Button text', value: style.page.buttonText },
+      { label: 'Accent', value: style.page.accentColor },
+      { label: 'Link', value: style.page.linkColor },
+    ] : []),
+  ] : [];
+  const sourceLabels: Record<string, string> = {
+    partner: 'partner style',
+    project: 'event style',
+    template: 'report template',
+    'system-default': 'Messmass system default',
+  };
+
+  return (
+    <section aria-labelledby="messmass-style-palette-title" style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1.25rem' }}>
+      <div style={{ alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+        <h4 id="messmass-style-palette-title" style={{ margin: 0 }}>Messmass report style</h4>
+        {style ? <strong>{style.name}</strong> : null}
+        {style ? <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>Resolved from {sourceLabels[style.resolvedFrom] ?? style.resolvedFrom}</span> : null}
+      </div>
+      {style ? (
+        <>
+          <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', margin: '0.5rem 0 1rem' }}>
+            These are the source values Camera receives from Messmass. Camera may adjust effective guest button colors to keep the text and button edges accessible.
+          </p>
+          <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.75rem', margin: 0 }}>
+            {colors.map(({ label, value }) => (
+              <div key={label} style={{ alignItems: 'center', border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.75rem', display: 'flex', gap: '0.75rem', minWidth: 0, padding: '0.75rem' }}>
+                <span aria-hidden="true" style={{ backgroundColor: value, border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.5rem', flex: '0 0 2.25rem', height: '2.25rem' }} />
+                <span style={{ display: 'grid', gap: '0.2rem', minWidth: 0 }}>
+                  <dt style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>{label}</dt>
+                  <dd style={{ fontFamily: 'monospace', fontSize: '0.8125rem', fontWeight: 700, margin: 0, overflowWrap: 'anywhere' }}>{value}</dd>
+                </span>
+              </div>
+            ))}
+          </dl>
+          {!style.page ? <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', margin: '0.75rem 0 0' }}>This saved style snapshot predates the detailed guest-page palette; refresh the Messmass style connection to load those values.</p> : null}
+        </>
+      ) : (
+        <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', margin: '0.5rem 0 0' }}>
+          {linked ? 'Camera could not load the current style from Messmass. Camera settings remain available below.' : 'This owner is not linked to a Messmass identity, so Camera uses its own style defaults.'}
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default function StyleSections({
   type,
   id,
@@ -132,6 +199,8 @@ export default function StyleSections({
   brandBorderColor,
   brandColorsOverridden,
   themeColours,
+  messmassStyle,
+  messmassLinked = false,
   frames = [],
   framesOverridden,
   logos = [],
@@ -161,8 +230,8 @@ export default function StyleSections({
             </div>
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
               {isPartner
-                ? 'The colours the events of this partner start with. When none are set, every event follows the colours of its messmass style; an event can still set its own.'
-                : 'The colours of the buttons, inputs, checkboxes and the camera screens, as the users see them. By default they come from messmass; Edit Colors sets your own.'}
+                ? 'Optional Camera button defaults for this partner’s events. Messmass remains the source of the partner and event report style; an event can still set its own Camera button colors.'
+                : 'Camera’s effective guest controls after applying the Messmass style, Camera overrides, welcome-button settings, and accessibility contrast checks.'}
             </p>
           </div>
           <Link href={isPartner ? `/admin/partners/${id}/edit` : `/admin/events/${id}/edit`} style={{ textDecoration: 'none' }}>
@@ -172,13 +241,13 @@ export default function StyleSections({
 
         <div style={{ display: 'grid', gap: '1.5rem', padding: '1.5rem' }}>
           {isPartner && !brandColor && !brandBorderColor ? (
-            <StateBlock variant="empty" title="No default colours" description="The events of this partner follow the colours of their messmass style. Set default colours only when every event of the partner should share them." />
+            <StateBlock variant="empty" title="No Camera-level button defaults" description="Events use their Messmass style as the source palette. Set Camera defaults only when the partner needs a shared guest-button override." />
           ) : (
             <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
               <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
                 <ColorPreviewSwatch color={themeColours?.fill ?? brandColor ?? CAMERA_DEFAULT_BRAND_COLOR} />
                 <div style={{ display: 'grid', gap: '0.25rem' }}>
-                  <strong style={{ fontSize: '0.875rem' }}>Primary Color</strong>
+                  <strong style={{ fontSize: '0.875rem' }}>{isEvent ? 'Effective guest button' : 'Partner button default'}</strong>
                   <code style={{ fontWeight: 700 }}>{themeColours?.fill ?? brandColor ?? CAMERA_DEFAULT_BRAND_COLOR}</code>
                   <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>Buttons, camera button fill, focus states</span>
                 </div>
@@ -187,24 +256,26 @@ export default function StyleSections({
               <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
                 <ColorPreviewSwatch color={themeColours?.ring ?? brandBorderColor ?? CAMERA_DEFAULT_BRAND_BORDER_COLOR} />
                 <div style={{ display: 'grid', gap: '0.25rem' }}>
-                  <strong style={{ fontSize: '0.875rem' }}>Border/Accent Color</strong>
+                  <strong style={{ fontSize: '0.875rem' }}>{isEvent ? 'Effective button ring' : 'Partner button ring'}</strong>
                   <code style={{ fontWeight: 700 }}>{themeColours?.ring ?? brandBorderColor ?? CAMERA_DEFAULT_BRAND_BORDER_COLOR}</code>
                   <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>Input borders, checkboxes, camera button border</span>
                 </div>
               </div>
             </div>
           )}
+          <MessmassStylePaletteCard style={messmassStyle} linked={messmassLinked} />
           {isEvent && themeColours ? (
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', margin: 0 }}>
               {colourSourceText(themeColours.source, themeColours.styleName, Boolean(brandColor || brandBorderColor), brandColorsOverridden === true, partnerName)}
               {themeColours.source === 'welcome' && (brandColor || brandBorderColor) ? ' The colours set here are kept, but they do not show while the welcome page sets its own.' : ''}
+              {themeColours.source === 'messmass' ? ' The source palette is shown above; this effective button color may be adjusted to meet accessibility contrast.' : ''}
             </p>
           ) : null}
         </div>
 
         {isEvent && themeColours ? (
           <div style={{ padding: '1.5rem', borderTop: '1px solid var(--mantine-color-default-border)' }}>
-            <strong style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem' }}>Color Preview</strong>
+            <strong style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem' }}>Camera guest button preview</strong>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
               <button type="button" style={{ backgroundColor: themeColours.fill, border: `2px solid ${themeColours.ring}`, borderRadius: '999px', color: themeColours.label, fontWeight: 700, padding: '0.75rem 1.25rem' }} disabled>
                 Primary Button

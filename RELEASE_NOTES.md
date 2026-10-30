@@ -11,6 +11,13 @@
 - **Documentation:** added `docs/PARTNER_CONTENT_DEFAULTS.md` and updated the current architecture and navigation delivery notes.
 - **Verification:** GDS manifest and boundary checks, type-check, lint, all 368 unit test files, production guards, production build, and repository inventory check pass.
 
+## Unreleased — locale selector consistency
+
+- **Fixed:** changing the admin header language now announces a successful save to assistive technology; the header control and Account settings continue to share the same per-user preference.
+- **Fixed:** the admin guided-tour descriptions now use the selected interface language across all 23 registered locales; titles reuse the shared admin catalogs.
+- **Fixed:** the QR-text editor now offers all 23 canonical UI locales and shows each existing QR text's correct native and English locale name. API comments and the library documentation now describe the same supported locale set.
+- **Coverage:** added a check that every canonical locale is accepted for QR text.
+
 ## Unreleased — icon-based visibility indicators
 
 - **Changed:** replaced repetitive Active/Inactive and switched-off status badges across event, partner, and visual-asset admin views with a green Material Icons eye for visible items and a red eye-off for hidden items. The saved status values and visibility behavior are unchanged.
@@ -30,6 +37,7 @@
 
 - **Fixed:** all-events Analytics now computes maximum durations with a linear scan rather than expanding an unbounded history into function arguments, avoiding a JavaScript argument-limit crash while retaining uncapped counts.
 - **Added:** signed-in administrators can choose an interface language in Account settings. The preference is stored under the SSO subject only, applies before the admin page renders, and can be reset to browser language.
+- **Changed:** added a directly visible language selector to the admin header on all admin routes (except the account page, which already has the full settings form). Header changes save immediately to the same per-user preference and apply without leaving the current route.
 - **Changed:** locale selectors display native language names followed by their English names in parentheses.
 - **Accessibility and security:** the preference form uses the GDS selector and semantic actions, exposes loading/error/success states, announces success, and limits authenticated APIs to the current admin's own preference.
 - **Documentation:** updated analytics capacity notes, language resolution and account-settings operations.
