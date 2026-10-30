@@ -15,6 +15,7 @@
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, type FrameMessageSelectionDisplay, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
@@ -24,6 +25,8 @@ import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type Checkb
 import CheckboxSettingsFields, { type CheckboxModes } from '@/components/admin/CheckboxSettingsFields';
 import WelcomeCompositionEditor from '@/components/admin/WelcomeCompositionEditor';
 import { validateWelcomeElements, welcomeElementsFromLegacy, type WelcomeElement } from '@/lib/events/welcome-composition';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminShellText } from '@/lib/i18n/admin-shell';
 
 export interface CustomPagesManagerProps {
   eventId: string;
@@ -160,6 +163,8 @@ function MoveButtons({ canUp, canDown, onUp, onDown }: { canUp: boolean; canDown
 }
 
 export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eventTheme, initialPages, journeyContext, acceptanceOnWhoAreYou = null, galleryConsent = null, consentSettings = null, partnerCheckboxes, frameMessageSelectionDisplay = 'automatic', onSave }: CustomPagesManagerProps) {
+  const language = useUiLanguage();
+  const journeyTitle = adminShellText('Event User Journey', language);
   const [pages, setPages] = useState<CustomPage[]>(initialPages);
   // One value for each kind of checkbox (issue 558): the list at the top and the page editors that show a kind (the Who-are-you page's acceptance, the consent page's acceptance and gallery permission)
   // read and write it here, so they are always the same one. "" is no choice of its own: the event follows its partner.
@@ -451,7 +456,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
       <div style={{ display: 'grid', gap: '1.5rem' }}>
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <h2 style={{ margin: 0 }}>Pages of the user journey</h2>
+            <h2 style={{ margin: 0 }}>{journeyTitle}</h2>
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
               {journeyContext
                 ? 'The pages a user visits, in order. A default page is used until you customise it. Fixed steps such as approval, e-mails and the public photo page are managed in their dedicated settings.'
@@ -561,7 +566,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
                     #{index + 1}
                       </code>
                       <LabelTag tone="neutral" label={page.pageType} />
-                      {page.isActive ? null : <LabelTag tone="warning" label="Switched off: users do not see it" />}
+                      {page.isActive ? null : <VisibilityStatusIcon isVisible={false} />}
                     </div>
                     <strong style={{ fontSize: '0.875rem' }}>
                     {page.config.title || '[Untitled]'}

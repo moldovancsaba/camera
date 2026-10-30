@@ -183,6 +183,7 @@ export default function WelcomeCompositionCanvas({
   return (
     <div
       data-welcome-composition-stage
+      data-admin-guest-preview={preview ? '' : undefined}
       role={preview ? 'img' : undefined}
       aria-label={preview ? 'Welcome page composition preview' : undefined}
       style={{ backgroundColor: stageBackgroundColor ?? 'var(--event-bg, #071321)', containerType: 'size', fontFamily, height: '100%', overflow: 'hidden', position: 'relative', width: '100%', ...style }}

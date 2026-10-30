@@ -13,7 +13,6 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import GeneratedFramePanel, { type Notice } from '@/components/admin/GeneratedFramePanel';
 import FrameSelectionPanel from '@/components/admin/FrameSelectionPanel';
-import FrameSlotsPanel from '@/components/admin/FrameSlotsPanel';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
@@ -22,6 +21,7 @@ import AssetUsageResolution from '@/components/admin/library/AssetUsageResolutio
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
 import type { MessageArea } from '@/lib/frame/message-area';
 import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import type { EventLibrary } from '@/lib/library/types';
 
 interface Payload<T> {
@@ -62,7 +62,6 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   const [designVersion, setDesignVersion] = useState(0);
   const [usageConflict, setUsageConflict] = useState<string | null>(null);
   const { confirm, confirmDestructive } = useGdsConfirm();
-  const onDesignChanged = useCallback(() => setDesignVersion((version) => version + 1), []);
 
   useEffect(() => {
     params.then((resolved) => setEventId(resolved.id));
@@ -72,6 +71,8 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
     if (!eventId) return;
     setLibrary(await call<EventLibrary>(`/api/events/${eventId}/library?kind=frames`));
   }, [eventId]);
+
+  const onDesignChanged = useCallback(() => setDesignVersion((version) => version + 1), []);
 
   useEffect(() => {
     if (!eventId) return;
@@ -177,9 +178,6 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         hasOwnActiveFrame={library.assigned.some((entry) => entry.assignment.isActive === true && entry.messageArea === null)}
       />
 
-      {/* The slots the generated frame is composed of (issue 502): up to six texts and six pictures, each optional. */}
-      <FrameSlotsPanel eventId={eventId} onDesignChanged={onDesignChanged} />
-
       <FrameSelectionPanel
         key={`${designVersion}:${library.assigned.map((entry) => `${entry.id}:${entry.assignment.isActive === true ? 1 : 0}:${entry.messageArea ? 1 : 0}`).join(',')}`}
         eventId={eventId}
@@ -230,10 +228,10 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                     note={entry.messageArea ? 'Users never pick this frame: the messages of this event are written on it.' : undefined}
                     badges={
                       <>
-                        <LabelTag tone={active ? 'success' : 'neutral'} label={active ? 'Active' : 'Inactive'} />
+                        <VisibilityStatusIcon isVisible={active} />
                         {entry.messageArea ? <LabelTag tone="info" label="Carries messages" /> : null}
                         {!entry.stillInPartnerLibrary ? <LabelTag tone="warning" label="No longer in the partner library" /> : null}
-                        {!entry.itemActive ? <LabelTag tone="warning" label="Switched off in the library" /> : null}
+                        {!entry.itemActive ? <VisibilityStatusIcon isVisible={false} /> : null}
                       </>
                     }
                     actions={
@@ -317,7 +315,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
           <h3 id="hidden-event-frames-heading" style={{ margin: 0 }}>Hidden at this event ({library.hidden.length})</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Restore a frame here without changing its partner or global sharing rules.</p>
         </div>
-        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope={item.scope} actions={<VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} hidden onSaved={reload} />} />)}</div></div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope={item.scope} badges={<VisibilityStatusIcon isVisible={false} />} actions={<VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} hidden onSaved={reload} />} />)}</div></div>
       </section> : null}
 
       {library.inactiveOwn.some((item) => !library.assigned.some((entry) => entry.id === item.id)) ? <section style={SECTION} aria-labelledby="inactive-event-frames-heading">
@@ -325,7 +323,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
           <h3 id="inactive-event-frames-heading" style={{ margin: 0 }}>Switched off at this event</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These event uploads are not assigned. Switch one on to make it available again.</p>
         </div>
-        <div style={{ padding: '1rem' }}><div style={GRID}>{library.inactiveOwn.filter((item) => !library.assigned.some((entry) => entry.id === item.id)).map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope="event" badges={<LabelTag tone="warning" label="Switched off" />} actions={<LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={item.id} itemActive={false} onSaved={reload} />} />)}</div></div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.inactiveOwn.filter((item) => !library.assigned.some((entry) => entry.id === item.id)).map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope="event" badges={<VisibilityStatusIcon isVisible={false} />} actions={<LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={item.id} itemActive={false} onSaved={reload} />} />)}</div></div>
       </section> : null}
 
       <section style={SECTION}>

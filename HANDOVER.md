@@ -3,6 +3,22 @@
 ## Current change — global asset inventory, editors and cross-level sharing
 
 The Global Frames inventory's six legacy records were assigned to verified partner/event owners; one cross-partner frame received an event-owned catalog copy. All 21 frame assignments and partner defaults/library references remain intact. The four legacy global logo records were moved to their verified partner/event owners; the MotoGP logo used by a second partner received a partner-owned catalog copy, with all event and default assignments preserved. The Global Frames and Global Logos inventories are empty; no image files were deleted. Private EJSON snapshots were written before both transactional data changes. The frame and logo editors validate API responses and distinguish true 404s from retryable load errors. Global → Partner and Partner → Event share controls are available for frames, logos, images and tagged pictures, including legacy catalogs; event hide actions preserve the current catalog during the compatibility transition. Static checks and the production build passed on this branch; tests were not run in this pass. Tracked by Camera issue #759 on project #24.
+## Current change — analytics scale failure and per-user admin language
+
+The all-events analytics report no longer spreads unbounded duration arrays into
+`Math.max`; that could throw at JavaScript's argument-count limit on a large
+history. Locale selectors now show each native name with its English name in
+parentheses. Signed-in admins can choose a persistent interface language from
+the admin header or Account settings; header changes save immediately, and the
+preference is stored by SSO subject only and remains independent from guest
+language. The preference API and language resolver have unit coverage. A
+local production-build browser check passed at 1440px and 390px, including the
+save interaction; the Analytics page rendered its database-failure state without
+reaching the global error page when tested without a database. Production
+analytics logs were not available, so the scale defect is verified from the code
+path and regression tests; a different production error would need its specific
+server diagnostic to identify. See `docs/ANALYTICS.md`,
+`docs/ADMIN_ACCOUNT_SETTINGS.md`, and `docs/UI_LANGUAGE.md`.
 
 ## Current change — partner-scoped event inventory
 

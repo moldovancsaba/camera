@@ -6,6 +6,47 @@
 - **Fixed:** the frame inventory no longer renders sharing actions as duplicate generic “Edit” buttons; the sharing control is an accessible GDS icon action.
 - **Changed (data):** scoped six legacy unowned frames to their verified partner/event owners, created an event-owned copy for the existing cross-partner assignment, and preserved all 21 event assignments and partner references. No media files were deleted. The Global Frames inventory is empty.
 - **Verification:** type-check, focused ESLint, GDS checks, inventory checks, production guards, production build, and `git diff --check` passed. Unit and browser tests were not run.
+## Unreleased — locale selector consistency
+
+- **Fixed:** changing the admin header language now announces a successful save to assistive technology; the header control and Account settings continue to share the same per-user preference.
+- **Fixed:** the admin guided-tour descriptions now use the selected interface language across all 23 registered locales; titles reuse the shared admin catalogs.
+- **Fixed:** the QR-text editor now offers all 23 canonical UI locales and shows each existing QR text's correct native and English locale name. API comments and the library documentation now describe the same supported locale set.
+- **Coverage:** added a check that every canonical locale is accepted for QR text.
+
+## Unreleased — icon-based visibility indicators
+
+- **Changed:** replaced repetitive Active/Inactive and switched-off status badges across event, partner, and visual-asset admin views with a green Material Icons eye for visible items and a red eye-off for hidden items. The saved status values and visibility behavior are unchanged.
+- **Accessibility:** each icon has a localized accessible name and a title. Active form controls, access-grant status, and explanatory copy retain text where an eye would be misleading or where the words explain a consequence.
+- **Audit:** added `docs/ADMIN_ICON_AUDIT.md` with the inspected surfaces, safe icon candidates, and rules for retaining accessible meaning.
+- **Verification:** `npm run gds:validate-manifest`, `npm run gds:check`, `npm run type-check`, `npm run lint`, `npm run inventory:check`, `npm run verify:production-guards`, and `npm run build` passed. Unit and browser test suites were not run.
+
+## Unreleased — consistent workspace navigation and service tools
+
+- **Changed:** global, partner, and event sidebars now share one section order and one ordered block list, preventing Vetting words, Email, and other block links from drifting between scopes.
+- **Moved:** one-time rollout/backfill and media-health tools from everyday navigation and the Slideshows page to global **Settings → Service**. Existing Generated Frame Rollout and Photo Vetting Rollout URLs redirect to their Service sections.
+- **Added:** event sidebars show an access-checked link to the event’s partner; partner sidebars show an access-checked link to that partner’s filtered Events inventory.
+- **Not implemented:** partner Landing Pages and Slideshows do not have partner-owned data or APIs; their current records are event-owned. The navigation keeps those links absent until partner default behavior and URL/slug rules are decided and implemented.
+- **Verification:** local production build, type-check, lint, GDS manifest/boundary checks, production-guard check, inventory/link check (716 links; none broken), and `git diff --check` passed. Unit and browser tests were not run.
+
+## Unreleased — analytics large-history handling and admin language settings
+
+- **Fixed:** all-events Analytics now computes maximum durations with a linear scan rather than expanding an unbounded history into function arguments, avoiding a JavaScript argument-limit crash while retaining uncapped counts.
+- **Added:** signed-in administrators can choose an interface language in Account settings. The preference is stored under the SSO subject only, applies before the admin page renders, and can be reset to browser language.
+- **Changed:** added a directly visible language selector to the admin header on all admin routes (except the account page, which already has the full settings form). Header changes save immediately to the same per-user preference and apply without leaving the current route.
+- **Changed:** locale selectors display native language names followed by their English names in parentheses.
+- **Accessibility and security:** the preference form uses the GDS selector and semantic actions, exposes loading/error/success states, announces success, and limits authenticated APIs to the current admin's own preference.
+- **Documentation:** updated analytics capacity notes, language resolution and account-settings operations.
+- **Verification:** `npm run release:check` passed, including 367/367 unit-test files, production guards, and the production build; `npm run inventory:check` passed with 716 links and no broken references. A local production-build Playwright check passed for the account selector/save at 1440px and 390px and confirmed the Analytics page presents a database error instead of crashing when storage is unavailable; account APIs were mocked and no database was used. GitHub Verify passed on PR #764, merged 2026-10-29. Production behavior was not independently verified.
+
+## Unreleased — scoped journey and email navigation
+
+- **Changed:** the global, partner, and event guest-flow destinations are labeled **Global User Journey**, **Partner User Journey**, and **Event User Journey**. The partner shortcut jumps to its inherited journey defaults on the partner overview; the event link opens the page-order editor.
+- **Changed:** global, partner, and event email destinations are labeled by scope and grouped under **Blocks**. The underlying routes and email settings are unchanged.
+- **Changed:** partner and event block labels now name their scope, matching the global block names. Partner/event frame slots, sample selfies, and stadium backgrounds now have direct scoped pages; event menu links include scoped dictionary, gallery, landing-page, and slideshow names, and the partner gallery is directly reachable from the partner menu.
+- **Not available at partner scope:** landing-page and slideshow editors do not exist for partners. The Admin UI text editor is not present at any scope and remains omitted, as previously agreed. These are not shown as broken menu links.
+- **Clarified:** **Generated Frame Rollout** is the global-admin dry-run/apply console that assigns the generated default frame to eligible events without their own frame; it is not the generated-frame asset library.
+- **Localization:** added navigation-label translations for all 23 supported admin locales.
+- **Verification:** TypeScript, ESLint, GDS manifest/boundary checks, link inventory (715 links; none broken), `git diff --check`, and production build passed. Unit tests were not run.
 
 ## Unreleased — partner-scoped event inventory
 

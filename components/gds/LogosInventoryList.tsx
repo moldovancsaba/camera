@@ -52,9 +52,9 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
       logo.scope && logo.scope !== 'global'
         ? getStatusChipContent(
             { tone: logo.scope === 'event' ? 'active' : 'info', label: logo.source === 'messmass' ? 'Partner, from messmass' : OWNER_LABEL[logo.scope] },
-            { tone: logo.isActive ? 'active' : 'inactive' }
+            { tone: logo.isActive ? 'active' : 'inactive', visibility: logo.isActive }
           )
-        : getStatusChipContent({ tone: logo.isActive ? 'active' : 'inactive' }),
+        : getStatusChipContent({ tone: logo.isActive ? 'active' : 'inactive', visibility: logo.isActive }),
     metadata: [
       logo.scope && logo.scope !== 'global' ? { label: OWNER_LABEL[logo.scope], value: logo.ownerName || 'Unknown' } : null,
       { label: 'Partner defaults', value: String(logo.partnerDefaultCount) },

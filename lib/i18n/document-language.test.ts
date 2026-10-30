@@ -24,13 +24,28 @@ test('capture/share use configured fallback and then English when device languag
   });
 });
 
-test('unlocalized routes keep truthful English document metadata while localized regions get device locale', () => {
+test('admin pages use the interface locale for document metadata while other unlocalized routes remain English', () => {
   assert.deepEqual(initialUiLanguagesForPath('/admin/events/event-1/vetting', 'hu', 'de'), {
-    documentLanguage: 'en',
+    documentLanguage: 'hu',
     interfaceLanguage: 'hu',
   });
   assert.deepEqual(initialUiLanguagesForPath('/', null), {
     documentLanguage: 'en',
     interfaceLanguage: 'en',
+  });
+});
+
+test('admin pages use the saved user locale first, then device language, then English', () => {
+  assert.deepEqual(initialUiLanguagesForPath('/admin/account', 'de', null, 'hu'), {
+    documentLanguage: 'hu', interfaceLanguage: 'hu',
+  });
+  assert.deepEqual(initialUiLanguagesForPath('/admin/analytics', 'de'), {
+    documentLanguage: 'de', interfaceLanguage: 'de',
+  });
+  assert.deepEqual(initialUiLanguagesForPath('/admin/analytics', null), {
+    documentLanguage: 'en', interfaceLanguage: 'en',
+  });
+  assert.deepEqual(initialUiLanguagesForPath('/admin/login', 'de', null, 'hu'), {
+    documentLanguage: 'en', interfaceLanguage: 'de',
   });
 });

@@ -9,7 +9,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { apiBadRequest, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, requireAuth, withErrorHandler } from '@/lib/api';
-import { assertGlobalAdminOrPartnerEventAccess, assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization';
+import { assertGlobalAdminOrPartnerEventAccess, assertPartnerMongoWorkspaceAccess, getPartnerScopedAccessForPartner } from '@/lib/partners/authorization';
 
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const session = await requireAuth(request);
@@ -21,10 +21,26 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const db = await connectToDatabase();
   if (kind === 'partner') {
     const { partner } = await assertPartnerMongoWorkspaceAccess(db, session, id, 'viewer');
-    return apiSuccess({ name: String(partner.name ?? '') });
+    const partnerId = String(partner.partnerId ?? '');
+    const eventAccess = partnerId ? await getPartnerScopedAccessForPartner(db, session, partnerId, 'events', 'viewer') : { allowed: false };
+    return apiSuccess({
+      name: String(partner.name ?? ''),
+      eventsHref: eventAccess.allowed ? `/admin/events?partnerId=${encodeURIComponent(partnerId)}` : null,
+    });
   }
-  await assertGlobalAdminOrPartnerEventAccess(db, session, id, 'viewer');
-  const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) }, { projection: { name: 1 } });
+  const access = await assertGlobalAdminOrPartnerEventAccess(db, session, id, 'viewer');
+  const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) }, { projection: { name: 1, partnerId: 1 } });
   if (!event) throw apiNotFound('Event');
-  return apiSuccess({ name: String(event.name ?? '') });
+  const partnerId = typeof event.partnerId === 'string' ? event.partnerId : access.partnerId;
+  const partner = partnerId
+    ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId }, { projection: { _id: 1, name: 1, partnerId: 1 } })
+    : null;
+  const partnerAccess = partnerId && partner
+    ? await getPartnerScopedAccessForPartner(db, session, partnerId, undefined, 'viewer')
+    : { allowed: false };
+  const partnerMongoId = partner?._id?.toString();
+  return apiSuccess({
+    name: String(event.name ?? ''),
+    partnerHref: partnerAccess.allowed && partnerMongoId ? `/admin/partners/${encodeURIComponent(partnerMongoId)}` : null,
+  });
 });

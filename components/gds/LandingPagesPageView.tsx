@@ -41,7 +41,7 @@ export default function LandingPagesPageView({
     id: page.id,
     title: page.title?.trim() || page.slug,
     description: `/landing/${page.slug}`,
-    status: getStatusChipContent({ tone: page.isActive ? 'active' : 'inactive' }),
+    status: getStatusChipContent({ tone: page.isActive ? 'active' : 'inactive', visibility: page.isActive }),
     metadata: [
       { label: 'Partner', value: page.partnerName || 'Unknown partner' },
       { label: 'Event', value: page.eventName },

@@ -4,6 +4,7 @@
   "regenerate": "python3 scripts/fleet-audit-inventory.py --write"
  },
  "items": [
+  {"path": "/api/account/preferences", "methods": ["GET", "PATCH"], "file": "app/api/account/preferences/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/activity-log", "methods": ["GET", "POST"], "file": "app/api/admin/activity-log/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/dictionary", "methods": ["GET", "PUT"], "file": "app/api/admin/dictionary/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/admin/emails/legal", "methods": ["GET", "PUT"], "file": "app/api/admin/emails/legal/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},

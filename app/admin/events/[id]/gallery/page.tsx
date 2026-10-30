@@ -8,6 +8,7 @@ import { notFound, redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
 import { Breadcrumbs, Card, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import EventGallery from '@/components/admin/EventGallery';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
@@ -99,7 +100,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
         <Text>Gallery</Text>
       </Breadcrumbs>
 
-      <WorkspaceHeader eyebrow="Events" title={`${String(event.name)} — Gallery`} description="The photos of the event: upload images, select several at once, remove them from the event." status={event.isActive === false ? 'Inactive' : 'Active'} />
+      <WorkspaceHeader eyebrow="Events" title={`${String(event.name)} — Gallery`} description="The photos of the event: upload images, select several at once, remove them from the event." status={<VisibilityStatusIcon isVisible={event.isActive !== false} />} />
 
       <Card p={0}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>

@@ -2726,6 +2726,31 @@ const INDEX: ReadonlyMap<string, number> = new Map(ENGLISH.map((source, index): 
 const CATALOG_KEY_BY_ENGLISH: ReadonlyMap<string, MessageKey> = new Map(
   (Object.keys(en) as MessageKey[]).map((key): [string, MessageKey] => [en[key], key])
 );
+const EXTRA_TRANSLATIONS: Record<UiLanguage, Record<string, string>> = {
+  en: { 'The analytics report could not be loaded. Please try again.': 'The analytics report could not be loaded. Please try again.' },
+  hu: { 'The analytics report could not be loaded. Please try again.': 'Az elemzési jelentést nem sikerült betölteni. Próbálja újra.' },
+  de: { 'The analytics report could not be loaded. Please try again.': 'Der Analysebericht konnte nicht geladen werden. Bitte versuchen Sie es erneut.' },
+  it: { 'The analytics report could not be loaded. Please try again.': 'Impossibile caricare il report di analisi. Riprova.' },
+  'pt-BR': { 'The analytics report could not be loaded. Please try again.': 'Não foi possível carregar o relatório de análise. Tente novamente.' },
+  'pt-PT': { 'The analytics report could not be loaded. Please try again.': 'Não foi possível carregar o relatório de análise. Tente novamente.' },
+  es: { 'The analytics report could not be loaded. Please try again.': 'No se pudo cargar el informe de análisis. Inténtalo de nuevo.' },
+  fr: { 'The analytics report could not be loaded. Please try again.': 'Le rapport d’analyse n’a pas pu être chargé. Veuillez réessayer.' },
+  ru: { 'The analytics report could not be loaded. Please try again.': 'Не удалось загрузить аналитический отчёт. Попробуйте ещё раз.' },
+  'zh-Hans': { 'The analytics report could not be loaded. Please try again.': '无法加载分析报告。请重试。' },
+  'zh-Hant': { 'The analytics report could not be loaded. Please try again.': '無法載入分析報告。請再試一次。' },
+  ro: { 'The analytics report could not be loaded. Please try again.': 'Raportul de analiză nu a putut fi încărcat. Încercați din nou.' },
+  pl: { 'The analytics report could not be loaded. Please try again.': 'Nie udało się wczytać raportu analitycznego. Spróbuj ponownie.' },
+  sk: { 'The analytics report could not be loaded. Please try again.': 'Analytickú správu sa nepodarilo načítať. Skúste to znova.' },
+  hr: { 'The analytics report could not be loaded. Please try again.': 'Nije moguće učitati analitičko izvješće. Pokušajte ponovno.' },
+  sl: { 'The analytics report could not be loaded. Please try again.': 'Analitičnega poročila ni bilo mogoče naložiti. Poskusite znova.' },
+  bg: { 'The analytics report could not be loaded. Please try again.': 'Аналитичният отчет не можа да бъде зареден. Опитайте отново.' },
+  tr: { 'The analytics report could not be loaded. Please try again.': 'Analiz raporu yüklenemedi. Lütfen tekrar deneyin.' },
+  ar: { 'The analytics report could not be loaded. Please try again.': 'تعذر تحميل تقرير التحليلات. يُرجى المحاولة مرة أخرى.' },
+  hi: { 'The analytics report could not be loaded. Please try again.': 'विश्लेषण रिपोर्ट लोड नहीं हो सकी। कृपया फिर से कोशिश करें।' },
+  ka: { 'The analytics report could not be loaded. Please try again.': 'ანალიტიკური ანგარიშის ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.' },
+  'sr-Cyrl': { 'The analytics report could not be loaded. Please try again.': 'Аналитички извештај није могао да се учита. Покушајте поново.' },
+  'sr-Latn': { 'The analytics report could not be loaded. Please try again.': 'Analitički izveštaj nije mogao da se učita. Pokušajte ponovo.' },
+};
 
 export const ADMIN_PAGE_TEXTS_ENGLISH: readonly AdminPageText[] = ENGLISH;
 
@@ -2735,6 +2760,8 @@ export function hasAdminPageTranslation(source: string): boolean {
 
 export function adminPageText(source: string, language: UiLanguage): string {
   if (hasAdminShellTranslation(source)) return adminShellText(source, language);
+  const extra = EXTRA_TRANSLATIONS[language][source];
+  if (extra) return extra;
   const index = INDEX.get(source);
   if (index !== undefined) return VALUES[language][index] ?? source;
   if (!UI_LANGUAGES.includes(language)) return source;

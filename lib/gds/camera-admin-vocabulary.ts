@@ -5,6 +5,10 @@ const deletedFeedback = { icon: GdsIcons.Delete, color: 'red', messageId: 'gds.f
 const openedFeedback = { icon: GdsIcons.Eye, color: 'teal', messageId: 'gds.feedback.opened' } as const;
 
 export const cameraAdminVocabularyPacks = [
+  createGdsVocabularyPack('account-settings', {
+    save: { defaultMessage: 'Save changes', icon: GdsIcons.Save, feedback: savedFeedback },
+    retry: { defaultMessage: 'Try again', icon: GdsIcons.Refresh, feedback: openedFeedback },
+  }),
   createGdsVocabularyPack('visual-assets', {
     enable: { defaultMessage: 'Use inherited asset sharing', icon: GdsIcons.Link, feedback: savedFeedback },
     hide: { defaultMessage: 'Hide from this level', icon: GdsIcons.EyeOff, feedback: savedFeedback },
@@ -173,6 +177,7 @@ export const cameraAdminVocabularyPacks = [
   }),
   createGdsVocabularyPack('logos', {
     'back-to-list': { defaultMessage: 'Back to logos', icon: GdsIcons.Back, feedback: openedFeedback },
+    'retry-load': { defaultMessage: 'Retry loading logo', icon: GdsIcons.Refresh, feedback: openedFeedback },
     save: { defaultMessage: 'Save logo', icon: GdsIcons.Save, feedback: savedFeedback },
     'cancel-edit': { defaultMessage: 'Cancel edit', icon: GdsIcons.Cancel, feedback: openedFeedback },
     delete: { defaultMessage: 'Delete logo', icon: GdsIcons.Delete, feedback: deletedFeedback },
@@ -268,6 +273,7 @@ export const cameraAdminVocabularyPacks = [
   }),
   createGdsVocabularyPack('frames', {
     'remove-upload': { defaultMessage: 'Remove upload', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    'retry-load': { defaultMessage: 'Retry loading frame', icon: GdsIcons.Refresh, feedback: openedFeedback },
     create: { defaultMessage: 'Create frame', icon: GdsIcons.Add, feedback: savedFeedback },
     'cancel-create': { defaultMessage: 'Cancel create', icon: GdsIcons.Cancel, feedback: openedFeedback },
     'back-to-list': { defaultMessage: 'Back to frames', icon: GdsIcons.Back, feedback: openedFeedback },

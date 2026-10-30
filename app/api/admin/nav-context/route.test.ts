@@ -31,20 +31,30 @@ function setup(t: TestContext, options: { denied?: boolean } = {}) {
         if (options.denied) throw apiReal.apiError('Forbidden', 403);
         return { partner: await db.collection('partners').findOne({ _id: new ObjectId(id) }), role: 'viewer', partnerId: 'P' };
       },
+      getPartnerScopedAccessForPartner: async (_db: unknown, _s: unknown, partnerId: string, appKey?: string, role?: string) => {
+        checks.push(`partner-scope:${partnerId}:${appKey ?? 'any'}:${role ?? 'viewer'}`);
+        return { allowed: !options.denied, role: options.denied ? null : 'viewer' };
+      },
     },
   });
   return checks;
 }
 
 const get = (query: string) => new NextRequest(`http://localhost/api/admin/nav-context?${query}`);
-const nameOf = async (response: Response) => ((await response.json()) as { data: { name: string } }).data.name;
+const dataOf = async (response: Response) => (await response.json() as { data: { name: string; partnerHref?: string | null; eventsHref?: string | null } }).data;
 
 test('the name of an event and of a partner, for someone who may view them', async (t) => {
   const checks = setup(t);
   const { GET } = await importRoute('names');
-  assert.equal(await nameOf(await GET(get(`kind=event&id=${EVENT_ID}`))), 'MTK x Vasas');
-  assert.equal(await nameOf(await GET(get(`kind=partner&id=${PARTNER_ID}`))), 'MTK Budapest');
-  assert.deepEqual(checks, ['event:viewer', 'partner:viewer']);
+  assert.deepEqual(await dataOf(await GET(get(`kind=event&id=${EVENT_ID}`))), {
+    name: 'MTK x Vasas',
+    partnerHref: `/admin/partners/${PARTNER_ID}`,
+  });
+  assert.deepEqual(await dataOf(await GET(get(`kind=partner&id=${PARTNER_ID}`))), {
+    name: 'MTK Budapest',
+    eventsHref: '/admin/events?partnerId=P',
+  });
+  assert.deepEqual(checks, ['event:viewer', 'partner-scope:P:any:viewer', 'partner:viewer', 'partner-scope:P:events:viewer']);
 });
 
 test('someone without access learns nothing, not even the name', async (t) => {

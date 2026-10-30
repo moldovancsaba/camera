@@ -18,6 +18,8 @@ The photos filed under the event (its UUID in `eventId` or `eventIds`) that are 
 
 `lib/analytics/facts.ts` reads a database document once into a small record (`PhotoFacts`); `lib/analytics/report.ts` turns the records into the report; `lib/analytics/load.ts` is the only part that touches the database (read only, a narrow projection, **no row cap**: the old try-on report silently cut its queries at 5,000 rows). Every aggregation is a pure function with unit tests.
 
+Duration maxima are calculated with a linear pass rather than spreading a full event's durations into function arguments. This avoids a JavaScript argument-count failure on large histories while preserving the complete, uncapped counts. The report still holds its narrow photo-fact records in memory for cross-photo user and event aggregation; future capacity growth should be measured before replacing that shared report model with streaming or persisted rollups.
+
 ## The figures: what each one is and where it comes from
 
 | Figure | Definition | Source field |

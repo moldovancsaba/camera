@@ -18,7 +18,8 @@ import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPoli
 import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import EventExperienceReviewPanel from '@/components/admin/EventExperienceReviewPanel';
 import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
-import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { EventLibrary } from '@/lib/library/types';
 
@@ -176,7 +177,7 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
           <h3 id="hidden-event-images-heading" style={{ margin: 0 }}>Hidden at this event ({library.hidden.length})</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Restore an item here without changing its partner or global sharing rules.</p>
         </div>
-        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="image" scope={item.scope} actions={<VisualAssetPolicyActions level="event" ownerId={eventId} kind="images" id={item.id} scope={item.scope} hidden onSaved={reload} />} />)}</div></div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="image" scope={item.scope} badges={<VisibilityStatusIcon isVisible={false} />} actions={<VisualAssetPolicyActions level="event" ownerId={eventId} kind="images" id={item.id} scope={item.scope} hidden onSaved={reload} />} />)}</div></div>
       </section> : null}
 
       {library.inactiveOwn.length > 0 ? <section style={SECTION} aria-labelledby="inactive-event-images-heading">
@@ -184,7 +185,7 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
           <h3 id="inactive-event-images-heading" style={{ margin: 0 }}>Switched off at this event ({library.inactiveOwn.length})</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These event uploads are unavailable in this event. Switch one on to make it selectable again.</p>
         </div>
-        <div style={{ padding: '1rem' }}><div style={GRID}>{library.inactiveOwn.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="image" scope="event" badges={<LabelTag tone="warning" label="Switched off" />} actions={<LibraryUploadActiveToggle level="event" ownerId={eventId} kind="images" id={item.id} itemActive={false} onSaved={reload} />} />)}</div></div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.inactiveOwn.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="image" scope="event" badges={<VisibilityStatusIcon isVisible={false} />} actions={<LibraryUploadActiveToggle level="event" ownerId={eventId} kind="images" id={item.id} itemActive={false} onSaved={reload} />} />)}</div></div>
       </section> : null}
 
       <section style={SECTION}>

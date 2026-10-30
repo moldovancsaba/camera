@@ -5,8 +5,9 @@ import { useState } from 'react';
 import { canonicalPublicOrigin } from '@/lib/site-hosts';
 import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
-import { EmptyState, InlineAlert, LabelTag, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { EmptyState, InlineAlert, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import { notifyAdminError, notifyAdminSuccess } from '@/components/admin/notify';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 
 export interface LandingPageListItem {
   _id: string;
@@ -108,7 +109,7 @@ export default function LandingPageManager({
                     /landing/{page.slug}
                   </p>
                   <div style={{ marginTop: '0.75rem' }}>
-                    <LabelTag tone={page.isActive ? 'success' : 'neutral'} label={page.isActive ? 'Active' : 'Inactive'} />
+                    <VisibilityStatusIcon isVisible={page.isActive} />
                   </div>
                 </div>
                 <SemanticButton

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * The Dictionary (issue 353, docs/BUILDING_BRICKS.md step 6): every default text of the user journey, in English and Hungarian, and the global wording an admin can write above the
+ * The Dictionary (issue 353, docs/BUILDING_BRICKS.md step 6): every default text of the user journey in the canonical UI locale registry, and the global wording an admin can write above the
  * code dictionary. It applies to every partner and event unless a partner or an event wrote its own. Global admins.
  */
 
