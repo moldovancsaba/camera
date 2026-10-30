@@ -23,6 +23,7 @@ interface Slideshow {
   isActive: boolean;
   /** The slideshow the welcome page screen and the giant screen start from (camera#327). */
   isDefault?: boolean;
+  inheritedFromPartnerId?: string;
   createdAt: string;
   bufferSize?: number;
   transitionDurationMs?: number;
@@ -40,11 +41,12 @@ interface Slideshow {
 interface Props {
   eventId: string;
   initialSlideshows: Slideshow[];
+  partnerDefaultAvailable?: boolean;
   /** The picture of the welcome page screen drawn from the default slideshow, when the event has one. */
   welcomeScreen?: { url: string; generatedAt: string } | null;
 }
 
-export default function SlideshowManager({ eventId, initialSlideshows, welcomeScreen = null }: Props) {
+export default function SlideshowManager({ eventId, initialSlideshows, partnerDefaultAvailable = false, welcomeScreen = null }: Props) {
   const [slideshows, setSlideshows] = useState<Slideshow[]>(initialSlideshows);
 
   const handleDeleteSlideshow = async (slideshowId: string) => {
@@ -67,6 +69,7 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
 
   const [busy, setBusy] = useState(false);
   const hasDefault = slideshows.some((slideshow) => slideshow.isDefault);
+  const hasInheritedDefault = slideshows.some((slideshow) => slideshow.isDefault && slideshow.inheritedFromPartnerId);
 
   // One call to the default-slideshow route, then a reload so the list shows what the server holds (a new one has its picture and link).
   const callDefault = async (method: 'POST' | 'PUT', body?: object) => {
@@ -116,6 +119,11 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
               Create the default slideshow
             </SemanticButton>
           )}
+          {partnerDefaultAvailable && !hasInheritedDefault ? (
+            <SemanticButton action="slideshows:inherit-partner-default" variant="secondary" loading={busy} disabled={busy} onClick={() => void callDefault('POST', { inheritPartnerDefault: true })}>
+              Use partner default
+            </SemanticButton>
+          ) : null}
           <Link href={`/admin/events/${eventId}/slideshows/new`} style={{ textDecoration: 'none' }}>
             <SemanticButton action="slideshows:create" leftSection={<IconPlus size={16} />}>
               New Slideshow
@@ -144,6 +152,7 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
                   <div style={{ marginTop: '0.25rem' }}>
                     <VisibilityStatusIcon isVisible={slideshow.isActive} />
                     {slideshow.isDefault ? <LabelTag tone="info" label="Default" /> : null}
+                    {slideshow.isDefault && slideshow.inheritedFromPartnerId ? <LabelTag tone="success" label="Partner default" /> : null}
                   </div>
                 </div>
                 <SemanticButton

@@ -216,6 +216,8 @@ export interface Partner {
   visualAssetPolicy?: VisualAssetLevelPolicy & { inheritanceVersion?: 2 };
   /** Partner-level starter experience; null explicitly disables the inherited global starter. */
   defaultExperienceTemplateId?: string | null;
+  /** Partner-owned landing-page and slideshow defaults. Events inherit each default until they save an event-level override. */
+  contentDefaults?: PartnerContentDefaults;
   defaultFrames?: string[];          // Default frame IDs to assign to new events (always items of the partner's library)
   defaultLogos?: Array<{             // Default logo assignments for new events
     logoId: string;                  // Reference to logo
@@ -234,6 +236,29 @@ export interface Partner {
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
 }
+
+/** Reusable partner content templates. Event-specific IDs, slugs, links and QR attribution are supplied when an event inherits them. */
+export interface PartnerContentDefaults {
+  revision: number;
+  slideshow?: PartnerDefaultSlideshow | null;
+  landingPage?: PartnerDefaultLandingPage | null;
+}
+
+export type PartnerDefaultSlideshow = Pick<Slideshow,
+  | 'name' | 'isActive' | 'transitionDurationMs' | 'fadeDurationMs' | 'bufferSize'
+  | 'refreshStrategy' | 'playMode' | 'orderMode' | 'crossfade'
+  | 'backgroundPrimaryColor' | 'backgroundAccentColor' | 'backgroundImageUrl'
+  | 'viewportScale' | 'stageAspect' | 'screenDesign'
+>;
+
+export type PartnerDefaultLandingPage = Pick<LandingPage,
+  | 'title' | 'description' | 'logoId' | 'logoUrl' | 'qrCodeImageUrl' | 'url' | 'urlButtonText'
+  | 'termsMarkdown' | 'termsFileName' | 'privacyMarkdown' | 'privacyFileName'
+  | 'backgroundColor' | 'titleColor' | 'descriptionColor' | 'qrTitleColor'
+  | 'cookiesTitleColor' | 'cookiesBodyColor' | 'legalTitleColor' | 'legalLinkTextColor'
+  | 'buttonColor' | 'buttonTextColor' | 'customCssPresetId' | 'customCssClassName' | 'customCss'
+  | 'cookieConsentEnabled' | 'cookieConsentRequired' | 'isActive'
+>;
 
 /** Reusable, identity-free experience configuration saved from an event. */
 export interface ExperienceTemplateRecord extends ExperienceTemplate {
@@ -1139,6 +1164,11 @@ export interface Slideshow {
   screenDesign?: import('@/lib/slideshow/screen-design').ScreenDesign | null;
   /** The slideshow the event's welcome page screen and its giant screen start from (camera#326): the generated one, or the one an editor set as default. At most one per event. */
   isDefault?: boolean;
+  /** Set only while this event default is inherited from its partner's content defaults. Editing the event removes this link and creates an override. */
+  inheritedFromPartnerId?: string;
+  inheritedPartnerRevision?: number;
+  /** Original generated/event-local settings retained so clearing a partner field can restore the event's own baseline. */
+  inheritanceBaseline?: Partial<Pick<Slideshow, 'name' | 'isActive' | 'transitionDurationMs' | 'fadeDurationMs' | 'bufferSize' | 'refreshStrategy' | 'playMode' | 'orderMode' | 'crossfade' | 'backgroundPrimaryColor' | 'backgroundAccentColor' | 'backgroundImageUrl' | 'viewportScale' | 'stageAspect' | 'screenDesign'>>;
   
   // Admin tracking
   createdBy: string;                 // Admin user ID from SSO who created this slideshow
@@ -1251,6 +1281,11 @@ export interface LandingPage {
   targetId: string;
   targetName: string;
   isActive: boolean;
+  /** One event-owned landing page selected for /landing/event/<eventMongoId>. */
+  isDefault?: boolean;
+  /** Set only on the event-specific materialized copy of a partner landing-page default. */
+  inheritedFromPartnerId?: string;
+  inheritedPartnerRevision?: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

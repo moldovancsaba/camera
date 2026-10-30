@@ -80,6 +80,8 @@ Frames, logos and images use explicit source ownership and a Global → Partner 
 
 Reusable guest configuration is stored in `experience_templates`, with a unique `templateId` index. The single global selection is in `admin_settings`; a partner can follow it, select a partner template overlay or disable it; an event can inherit, select a local event template or preserve its locally stored legacy configuration. Runtime resolution is global → partner → event overrides and is applied to public event data only after the allow-list and library visibility checks. Admin selection metadata is stripped from guest responses. Template config does not contain identity, consent receipts, submission records, analytics or photo data. See `docs/VISUAL_ASSET_HIERARCHY.md` for contracts, APIs, safe opt-in, rollback and release gates.
 
+Partner landing-page and slideshow defaults are stored in `partners.contentDefaults` with a revision. Events materialize their own slideshow and landing-page records, preserving tracked event QR links, capture URLs, and public-page identity. Inherited records refresh from the partner revision until an event manager edits or selects an event-level override. `/landing/event/<event Mongo id>` is the stable event landing URL and resolves the event default before its partner default. See `docs/PARTNER_CONTENT_DEFAULTS.md` for API contracts, access control, failure behavior, and operations.
+
 ### Picture-backed CTA pages
 
 `components/capture/CTAPage.tsx` composes the screen in an explicit three-row grid: a flexible, aspect-ratio-preserving image area for the artwork, the title and description below it, then a safe-area-padded action row. Both actions have equal width and height; the second button's outline is only a colour treatment. The reserved copy and action rows keep text and controls off the artwork on narrow and wide screens. `FullScreenPage` supplies the fixed, event-coloured viewport for both CTA and Welcome pages.
@@ -100,6 +102,7 @@ When required acceptance is attached to the post-upload Who-are-you page, tickin
 - `/slideshow/[slideshowId]` — public slideshow player
 - `/slideshow-layout/[layoutId]` — public multi-cell slideshow layout
 - `/landing/[slug]` — public landing pages
+- `/landing/event/[eventMongoId]` — stable event URL that resolves the event-owned landing-page default or its inherited partner default
 
 The event capture layout resolves the localized `capture.loading` message for the long full-screen loading state before it renders the client flow, using event → partner → global → dictionary wording. The old `Event.loadingText` migrates to this key. `event.loading` remains a separate message for event-flow loading states; the early App Router boundary displays a spinner without a second sentence.
 

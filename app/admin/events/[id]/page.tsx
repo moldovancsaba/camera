@@ -23,7 +23,7 @@ import EventExportControls from '@/components/admin/EventExportControls';
 import DeleteEventButton from '@/components/admin/DeleteEventButton';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS } from '@/lib/db/schemas';
+import { COLLECTIONS, type PartnerContentDefaults } from '@/lib/db/schemas';
 import { loadGallerySubmissions } from '@/lib/gallery/submissions';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
@@ -81,6 +81,7 @@ interface EventDoc {
 
 interface PartnerDoc {
   _id: ObjectId;
+  contentDefaults?: PartnerContentDefaults;
 }
 
 interface SlideshowDoc {
@@ -103,6 +104,8 @@ interface LandingPageDoc {
   targetType?: 'slideshow' | 'layout';
   targetName?: string;
   isActive?: boolean;
+  isDefault?: boolean;
+  inheritedFromPartnerId?: string;
   createdAt: string;
 }
 
@@ -439,7 +442,7 @@ export default async function EventDetailPage({
         />
       </SimpleGrid>
 
-      <SlideshowManager eventId={id} initialSlideshows={JSON.parse(JSON.stringify(slideshows))} welcomeScreen={event.welcomeScreen ? { url: event.welcomeScreen.url, generatedAt: event.welcomeScreen.generatedAt } : null} />
+      <SlideshowManager eventId={id} initialSlideshows={JSON.parse(JSON.stringify(slideshows))} partnerDefaultAvailable={Boolean(partner?.contentDefaults?.slideshow && partner.contentDefaults.slideshow.isActive !== false)} welcomeScreen={event.welcomeScreen ? { url: event.welcomeScreen.url, generatedAt: event.welcomeScreen.generatedAt } : null} />
 
       <SlideshowLayoutManager
         eventMongoId={id}
@@ -454,6 +457,7 @@ export default async function EventDetailPage({
 
       <LandingPageManager
         eventMongoId={id}
+        partnerDefaultAvailable={Boolean(partner?.contentDefaults?.landingPage && partner.contentDefaults.landingPage.isActive !== false)}
         initialLandingPages={landingPages.map((page) => ({
           _id: page._id!.toString(),
           slug: page.slug,
@@ -461,6 +465,8 @@ export default async function EventDetailPage({
           targetType: page.targetType === 'layout' ? 'layout' : 'slideshow',
           targetName: page.targetName ?? page.slug,
           isActive: page.isActive !== false,
+          isDefault: page.isDefault === true,
+          inheritedFromPartnerId: page.inheritedFromPartnerId,
           createdAt: page.createdAt,
         }))}
       />
