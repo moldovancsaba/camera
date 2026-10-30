@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ownerMediaUseMongoFilter } from '@/lib/events/consent-eligibility';
 import { isHiddenFromAllEvents, isPubliclyVisible, plainPhotoClause, publiclyVisibleClauses, visibilityInputOf } from './visibility';
 
 test('a plain photo is public unless it is pending or rejected; a missing status is public (legacy photos)', () => {
@@ -48,8 +49,19 @@ test('the query clauses express the same rule', () => {
   assert.equal(clauses.length, 7);
   assert.deepEqual(clauses[0], { isArchived: { $ne: true } });
   assert.deepEqual(clauses[1], { 'mediaHealth.broken': { $ne: true } }, 'a picture that is gone is not public');
-  assert.deepEqual(clauses[2], { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } });
-  assert.deepEqual(clauses[3], { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } });
+  const consent = clauses[2] as { $or: object[] };
+  assert.deepEqual(consent.$or[0], { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } });
+  const expiredConsentOwnerGrant = consent.$or[1] as { $and: object[] };
+  assert.deepEqual(expiredConsentOwnerGrant.$and[1], { consentStatus: 'expired' });
+  assert.deepEqual(expiredConsentOwnerGrant.$and[0], {
+    $or: (['public_share', 'public_gallery', 'slideshow'] as const)
+      .map((scope) => ownerMediaUseMongoFilter(scope, ['e1', 'u1'])),
+  });
+  const retention = clauses[3] as { $or: object[] };
+  assert.deepEqual(retention.$or[0], { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } });
+  const erasedRetentionOwnerGrant = retention.$or[1] as { $and: object[] };
+  assert.deepEqual(erasedRetentionOwnerGrant.$and[1], { retentionStatus: 'erased' });
+  assert.deepEqual(erasedRetentionOwnerGrant.$and[0], expiredConsentOwnerGrant.$and[0]);
   assert.deepEqual(clauses[4], { 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } });
   assert.deepEqual(clauses[5], { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: ['e1', 'u1'] } }] });
   const review = clauses[6] as { $and: object[] };
