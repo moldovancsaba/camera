@@ -6,8 +6,9 @@ The all-events analytics report no longer spreads unbounded duration arrays into
 `Math.max`; that could throw at JavaScript's argument-count limit on a large
 history. Locale selectors now show each native name with its English name in
 parentheses. Signed-in admins can choose a persistent interface language from
-Account settings; it is stored by SSO subject only and remains independent from
-guest language. The preference API and language resolver have unit coverage. A
+the admin header or Account settings; header changes save immediately, and the
+preference is stored by SSO subject only and remains independent from guest
+language. The preference API and language resolver have unit coverage. A
 local production-build browser check passed at 1440px and 390px, including the
 save interaction; the Analytics page rendered its database-failure state without
 reaching the global error page when tested without a database. Production

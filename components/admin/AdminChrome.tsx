@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useMediaQuery } from '@mantine/hooks';
 import { AppShell as GdsAppShell } from '@sovereignsquad/gds-admin/client';
 import { IconCamera, IconLogout, IconUsers } from '@tabler/icons-react';
 import { APP_VERSION } from '@/lib/app-version';
 import SemanticNavLink from '@/components/admin/SemanticNavLink';
 import TourOverlay from '@/components/tour/TourOverlay';
 import TourReplayButton from '@/components/tour/TourReplayButton';
+import AdminUiLanguageSelector from '@/components/admin/AdminUiLanguageSelector';
 import { useTourController } from '@/lib/tour/useTourController';
 import { getAdminTourSteps } from '@/lib/tour/config/adminTourSteps';
 import { adminContextMenu, adminContextOf, getVisibleAdminNavSections, type AdminContext, type AdminNavigationAccess } from '@/lib/adminNavigation';
@@ -56,6 +58,7 @@ export function AdminChromeView({
   // Inside one event or partner the sidebar shows that item's own menu (issue 426); the tour then points at that menu, and starts by itself only on the main pages.
   const context = adminContextOf(pathname);
   const language = useUiLanguage();
+  const compactHeader = useMediaQuery('(max-width: 48em)', false, { getInitialValueInEffect: true });
   const ui = (text: string) => adminShellText(text, language);
   const contextInfo = useContextInfo(context);
   const tourController = useTourController('admin:v1', getAdminTourSteps(navigationAccess, { inContext: Boolean(context) }), { autoStart: !context });
@@ -214,17 +217,22 @@ export function AdminChromeView({
         headerContext={<span lang={language} dir={direction}>{ui('Admin Panel')}</span>}
         headerActions={
           <div lang={language} dir={direction} style={{ alignItems: 'center', display: 'flex', flexWrap: 'nowrap', gap: 'var(--mantine-spacing-sm)' }}>
-            <span style={{ alignItems: 'center', background: 'var(--mantine-color-blue-light)', borderRadius: 999, display: 'inline-flex', height: 36, justifyContent: 'center', width: 36 }}>
-              <IconUsers size={18} />
-            </span>
-            <div style={{ display: 'grid', gap: 0 }}>
-              <strong>
-                {session.user.name || session.user.email}
-              </strong>
-              <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', textTransform: 'capitalize' }}>
-                {ui(session.appRole === 'superadmin' ? 'Superadmin' : session.appRole === 'admin' ? 'Admin' : session.appRole === 'none' ? 'No access' : 'User')}
-              </span>
-            </div>
+            {!compactHeader ? (
+              <>
+                <span style={{ alignItems: 'center', background: 'var(--mantine-color-blue-light)', borderRadius: 999, display: 'inline-flex', height: 36, justifyContent: 'center', width: 36 }}>
+                  <IconUsers size={18} />
+                </span>
+                <div style={{ display: 'grid', gap: 0 }}>
+                  <strong>
+                    {session.user.name || session.user.email}
+                  </strong>
+                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', textTransform: 'capitalize' }}>
+                    {ui(session.appRole === 'superadmin' ? 'Superadmin' : session.appRole === 'admin' ? 'Admin' : session.appRole === 'none' ? 'No access' : 'User')}
+                  </span>
+                </div>
+              </>
+            ) : null}
+            {pathname.split(/[?#]/)[0] === '/admin/account' ? null : <AdminUiLanguageSelector compact={compactHeader} />}
           </div>
         }
         primaryNavigation={primaryNavigation}

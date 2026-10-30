@@ -19,6 +19,7 @@
 
 - **Fixed:** all-events Analytics now computes maximum durations with a linear scan rather than expanding an unbounded history into function arguments, avoiding a JavaScript argument-limit crash while retaining uncapped counts.
 - **Added:** signed-in administrators can choose an interface language in Account settings. The preference is stored under the SSO subject only, applies before the admin page renders, and can be reset to browser language.
+- **Changed:** added a directly visible language selector to the admin header on all admin routes (except the account page, which already has the full settings form). Header changes save immediately to the same per-user preference and apply without leaving the current route.
 - **Changed:** locale selectors display native language names followed by their English names in parentheses.
 - **Accessibility and security:** the preference form uses the GDS selector and semantic actions, exposes loading/error/success states, announces success, and limits authenticated APIs to the current admin's own preference.
 - **Documentation:** updated analytics capacity notes, language resolution and account-settings operations.
