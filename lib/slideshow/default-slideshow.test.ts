@@ -55,7 +55,7 @@ test('removing the partner slideshow default restores the generated event baseli
   const source = {
     _id: 'slideshow-1', slideshowId: 's1', eventId: EVENT.eventId, isDefault: true, createdBy: 'system',
     inheritedFromPartnerId: EVENT.partnerId, inheritedPartnerRevision: 3, inheritanceBaseline: baseline,
-    ...baseline, name: 'Inherited partner screen', backgroundPrimaryColor: '#112233',
+    ...baseline, name: 'Inherited partner screen', backgroundPrimaryColor: SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
   };
   const { db, data } = fakeDb({
     [COLLECTIONS.PARTNERS]: [{ partnerId: EVENT.partnerId, contentDefaults: { revision: 4, slideshow: null } }],
