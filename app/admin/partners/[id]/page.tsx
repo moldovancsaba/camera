@@ -19,6 +19,8 @@ import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManage
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import DeletePartnerButton from '@/components/admin/DeletePartnerButton';
 import ExperienceTemplateDefaultSettings from '@/components/admin/ExperienceTemplateDefaultSettings';
+import { fetchPartnerStyleContext } from '@/lib/messmassClient';
+import { parseMessmassStylePalette, type MessmassStylePalette } from '@/lib/theme/messmass-style-palette';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
@@ -62,6 +64,7 @@ interface PartnerDoc {
   isActive?: boolean;
   contactName?: string;
   contactEmail?: string;
+  messmassPartnerId?: string;
   createdAt: string;
   updatedAt: string;
   defaultBrandColors?: { primary?: string; secondary?: string };
@@ -142,6 +145,7 @@ export default async function PartnerDetailPage({
   let partnerAccessAssignments: PartnerAccessAssignmentDoc[] = [];
   let participantCount = 0;
   let partnerEventCount = 0;
+  let messmassStyle: MessmassStylePalette | null = null;
   let dbError: string | null = null;
   const session = await getSession();
   const canManagePartner = isGlobalAdminSession(session);
@@ -160,6 +164,10 @@ export default async function PartnerDetailPage({
     if (!workspaceAccess.allowed) {
       redirect('/admin/partners');
     }
+
+    const messmassStyleRequest = partner.messmassPartnerId
+      ? fetchPartnerStyleContext(partner.messmassPartnerId)
+      : Promise.resolve(null);
 
     const assignments = await listSessionPartnerAssignments(db, session!);
     if (!isGlobalAdminSession(session)) {
@@ -280,6 +288,12 @@ export default async function PartnerDetailPage({
         };
       });
     }
+
+    const styleResponse = await messmassStyleRequest;
+    const styleContext = styleResponse && typeof styleResponse === 'object' && !Array.isArray(styleResponse)
+      ? (styleResponse as { style?: unknown }).style
+      : null;
+    messmassStyle = parseMessmassStylePalette(styleContext);
   } catch (error) {
     console.error('Error fetching partner details:', error);
     dbError = error instanceof Error ? error.message : 'Unknown error';
@@ -472,6 +486,8 @@ export default async function PartnerDetailPage({
             id={id}
             brandColor={partner.defaultBrandColors?.primary}
             brandBorderColor={partner.defaultBrandColors?.secondary}
+            messmassStyle={messmassStyle}
+            messmassLinked={Boolean(partner.messmassPartnerId)}
             frames={partner.defaultFramesWithDetails || []}
             logos={partner.defaultLogosWithDetails || []}
           />
