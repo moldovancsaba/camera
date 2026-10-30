@@ -26,6 +26,16 @@ its own. A partner can only take items that are global. The pictures are always 
   `framesOverridden` / `logosOverridden` say that the event has its own list; the partner's defaults then no longer replace it. Uploading, removing or switching off
   a frame on an event sets `framesOverridden`.
 
+### Frame ownership cleanup (2026-10-29)
+
+Six legacy frame records that had no owner fields were normalized to the partner or event that already used them: four partner-owned records and two event-owned records. One record used by both MotoGP and the Brain Bar/AUDI F1 event remains at MotoGP partner scope and has a separate event-owned catalog record for Brain Bar. All 21 event assignments and existing partner defaults/library references were preserved; no frame media was deleted. The Global Frames inventory is now empty. New frames created through the global upload route continue to be global.
+
+Four legacy global logos that had no owner fields were normalized to the partner or event that already used them: one AS Roma partner logo, one Swiss Ice Hockey partner logo, one Swiss Ice Hockey event logo, and one MotoGP partner logo. The MotoGP asset was also used by an event under a different partner, so that partner received its own catalog record and the event's four logo placements now use that copy. Existing Roma and Swiss default/event placements remain in place; all 72 event placement rows and partner defaults remain accounted for. No logo media was deleted. The Global Logos inventory is now empty.
+
+### Share across both parent boundaries (2026-10-29)
+
+The source owner controls `shareToChildren` at each step: global admins decide whether a global asset is available to partners, and partner managers decide whether their partner-owned asset is available to events. These controls work on legacy catalogs too; the partner-to-event switch is not gated behind catalog inheritance mode. A partner may also hide a global asset locally or stop forwarding it to events. An event may hide an inherited frame or image locally. The first local policy action on a legacy partner safely records local hides for global assets outside its current library before enabling the inherited policy, preserving the existing catalog. Logo and tagged-picture slots provide the event-level equivalents through their own/add/replace/none choices.
+
 ## What the partner had before the libraries (nothing is lost)
 
 A partner that has not saved a library yet has **what it already had**: its default frames and logos and the frames and logos its events already use (only global

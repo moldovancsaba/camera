@@ -182,6 +182,7 @@ export const cameraAdminVocabularyPacks = [
   }),
   createGdsVocabularyPack('logos', {
     'back-to-list': { defaultMessage: 'Back to logos', icon: GdsIcons.Back, feedback: openedFeedback },
+    'retry-load': { defaultMessage: 'Retry loading logo', icon: GdsIcons.Refresh, feedback: openedFeedback },
     save: { defaultMessage: 'Save logo', icon: GdsIcons.Save, feedback: savedFeedback },
     'cancel-edit': { defaultMessage: 'Cancel edit', icon: GdsIcons.Cancel, feedback: openedFeedback },
     delete: { defaultMessage: 'Delete logo', icon: GdsIcons.Delete, feedback: deletedFeedback },
@@ -277,6 +278,7 @@ export const cameraAdminVocabularyPacks = [
   }),
   createGdsVocabularyPack('frames', {
     'remove-upload': { defaultMessage: 'Remove upload', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    'retry-load': { defaultMessage: 'Retry loading frame', icon: GdsIcons.Refresh, feedback: openedFeedback },
     create: { defaultMessage: 'Create frame', icon: GdsIcons.Add, feedback: savedFeedback },
     'cancel-create': { defaultMessage: 'Cancel create', icon: GdsIcons.Cancel, feedback: openedFeedback },
     'back-to-list': { defaultMessage: 'Back to frames', icon: GdsIcons.Back, feedback: openedFeedback },

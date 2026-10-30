@@ -13,6 +13,7 @@ const EN = {
   'Could not update asset sharing.': 'Could not update asset sharing.',
   'Share with partners': 'Share with partners',
   'Stop sharing with partners': 'Stop sharing with partners',
+  'Toggle sharing with partners': 'Toggle sharing with partners',
 } as const;
 type Source = keyof typeof EN;
 
@@ -43,28 +44,28 @@ const VALUES: Record<UiLanguage, Partial<Record<Source, string>>> = {
 };
 
 const SHARING_LABELS: Partial<Record<UiLanguage, Partial<Record<Source, string>>>> = {
-  hu: { 'Share with partners': 'Megosztás a partnerekkel', 'Stop sharing with partners': 'Megosztás leállítása a partnerekkel' },
-  de: { 'Share with partners': 'Mit Partnern teilen', 'Stop sharing with partners': 'Nicht mehr mit Partnern teilen' },
-  it: { 'Share with partners': 'Condividi con i partner', 'Stop sharing with partners': 'Interrompi la condivisione con i partner' },
-  'pt-BR': { 'Share with partners': 'Compartilhar com parceiros', 'Stop sharing with partners': 'Parar de compartilhar com parceiros' },
-  'pt-PT': { 'Share with partners': 'Partilhar com parceiros', 'Stop sharing with partners': 'Deixar de partilhar com parceiros' },
-  es: { 'Share with partners': 'Compartir con socios', 'Stop sharing with partners': 'Dejar de compartir con socios' },
-  fr: { 'Share with partners': 'Partager avec les partenaires', 'Stop sharing with partners': 'Arrêter le partage avec les partenaires' },
-  ru: { 'Share with partners': 'Поделиться с партнёрами', 'Stop sharing with partners': 'Прекратить делиться с партнёрами' },
-  'zh-Hans': { 'Share with partners': '与合作伙伴共享', 'Stop sharing with partners': '停止与合作伙伴共享' },
-  'zh-Hant': { 'Share with partners': '與合作夥伴分享', 'Stop sharing with partners': '停止與合作夥伴分享' },
-  ro: { 'Share with partners': 'Partajează cu partenerii', 'Stop sharing with partners': 'Oprește partajarea cu partenerii' },
-  pl: { 'Share with partners': 'Udostępnij partnerom', 'Stop sharing with partners': 'Przestań udostępniać partnerom' },
-  sk: { 'Share with partners': 'Zdieľať s partnermi', 'Stop sharing with partners': 'Prestať zdieľať s partnermi' },
-  hr: { 'Share with partners': 'Dijeli s partnerima', 'Stop sharing with partners': 'Prestani dijeliti s partnerima' },
-  sl: { 'Share with partners': 'Deli s partnerji', 'Stop sharing with partners': 'Prenehaj deliti s partnerji' },
-  bg: { 'Share with partners': 'Сподели с партньорите', 'Stop sharing with partners': 'Спри споделянето с партньорите' },
-  tr: { 'Share with partners': 'İş ortaklarıyla paylaş', 'Stop sharing with partners': 'İş ortaklarıyla paylaşmayı durdur' },
-  ar: { 'Share with partners': 'مشاركة مع الشركاء', 'Stop sharing with partners': 'إيقاف المشاركة مع الشركاء' },
-  hi: { 'Share with partners': 'भागीदारों के साथ साझा करें', 'Stop sharing with partners': 'भागीदारों के साथ साझा करना रोकें' },
-  ka: { 'Share with partners': 'პარტნიორებთან გაზიარება', 'Stop sharing with partners': 'პარტნიორებთან გაზიარების შეწყვეტა' },
-  'sr-Cyrl': { 'Share with partners': 'Дели са партнерима', 'Stop sharing with partners': 'Прекини дељење са партнерима' },
-  'sr-Latn': { 'Share with partners': 'Deli sa partnerima', 'Stop sharing with partners': 'Prekini deljenje sa partnerima' },
+  hu: { 'Share with partners': 'Megosztás a partnerekkel', 'Stop sharing with partners': 'Megosztás leállítása a partnerekkel', 'Toggle sharing with partners': 'Partneri megosztás váltása' },
+  de: { 'Share with partners': 'Mit Partnern teilen', 'Stop sharing with partners': 'Nicht mehr mit Partnern teilen', 'Toggle sharing with partners': 'Partnerfreigabe umschalten' },
+  it: { 'Share with partners': 'Condividi con i partner', 'Stop sharing with partners': 'Interrompi la condivisione con i partner', 'Toggle sharing with partners': 'Attiva o disattiva la condivisione con i partner' },
+  'pt-BR': { 'Share with partners': 'Compartilhar com parceiros', 'Stop sharing with partners': 'Parar de compartilhar com parceiros', 'Toggle sharing with partners': 'Alternar compartilhamento com parceiros' },
+  'pt-PT': { 'Share with partners': 'Partilhar com parceiros', 'Stop sharing with partners': 'Deixar de partilhar com parceiros', 'Toggle sharing with partners': 'Alternar a partilha com parceiros' },
+  es: { 'Share with partners': 'Compartir con socios', 'Stop sharing with partners': 'Dejar de compartir con socios', 'Toggle sharing with partners': 'Alternar el uso compartido con socios' },
+  fr: { 'Share with partners': 'Partager avec les partenaires', 'Stop sharing with partners': 'Arrêter le partage avec les partenaires', 'Toggle sharing with partners': 'Activer ou désactiver le partage avec les partenaires' },
+  ru: { 'Share with partners': 'Поделиться с партнёрами', 'Stop sharing with partners': 'Прекратить делиться с партнёрами', 'Toggle sharing with partners': 'Переключить доступ для партнёров' },
+  'zh-Hans': { 'Share with partners': '与合作伙伴共享', 'Stop sharing with partners': '停止与合作伙伴共享', 'Toggle sharing with partners': '切换与合作伙伴共享' },
+  'zh-Hant': { 'Share with partners': '與合作夥伴分享', 'Stop sharing with partners': '停止與合作夥伴分享', 'Toggle sharing with partners': '切換與合作夥伴分享' },
+  ro: { 'Share with partners': 'Partajează cu partenerii', 'Stop sharing with partners': 'Oprește partajarea cu partenerii', 'Toggle sharing with partners': 'Comută partajarea cu partenerii' },
+  pl: { 'Share with partners': 'Udostępnij partnerom', 'Stop sharing with partners': 'Przestań udostępniać partnerom', 'Toggle sharing with partners': 'Przełącz udostępnianie partnerom' },
+  sk: { 'Share with partners': 'Zdieľať s partnermi', 'Stop sharing with partners': 'Prestať zdieľať s partnermi', 'Toggle sharing with partners': 'Prepnúť zdieľanie s partnermi' },
+  hr: { 'Share with partners': 'Dijeli s partnerima', 'Stop sharing with partners': 'Prestani dijeliti s partnerima', 'Toggle sharing with partners': 'Promijeni dijeljenje s partnerima' },
+  sl: { 'Share with partners': 'Deli s partnerji', 'Stop sharing with partners': 'Prenehaj deliti s partnerji', 'Toggle sharing with partners': 'Preklopi deljenje s partnerji' },
+  bg: { 'Share with partners': 'Сподели с партньорите', 'Stop sharing with partners': 'Спри споделянето с партньорите', 'Toggle sharing with partners': 'Превключи споделянето с партньори' },
+  tr: { 'Share with partners': 'İş ortaklarıyla paylaş', 'Stop sharing with partners': 'İş ortaklarıyla paylaşmayı durdur', 'Toggle sharing with partners': 'İş ortaklarıyla paylaşımı aç veya kapat' },
+  ar: { 'Share with partners': 'مشاركة مع الشركاء', 'Stop sharing with partners': 'إيقاف المشاركة مع الشركاء', 'Toggle sharing with partners': 'تبديل المشاركة مع الشركاء' },
+  hi: { 'Share with partners': 'भागीदारों के साथ साझा करें', 'Stop sharing with partners': 'भागीदारों के साथ साझा करना रोकें', 'Toggle sharing with partners': 'भागीदारों के साथ साझा करना बदलें' },
+  ka: { 'Share with partners': 'პარტნიორებთან გაზიარება', 'Stop sharing with partners': 'პარტნიორებთან გაზიარების შეწყვეტა', 'Toggle sharing with partners': 'პარტნიორებთან გაზიარების გადართვა' },
+  'sr-Cyrl': { 'Share with partners': 'Дели са партнерима', 'Stop sharing with partners': 'Прекини дељење са партнерима', 'Toggle sharing with partners': 'Промени дељење са партнерима' },
+  'sr-Latn': { 'Share with partners': 'Deli sa partnerima', 'Stop sharing with partners': 'Prekini deljenje sa partnerima', 'Toggle sharing with partners': 'Promeni deljenje sa partnerima' },
 };
 
 export function adminVisualAssetText(source: string, language: UiLanguage): string | null {

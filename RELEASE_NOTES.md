@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — global frame ownership and editor loading
+
+- **Fixed:** the frame editor reads the standard API response envelope (`data.frame`) and validates the record before rendering, preventing a valid frame from crashing as “Frame not found”. Non-404 and malformed responses now show a retryable load error.
+- **Fixed:** the frame inventory no longer renders sharing actions as duplicate generic “Edit” buttons; the sharing control is an accessible GDS icon action.
+- **Changed (data):** scoped six legacy unowned frames to their verified partner/event owners, created an event-owned copy for the existing cross-partner assignment, and preserved all 21 event assignments and partner references. No media files were deleted. The Global Frames inventory is empty.
+- **Verification:** type-check, focused ESLint, GDS checks, inventory checks, production guards, production build, and `git diff --check` passed. Unit and browser tests were not run.
 ## Unreleased — partner landing-page and slideshow defaults
 
 - **Added:** partner-scoped editors and authenticated APIs for saving/removing a default landing-page template and slideshow configuration.
@@ -78,6 +84,8 @@
 ## Unreleased — Global → Partner → Event visual defaults
 
 - **Added:** a versioned visibility policy for logos, frames and images. A source owner can share an asset down one level; partners and events can hide inherited assets locally, and partners can stop forwarding global assets to events. Inactive or unshared assets cannot be newly selected or returned to guests.
+- **Fixed:** source sharing is now usable across both Global → Partner and Partner → Event for legacy as well as inherited catalogs. Partner-owned frames, logos, images and tagged pictures expose event sharing; inherited global assets expose partner visibility and event-forwarding controls. Event hide actions on legacy catalogs preserve their current catalog during the compatibility transition.
+- **Fixed:** logo edit failures now validate the `data.logo` response and show a retryable load error separately from a true missing logo. The Global Logos inventory uses one accessible sharing action instead of duplicate generic Edit actions.
 - **Added:** reusable guest-experience templates with a global default, optional partner overlay/opt-out and event-level inheritance, independent template or local opt-out. Resolution happens at read time; new partners/events begin on the new default path while existing partner/event data keeps its prior behavior until an explicit opt-in.
 - **Safety:** enabling an existing partner computes local hides from its prior library before turning on inheritance. Template config is allow-listed and excludes identity, consent, submissions, analytics and photo data. Known library assets are checked for ownership, sharing and active state before a reusable preset can be saved. Admin template metadata is removed from the public event response.
 - **UX:** global, partner and event selectors use Camera GDS controls and semantic button actions, with localized labels, save/error states and confirmation for changes that stop child sharing.

@@ -187,9 +187,9 @@ export default function PartnerImagesPage({ params }: { params: Promise<{ id: st
                   badges={!item.itemActive ? <VisibilityStatusIcon isVisible={false} /> : null}
                   actions={
                     <>
-                      {library.inheritanceEnabled && item.via === 'assigned' ? <VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="images" id={item.id} scope="global" shareToChildren={item.shareToChildren} hidden={false} blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'images' && ref.id === item.id)} onSaved={reload} /> : null}
+                      {item.via === 'assigned' ? <VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="images" id={item.id} scope="global" shareToChildren={item.shareToChildren} hidden={false} blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'images' && ref.id === item.id)} onSaved={reload} /> : null}
                       {item.via === 'own' ? <LibraryUploadActiveToggle level="partner" ownerId={partnerId} kind="images" id={item.id} itemActive={item.itemActive} shareToChildren={item.shareToChildren} onSaved={reload} /> : null}
-                      {library.inheritanceEnabled && item.via === 'own' ? <ShareToChildrenToggle kind="images" id={item.id} shareToChildren={item.shareToChildren} disabled={!item.itemActive} onSaved={reload} /> : null}
+                      {item.via === 'own' ? <ShareToChildrenToggle kind="images" id={item.id} shareToChildren={item.shareToChildren} childAudience="events" disabled={!item.itemActive} onSaved={reload} /> : null}
                       {item.via === 'own' ? (
                         <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(item.id, item.name)}>Delete upload</SemanticButton>
                       ) : (

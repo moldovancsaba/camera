@@ -99,7 +99,7 @@ export default function TaggedSlotPanel({ kind, level, id, onChanged }: { kind: 
             <GdsStack key={item.id} gap="sm">
               <MediaPreviewCard title={item.name} src={item.imageUrl ?? undefined} thumbnailSrc={item.thumbnailUrl ?? undefined} alt={item.name} status={<LabelTag tone={item.shareToChildren === false ? 'neutral' : 'success'} label={item.shareToChildren === false ? 'Not shared' : 'Shared with events'} />} hideWhenNoMedia={false} />
               <LibraryUploadActiveToggle level="partner" ownerId={id} kind="images" id={item.id} itemActive={item.itemActive} shareToChildren={item.shareToChildren} disabled={busy} onSaved={reload} />
-              <ShareToChildrenToggle kind="images" id={item.id} shareToChildren={item.shareToChildren} disabled={busy || !item.itemActive} onSaved={reload} />
+              <ShareToChildrenToggle kind="images" id={item.id} shareToChildren={item.shareToChildren} childAudience="events" disabled={busy || !item.itemActive} onSaved={reload} />
             </GdsStack>
           ))}
         </GdsGrid>
