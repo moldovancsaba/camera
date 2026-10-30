@@ -1,7 +1,7 @@
 # Architecture
 
 **Version**: 12.3.42  
-**Last Updated**: 2026-10-29
+**Last Updated**: 2026-10-30
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -274,7 +274,7 @@ Event Analytics reads submission, review, consent, registration, screen and trac
 
 Analytics duration maxima use a bounded-memory scan instead of a variadic argument spread, so large histories do not fail at the JavaScript argument-count limit. The page still reads narrow projected photo facts without a row cap and retains them in memory for exact cross-photo aggregation.
 
-Admin interface language preferences are stored in `admin_user_preferences`, keyed by the SSO subject and containing only `uiLanguage` plus timestamps. `lib/i18n/server-language.ts` loads the preference only for a signed-in, authorized admin and resolves the locale before the root document renders. The authenticated `/api/account/preferences` endpoint can read or update only the current user's locale. This preference does not alter partner/event guest language configuration. See `docs/ADMIN_ACCOUNT_SETTINGS.md` and `docs/UI_LANGUAGE.md`.
+Admin interface language preferences are stored in `admin_user_preferences`, keyed by the SSO subject and containing only `uiLanguage` plus timestamps. `lib/i18n/server-language.ts` loads the preference only for a signed-in, authorized admin and resolves the locale before the root document renders. The authenticated `/api/account/preferences` endpoint can read or update only the current user's locale. The admin header provides immediate-save access to this preference across admin routes; Account settings also provides the full form. This preference does not alter partner/event guest language configuration. See `docs/ADMIN_ACCOUNT_SETTINGS.md` and `docs/UI_LANGUAGE.md`.
 
 The system uses mixed identifier semantics by design.
 
