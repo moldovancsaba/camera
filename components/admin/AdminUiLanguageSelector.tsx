@@ -102,10 +102,10 @@ export default function AdminUiLanguageSelector({ compact = false }: { compact?:
   }
 
   return (
-    <div style={{ flex: compact ? '0 1 160px' : '0 1 220px', minWidth: compact ? 140 : 150 }}>
+    <div style={{ flex: compact ? '0 1 132px' : '0 1 184px', minWidth: compact ? 120 : 150 }}>
       <AdminSelect
         name="adminUiLanguageQuickSetting"
-        label={t('Interface language')}
+        label={<VisuallyHidden>{t('Interface language')}</VisuallyHidden>}
         data={options}
         value={selection}
         onChange={(value) => void changeLanguage(value)}
