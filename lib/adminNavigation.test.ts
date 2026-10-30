@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
-import { adminContextMenu, adminContextOf, type AdminNavigationAccess } from './adminNavigation';
+import { adminContextMenu, adminContextOf, getVisibleAdminNavSections, type AdminNavigationAccess } from './adminNavigation';
 
 const GLOBAL_ADMIN: AdminNavigationAccess = { isGlobalAdmin: true, hasAnyPartnerAccess: true, hasEventsAccess: true };
 const PARTNER_USER: AdminNavigationAccess = { isGlobalAdmin: false, hasAnyPartnerAccess: true, hasEventsAccess: true };
@@ -21,15 +21,28 @@ test('the context comes from the path: an event, a partner, or the main menu', (
 
 test('a global admin and a partner user see the same items of the event menu, Analytics included (issue 521: the numbers of the event are for its managers)', () => {
   const labels = (access: AdminNavigationAccess) => adminContextMenu({ kind: 'event', id: ID }, `/admin/events/${ID}`, access).items.map((item) => item.label);
-  const expected = ['Overview', 'Edit', 'Vetting', 'Photo analysis', 'Analytics', 'Event User Journey', 'Event Images', 'Event Frames', 'Event Frame Slots', 'Event Logos', 'Event Selfies', 'Event Stadiums', 'Event Dictionary', 'Event Vetting words', 'Event Email', 'Event Landing Pages', 'Event Slideshows', 'Event Gallery'];
+  const expected = ['Overview', 'Edit', 'Vetting', 'Photo analysis', 'Analytics', 'Event Images', 'Event Frames', 'Event Frame Slots', 'Event Logos', 'Event Selfies', 'Event Stadiums', 'Event Dictionary', 'Event Vetting words', 'Event Email', 'Event User Journey', 'Event Landing Pages', 'Event Slideshows', 'Event Gallery'];
   assert.deepEqual(labels(GLOBAL_ADMIN), expected);
   assert.deepEqual(labels(PARTNER_USER), expected);
+  const sections = adminContextMenu({ kind: 'event', id: ID }, `/admin/events/${ID}`, GLOBAL_ADMIN).sections;
+  assert.equal(sections.find((section) => section.title === 'Blocks')?.items.some((item) => item.label === 'Event User Journey'), false);
+  assert.equal(sections.find((section) => section.title === 'Content')?.items[0]?.label, 'Event User Journey');
 });
 
 test('the partner menu has its own pages', () => {
   const menu = adminContextMenu({ kind: 'partner', id: ID }, `/admin/partners/${ID}`, GLOBAL_ADMIN);
-  assert.deepEqual(menu.items.map((item) => item.label), ['Overview', 'Edit', 'Partner User Journey', 'Partner Images', 'Partner Frames', 'Partner Frame Slots', 'Partner Logos', 'Partner Selfies', 'Partner Stadiums', 'Partner Dictionary', 'Partner Vetting words', 'Partner Email', 'Partner Gallery']);
-  assert.deepEqual(menu.items.map((item) => item.href), [`/admin/partners/${ID}`, `/admin/partners/${ID}/edit`, `/admin/partners/${ID}#partner-user-journey`, `/admin/partners/${ID}/images`, `/admin/partners/${ID}/frames`, `/admin/partners/${ID}/frame-slots`, `/admin/partners/${ID}/logos`, `/admin/partners/${ID}/selfies`, `/admin/partners/${ID}/stadiums`, `/admin/partners/${ID}/texts`, `/admin/partners/${ID}/annotation-words`, `/admin/partners/${ID}/emails`, `/admin/partners/${ID}#partner-gallery`]);
+  assert.deepEqual(menu.items.map((item) => item.label), ['Overview', 'Edit', 'Partner Images', 'Partner Frames', 'Partner Frame Slots', 'Partner Logos', 'Partner Selfies', 'Partner Stadiums', 'Partner Dictionary', 'Partner Vetting words', 'Partner Email', 'Partner User Journey', 'Partner Gallery']);
+  assert.deepEqual(menu.items.map((item) => item.href), [`/admin/partners/${ID}`, `/admin/partners/${ID}/edit`, `/admin/partners/${ID}/images`, `/admin/partners/${ID}/frames`, `/admin/partners/${ID}/frame-slots`, `/admin/partners/${ID}/logos`, `/admin/partners/${ID}/selfies`, `/admin/partners/${ID}/stadiums`, `/admin/partners/${ID}/texts`, `/admin/partners/${ID}/annotation-words`, `/admin/partners/${ID}/emails`, `/admin/partners/${ID}#partner-user-journey`, `/admin/partners/${ID}#partner-gallery`]);
+  assert.equal(menu.sections.find((section) => section.title === 'Blocks')?.items.some((item) => item.label === 'Partner User Journey'), false);
+  assert.equal(menu.sections.find((section) => section.title === 'Content')?.items[0]?.label, 'Partner User Journey');
+});
+
+test('the global journey sits in Content alongside the global landing pages', () => {
+  const sections = getVisibleAdminNavSections(GLOBAL_ADMIN);
+  const blocks = sections.find((section) => section.title === 'Blocks');
+  const content = sections.find((section) => section.title === 'Content');
+  assert.equal(blocks?.items.some((item) => item.label === 'Global User Journey'), false);
+  assert.deepEqual(content?.items.slice(0, 4).map((item) => item.label), ['Global User Journey', 'Global Landing Pages', 'Global Slideshows', 'Global Galleries']);
 });
 
 const activeLabels = (pathname: string, kind: 'event' | 'partner' = 'event') =>

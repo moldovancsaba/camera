@@ -21,7 +21,6 @@ export type AdminNavGroup = (typeof ADMIN_NAV_GROUP_ORDER)[number];
 
 /** Shared ordering for the reusable blocks exposed at global, partner, and event scope. */
 export const ADMIN_BLOCK_ITEM_ORDER = [
-  'user-journey',
   'images',
   'frames',
   'frame-slots',
@@ -36,7 +35,7 @@ export type AdminBlockItemKey = (typeof ADMIN_BLOCK_ITEM_ORDER)[number];
 
 function orderBlockItems<T extends { blockKey?: AdminBlockItemKey }>(items: T[]): T[] {
   const rank = new Map(ADMIN_BLOCK_ITEM_ORDER.map((key, index) => [key, index]));
-  return [...items].sort((a, b) => (rank.get(a.blockKey ?? 'user-journey') ?? 0) - (rank.get(b.blockKey ?? 'user-journey') ?? 0));
+  return [...items].sort((a, b) => (rank.get(a.blockKey ?? 'images') ?? 0) - (rank.get(b.blockKey ?? 'images') ?? 0));
 }
 
 export interface AdminNavItem {
@@ -181,14 +180,6 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
-        href: '/admin/settings/experience',
-        label: 'Global User Journey',
-        description: 'Choose the reusable guest journey inherited by partners and events.',
-        iconKey: 'layoutDashboard',
-        blockKey: 'user-journey',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
         href: '/admin/settings/annotation-words',
         label: 'Global Vetting words',
         description: 'The vocabulary reviewers use across partners and events.',
@@ -208,8 +199,15 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
   },
   {
     title: 'Content',
-    description: 'Global content that can be reused across events.',
+    description: 'Journey composition and reusable content that can be shared with partners and events.',
     items: [
+      {
+        href: '/admin/settings/experience',
+        label: 'Global User Journey',
+        description: 'Choose the reusable guest journey inherited by partners and events.',
+        iconKey: 'layoutDashboard',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
       {
         href: '/admin/landing-pages',
         label: 'Global Landing Pages',
@@ -317,10 +315,9 @@ const everyone = () => true;
 const scopedItems = (kind: AdminContextKind): AdminContextItem[] => {
   const scope = kind === 'event' ? 'Event' : 'Partner';
   const userJourney: AdminContextItem = kind === 'event'
-    ? { section: 'Blocks', label: 'Event User Journey', description: 'Choose, edit and order the pages guests see for this event.', iconKey: 'layoutDashboard', blockKey: 'user-journey', path: '/pages', isVisible: everyone }
-    : { section: 'Blocks', label: 'Partner User Journey', description: 'Choose the reusable guest journey inherited by this partner’s events.', iconKey: 'layoutDashboard', blockKey: 'user-journey', path: '#partner-user-journey', isVisible: everyone };
+    ? { section: 'Content', label: 'Event User Journey', description: 'Choose, edit and order the pages guests see for this event.', iconKey: 'layoutDashboard', path: '/pages', isVisible: everyone }
+    : { section: 'Content', label: 'Partner User Journey', description: 'Choose the reusable guest journey inherited by this partner’s events.', iconKey: 'layoutDashboard', path: '#partner-user-journey', isVisible: everyone };
   const sharedBlocks: AdminContextItem[] = orderBlockItems([
-    userJourney,
     { section: 'Blocks', label: `${scope} Images`, description: `The pictures available to ${scope.toLowerCase()} content.`, iconKey: 'photo', blockKey: 'images', path: '/images', ...(kind === 'partner' ? { also: ['/pictures'] } : {}), isVisible: everyone },
     { section: 'Blocks', label: `${scope} Frames`, description: `The frames available to ${scope.toLowerCase()} content.`, iconKey: 'frame', blockKey: 'frames', path: '/frames', isVisible: everyone },
     { section: 'Blocks', label: `${scope} Frame Slots`, description: `The default slots used to compose generated frames for ${scope.toLowerCase()} events.`, iconKey: 'frame', blockKey: 'frame-slots', path: '/frame-slots', isVisible: everyone },
@@ -333,11 +330,13 @@ const scopedItems = (kind: AdminContextKind): AdminContextItem[] => {
   ]);
   const contentItems: AdminContextItem[] = kind === 'event'
     ? [
+        userJourney,
         { section: 'Content', label: 'Event Landing Pages', description: 'The landing pages of the event.', iconKey: 'world', path: '#landing-pages', also: ['/landing-pages'], isVisible: everyone },
         { section: 'Content', label: 'Event Slideshows', description: 'The slideshows and the welcome page screen.', iconKey: 'photoScan', path: '#slideshows', also: ['/slideshows', '/layouts'], isVisible: everyone },
         { section: 'Content', label: 'Event Gallery', description: 'The event photos: upload, select, and manage visibility.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
       ]
     : [
+        userJourney,
         { section: 'Content', label: 'Partner Gallery', description: 'Photos captured across this partner’s events.', iconKey: 'photoScan', path: '#partner-gallery', isVisible: everyone },
       ];
   const operations: AdminContextItem[] = kind === 'event'
