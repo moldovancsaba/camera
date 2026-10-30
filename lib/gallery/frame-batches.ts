@@ -6,7 +6,13 @@
 
 export const FRAME_CHUNK = 5;
 
-export interface FramedPhoto { id: string; imageUrl: string }
+export interface FramedPhoto {
+  id: string;
+  imageUrl: string;
+  frameId?: string | null;
+  frameName?: string | null;
+  frameVariant?: { index: number | null; message: string | null; imageUrl: string } | null;
+}
 export interface SkippedPhoto { id: string; reason: string }
 
 export interface BatchAnswer { framed: FramedPhoto[]; skipped: SkippedPhoto[] }

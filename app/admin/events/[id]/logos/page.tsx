@@ -9,10 +9,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GdsStack, InlineAlert, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
+import { GdsGrid, GdsStack, InlineAlert, SectionPanel, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import SlotPanel, { type SlotItem } from '@/components/admin/kit/SlotPanel';
+import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import type { SlotMode, SlotValue } from '@/lib/slots/resolve';
 
 interface Payload<T> {
@@ -34,9 +37,13 @@ interface Panels {
   partner: { partnerId: string; adminId: string; name: string } | null;
   slots: PanelData[];
   candidates: Array<SlotItem & { scope: string }>;
+  inactiveUploads: Array<SlotItem & { scope: string }>;
 }
 
 const ACCEPT = 'image/png,image/jpeg,image/svg+xml,image/webp';
+class AdminRequestFailure extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
 /** The places of use that have a screen, with the words the editor sees (the slideshow transition has no screen yet). */
 const PLACES = [
   { slotId: 'logo-pages', title: 'On the pages of the user journey', description: 'At the top of the welcome, consent, login and other pages.' },
@@ -49,7 +56,7 @@ const errorText = (error: unknown): string => (error instanceof Error ? error.me
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload?.data) throw new Error(payload?.error || `Request failed (${response.status})`);
+  if (!response.ok || !payload?.data) throw new AdminRequestFailure(payload?.error || `Request failed (${response.status})`, response.status);
   return payload.data;
 }
 
@@ -61,6 +68,8 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [usageConflict, setUsageConflict] = useState<string | null>(null);
+  const { confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
     params.then((resolved) => setEventId(resolved.id));
@@ -118,14 +127,17 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
   };
 
   const deleteUpload = async (logoId: string, name: string) => {
-    if (!confirm(`Delete "${name}"? It was uploaded for this event and is removed for good, from every place that uses it.`)) return;
+    const confirmed = await confirmDestructive({ title: 'Delete logo upload', message: 'This removes the logo from this event library. Resolve its event assignments, or upload a copy, before deleting.', targetName: name });
+    if (!confirmed) return;
     setBusy(true);
     setActionError(null);
     try {
       await call(`/api/events/${eventId}/library/items/${logoId}?kind=logos`, { method: 'DELETE' });
+      setUsageConflict(null);
       await reload();
     } catch (failure) {
-      setActionError(errorText(failure));
+      if (failure instanceof AdminRequestFailure && failure.status === 409) setUsageConflict(logoId);
+      else setActionError(errorText(failure));
     } finally {
       setBusy(false);
     }
@@ -191,6 +203,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
         }
         primaryAction={panels.partner ? { href: `/admin/partners/${panels.partner.adminId}/logos`, label: "The partner's logos" } : undefined}
       />
+      {usageConflict ? <AssetUsageResolution kind="logos" assetId={usageConflict} /> : null}
 
       {panels.onModel ? null : (
         <InlineAlert
@@ -206,9 +219,14 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
         <GdsStack gap="md">{PLACES.map((place) => render(place.slotId, place.title, place.description, 'the event'))}</GdsStack>
       </SectionPanel>
 
-      {uploads.length > 0 ? (
+      {uploads.length > 0 || panels.inactiveUploads.length > 0 ? (
         <SectionPanel title="Uploaded for this event" description="Logos only this event can use. Deleting one takes it out of every place that uses it.">
-          <GdsStack gap="sm">
+          <GdsStack gap="md">
+            {panels.inactiveUploads.length > 0 ? <SectionPanel title={`Switched off (${panels.inactiveUploads.length})`} description="These event uploads cannot be selected or shown until switched on again.">
+              <GdsGrid columns="auto-fill" minColumnWidth="aside" gap="md">
+                {panels.inactiveUploads.map((item) => <GdsStack key={item.id} gap="sm"><span>{item.name}</span><VisibilityStatusIcon isVisible={false} /><LibraryUploadActiveToggle level="event" ownerId={eventId} kind="logos" id={item.id} itemActive={false} onSaved={reload} /></GdsStack>)}
+              </GdsGrid>
+            </SectionPanel> : null}
             {uploads.map((item) => (
               <div key={item.id} style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
                 <span>{item.name}</span>

@@ -4,7 +4,8 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { canonicalPublicOrigin } from '@/lib/site-hosts';
 import Link from 'next/link';
-import { EmptyState, LabelTag } from '@sovereignsquad/gds-core/client';
+import { EmptyState } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 
 export interface SlideshowLayoutListItem {
   _id: string;
@@ -119,7 +120,7 @@ export default function SlideshowLayoutManager({
                       <strong>
                       {layout.name}
                       </strong>
-                      <LabelTag tone={layout.isActive ? 'success' : 'neutral'} label={layout.isActive ? 'Active' : 'Inactive'} />
+                      <VisibilityStatusIcon isVisible={layout.isActive} />
                     </div>
                     <SemanticButton
                     action="slideshow-layouts:delete"

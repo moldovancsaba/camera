@@ -177,6 +177,25 @@ export async function fetchFrameContext(messmassEventId: string, timeoutMs: numb
   }
 }
 
+/**
+ * The partner-owned Messmass style for Camera's partner workspace. This intentionally
+ * excludes event overrides so the partner view can show the actual inherited default.
+ * Best-effort and bounded: an unavailable Messmass style never blocks the admin page.
+ */
+export async function fetchPartnerStyleContext(messmassPartnerId: string, timeoutMs: number = FRAME_CONTEXT_TIMEOUT_MS): Promise<unknown | null> {
+  if (!messmassConfigured() || !/^[0-9a-f]{24}$/i.test(messmassPartnerId)) return null;
+  try {
+    const res = await fetch(`${base()}/api/integrations/camera/partners/${messmassPartnerId}/style-context`, {
+      headers: { 'x-camera-secret': token(), authorization: `Bearer ${token()}` },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) return null;
+    return await res.json().catch(() => null);
+  } catch {
+    return null;
+  }
+}
+
 // WHY: the push runs after a visit has been redirected, so a slow messmass must not hold the function for long; a timeout is a failed push and the
 //     next one repeats it (messmass takes whole totals, so a repeat is harmless).
 const LINK_STATS_TIMEOUT_MS = 5000;

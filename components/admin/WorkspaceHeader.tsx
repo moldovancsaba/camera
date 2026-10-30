@@ -8,7 +8,7 @@ interface WorkspaceHeaderProps {
   eyebrow?: string;
   title: string;
   description?: string;
-  status?: string;
+  status?: React.ReactNode;
   primaryAction?: { href: string; label: string; iconKey?: AdminIconKey };
   actions?: React.ReactNode;
 }
@@ -38,7 +38,7 @@ export default function WorkspaceHeader({
       eyebrow={eyebrow}
       title={title}
       description={description}
-      status={status ? <span>{status}</span> : undefined}
+      status={status ? (typeof status === 'string' ? <span>{status}</span> : status) : undefined}
       primaryAction={primaryActionSlot}
     />
   );

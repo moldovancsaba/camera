@@ -38,6 +38,21 @@ export const UI_LANGUAGE_LABELS: Record<UiLanguage, string> = {
   'sr-Cyrl': 'Српски (ћирилица)', 'sr-Latn': 'Srpski (latinica)',
 };
 
+/** English names paired with the native names in language selectors. */
+export const UI_LANGUAGE_ENGLISH_LABELS: Record<UiLanguage, string> = {
+  en: 'English', hu: 'Hungarian', de: 'German', it: 'Italian', 'pt-BR': 'Brazilian Portuguese', 'pt-PT': 'European Portuguese',
+  es: 'Spanish', fr: 'French', ru: 'Russian', 'zh-Hans': 'Simplified Chinese', 'zh-Hant': 'Traditional Chinese', ro: 'Romanian', pl: 'Polish',
+  sk: 'Slovak', hr: 'Croatian', sl: 'Slovenian', bg: 'Bulgarian', tr: 'Turkish', ar: 'Arabic', hi: 'Hindi', ka: 'Georgian',
+  'sr-Cyrl': 'Serbian (Cyrillic)', 'sr-Latn': 'Serbian (Latin)',
+};
+
+/** Show both a locale's native name and its English name; English appears only once. */
+export function uiLanguageOptionLabel(language: UiLanguage): string {
+  const native = UI_LANGUAGE_LABELS[language];
+  const english = UI_LANGUAGE_ENGLISH_LABELS[language];
+  return native === english ? native : `${native} (${english})`;
+}
+
 export type { MessageKey };
 
 export const DICTIONARIES: Record<UiLanguage, Record<MessageKey, string>> = {

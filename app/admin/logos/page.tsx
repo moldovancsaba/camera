@@ -29,6 +29,7 @@ interface Logo {
   partnerId?: string | null;
   eventId?: string | null;
   source?: string | null;
+  shareToChildren?: boolean;
 }
 
 interface OwnerRef {
@@ -173,6 +174,7 @@ export default async function LogosPage({
         description: logo.description ?? null,
         imageUrl: logo.imageUrl,
         isActive: Boolean(logo.isActive),
+        shareToChildren: logo.shareToChildren !== false,
         usageCount: logo.usageCount || 0,
         partnerDefaultCount: partnerAssignments.length,
         eventAssignmentCount: eventAssignments.length,

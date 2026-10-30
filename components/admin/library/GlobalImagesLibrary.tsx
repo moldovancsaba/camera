@@ -11,7 +11,10 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
-import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
+import { InlineAlert, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { GlobalImageEntry } from '@/lib/library/types';
 
@@ -23,6 +26,10 @@ interface Payload<T> {
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
 const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
+class AdminRequestFailure extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
@@ -30,7 +37,7 @@ function errorText(error: unknown): string {
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload?.data) throw new Error(payload?.error || `Request failed (${response.status})`);
+  if (!response.ok || !payload?.data) throw new AdminRequestFailure(payload?.error || `Request failed (${response.status})`, response.status);
   return payload.data;
 }
 
@@ -40,6 +47,8 @@ export default function GlobalImagesLibrary({ showAll }: { showAll: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [usageConflict, setUsageConflict] = useState<string | null>(null);
+  const { confirmDestructive } = useGdsConfirm();
 
   const reload = useCallback(async () => {
     setItems((await call<{ items: GlobalImageEntry[] }>(`/api/images${showAll ? '?scope=all' : ''}`)).items);
@@ -73,9 +82,23 @@ export default function GlobalImagesLibrary({ showAll }: { showAll: boolean }) {
 
   const setActive = (pictureId: string, isActive: boolean) =>
     act(() => call(`/api/images/${pictureId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive }) }));
-  const remove = (pictureId: string, name: string) => {
-    if (!confirm(`Delete "${name}" from the global library? It is taken out of every partner library. A page that already shows it keeps showing it.`)) return Promise.resolve();
-    return act(() => call(`/api/images/${pictureId}`, { method: 'DELETE' }));
+  const remove = async (pictureId: string, name: string) => {
+    const confirmed = await confirmDestructive({ title: 'Delete global image', message: 'Camera checks every partner, event and picture field first. If the image is still used, you will get links to resolve each use before retrying.', targetName: name });
+    if (!confirmed) return;
+    return (async () => {
+      setBusy(true);
+      setActionError(null);
+      try {
+        await call(`/api/images/${pictureId}`, { method: 'DELETE' });
+        setUsageConflict(null);
+        await reload();
+      } catch (failure) {
+        if (failure instanceof AdminRequestFailure && failure.status === 409) setUsageConflict(pictureId);
+        else setActionError(errorText(failure));
+      } finally {
+        setBusy(false);
+      }
+    })();
   };
 
   const header = (
@@ -104,6 +127,7 @@ export default function GlobalImagesLibrary({ showAll }: { showAll: boolean }) {
     <div style={{ display: 'grid', gap: '2rem' }}>
       {header}
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
+      {usageConflict ? <AssetUsageResolution kind="images" assetId={usageConflict} /> : null}
 
       <section style={SECTION}>
         <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--mantine-color-default-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
@@ -128,11 +152,12 @@ export default function GlobalImagesLibrary({ showAll }: { showAll: boolean }) {
                   thumbnailUrl={item.thumbnailUrl}
                   noun="image"
                   scope={item.scope}
-                  badges={!item.itemActive ? <LabelTag tone="warning" label="Switched off" /> : null}
+                  badges={!item.itemActive ? <VisibilityStatusIcon isVisible={false} /> : null}
                   note={item.owner ? `Uploaded for ${item.owner.name}; changed on the Images page of that ${item.owner.level}.` : null}
                   actions={
                     item.scope === 'global' ? (
                       <>
+                        <ShareToChildrenToggle kind="images" id={item.id} shareToChildren={item.shareToChildren} onSaved={reload} />
                         <SemanticButton action={item.itemActive ? 'library:switch-off' : 'library:switch-on'} variant="secondary" size="xs" disabled={busy} onClick={() => void setActive(item.id, !item.itemActive)}>
                           {item.itemActive ? 'Switch off' : 'Switch on'}
                         </SemanticButton>

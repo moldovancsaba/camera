@@ -8,11 +8,17 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GdsGrid, GdsStack, InlineAlert, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
+import { GdsGrid, GdsStack, InlineAlert, SectionPanel, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
+import EnablePartnerInheritance from '@/components/admin/library/EnablePartnerInheritance';
+import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
+import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
+import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import SlotPanel, { type SlotItem } from '@/components/admin/kit/SlotPanel';
 import type { LibraryItemView, PartnerLibrary, PartnerLibraryEntry } from '@/lib/library/types';
 import type { SlotValue } from '@/lib/slots/resolve';
@@ -41,12 +47,15 @@ interface Payload<T> {
 }
 
 const ACCEPT = 'image/png,image/jpeg,image/svg+xml,image/webp';
+class AdminRequestFailure extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
 const errorText = (error: unknown): string => (error instanceof Error ? error.message : 'An unexpected error occurred');
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload?.data) throw new Error(payload?.error || `Request failed (${response.status})`);
+  if (!response.ok || !payload?.data) throw new AdminRequestFailure(payload?.error || `Request failed (${response.status})`, response.status);
   return payload.data;
 }
 
@@ -61,6 +70,8 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [usageConflict, setUsageConflict] = useState<{ kind: 'logos'; assetId: string } | null>(null);
+  const { confirm, confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
     params.then((resolved) => setPartnerId(resolved.id));
@@ -116,9 +127,9 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
 
   const removeFromLibrary = (item: PartnerLibraryEntry) => {
     const chosen = panel?.value.items?.includes(item.id);
-    const sure = confirm(`Remove "${item.name}" from the library?${chosen ? ' It is also taken out of this partner\'s logos.' : ''} The events that already chose it keep it.`);
-    if (!sure) return;
     void run(async () => {
+      const sure = await confirm({ title: 'Remove from partner library', message: `Remove "${item.name}" from the library?${chosen ? ' It is also taken out of this partner’s logos.' : ''} The events that already chose it keep it.`, confirmAction: 'confirm' });
+      if (!sure) return;
       await call(`/api/partners/${partnerId}/library`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'logos', remove: [item.id] }) });
       await reload();
     });
@@ -126,11 +137,22 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
 
   const deleteUpload = (item: PartnerLibraryEntry) => {
     const what = item.source === 'messmass' ? 'It was imported from messmass; you can import it again later.' : 'It was uploaded for this partner and is removed for good.';
-    if (!confirm(`Delete "${item.name}"? ${what}`)) return;
-    void run(async () => {
-      await call(`/api/partners/${partnerId}/library/items/${item.id}?kind=logos`, { method: 'DELETE' });
-      await reload();
-    });
+    void (async () => {
+      const sure = await confirmDestructive({ title: 'Delete logo upload', message: `${what} Resolve its event uses or upload a copy before deleting.`, targetName: item.name });
+      if (!sure) return;
+      setBusy(true);
+      setActionError(null);
+      try {
+        await call(`/api/partners/${partnerId}/library/items/${item.id}?kind=logos`, { method: 'DELETE' });
+        setUsageConflict(null);
+        await reload();
+      } catch (failure) {
+        if (failure instanceof AdminRequestFailure && failure.status === 409) setUsageConflict({ kind: 'logos', assetId: item.id });
+        else setActionError(errorText(failure));
+      } finally {
+        setBusy(false);
+      }
+    })();
   };
 
   const importFromMessmass = () =>
@@ -155,6 +177,8 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
 
   return (
     <GdsStack gap="lg">
+      {!library.inheritanceEnabled ? <InlineAlert title="Legacy catalog" message="Enable inherited catalogs to use the global → partner → event sharing rules. Existing choices are kept during this transition." severity="info" /> : null}
+      {!library.inheritanceEnabled ? <EnablePartnerInheritance partnerId={partnerId} onSaved={reload} /> : null}
       <nav aria-label="Breadcrumb">
         <Link href="/admin/partners">Partners</Link>
         <span aria-hidden> / </span>
@@ -168,6 +192,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
         title={`Logos: ${partner.name}`}
         description={`The logo of ${partner.name} is the default logo of all its events. They use it unless an event chooses another one. If there is more than one, a user sees one of them at random.`}
       />
+      {usageConflict ? <AssetUsageResolution kind={usageConflict.kind} assetId={usageConflict.assetId} /> : null}
 
       {notice ? <InlineAlert title={notice.title} message={notice.message} severity="info" /> : null}
 
@@ -221,21 +246,29 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
                 source={item.source}
                 note={chosen.has(item.id) ? "One of this partner's logos." : undefined}
                 actions={
-                  item.via === 'own' ? (
-                    <SemanticButton action={item.source === 'messmass' ? 'library:delete-import' : 'library:delete-upload'} variant="danger" size="xs" disabled={busy} onClick={() => deleteUpload(item)}>
-                      {item.source === 'messmass' ? 'Delete the import' : 'Delete upload'}
-                    </SemanticButton>
-                  ) : (
-                    <SemanticButton action="library:remove" variant="danger" size="xs" disabled={busy} onClick={() => removeFromLibrary(item)}>
-                      Remove from library
-                    </SemanticButton>
-                  )
+                  <>
+                    {item.via === 'assigned' ? <VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="logos" id={item.id} scope="global" shareToChildren={item.shareToChildren} blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'logos' && ref.id === item.id)} onSaved={reload} /> : null}
+                    {item.via === 'own' ? <ShareToChildrenToggle kind="logos" id={item.id} shareToChildren={item.shareToChildren} childAudience="events" disabled={!item.itemActive} onSaved={reload} /> : null}
+                    {item.via === 'own' ? <LibraryUploadActiveToggle level="partner" ownerId={partnerId} kind="logos" id={item.id} itemActive={item.itemActive} shareToChildren={item.shareToChildren} onSaved={reload} /> : null}
+                    {item.via === 'own' ? (
+                      <SemanticButton action={item.source === 'messmass' ? 'library:delete-import' : 'library:delete-upload'} variant="danger" size="xs" disabled={busy} onClick={() => deleteUpload(item)}>
+                        {item.source === 'messmass' ? 'Delete the import' : 'Delete upload'}
+                      </SemanticButton>
+                    ) : (
+                      <SemanticButton action="library:remove" variant="danger" size="xs" disabled={busy} onClick={() => removeFromLibrary(item)}>Remove from library</SemanticButton>
+                    )}
+                  </>
                 }
               />
             ))}
           </GdsGrid>
         )}
       </SectionPanel>
+      {library.inheritanceEnabled && library.hidden?.length ? <SectionPanel title={`Hidden at this partner (${library.hidden.length})`} description="These global logos stay in the global library and are hidden only for this partner and its events.">
+        <GdsGrid columns="auto-fill" minColumnWidth="aside" gap="md">
+          {library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="logo" scope="global" badges={<VisibilityStatusIcon isVisible={false} />} actions={<VisualAssetPolicyActions level="partner" ownerId={partnerId} kind="logos" id={item.id} scope="global" hidden blockedForChildren={library.policy?.blockedForChildren?.some((ref) => ref.kind === 'logos' && ref.id === item.id)} onSaved={reload} />} />)}
+        </GdsGrid>
+      </SectionPanel> : null}
     </GdsStack>
   );
 }

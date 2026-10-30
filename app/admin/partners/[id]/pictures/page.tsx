@@ -11,8 +11,6 @@ import { GdsStack, InlineAlert, SectionPanel, StateBlock } from '@sovereignsquad
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import ImagePicker from '@/components/admin/library/ImagePicker';
-import SampleSelfiePanel from '@/components/admin/SampleSelfiePanel';
-import TaggedSlotPanel from '@/components/admin/TaggedSlotPanel';
 import { PARTNER_PICTURE_FIELDS, type PartnerPictures } from '@/lib/events/partner-pictures';
 
 interface Payload<T> {
@@ -112,8 +110,6 @@ export default function PartnerPicturesPage({ params }: { params: Promise<{ id: 
           </div>
         </GdsStack>
       </SectionPanel>
-      <SampleSelfiePanel level="partner" id={id} />
-      <TaggedSlotPanel kind="stadium" level="partner" id={id} />
     </GdsStack>
   );
 }

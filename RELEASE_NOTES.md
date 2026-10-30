@@ -1,5 +1,105 @@
 # RELEASE_NOTES.md
 
+## Unreleased — global frame ownership and editor loading
+
+- **Fixed:** the frame editor reads the standard API response envelope (`data.frame`) and validates the record before rendering, preventing a valid frame from crashing as “Frame not found”. Non-404 and malformed responses now show a retryable load error.
+- **Fixed:** the frame inventory no longer renders sharing actions as duplicate generic “Edit” buttons; the sharing control is an accessible GDS icon action.
+- **Changed (data):** scoped six legacy unowned frames to their verified partner/event owners, created an event-owned copy for the existing cross-partner assignment, and preserved all 21 event assignments and partner references. No media files were deleted. The Global Frames inventory is empty.
+- **Verification:** type-check, focused ESLint, GDS checks, inventory checks, production guards, production build, and `git diff --check` passed. Unit and browser tests were not run.
+## Unreleased — partner landing-page and slideshow defaults
+
+- **Added:** partner-scoped editors and authenticated APIs for saving/removing a default landing-page template and slideshow configuration.
+- **Added:** events inherit partner defaults. Partner revisions refresh inherited event records; editing/choosing an event default detaches it and preserves that event override.
+- **Changed:** removing a partner default restores inherited event slideshows to their generated event baseline and removes inherited landing-page copies; event overrides remain unchanged.
+- **Added:** the stable public URL `/landing/event/<event Mongo id>` resolves the event's own default first, otherwise the current partner default, and redirects to its event-specific canonical page. Partner capture-action URLs can use `{eventCaptureUrl}`.
+- **Added:** event controls to apply/reset to the partner default, choose an event default landing page, and open/copy the event landing URL.
+- **Security and recovery:** partner writes require partner Events manager access, event changes require event manager access, and no partner template data is exposed in public APIs. Landing-page materialization is idempotent and uses event-specific target/QR/capture data.
+- **Documentation:** added `docs/PARTNER_CONTENT_DEFAULTS.md` and updated the current architecture and navigation delivery notes.
+- **Verification:** GDS manifest and boundary checks, type-check, lint, all 368 unit test files, production guards, production build, and repository inventory check pass.
+
+## Unreleased — locale selector consistency
+
+- **Fixed:** changing the admin header language now announces a successful save to assistive technology; the header control and Account settings continue to share the same per-user preference.
+- **Fixed:** the admin guided-tour descriptions now use the selected interface language across all 23 registered locales; titles reuse the shared admin catalogs.
+- **Fixed:** the QR-text editor now offers all 23 canonical UI locales and shows each existing QR text's correct native and English locale name. API comments and the library documentation now describe the same supported locale set.
+- **Coverage:** added a check that every canonical locale is accepted for QR text.
+
+## Unreleased — icon-based visibility indicators
+
+- **Changed:** replaced repetitive Active/Inactive and switched-off status badges across event, partner, and visual-asset admin views with a green Material Icons eye for visible items and a red eye-off for hidden items. The saved status values and visibility behavior are unchanged.
+- **Accessibility:** each icon has a localized accessible name and a title. Active form controls, access-grant status, and explanatory copy retain text where an eye would be misleading or where the words explain a consequence.
+- **Audit:** added `docs/ADMIN_ICON_AUDIT.md` with the inspected surfaces, safe icon candidates, and rules for retaining accessible meaning.
+- **Verification:** `npm run gds:validate-manifest`, `npm run gds:check`, `npm run type-check`, `npm run lint`, `npm run inventory:check`, `npm run verify:production-guards`, and `npm run build` passed. Unit and browser test suites were not run.
+
+## Unreleased — consistent workspace navigation and service tools
+
+- **Changed:** global, partner, and event sidebars now share one section order and one ordered block list, preventing Vetting words, Email, and other block links from drifting between scopes.
+- **Moved:** one-time rollout/backfill and media-health tools from everyday navigation and the Slideshows page to global **Settings → Service**. Existing Generated Frame Rollout and Photo Vetting Rollout URLs redirect to their Service sections.
+- **Added:** event sidebars show an access-checked link to the event’s partner; partner sidebars show an access-checked link to that partner’s filtered Events inventory.
+- **Not implemented:** partner Landing Pages and Slideshows do not have partner-owned data or APIs; their current records are event-owned. The navigation keeps those links absent until partner default behavior and URL/slug rules are decided and implemented.
+- **Verification:** local production build, type-check, lint, GDS manifest/boundary checks, production-guard check, inventory/link check (716 links; none broken), and `git diff --check` passed. Unit and browser tests were not run.
+
+## Unreleased — analytics large-history handling and admin language settings
+
+- **Fixed:** all-events Analytics now computes maximum durations with a linear scan rather than expanding an unbounded history into function arguments, avoiding a JavaScript argument-limit crash while retaining uncapped counts.
+- **Added:** signed-in administrators can choose an interface language in Account settings. The preference is stored under the SSO subject only, applies before the admin page renders, and can be reset to browser language.
+- **Changed:** added a directly visible language selector to the admin header on all admin routes (except the account page, which already has the full settings form). Header changes save immediately to the same per-user preference and apply without leaving the current route.
+- **Changed:** locale selectors display native language names followed by their English names in parentheses.
+- **Accessibility and security:** the preference form uses the GDS selector and semantic actions, exposes loading/error/success states, announces success, and limits authenticated APIs to the current admin's own preference.
+- **Documentation:** updated analytics capacity notes, language resolution and account-settings operations.
+- **Verification:** `npm run release:check` passed, including 367/367 unit-test files, production guards, and the production build; `npm run inventory:check` passed with 716 links and no broken references. A local production-build Playwright check passed for the account selector/save at 1440px and 390px and confirmed the Analytics page presents a database error instead of crashing when storage is unavailable; account APIs were mocked and no database was used. GitHub Verify passed on PR #764, merged 2026-10-29. Production behavior was not independently verified.
+
+## Unreleased — scoped journey and email navigation
+
+- **Changed:** the global, partner, and event guest-flow destinations are labeled **Global User Journey**, **Partner User Journey**, and **Event User Journey**. The partner shortcut jumps to its inherited journey defaults on the partner overview; the event link opens the page-order editor.
+- **Changed:** global, partner, and event email destinations are labeled by scope and grouped under **Blocks**. The underlying routes and email settings are unchanged.
+- **Changed:** partner and event block labels now name their scope, matching the global block names. Partner/event frame slots, sample selfies, and stadium backgrounds now have direct scoped pages; event menu links include scoped dictionary, gallery, landing-page, and slideshow names, and the partner gallery is directly reachable from the partner menu.
+- **Not available at partner scope:** landing-page and slideshow editors do not exist for partners. The Admin UI text editor is not present at any scope and remains omitted, as previously agreed. These are not shown as broken menu links.
+- **Clarified:** **Generated Frame Rollout** is the global-admin dry-run/apply console that assigns the generated default frame to eligible events without their own frame; it is not the generated-frame asset library.
+- **Localization:** added navigation-label translations for all 23 supported admin locales.
+- **Verification:** TypeScript, ESLint, GDS manifest/boundary checks, link inventory (715 links; none broken), `git diff --check`, and production build passed. Unit tests were not run.
+
+## Unreleased — partner-scoped event inventory
+
+- **Changed:** the partner overview shows the exact total number of related events and the 10 most recently created event cards. Its localized **Open Events** action opens the Events inventory filtered by the stable partner ID.
+- **Added:** the Events inventory accepts an exact `partnerId` filter and paginates all matching events 50 at a time. Search, partner filters, page links, and filter removal retain their intended scope; non-global users remain limited to their authorized partner IDs.
+- **Corrected:** partner deletion warnings and overview totals use the full event count, not the limited preview list.
+- **Verification:** TypeScript, ESLint, GDS manifest/boundary checks, link inventory, and production build passed. Unit tests were not run in this session.
+
+## Unreleased — grouped admin navigation
+
+- **Changed:** regrouped the global sidebar into Overview, Org, Operations, Blocks, Content, and Settings. Partner and event sidebars use the same section taxonomy and show the pages available at that level.
+- **Changed:** moved the activity log into Overview; moved partner/event management into Org; grouped global visual resources and guest-facing text under Blocks; placed global landing pages, slideshows, and galleries under Content; kept defaults, e-mails, and users under Settings.
+- **Changed:** the Global Dictionary page now embeds the QR-text editor; the former `/admin/qr-texts` page redirects to the QR-text section. The Global Admin Texts entry is omitted because no editor page exists yet.
+- **Verification:** `git diff --check` passed. The test suite, type-check, and production build were not run in this session.
+
+## Unreleased — dependency-aware visual asset deletion
+
+- **Changed:** deleting a global, partner or event frame, logo or image is refused while any indexed partner, event, assignment, slot or picture-field reference remains. A failed delete returns the exact destinations, labels, and page links; it no longer silently pulls child references or deletes an item from underneath a use.
+- **Added:** after a 409 conflict, the admin page shows a resolution panel with one link per use, refresh and pagination. Open a partner/event in a new tab, remove or replace the use, or save the source file and upload a copy at the destination; return and retry. The delete endpoint scans again before acting.
+- **Safety:** the scan includes frame/logo source URLs, event welcome-screen frame selection, library/default/slot references and known picture fields. It caps each response at 500 and keeps deletion blocked when additional references remain. Uploaded media is not deleted by removing a catalog record.
+- **Copy workflow:** the panel links to the existing source file so an administrator can save and upload a copy at the destination. Camera does not yet provide a one-click asset-clone API.
+- **Verification:** type-check, lint, GDS, inventory and production build passed. The test suite was not run. No production data action, push, merge or deployment was performed.
+
+## Unreleased — Global → Partner → Event visual defaults
+
+- **Added:** a versioned visibility policy for logos, frames and images. A source owner can share an asset down one level; partners and events can hide inherited assets locally, and partners can stop forwarding global assets to events. Inactive or unshared assets cannot be newly selected or returned to guests.
+- **Fixed:** source sharing is now usable across both Global → Partner and Partner → Event for legacy as well as inherited catalogs. Partner-owned frames, logos, images and tagged pictures expose event sharing; inherited global assets expose partner visibility and event-forwarding controls. Event hide actions on legacy catalogs preserve their current catalog during the compatibility transition.
+- **Fixed:** logo edit failures now validate the `data.logo` response and show a retryable load error separately from a true missing logo. The Global Logos inventory uses one accessible sharing action instead of duplicate generic Edit actions.
+- **Added:** reusable guest-experience templates with a global default, optional partner overlay/opt-out and event-level inheritance, independent template or local opt-out. Resolution happens at read time; new partners/events begin on the new default path while existing partner/event data keeps its prior behavior until an explicit opt-in.
+- **Safety:** enabling an existing partner computes local hides from its prior library before turning on inheritance. Template config is allow-listed and excludes identity, consent, submissions, analytics and photo data. Known library assets are checked for ownership, sharing and active state before a reusable preset can be saved. Admin template metadata is removed from the public event response.
+- **UX:** global, partner and event selectors use Camera GDS controls and semantic button actions, with localized labels, save/error states and confirmation for changes that stop child sharing.
+- **Documentation:** added `docs/VISUAL_ASSET_HIERARCHY.md`; aligned the library reference, architecture, runbook and handover with the staged migration and rollback behavior.
+- **Not done:** historical partners have not been opted in or backfilled; no production defaults were changed. GitHub Verify, reviewed production opt-in/backfill, and production release remain outstanding.
+- **Verification:** `npm run release:check` passed, including 363/363 unit-test files, production guards and a production build. `npm run inventory:check` passed (714 links, none broken). A local production-build browser smoke test confirmed the global template selector loads and saves through a mocked API at desktop and 390 px mobile widths with no horizontal overflow. The disposable-database Playwright suite could not run because this worktree has no `MONGODB_URI`; no production database was used.
+
+## Unreleased — original and selected event image exports
+
+- **Added:** event managers can download all originals or framed photos separately, and can export selected originals or framed photos from the Event Gallery.
+- **Safety:** selected exports re-check current gallery consent, approval, erasure and event-visibility rules on the server. Missing retained originals are identified in `_not-included.txt`; framed outputs are never mislabeled as originals when their source is unavailable.
+- **Reliability:** image ZIP downloads have a 20-second per-image request/body timeout, up to three attempts for transient network and server errors, and bounded concurrent fetches. Failures go into `_errors.txt`; missing sources or entries left after the 95-second work budget are listed in `_not-included.txt`, so the route can finalize within its 120-second function allowance.
+- **Verification:** dependency installation completed; `npm run type-check`, focused ESLint on touched files, `npm run gds:check`, and `npm run inventory:check` passed. Unit tests cover rendition resolution, retries and manifests. The E2E suite includes selected-export authorization/eligibility and rendition-filter cases, but was not run because this checkout has no configured local browser/database test environment. No production data or deployment was changed.
+
 ## Unreleased — app-wide locale context and translated admin chrome
 
 - **Added:** the root provider exposes the supported device language on every route. Capture/share routes retain partner default, event fallback, then English when the device preference is unsupported; routes not yet localized keep an English document language for accurate assistive-technology pronunciation.

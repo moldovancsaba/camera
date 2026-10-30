@@ -400,3 +400,48 @@ html[data-app-lock] body {
   outline: 3px solid currentColor;
   outline-offset: 3px;
 }
+
+/*
+ * Admin control boundaries. The GDS theme owns the control colors, focus ring,
+ * disabled states and sizing. This admin-only layer makes the edge of every
+ * action and field visible, including the unstyled native buttons used by rich
+ * text toolbars. It uses GDS semantic tokens and is limited to the admin shell;
+ * guest-facing preview renderers can opt out to keep their output faithful.
+ */
+html[data-gds-theme-preset] [data-camera-admin] :is(
+  button,
+  [role='button'],
+  [role='tab'],
+  summary,
+  .mantine-Button-root,
+  .mantine-ActionIcon-root,
+  .mantine-Tabs-tab,
+  .mantine-SegmentedControl-control
+):not([data-admin-guest-preview] *) {
+  border-style: solid;
+  border-width: 1.5px;
+  border-color: color-mix(in srgb, var(--gds-vibe-text) 62%, var(--gds-vibe-border));
+}
+
+html[data-gds-theme-preset] [data-camera-admin] :is(
+  input:not([type='hidden'], [type='checkbox'], [type='radio'], [type='range'], [type='button'], [type='submit'], [type='reset'], [type='image']),
+  select,
+  textarea,
+  [role='combobox'],
+  [contenteditable='true'],
+  .mantine-Input-input,
+  .mantine-NativeSelect-input,
+  .mantine-Textarea-input
+):not([data-admin-guest-preview] *) {
+  border: 2px solid color-mix(in srgb, var(--gds-vibe-text) 48%, var(--gds-vibe-border));
+}
+
+html[data-gds-theme-preset] [data-camera-admin] :is(
+  input[type='checkbox'],
+  input[type='radio'],
+  .mantine-Checkbox-input,
+  .mantine-Radio-radio,
+  .mantine-Switch-track
+):not([data-admin-guest-preview] *) {
+  border-color: color-mix(in srgb, var(--gds-vibe-text) 58%, var(--gds-vibe-border));
+}

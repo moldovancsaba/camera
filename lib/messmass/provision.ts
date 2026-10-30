@@ -102,6 +102,9 @@ export async function upsertPartner(input: { messmassPartnerId?: string; name: s
   }
   const doc: Record<string, unknown> = {
     partnerId: generateId(), name, isActive: true,
+    // New Messmass partners inherit shared global assets; synchronization
+    // never opts an already-linked legacy partner into the new contract.
+    visualAssetPolicy: { inheritanceVersion: 2, hidden: [], blockedForChildren: [] },
     logoUrl: input.logoUrl || undefined, organizationId: input.organizationId,
     messmassPartnerId: input.messmassPartnerId, source: 'messmass', createdAt: now, updatedAt: now,
   };
@@ -205,7 +208,11 @@ export async function provisionEvent(input: {
     eventDate: input.eventDate || undefined,
     isActive: true,
     showLogo: false,
+    ...((partner.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion === 2
+      ? { visualAssetPolicy: { inheritanceVersion: 2, hidden: [] } }
+      : {}),
     customPages: [],
+    experienceTemplate: { mode: 'inherit' },
     journeyDefaults: true, // the journey defaults (default consent page and the like) apply to events created from now on (camera#330)
     submissionCount: 0,
     // partner default design (editable in camera)

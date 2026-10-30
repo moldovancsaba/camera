@@ -82,7 +82,7 @@ function Num({ label, value, onChange, helper, disabled }: { label: string; valu
 }
 
 /** `eventMongoId` is the event of the slideshow: the overlay is chosen from that event's images library (camera#368). */
-export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { draft: ScreenDesignDraft; onChange: (next: ScreenDesignDraft) => void; eventMongoId: string }) {
+export default function ScreenDesignFields({ draft, onChange, eventMongoId, partnerId }: { draft: ScreenDesignDraft; onChange: (next: ScreenDesignDraft) => void; eventMongoId?: string; partnerId?: string }) {
   const set = <K extends keyof ScreenDesignDraft>(key: K, value: ScreenDesignDraft[K]) => onChange({ ...draft, [key]: value });
   const setText = (i: number, patch: Partial<ScreenDesignTextDraft>) => onChange({ ...draft, texts: draft.texts.map((t, j) => (j === i ? (patch.text !== undefined ? placeUnderWindow({ ...t, ...patch }, draft) : { ...t, ...patch }) : t)) });
 
@@ -90,10 +90,10 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { 
     <>
       <ImagePicker
         label="Overlay picture"
-        helper="A 16:9 picture (1920×1080) drawn over the stage, transparent where the photos play: PNG, WebP or SVG, an https address. Leave empty for a plain slideshow."
+        helper="A 16:9 picture (1920×1080) drawn over the stage, transparent where the photos play. Choose it from the partner library, upload it for this event, or paste an https address (PNG, WebP or SVG). Leave empty for a plain slideshow."
         value={draft.overlayImageUrl}
         onChange={(url) => set('overlayImageUrl', url)}
-        level={{ scope: 'event', eventId: eventMongoId }}
+        level={partnerId ? { scope: 'partner', partnerId } : { scope: 'event', eventId: eventMongoId ?? '' }}
         fileTypes={OVERLAY_PICTURE_TYPES}
         fileTypeWords={OVERLAY_PICTURE_WORDS}
       />
@@ -109,7 +109,7 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { 
         <Select value={draft.photoFit} onChange={(v) => set('photoFit', v === 'contain' ? 'contain' : 'cover')} data={[{ value: 'cover', label: 'Cover (crop to fill)' }, { value: 'contain', label: 'Contain (whole photo)' }]} localizeOptionLabels />
       </Field>
 
-      <Field label="QR code address" helper="Camera draws the QR code. Where it points: an https address (https:// is added when you leave it out).">
+      <Field label="QR code address" helper="Use an active QR-kind tracked link for this event so scans are counted as QR visits. The event’s own short URL is counted as a regular link. https:// is added when omitted.">
         <TextInput value={draft.qrUrl} onChange={(e) => set('qrUrl', e.target.value)} placeholder="https://go.messmass.com/…" />
       </Field>
       <SimpleGrid cols={{ base: 2, sm: 4 }}>

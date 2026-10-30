@@ -7,9 +7,12 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { StateBlock } from '@sovereignsquad/gds-core/client';
+import { GdsGrid, GdsStack, LabelTag, MediaPreviewCard, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import SlotPanel, { type SlotItem } from '@/components/admin/kit/SlotPanel';
 import { TAGGED_KINDS, type TaggedKind } from '@/components/admin/library/tagged-kinds';
+import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
+import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import type { SlotMode, SlotValue } from '@/lib/slots/resolve';
 
@@ -19,8 +22,12 @@ interface Panel {
   defaultItems: SlotItem[];
   effective: SlotItem[];
   candidates: SlotItem[];
+  shareableItems?: ManagedSlotItem[];
+  inactiveOwnItems?: ManagedSlotItem[];
   parentName: string | null;
 }
+
+type ManagedSlotItem = SlotItem & { itemActive: boolean; shareToChildren?: boolean };
 
 interface Payload<T> {
   data?: T;
@@ -65,6 +72,7 @@ export default function TaggedSlotPanel({ kind, level, id, onChanged }: { kind: 
   if (!panel) return error ? <StateBlock variant="error" title={`The ${info.plural} could not be loaded`} description={error} /> : <StateBlock variant="loading" title={`Loading the ${info.plural}...`} />;
 
   return (
+    <>
     <SlotPanel
       title={info.title}
       description={info.panelDescription[level]}
@@ -84,5 +92,31 @@ export default function TaggedSlotPanel({ kind, level, id, onChanged }: { kind: 
         await onChanged?.();
       }}
     />
+    {level === 'partner' && (panel.shareableItems?.length ?? 0) > 0 ? (
+      <SectionPanel title="Partner uploads shared with events" description="Partner-owned pictures stay local until you share each one. Turning sharing off removes it from child event choices; current event selections remain stored and can return if sharing is restored.">
+        <GdsGrid columns="auto-fill" minColumnWidth="aside" gap="md">
+          {panel.shareableItems?.map((item) => (
+            <GdsStack key={item.id} gap="sm">
+              <MediaPreviewCard title={item.name} src={item.imageUrl ?? undefined} thumbnailSrc={item.thumbnailUrl ?? undefined} alt={item.name} status={<LabelTag tone={item.shareToChildren === false ? 'neutral' : 'success'} label={item.shareToChildren === false ? 'Not shared' : 'Shared with events'} />} hideWhenNoMedia={false} />
+              <LibraryUploadActiveToggle level="partner" ownerId={id} kind="images" id={item.id} itemActive={item.itemActive} shareToChildren={item.shareToChildren} disabled={busy} onSaved={reload} />
+              <ShareToChildrenToggle kind="images" id={item.id} shareToChildren={item.shareToChildren} childAudience="events" disabled={busy || !item.itemActive} onSaved={reload} />
+            </GdsStack>
+          ))}
+        </GdsGrid>
+      </SectionPanel>
+    ) : null}
+    {level === 'event' && (panel.inactiveOwnItems?.length ?? 0) > 0 ? (
+      <SectionPanel title="Event uploads switched off" description="These event-owned pictures are unavailable until you switch them on again.">
+        <GdsGrid columns="auto-fill" minColumnWidth="aside" gap="md">
+          {panel.inactiveOwnItems?.map((item) => (
+            <GdsStack key={item.id} gap="sm">
+              <MediaPreviewCard title={item.name} src={item.imageUrl ?? undefined} thumbnailSrc={item.thumbnailUrl ?? undefined} alt={item.name} status={<VisibilityStatusIcon isVisible={false} />} hideWhenNoMedia={false} />
+              <LibraryUploadActiveToggle level="event" ownerId={id} kind="images" id={item.id} itemActive={false} disabled={busy} onSaved={reload} />
+            </GdsStack>
+          ))}
+        </GdsGrid>
+      </SectionPanel>
+    ) : null}
+    </>
   );
 }

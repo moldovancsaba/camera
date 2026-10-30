@@ -15,17 +15,41 @@ export interface AdminNavigationAccess {
   hasEventsAccess: boolean;
 }
 
+/** One ordering source for the global sidebar and every scoped workspace menu. */
+export const ADMIN_NAV_GROUP_ORDER = ['Overview', 'Org', 'Operations', 'Blocks', 'Content', 'Settings'] as const;
+export type AdminNavGroup = (typeof ADMIN_NAV_GROUP_ORDER)[number];
+
+/** Shared ordering for the reusable blocks exposed at global, partner, and event scope. */
+export const ADMIN_BLOCK_ITEM_ORDER = [
+  'images',
+  'frames',
+  'frame-slots',
+  'logos',
+  'selfies',
+  'stadiums',
+  'dictionary',
+  'vetting-words',
+  'email',
+] as const;
+export type AdminBlockItemKey = (typeof ADMIN_BLOCK_ITEM_ORDER)[number];
+
+function orderBlockItems<T extends { blockKey?: AdminBlockItemKey }>(items: T[]): T[] {
+  const rank = new Map(ADMIN_BLOCK_ITEM_ORDER.map((key, index) => [key, index]));
+  return [...items].sort((a, b) => (rank.get(a.blockKey ?? 'images') ?? 0) - (rank.get(b.blockKey ?? 'images') ?? 0));
+}
+
 export interface AdminNavItem {
   href: string;
   label: string;
   description: string;
   iconKey: string; // AdminIconKey, kept as string here to avoid a client-only import in a shared config
+  blockKey?: AdminBlockItemKey;
   tourId?: string;
   isVisible: (access: AdminNavigationAccess) => boolean;
 }
 
 export interface AdminNavSection {
-  title: string;
+  title: AdminNavGroup;
   description: string;
   items: AdminNavItem[];
 }
@@ -43,12 +67,27 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         tourId: 'admin-nav-dashboard',
         isVisible: (access) => access.isGlobalAdmin || access.hasAnyPartnerAccess,
       },
+      {
+        href: '/admin/settings/activity-log',
+        label: 'Activity log',
+        description: 'Who changed what and when, and every refused or failed request.',
+        iconKey: 'adjustments',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
     ],
   },
   {
-    title: 'Events',
-    description: 'Run and configure individual event instances.',
+    title: 'Org',
+    description: 'Manage partners and their events.',
     items: [
+      {
+        href: '/admin/partners',
+        label: 'Partners',
+        description: 'Partner workspaces, defaults, and user access.',
+        iconKey: 'buildingStore',
+        tourId: 'admin-nav-partners',
+        isVisible: (access) => access.hasAnyPartnerAccess,
+      },
       {
         href: '/admin/events',
         label: 'Events',
@@ -81,21 +120,31 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
     ],
   },
   {
-    title: 'Libraries',
-    description: 'Shared resources events draw on — frames, logos, images, and pages.',
-    items: [
+    title: 'Blocks',
+    description: 'Global building blocks inherited by partners and events.',
+    items: orderBlockItems([
+      {
+        href: '/admin/images',
+        label: 'Global Images',
+        description: 'Pictures for welcome pages, CTA pages, e-mail footers, and giant screens.',
+        iconKey: 'photo',
+        blockKey: 'images',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
       {
         href: '/admin/frames',
         label: 'Global Frames',
         description: 'Shared frame inventory available to any event.',
         iconKey: 'frame',
+        blockKey: 'frames',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
-        href: '/admin/frames/generated',
-        label: 'Generated Frames',
-        description: 'Roll the generated default frame out to events without a frame of their own.',
+        href: '/admin/settings/frame-slots',
+        label: 'Global Frame Slots',
+        description: 'The slots used to compose generated frames.',
         iconKey: 'frame',
+        blockKey: 'frame-slots',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
@@ -103,46 +152,72 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         label: 'Global Logos',
         description: 'Shared logo inventory available to any event.',
         iconKey: 'photo',
+        blockKey: 'logos',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
         href: '/admin/sample-selfies',
-        label: 'Sample selfies',
+        label: 'Global Selfies',
         description: 'The general selfies that fill the photo window of the welcome page screen until a partner or an event chooses its own.',
         iconKey: 'photo',
+        blockKey: 'selfies',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
         href: '/admin/stadium-backgrounds',
-        label: 'Stadium backgrounds',
+        label: 'Global Stadiums',
         description: 'The general pictures the stage of an event’s default slideshow is drawn on, until a partner or an event chooses its own.',
         iconKey: 'photo',
+        blockKey: 'stadiums',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
-        href: '/admin/qr-texts',
-        label: 'QR texts',
-        description: 'The short lines next to the QR code on the default slideshow’s stage; a random one is picked when an event’s default slideshow is made.',
+        href: '/admin/dictionary',
+        label: 'Global Dictionary',
+        description: 'Guest-facing journey texts, including the global QR text library.',
         iconKey: 'adjustments',
+        blockKey: 'dictionary',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
-        href: '/admin/images',
-        label: 'Global Images',
-        description: 'Pictures for the welcome page, the CTA page, the email footer and the giant screen, for partners to take.',
-        iconKey: 'photo',
+        href: '/admin/settings/annotation-words',
+        label: 'Global Vetting words',
+        description: 'The vocabulary reviewers use across partners and events.',
+        iconKey: 'adjustments',
+        blockKey: 'vetting-words',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+      {
+        href: '/admin/settings/emails',
+        label: 'Global Email',
+        description: 'Global legal and follow-up email settings inherited by partners and events.',
+        iconKey: 'mail',
+        blockKey: 'email',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+    ]),
+  },
+  {
+    title: 'Content',
+    description: 'Journey composition and reusable content that can be shared with partners and events.',
+    items: [
+      {
+        href: '/admin/settings/experience',
+        label: 'Global User Journey',
+        description: 'Choose the reusable guest journey inherited by partners and events.',
+        iconKey: 'layoutDashboard',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
         href: '/admin/landing-pages',
-        label: 'Landing Pages',
+        label: 'Global Landing Pages',
         description: 'Cross-event landing page inventory.',
         iconKey: 'world',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
         href: '/admin/slideshows',
-        label: 'Slideshows',
+        label: 'Global Slideshows',
         description: 'Cross-event slideshow inventory.',
         iconKey: 'photoScan',
         isVisible: (access) => access.isGlobalAdmin,
@@ -158,63 +233,21 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
   },
   {
     title: 'Settings',
-    description: 'App-wide admin UI preferences, shared by every admin.',
+    description: 'Shared application defaults and account access.',
     items: [
       {
         href: '/admin/settings/defaults',
-        label: 'Journey defaults',
-        description: 'The one switch that gives existing events the journey defaults, such as the consent page.',
+        label: 'Experience defaults',
+        description: 'Default user-journey settings applied to events that follow global defaults.',
         iconKey: 'adjustments',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
-        href: '/admin/dictionary',
-        label: 'Dictionary',
-        description: 'Every default text of the user journey in English and Hungarian, and the global wording of each.',
-        iconKey: 'adjustments',
+        href: '/admin/settings/service',
+        label: 'Service',
+        description: 'Maintenance, backfills, and system health tools for global administrators.',
+        iconKey: 'tool',
         isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
-        href: '/admin/settings/frame-slots',
-        label: 'Frame slots',
-        description: 'The slots every generated frame is composed of until a partner or an event sets its own.',
-        iconKey: 'frame',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
-        href: '/admin/settings/activity-log',
-        label: 'Activity log',
-        description: 'Who changed what and when, and every refused or failed request; mailed every Monday as a CSV.',
-        iconKey: 'adjustments',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
-        href: '/admin/settings/emails',
-        label: 'Emails',
-        description: 'The e-mails to the users: the general legal part every partner and event follows, and the follow-up e-mails a week after an event.',
-        iconKey: 'mail',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
-        href: '/admin/settings/annotation-words',
-        label: 'Vetting words',
-        description: 'The words the reviewer describes a photo with (gender, age, emotion, items, the reasons for a rejection), which every partner and event follows until it changes them.',
-        iconKey: 'adjustments',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-    ],
-  },
-  {
-    title: 'Access',
-    description: 'Partners and the people who work in them.',
-    items: [
-      {
-        href: '/admin/partners',
-        label: 'Partners',
-        description: 'Partner workspaces, defaults, and user access.',
-        iconKey: 'buildingStore',
-        tourId: 'admin-nav-partners',
-        isVisible: (access) => access.hasAnyPartnerAccess,
       },
       {
         href: '/admin/users',
@@ -229,15 +262,19 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
 ];
 
 export function getVisibleAdminNavSections(access: AdminNavigationAccess): AdminNavSection[] {
-  return ADMIN_NAVIGATION.map((section) => ({
-    ...section,
-    items: section.items.filter((item) => item.isVisible(access)),
-  })).filter((section) => section.items.length > 0);
+  const byTitle = new Map(ADMIN_NAVIGATION.map((section) => [section.title, section]));
+  return ADMIN_NAV_GROUP_ORDER.flatMap((title) => {
+    const section = byTitle.get(title);
+    if (!section) return [];
+    const items = section.items.filter((item) => item.isVisible(access));
+    return items.length ? [{ ...section, items }] : [];
+  });
 }
 
 // ---------------------------------------------------------------------------
-// The context menu (issue 426, docs/BUILDING_BRICKS.md section 7): inside one event or one partner the sidebar shows that item's own menu, with "Back to the main
-// menu" first, instead of the main menu plus a tab bar. The context comes from the path alone, so deep links and bookmarks work unchanged.
+// Context menus use the same six groups as the global sidebar; only groups with
+// pages at the current level render. The context comes from the path alone, so
+// deep links and bookmarks continue to open the matching event or partner menu.
 // ---------------------------------------------------------------------------
 
 export type AdminContextKind = 'event' | 'partner';
@@ -250,15 +287,18 @@ export interface AdminContext {
 
 /** `/admin/events/<id>` and everything under it is the event's context, `/admin/partners/<id>` the partner's; `new` and every other path are the main menu. */
 export function adminContextOf(pathname: string): AdminContext | null {
-  const match = /^\/admin\/(events|partners)\/([^/?#]+)(?:\/|$)/.exec(pathname);
+  const route = pathname.split(/[?#]/)[0];
+  const match = /^\/admin\/(events|partners)\/([^/?#]+)(?:\/|$)/.exec(route);
   if (!match || match[2] === 'new') return null;
   return { kind: match[1] === 'events' ? 'event' : 'partner', id: match[2] };
 }
 
 export interface AdminContextItem {
+  section: AdminNavGroup;
   label: string;
   description: string;
   iconKey: string;
+  blockKey?: AdminBlockItemKey;
   /** The path after the event's or partner's own, with an optional #anchor for a section of the overview page; empty is the overview. */
   path: string;
   /** Paths (after the base) that make this item the active one, besides its own: the pages it opens, such as the editor of one slideshow. */
@@ -272,39 +312,61 @@ const everyone = () => true;
 /**
  * The event menu: every page of an event, so each editor is one click away. Analytics (issue 521) is for the event's managers like Vetting. The slideshow, landing page and layout editors are reached from their lists on the overview, so those items point at the section there.
  */
-export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
-  { label: 'Overview', description: 'The event at a glance.', iconKey: 'layoutDashboard', path: '', isVisible: everyone },
-  { label: 'Edit', description: 'The event details and capture experience settings.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
-  { label: 'Pages of the user journey', description: 'Choose, edit and order the pages guests see for this event.', iconKey: 'layoutDashboard', path: '/pages', isVisible: everyone },
-  { label: 'Vetting', description: 'Photos waiting for approval.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
-  { label: 'Photo analysis', description: 'Analyse photos after vetting, or analyse all eligible photos when vetting is off.', iconKey: 'photoScan', path: '/analysis', isVisible: everyone },
-  { label: 'Vetting words', description: 'The words the reviewer describes a photo with at this event: gender, age, emotion, items and the reasons for a rejection.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
-  { label: 'Gallery', description: 'The photos of the event: upload, select several at once, remove.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
-  { label: 'Analytics', description: 'Photos, vetting, users, screens, e-mails and consents of the event.', iconKey: 'brandDatabricks', path: '/analytics', isVisible: everyone },
-  { label: 'Logos', description: 'The logo of the event and of each place it shows.', iconKey: 'photo', path: '/logos', isVisible: everyone },
-  { label: 'Frames', description: 'The frames of the event.', iconKey: 'frame', path: '/frames', isVisible: everyone },
-  { label: 'Images', description: 'The pictures the event can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
-  { label: 'Texts', description: 'The wording of the default texts for this event.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
-  { label: 'Emails', description: 'The five e-mails the users get, their texts, the legal part and the sender.', iconKey: 'mail', path: '/emails', isVisible: everyone },
-  { label: 'Slideshows', description: 'The slideshows and the welcome page screen.', iconKey: 'photoScan', path: '#slideshows', also: ['/slideshows', '/layouts'], isVisible: everyone },
-  { label: 'Landing pages', description: 'The landing pages of the event.', iconKey: 'world', path: '#landing-pages', also: ['/landing-pages'], isVisible: everyone },
-];
+const scopedItems = (kind: AdminContextKind): AdminContextItem[] => {
+  const scope = kind === 'event' ? 'Event' : 'Partner';
+  const userJourney: AdminContextItem = kind === 'event'
+    ? { section: 'Content', label: 'Event User Journey', description: 'Choose, edit and order the pages guests see for this event.', iconKey: 'layoutDashboard', path: '/pages', isVisible: everyone }
+    : { section: 'Content', label: 'Partner User Journey', description: 'Choose the reusable guest journey inherited by this partner’s events.', iconKey: 'layoutDashboard', path: '#partner-user-journey', isVisible: everyone };
+  const sharedBlocks: AdminContextItem[] = orderBlockItems([
+    { section: 'Blocks', label: `${scope} Images`, description: `The pictures available to ${scope.toLowerCase()} content.`, iconKey: 'photo', blockKey: 'images', path: '/images', ...(kind === 'partner' ? { also: ['/pictures'] } : {}), isVisible: everyone },
+    { section: 'Blocks', label: `${scope} Frames`, description: `The frames available to ${scope.toLowerCase()} content.`, iconKey: 'frame', blockKey: 'frames', path: '/frames', isVisible: everyone },
+    { section: 'Blocks', label: `${scope} Frame Slots`, description: `The default slots used to compose generated frames for ${scope.toLowerCase()} events.`, iconKey: 'frame', blockKey: 'frame-slots', path: '/frame-slots', isVisible: everyone },
+    { section: 'Blocks', label: `${scope} Logos`, description: `The logos available to ${scope.toLowerCase()} content.`, iconKey: 'photo', blockKey: 'logos', path: '/logos', isVisible: everyone },
+    { section: 'Blocks', label: `${scope} Selfies`, description: `The sample selfie shown on ${scope.toLowerCase()} welcome screens.`, iconKey: 'photo', blockKey: 'selfies', path: '/selfies', isVisible: everyone },
+    { section: 'Blocks', label: `${scope} Stadiums`, description: `The stadium backgrounds available to ${scope.toLowerCase()} slideshow stages.`, iconKey: 'photo', blockKey: 'stadiums', path: '/stadiums', isVisible: everyone },
+    { section: 'Blocks', label: `${scope} Dictionary`, description: `Guest-facing text overrides for ${scope.toLowerCase()}; blank values follow the parent level.`, iconKey: 'adjustments', blockKey: 'dictionary', path: '/texts', isVisible: everyone },
+    { section: 'Blocks', label: `${scope} Vetting words`, description: `The vocabulary reviewers use for ${scope.toLowerCase()} photos.`, iconKey: 'adjustments', blockKey: 'vetting-words', path: '/annotation-words', isVisible: everyone },
+    { section: 'Blocks', label: `${scope} Email`, description: `The e-mail content and legal text used at ${scope.toLowerCase()} level.`, iconKey: 'mail', blockKey: 'email', path: '/emails', isVisible: everyone },
+  ]);
+  const contentItems: AdminContextItem[] = kind === 'event'
+    ? [
+        userJourney,
+        { section: 'Content', label: 'Event Landing Pages', description: 'The landing pages of the event.', iconKey: 'world', path: '#landing-pages', also: ['/landing-pages'], isVisible: everyone },
+        { section: 'Content', label: 'Event Slideshows', description: 'The slideshows and the welcome page screen.', iconKey: 'photoScan', path: '#slideshows', also: ['/slideshows', '/layouts'], isVisible: everyone },
+        { section: 'Content', label: 'Event Gallery', description: 'The event photos: upload, select, and manage visibility.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
+      ]
+    : [
+        userJourney,
+        { section: 'Content', label: 'Partner Landing Pages', description: 'Set the landing page template inherited by this partner’s events.', iconKey: 'world', path: '/landing-pages', isVisible: everyone },
+        { section: 'Content', label: 'Partner Slideshows', description: 'Set the slideshow defaults inherited by this partner’s events.', iconKey: 'photoScan', path: '/slideshows', isVisible: everyone },
+        { section: 'Content', label: 'Partner Gallery', description: 'Photos captured across this partner’s events.', iconKey: 'photoScan', path: '#partner-gallery', isVisible: everyone },
+      ];
+  const operations: AdminContextItem[] = kind === 'event'
+    ? [
+        { section: 'Operations', label: 'Vetting', description: 'Photos waiting for approval.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
+        { section: 'Operations', label: 'Photo analysis', description: 'Analyse eligible photos and review Fanmass results.', iconKey: 'photoScan', path: '/analysis', isVisible: everyone },
+        { section: 'Operations', label: 'Analytics', description: 'Photos, vetting, users, screens, e-mails and consents of the event.', iconKey: 'brandDatabricks', path: '/analytics', isVisible: everyone },
+      ]
+    : [];
+  const intro: AdminContextItem[] = kind === 'event'
+    ? [
+        { section: 'Overview', label: 'Overview', description: 'The event at a glance.', iconKey: 'layoutDashboard', path: '', isVisible: everyone },
+        { section: 'Org', label: 'Edit', description: 'The event details and capture experience settings.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
+      ]
+    : [
+        { section: 'Overview', label: 'Overview', description: 'The partner at a glance.', iconKey: 'buildingStore', path: '', isVisible: everyone },
+        { section: 'Org', label: 'Edit', description: 'The partner settings.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
+      ];
+  return [...intro, ...operations, ...sharedBlocks, ...contentItems];
+};
 
-/** The partner menu: its pages. Its events and its users are cards on the overview that lead to the events list and the users page, which are main-menu pages, so they are not items here. */
-export const PARTNER_CONTEXT_MENU: AdminContextItem[] = [
-  { label: 'Overview', description: 'The partner at a glance.', iconKey: 'buildingStore', path: '', isVisible: everyone },
-  { label: 'Edit', description: 'The partner settings.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
-  { label: 'Logos', description: 'The logo of the partner: the default of all its events.', iconKey: 'photo', path: '/logos', isVisible: everyone },
-  { label: 'Frames', description: 'The frames of the partner.', iconKey: 'frame', path: '/frames', isVisible: everyone },
-  { label: 'Images', description: 'The pictures the partner and its events can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
-  { label: 'Pictures', description: 'The default pictures of the welcome page, the CTA page and the e-mails of all events of the partner.', iconKey: 'photo', path: '/pictures', isVisible: everyone },
-  { label: 'Texts', description: 'The wording of the default texts for all events of the partner.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
-  { label: 'Emails', description: 'The legal part of the e-mails of all events of the partner.', iconKey: 'mail', path: '/emails', isVisible: everyone },
-  { label: 'Vetting words', description: 'The words the reviewer describes a photo with, for all events of the partner.', iconKey: 'adjustments', path: '/annotation-words', isVisible: everyone },
-];
+/** Both workspaces are derived from the same ordered block/content definitions. */
+export const EVENT_CONTEXT_MENU = scopedItems('event');
+export const PARTNER_CONTEXT_MENU = scopedItems('partner');
 
 export interface AdminContextMenu {
   title: string;
+  sections: Array<{ title: AdminNavGroup; items: Array<{ label: string; href: string; iconKey: string; active: boolean; tourId?: string }> }>;
   items: Array<{ label: string; href: string; iconKey: string; active: boolean; tourId?: string }>;
 }
 
@@ -312,17 +374,36 @@ export interface AdminContextMenu {
 export function adminContextMenu(context: AdminContext, pathname: string, access: AdminNavigationAccess): AdminContextMenu {
   const base = `/admin/${context.kind === 'event' ? 'events' : 'partners'}/${context.id}`;
   const defs = context.kind === 'event' ? EVENT_CONTEXT_MENU : PARTNER_CONTEXT_MENU;
-  const clean = pathname.split(/[?#]/)[0].replace(/\/$/, '');
+  const [pathAndQuery, hashPart] = pathname.split('#', 2);
+  const clean = pathAndQuery.split('?')[0].replace(/\/$/, '');
+  const currentHash = hashPart ? `#${hashPart}` : '';
   const inside = (relative: string) => clean === base + relative || clean.startsWith(`${base}${relative}/`);
-  return {
-    title: context.kind === 'event' ? 'Event' : 'Partner',
-    items: defs
+  const items = defs
       .filter((item) => item.isVisible(access))
       .map((item) => {
-        const own = item.path.startsWith('#') ? '' : item.path;
+        const [ownPath, itemHash] = item.path.split('#', 2);
+        const own = ownPath || '';
         // The overview is active only on its own address; an item that points at a section of it is active on the pages that section opens, never on the overview itself.
-        const active = item.path === '' ? clean === base : [own, ...(item.also ?? [])].filter(Boolean).some(inside);
-        return { label: item.label, href: base + item.path, iconKey: item.iconKey, active, tourId: item.tourId };
-      }),
+        const active = item.path === ''
+          ? clean === base && !currentHash
+          : itemHash
+            ? (clean === base + own && currentHash === `#${itemHash}`) || (item.also ?? []).some(inside)
+            : [own, ...(item.also ?? [])].filter(Boolean).some(inside);
+        return { section: item.section, label: item.label, href: base + item.path, iconKey: item.iconKey, active, tourId: item.tourId };
+      });
+  const publicItem = (item: (typeof items)[number]) => ({
+    label: item.label,
+    href: item.href,
+    iconKey: item.iconKey,
+    active: item.active,
+    tourId: item.tourId,
+  });
+  return {
+    title: context.kind === 'event' ? 'Event' : 'Partner',
+    sections: ADMIN_NAV_GROUP_ORDER.map((title) => ({
+      title,
+      items: items.filter((item) => item.section === title).map(publicItem),
+    })).filter((section) => section.items.length > 0),
+    items: items.map(publicItem),
   };
 }

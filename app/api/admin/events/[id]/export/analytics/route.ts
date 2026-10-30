@@ -23,6 +23,7 @@ import { defaultTimeZone } from '@/lib/analytics/time';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 120;
 
 export const GET = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ id: string }> }) => {
   const session = await requireAuth(request);

@@ -1,5 +1,5 @@
 /**
- * Restore only archive-confirmed MTK photos to a separate private, manager-only Camera recovery view.
+ * Restore only archive-confirmed MTK photos for read-only display in existing manager decision/gallery views.
  *
  * Dry run:
  *   npx tsx scripts/restore-mtk-erased-photos.ts --event-mongo-id <id> --manifest <path>

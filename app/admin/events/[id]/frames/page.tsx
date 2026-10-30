@@ -13,12 +13,15 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import GeneratedFramePanel, { type Notice } from '@/components/admin/GeneratedFramePanel';
 import FrameSelectionPanel from '@/components/admin/FrameSelectionPanel';
-import FrameSlotsPanel from '@/components/admin/FrameSlotsPanel';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
+import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
+import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
 import type { MessageArea } from '@/lib/frame/message-area';
-import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import type { EventLibrary } from '@/lib/library/types';
 
 interface Payload<T> {
@@ -29,6 +32,10 @@ interface Payload<T> {
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
 const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
+class AdminRequestFailure extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
@@ -36,7 +43,7 @@ function errorText(error: unknown): string {
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload) throw new Error(payload?.error || `Request failed (${response.status})`);
+  if (!response.ok || !payload) throw new AdminRequestFailure(payload?.error || `Request failed (${response.status})`, response.status);
   return payload.data as T;
 }
 
@@ -53,7 +60,8 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   const [panelNotice, setPanelNotice] = useState<Notice | null>(null);
   // Bumped when the messages or their frames change, so the selection setting reads them again.
   const [designVersion, setDesignVersion] = useState(0);
-  const onDesignChanged = useCallback(() => setDesignVersion((version) => version + 1), []);
+  const [usageConflict, setUsageConflict] = useState<string | null>(null);
+  const { confirm, confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
     params.then((resolved) => setEventId(resolved.id));
@@ -63,6 +71,8 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
     if (!eventId) return;
     setLibrary(await call<EventLibrary>(`/api/events/${eventId}/library?kind=frames`));
   }, [eventId]);
+
+  const onDesignChanged = useCallback(() => setDesignVersion((version) => version + 1), []);
 
   useEffect(() => {
     if (!eventId) return;
@@ -97,8 +107,10 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   const assign = (frameId: string) =>
     act(() => call(`/api/events/${eventId}/frames`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frameId, isActive: true }) }));
   const remove = (frameId: string, name: string) => {
-    if (!confirm(`Remove "${name}" from this event?`)) return Promise.resolve();
-    return act(() => call(`/api/events/${eventId}/frames/${frameId}`, { method: 'DELETE' }));
+    return (async () => {
+      const confirmed = await confirm({ title: 'Remove frame from this event', message: `The event will stop offering “${name}”. The frame remains in its source library.`, confirmAction: 'confirm' });
+      if (confirmed) await act(() => call(`/api/events/${eventId}/frames/${frameId}`, { method: 'DELETE' }));
+    })();
   };
   const toggle = (frameId: string) => act(() => call(`/api/events/${eventId}/frames/${frameId}/toggle`, { method: 'PATCH' }));
   const saveMessageArea = async (frameId: string, messageArea: MessageArea | null) => {
@@ -106,9 +118,21 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
     setEditing(null);
     await reload();
   };
-  const deleteUpload = (frameId: string, name: string) => {
-    if (!confirm(`Delete "${name}"? It was uploaded for this event and is removed for good.`)) return Promise.resolve();
-    return act(() => call(`/api/events/${eventId}/library/items/${frameId}?kind=frames`, { method: 'DELETE' }));
+  const deleteUpload = async (frameId: string, name: string) => {
+    const confirmed = await confirmDestructive({ title: 'Delete frame upload', message: 'This removes the frame from this event library. Remove or replace its event assignment, or upload a copy, before deleting.', targetName: name });
+    if (!confirmed) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await call(`/api/events/${eventId}/library/items/${frameId}?kind=frames`, { method: 'DELETE' });
+      setUsageConflict(null);
+      await reload();
+    } catch (failure) {
+      if (failure instanceof AdminRequestFailure && failure.status === 409) setUsageConflict(frameId);
+      else setActionError(errorText(failure));
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (loading) return <StateBlock variant="loading" title="Loading frames..." />;
@@ -139,6 +163,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         title="Manage Event Frames"
         description={`The frames of ${eventName}. It takes them from the library of ${partnerName}, or you upload frames for this event only.`}
       />
+      {usageConflict ? <AssetUsageResolution kind="frames" assetId={usageConflict} /> : null}
 
       {/* A frame that carries messages is not a frame of the event's own (camera#366); the panel starts again when the frames change, so it offers the current ones. */}
       <GeneratedFramePanel
@@ -152,9 +177,6 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         initialNotice={panelNotice}
         hasOwnActiveFrame={library.assigned.some((entry) => entry.assignment.isActive === true && entry.messageArea === null)}
       />
-
-      {/* The slots the generated frame is composed of (issue 502): up to six texts and six pictures, each optional. */}
-      <FrameSlotsPanel eventId={eventId} onDesignChanged={onDesignChanged} />
 
       <FrameSelectionPanel
         key={`${designVersion}:${library.assigned.map((entry) => `${entry.id}:${entry.assignment.isActive === true ? 1 : 0}:${entry.messageArea ? 1 : 0}`).join(',')}`}
@@ -206,10 +228,10 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                     note={entry.messageArea ? 'Users never pick this frame: the messages of this event are written on it.' : undefined}
                     badges={
                       <>
-                        <LabelTag tone={active ? 'success' : 'neutral'} label={active ? 'Active' : 'Inactive'} />
+                        <VisibilityStatusIcon isVisible={active} />
                         {entry.messageArea ? <LabelTag tone="info" label="Carries messages" /> : null}
                         {!entry.stillInPartnerLibrary ? <LabelTag tone="warning" label="No longer in the partner library" /> : null}
-                        {!entry.itemActive ? <LabelTag tone="warning" label="Switched off in the library" /> : null}
+                        {!entry.itemActive ? <VisibilityStatusIcon isVisible={false} /> : null}
                       </>
                     }
                     actions={
@@ -221,6 +243,9 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                           Remove frame
                         </SemanticButton>
                         {entry.scope === 'event' ? (
+                          <LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={entry.id} itemActive={entry.itemActive} onSaved={reload} />
+                        ) : null}
+                        {entry.scope === 'event' ? (
                           <SemanticButton action="library:message-area" variant="secondary" size="xs" disabled={busy} onClick={() => setEditing(editing === entry.id ? null : entry.id)}>
                             Message area
                           </SemanticButton>
@@ -230,6 +255,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                             Delete upload
                           </SemanticButton>
                         ) : null}
+                        {entry.scope !== 'event' && entry.stillInPartnerLibrary ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={entry.id} scope={entry.scope} hidden={library.policy?.hidden?.some((ref) => ref.kind === 'frames' && ref.id === entry.id)} onSaved={reload} /> : null}
                       </>
                     }
                   >
@@ -272,9 +298,10 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                   scope={item.scope}
                   badges={item.messageArea ? <LabelTag tone="info" label="Carries messages" /> : undefined}
                   actions={
-                    <SemanticButton action="event-frames:assign" size="xs" disabled={busy} onClick={() => void assign(item.id)}>
-                      Assign frame
-                    </SemanticButton>
+                    <>
+                      <SemanticButton action="event-frames:assign" size="xs" disabled={busy} onClick={() => void assign(item.id)}>Assign frame</SemanticButton>
+                      {item.scope !== 'event' ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} onSaved={reload} /> : null}
+                    </>
                   }
                 />
               ))}
@@ -282,6 +309,22 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
       </section>
+
+      {library.inheritanceEnabled && library.hidden?.length ? <section style={SECTION} aria-labelledby="hidden-event-frames-heading">
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+          <h3 id="hidden-event-frames-heading" style={{ margin: 0 }}>Hidden at this event ({library.hidden.length})</h3>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Restore a frame here without changing its partner or global sharing rules.</p>
+        </div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.hidden.map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope={item.scope} badges={<VisibilityStatusIcon isVisible={false} />} actions={<VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} hidden onSaved={reload} />} />)}</div></div>
+      </section> : null}
+
+      {library.inactiveOwn.some((item) => !library.assigned.some((entry) => entry.id === item.id)) ? <section style={SECTION} aria-labelledby="inactive-event-frames-heading">
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+          <h3 id="inactive-event-frames-heading" style={{ margin: 0 }}>Switched off at this event</h3>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These event uploads are not assigned. Switch one on to make it available again.</p>
+        </div>
+        <div style={{ padding: '1rem' }}><div style={GRID}>{library.inactiveOwn.filter((item) => !library.assigned.some((entry) => entry.id === item.id)).map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope="event" badges={<VisibilityStatusIcon isVisible={false} />} actions={<LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={item.id} itemActive={false} onSaved={reload} />} />)}</div></div>
+      </section> : null}
 
       <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>

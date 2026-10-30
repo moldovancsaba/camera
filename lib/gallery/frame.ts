@@ -18,6 +18,11 @@ export interface GalleryFrame {
   variant: RecordedFrameVariant | null;
 }
 
+/** Stable selector sent by the gallery UI; the API resolves it against the event's current frame set before processing. */
+export function galleryFrameKey(frame: GalleryFrame): string {
+  return frame.variant ? `generated:${frame.imageUrl}` : `frame:${frame.frameId ?? frame.imageUrl}`;
+}
+
 /** A frame as the library stores it: a text-free frame that carries messages has a `messageArea` (the event API answers it as `hasMessageArea`, which a stored document does not have). */
 interface FrameRow {
   frameId?: string;

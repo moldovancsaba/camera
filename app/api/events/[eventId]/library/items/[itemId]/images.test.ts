@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { fakeDb } from '@/lib/library/fake-db';
 
-// Deleting an event's own image upload (camera#368): the event document is left as it is (an image is not assigned).
+// An event's own image upload cannot be deleted while a page or event field still uses its URL.
 const apiReal = await import('@/lib/api');
 
 const EVENT_MONGO_ID = new ObjectId();
@@ -30,12 +30,22 @@ function setup(t: TestContext) {
 const del = (itemId: string) =>
   [new NextRequest(`http://localhost/api/events/${EVENT_MONGO_ID}/library/items/${itemId}?kind=images`, { method: 'DELETE' }), { params: Promise.resolve({ eventId: String(EVENT_MONGO_ID), itemId }) }] as const;
 
-test("deleting an event's own image removes it from the library; the event and its picture fields stay as they are", async (t) => {
-  const { data, calls } = setup(t);
+test("deleting an event's own image requires removing its event-field use first", async (t) => {
+  const { data, calls, db } = setup(t);
   const { DELETE } = await importRoute('own');
+  const blocked = await DELETE(...del('e1'));
+  assert.equal(blocked.status, 409);
+  const body = (await blocked.json()) as { details: { usages: Array<{ uses: string[] }> } };
+  assert.deepEqual(body.details.usages.flatMap((usage) => usage.uses), ['Picture field: emailFooterImageUrl']);
+  assert.deepEqual(data.images.map((i) => i.pictureId), ['e1', 'g1']);
+  assert.equal(data.events[0].emailFooterImageUrl, 'https://img.example/e1.png');
+
+  // Simulate the editor resolving the reported use. Deleting only removes the upload.
+  await db.collection('events').updateOne({ eventId: 'e-uuid' }, { $unset: { emailFooterImageUrl: '' } });
+  calls.length = 0;
   assert.equal((await DELETE(...del('e1'))).status, 200);
   assert.deepEqual(data.images.map((i) => i.pictureId), ['g1']);
-  assert.deepEqual(data.events[0], { _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', emailFooterImageUrl: 'https://img.example/e1.png' });
+  assert.equal('emailFooterImageUrl' in data.events[0], false);
   assert.equal(calls.some((c) => c.collection === 'events'), false);
 });
 

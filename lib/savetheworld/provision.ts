@@ -29,6 +29,7 @@ export async function upsertPartner(input: { name: string; logoUrl?: string }) {
   }
   const doc: Record<string, unknown> = {
     partnerId: generateId(), name, isActive: true,
+    visualAssetPolicy: { inheritanceVersion: 2, hidden: [], blockedForChildren: [] },
     logoUrl: input.logoUrl || undefined,
     source: 'savetheworld', createdBy: 'savetheworld-internal-api',
     createdAt: now, updatedAt: now,
@@ -85,9 +86,13 @@ export async function provisionEvent(input: { savetheworldEventId: string; partn
     name: String(input.eventName || '').trim() || 'Untitled event',
     partnerId: partner.partnerId,
     partnerName: partner.name,
+    ...((partner.visualAssetPolicy as { inheritanceVersion?: unknown } | undefined)?.inheritanceVersion === 2
+      ? { visualAssetPolicy: { inheritanceVersion: 2, hidden: [] } }
+      : {}),
     eventDate: input.eventDate || undefined,
     isActive: true,
     showLogo: false,
+    experienceTemplate: { mode: 'inherit' },
     customPages,
     submissionCount: 0,
     brandColor: defaults.brandColor,

@@ -12,6 +12,7 @@ import { ObjectId } from 'mongodb';
 import { StatsStrip } from '@/components/gds/ClientWrappers';
 import { Breadcrumbs, Button, Card, Code, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import StyleSections, { type ThemeColours } from '@/components/admin/StyleSections';
 import { loadEventTheme } from '@/lib/theme/load';
 import SlideshowManager from '@/components/admin/SlideshowManager';
@@ -22,11 +23,12 @@ import EventExportControls from '@/components/admin/EventExportControls';
 import DeleteEventButton from '@/components/admin/DeleteEventButton';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS } from '@/lib/db/schemas';
+import { COLLECTIONS, type PartnerContentDefaults } from '@/lib/db/schemas';
 import { loadGallerySubmissions } from '@/lib/gallery/submissions';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { collectEventSpecificStats, type EventSpecificStats } from '@/lib/events/stats';
+import { parseMessmassStylePalette, type MessmassStylePalette } from '@/lib/theme/messmass-style-palette';
 
 interface EventFrameDetails {
   frameId: string;
@@ -79,6 +81,7 @@ interface EventDoc {
 
 interface PartnerDoc {
   _id: ObjectId;
+  contentDefaults?: PartnerContentDefaults;
 }
 
 interface SlideshowDoc {
@@ -101,6 +104,8 @@ interface LandingPageDoc {
   targetType?: 'slideshow' | 'layout';
   targetName?: string;
   isActive?: boolean;
+  isDefault?: boolean;
+  inheritedFromPartnerId?: string;
   createdAt: string;
 }
 
@@ -142,6 +147,7 @@ export default async function EventDetailPage({
   let landingPages: LandingPageDoc[] = [];
   let eventStats: EventSpecificStats | null = null;
   let themeColours: ThemeColours | null = null;
+  let messmassStyle: MessmassStylePalette | null = null;
   let dbError: string | null = null;
   const session = await getSession();
   let canManageEvent = isGlobalAdminSession(session);
@@ -163,6 +169,8 @@ export default async function EventDetailPage({
     }
 
     partner = (await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId })) as PartnerDoc | null;
+    const styleContext = (event as unknown as { frameDesign?: { context?: { style?: unknown } } }).frameDesign?.context?.style;
+    messmassStyle = parseMessmassStylePalette(styleContext);
     eventStats = await collectEventSpecificStats(db, event.eventId);
     // The colours the guests really get, from the same function the guest pages use, and where they come from (camera#380).
     try {
@@ -239,7 +247,7 @@ export default async function EventDetailPage({
         eyebrow="Events"
         title={event.name}
         description={event.description}
-        status={event.isActive ? 'Active' : 'Inactive'}
+        status={<VisibilityStatusIcon isVisible={event.isActive === true} />}
         actions={
           <>
             {event.messmassEventId ? (
@@ -264,7 +272,7 @@ export default async function EventDetailPage({
             ) : null}
             {canManageEvent ? (
               <Link href={`/admin/events/${id}/pages`} style={{ textDecoration: 'none' }}>
-                <Button variant="light">Pages of the user journey</Button>
+                <Button variant="light">Event User Journey</Button>
               </Link>
             ) : null}
             {canManageEvent ? <DeleteEventButton eventId={id} eventName={event.name} /> : null}
@@ -416,6 +424,8 @@ export default async function EventDetailPage({
           brandBorderColor={event.brandBorderColor}
           brandColorsOverridden={event.brandColorsOverridden}
           themeColours={themeColours ?? undefined}
+          messmassStyle={messmassStyle}
+          messmassLinked={Boolean(event.messmassEventId)}
           frames={event.frames?.map((frame) => ({
             frameId: frame.frameId,
             isActive: frame.isActive !== false,
@@ -432,7 +442,7 @@ export default async function EventDetailPage({
         />
       </SimpleGrid>
 
-      <SlideshowManager eventId={id} initialSlideshows={JSON.parse(JSON.stringify(slideshows))} welcomeScreen={event.welcomeScreen ? { url: event.welcomeScreen.url, generatedAt: event.welcomeScreen.generatedAt } : null} />
+      <SlideshowManager eventId={id} initialSlideshows={JSON.parse(JSON.stringify(slideshows))} partnerDefaultAvailable={Boolean(partner?.contentDefaults?.slideshow && partner.contentDefaults.slideshow.isActive !== false)} welcomeScreen={event.welcomeScreen ? { url: event.welcomeScreen.url, generatedAt: event.welcomeScreen.generatedAt } : null} />
 
       <SlideshowLayoutManager
         eventMongoId={id}
@@ -447,6 +457,7 @@ export default async function EventDetailPage({
 
       <LandingPageManager
         eventMongoId={id}
+        partnerDefaultAvailable={Boolean(partner?.contentDefaults?.landingPage && partner.contentDefaults.landingPage.isActive !== false)}
         initialLandingPages={landingPages.map((page) => ({
           _id: page._id!.toString(),
           slug: page.slug,
@@ -454,6 +465,8 @@ export default async function EventDetailPage({
           targetType: page.targetType === 'layout' ? 'layout' : 'slideshow',
           targetName: page.targetName ?? page.slug,
           isActive: page.isActive !== false,
+          isDefault: page.isDefault === true,
+          inheritedFromPartnerId: page.inheritedFromPartnerId,
           createdAt: page.createdAt,
         }))}
       />

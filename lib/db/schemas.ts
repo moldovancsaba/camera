@@ -30,6 +30,8 @@ import { ObjectId } from 'mongodb';
 import type { FrameDesign } from '@/lib/frame/context';
 import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
 import type { StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
+import type { WelcomeElement } from '@/lib/events/welcome-composition';
+import type { ExperienceTemplate, ExperienceTemplateSelection, VisualAssetLevelPolicy } from '@/lib/visual-assets/contracts';
 
 /**
  * Collection Names
@@ -57,6 +59,8 @@ export const COLLECTIONS = {
   /** The follow-up e-mail of an event, one row for each event and e-mail address (epic 463, lib/email/follow-up.ts): the claim that keeps it to one, and whether it went. The `_id` is a hash of the event and the address, so the row holds no address. */
   EMAIL_FOLLOW_UPS: 'email_follow_ups',
   USERS_CACHE: 'users_cache',
+  /** A minimal, per-SSO-subject admin preference record; guest language remains event configuration. */
+  ADMIN_USER_PREFERENCES: 'admin_user_preferences',
   SLIDESHOWS: 'slideshows',
   SLIDESHOW_LAYOUTS: 'slideshow_layouts',
   /** Tracked short links, one per placement (camera#320); their hits are counted in SHORT_LINK_HITS. */
@@ -68,6 +72,8 @@ export const COLLECTIONS = {
   /** Server-side OAuth/session payload; browser holds only a small pointer cookie (`v:2`). */
   WEB_SESSIONS: 'web_sessions',
   ADMIN_SETTINGS: 'admin_settings',
+  /** Reusable, identity-free visual/event experience templates (lib/visual-assets). */
+  EXPERIENCE_TEMPLATES: 'experience_templates',
   /** What the people who manage the service did and every refused or failed request (issue 517, lib/activity/log.ts); kept until the weekly export after the one that sent it. */
   ACTIVITY_LOG: 'activity_log',
   /** One row for every weekly export that was sent: the period it covers, the rows, when (lib/activity/export.ts). */
@@ -119,6 +125,14 @@ export interface AdminCardDisplaySettings {
   };
   updatedAt: string;
   updatedBy: string | null;
+}
+
+/** Per-user interface preference keyed by the stable SSO subject; no profile fields are copied. */
+export interface AdminUserPreferences {
+  _id: string;
+  uiLanguage: UiLanguage | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ============================================================================
@@ -198,6 +212,12 @@ export interface Partner {
    * had before (its defaults and what its events use) counts as its library until the first save.
    */
   library?: { frames?: string[]; logos?: string[]; images?: string[] };
+  /** Versioned parent→child asset visibility policy; missing remains on the legacy resolver until backfill. */
+  visualAssetPolicy?: VisualAssetLevelPolicy & { inheritanceVersion?: 2 };
+  /** Partner-level starter experience; null explicitly disables the inherited global starter. */
+  defaultExperienceTemplateId?: string | null;
+  /** Partner-owned landing-page and slideshow defaults. Events inherit each default until they save an event-level override. */
+  contentDefaults?: PartnerContentDefaults;
   defaultFrames?: string[];          // Default frame IDs to assign to new events (always items of the partner's library)
   defaultLogos?: Array<{             // Default logo assignments for new events
     logoId: string;                  // Reference to logo
@@ -215,6 +235,35 @@ export interface Partner {
   createdBy: string;                 // Admin user ID from SSO who created this partner
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
+}
+
+/** Reusable partner content templates. Event-specific IDs, slugs, links and QR attribution are supplied when an event inherits them. */
+export interface PartnerContentDefaults {
+  revision: number;
+  slideshow?: PartnerDefaultSlideshow | null;
+  landingPage?: PartnerDefaultLandingPage | null;
+}
+
+export type PartnerDefaultSlideshow = Pick<Slideshow,
+  | 'name' | 'isActive' | 'transitionDurationMs' | 'fadeDurationMs' | 'bufferSize'
+  | 'refreshStrategy' | 'playMode' | 'orderMode' | 'crossfade'
+  | 'backgroundPrimaryColor' | 'backgroundAccentColor' | 'backgroundImageUrl'
+  | 'viewportScale' | 'stageAspect' | 'screenDesign'
+>;
+
+export type PartnerDefaultLandingPage = Pick<LandingPage,
+  | 'title' | 'description' | 'logoId' | 'logoUrl' | 'qrCodeImageUrl' | 'url' | 'urlButtonText'
+  | 'termsMarkdown' | 'termsFileName' | 'privacyMarkdown' | 'privacyFileName'
+  | 'backgroundColor' | 'titleColor' | 'descriptionColor' | 'qrTitleColor'
+  | 'cookiesTitleColor' | 'cookiesBodyColor' | 'legalTitleColor' | 'legalLinkTextColor'
+  | 'buttonColor' | 'buttonTextColor' | 'customCssPresetId' | 'customCssClassName' | 'customCss'
+  | 'cookieConsentEnabled' | 'cookieConsentRequired' | 'isActive'
+>;
+
+/** Reusable, identity-free experience configuration saved from an event. */
+export interface ExperienceTemplateRecord extends ExperienceTemplate {
+  _id?: ObjectId;
+  createdAt: string;
 }
 
 // ============================================================================
@@ -340,6 +389,8 @@ export interface CustomPage {
     cornerImageUrl?: string;      // Transparent layer drawn over the bottom one at the same scale (its design sits in the bottom right corner)
     screenImageUrl?: string;      // The picture on the giant screen drawn as a CSS 3D LED wall above the Start button (camera#315)
     screenImageAlt?: string;      // What that picture shows, for screen readers
+    /** Flexible welcome-screen composition. When present, this replaces the fixed legacy image layers. */
+    welcomeElements?: WelcomeElement[];
     buttonColor?: string;         // Start button fill, e.g. the club's official colour
     buttonTextColor?: string;     // Start button label
     buttonBorderColor?: string;   // Start button ring
@@ -426,6 +477,10 @@ export interface Event {
   partnerId: string;                 // Reference to parent partner
   partnerName: string;               // Cached partner name for display and filtering
   messmassEventId?: string;          // Cross-ref to the messmass event/project (_id) — shared identity; read by fanmass
+  /** Event-level visual visibility overrides. Hidden inherited assets remain unavailable; only this event's catalog is affected. */
+  visualAssetPolicy?: VisualAssetLevelPolicy & { inheritanceVersion?: 2 };
+  /** `inherit` follows the partner/global default; `template` selects a local event template and stops inheriting its config. */
+  experienceTemplate?: ExperienceTemplateSelection | null;
   savetheworldEventId?: string;      // Cross-ref to the savetheworld provisioning call — shared identity, idempotency key
   
   // Event details
@@ -590,6 +645,8 @@ export interface Logo {
 
   // Who owns the logo (camera#361): missing scope = global, the library admins fill. See lib/library.
   scope?: 'global' | 'partner' | 'event';
+  /** Parent-controlled sharing boundary. Missing preserves the pre-inheritance availability semantics. */
+  shareToChildren?: boolean;
   partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
   eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
   // A logo that was not uploaded (camera#367): 'messmass' for the partner's logo imported from messmass, and the address it came from.
@@ -634,6 +691,8 @@ export interface Frame {
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   // Who owns the frame (camera#361): missing scope = global. See lib/library.
   scope?: 'global' | 'partner' | 'event';
+  /** Parent-controlled sharing boundary. Missing preserves the pre-inheritance availability semantics. */
+  shareToChildren?: boolean;
   partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
   eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
   /**
@@ -672,6 +731,8 @@ export interface LibraryImage {
   tags?: string[];
   // Who owns the picture: missing scope = global. See lib/library.
   scope?: 'global' | 'partner' | 'event';
+  /** Parent-controlled sharing boundary. Missing preserves the pre-inheritance availability semantics. */
+  shareToChildren?: boolean;
   partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
   eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
 }
@@ -952,9 +1013,9 @@ export interface Submission {
   retentionExpiresAt?: string;
   retentionErasedAt?: string;
   /**
-   * A separately authorized, manager-only copy recovered from an offline backup after the normal
-   * image references were erased. This never restores consent, publication, vetting, or Fanmass
-   * eligibility; only the private recovery image route reads its pathname.
+   * A manager-only image copy retained from an offline archive after the normal image references
+   * were erased. It can be displayed in the event's existing decision/gallery views, but does not
+   * restore consent, public publication, e-mail, or Fanmass eligibility.
    */
   adminRecovery?: {
     state: 'available';
@@ -1134,6 +1195,11 @@ export interface Slideshow {
   screenDesign?: import('@/lib/slideshow/screen-design').ScreenDesign | null;
   /** The slideshow the event's welcome page screen and its giant screen start from (camera#326): the generated one, or the one an editor set as default. At most one per event. */
   isDefault?: boolean;
+  /** Set only while this event default is inherited from its partner's content defaults. Editing the event removes this link and creates an override. */
+  inheritedFromPartnerId?: string;
+  inheritedPartnerRevision?: number;
+  /** Original generated/event-local settings retained so clearing a partner field can restore the event's own baseline. */
+  inheritanceBaseline?: Partial<Pick<Slideshow, 'name' | 'isActive' | 'transitionDurationMs' | 'fadeDurationMs' | 'bufferSize' | 'refreshStrategy' | 'playMode' | 'orderMode' | 'crossfade' | 'backgroundPrimaryColor' | 'backgroundAccentColor' | 'backgroundImageUrl' | 'viewportScale' | 'stageAspect' | 'screenDesign'>>;
   
   // Admin tracking
   createdBy: string;                 // Admin user ID from SSO who created this slideshow
@@ -1246,6 +1312,11 @@ export interface LandingPage {
   targetId: string;
   targetName: string;
   isActive: boolean;
+  /** One event-owned landing page selected for /landing/event/<eventMongoId>. */
+  isDefault?: boolean;
+  /** Set only on the event-specific materialized copy of a partner landing-page default. */
+  inheritedFromPartnerId?: string;
+  inheritedPartnerRevision?: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

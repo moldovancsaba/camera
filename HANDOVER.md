@@ -2,7 +2,48 @@
 
 ## Current change — optional photo content precheck
 
-Camera has an event-level optional content-precheck setting and a server-only, one-photo-at-a-time worker that uses the shared Hetzner job API. It attaches only validated signals for the exact photo revision and displays them in the existing Vetting screen; human approval/rejection remains authoritative. The Camera key and base URL are provisioned for the `feature/camera-hetzner-moderation` Vercel Preview environment; Vercel does not permit pulling the Secret value into local files, so live checks must run in the deployed preview. Preview requests are marked with `X-Request-Purpose: test`. This branch now deletes consumed remote results after Camera persists or discards them; the API's five-minute TTL is fallback cleanup. Redeploy and the test-event end-to-end check are still required. Full details and service limits: `docs/PHOTO_CONTENT_PRECHECK.md`.
+Camera has an event-level optional content-precheck setting and a server-only, one-photo-at-a-time worker that uses the shared Hetzner job API. It attaches only validated signals for the exact photo revision and displays them in the existing Vetting screen; human approval/rejection remains authoritative. The Camera key and base URL are provisioned in Vercel for the moderation Preview; the secret remains server-side. Preview requests are marked with `X-Request-Purpose: test`. Consumed remote results are deleted after Camera persists or discards them; the API's five-minute TTL is fallback cleanup. Redeployment and the test-event end-to-end check remain required. Full details and service limits: `docs/PHOTO_CONTENT_PRECHECK.md`.
+
+## Current change — global asset inventory, editors and cross-level sharing
+
+The Global Frames inventory's six legacy records were assigned to verified partner/event owners; one cross-partner frame received an event-owned catalog copy. All 21 frame assignments and partner defaults/library references remain intact. The four legacy global logo records were moved to their verified partner/event owners; the MotoGP logo used by a second partner received a partner-owned catalog copy, with all event and default assignments preserved. The Global Frames and Global Logos inventories are empty; no image files were deleted. Private EJSON snapshots were written before both transactional data changes. The frame and logo editors validate API responses and distinguish true 404s from retryable load errors. Global → Partner and Partner → Event share controls are available for frames, logos, images and tagged pictures, including legacy catalogs; event hide actions preserve the current catalog during the compatibility transition. Static checks and the production build passed on this branch; tests were not run in this pass. Tracked by Camera issue #759 on project #24.
+## Current change — analytics scale failure and per-user admin language
+
+The all-events analytics report no longer spreads unbounded duration arrays into
+`Math.max`; that could throw at JavaScript's argument-count limit on a large
+history. Locale selectors now show each native name with its English name in
+parentheses. Signed-in admins can choose a persistent interface language from
+the admin header or Account settings; header changes save immediately, and the
+preference is stored by SSO subject only and remains independent from guest
+language. The preference API and language resolver have unit coverage. A
+local production-build browser check passed at 1440px and 390px, including the
+save interaction; the Analytics page rendered its database-failure state without
+reaching the global error page when tested without a database. Production
+analytics logs were not available, so the scale defect is verified from the code
+path and regression tests; a different production error would need its specific
+server diagnostic to identify. See `docs/ANALYTICS.md`,
+`docs/ADMIN_ACCOUNT_SETTINGS.md`, and `docs/UI_LANGUAGE.md`.
+
+## Current change — partner-scoped event inventory
+
+The partner overview now reports the full event count, previews the 10 most
+recent events, and links to a paginated Events inventory filtered by the
+partner's stable ID. The inventory returns all matching events in pages of 50,
+retains search and filter state, and intersects results with each user's active
+partner permissions. Partner deletion guards use the full event count. TypeScript,
+lint, GDS, inventory, production guards, and build passed; unit tests were not run
+in this session. No production data was changed. See
+`docs/PARTNER_EVENT_INVENTORY.md`.
+
+## Current change — dependency-aware asset deletion
+
+Global, partner and event asset delete paths now share a read-only reference scan for frames, logos and images. Conflicts return exact partner/event/field references; the admin shows paginated deep links and a source-file link for making a copy. Resolve every use in its owner workspace, then retry; the delete endpoint rechecks. No asset files are deleted by this flow, and no production data was changed. Updated runbook, library reference, architecture, audit, release notes and endpoint inventory. Static checks passed: type-check, lint, GDS, inventory and production build. The test suite was not run. No production data was changed; no push, merge or deployment was performed.
+
+## Current change — visual asset inheritance and reusable experience defaults
+
+This branch implements the Global → Partner → Event asset sharing/visibility policy for logos, frames and images, plus identity-free guest-experience templates. Source sharing flags work at both hierarchy boundaries for legacy and new catalogs. A partner or event local-hide action on a legacy catalog first records compatibility hides to preserve the current catalog, then enables the needed inherited policy. New events and newly provisioned events start by inheriting their parent experience. Existing events retain their stored setup until an editor opts them in. Template presets are allow-listed, reject forbidden identity/consent/photo data, and reject known library images that are inactive, private or unavailable at their destination level. Global frame/logo ownership normalization is recorded above; no experience-template default changed. See `docs/VISUAL_ASSET_HIERARCHY.md` and `docs/LIBRARIES.md`.
+
+`npm run release:check` passed, including all 363 unit-test files, production guards and the production build. `npm run inventory:check` passed with 714 links and no broken references. A local production-build browser smoke test confirmed the template selector and save interaction with a mocked API on desktop and at 390 px mobile width (no horizontal overflow). The repository's disposable-database Playwright suite was not run because this worktree has no `MONGODB_URI`; no production database was used. Version remains 12.3.42 pending the coordinated fleet release decision. Project #24 issues #747–#754 track the independently executable architecture, catalog, runtime, provisioning, migration, verification and release work; migration and production rollout remain gated.
 
 ## Current change — case-bound Camera photo erasure
 

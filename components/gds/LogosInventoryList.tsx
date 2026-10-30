@@ -8,6 +8,10 @@ import {
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
 import { getStatusChipContent } from '@/lib/gds/statusChipContent';
+import { useState } from 'react';
+import { InlineAlert, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
 
 export interface SerializedLogoRow {
   id: string;
@@ -28,11 +32,15 @@ export interface SerializedLogoRow {
   ownerName?: string | null;
   /** `messmass` for a partner's logo imported from messmass (camera#367). */
   source?: string | null;
+  shareToChildren?: boolean;
 }
 
 const OWNER_LABEL = { global: 'Global', partner: 'Partner', event: 'Event' } as const;
 
 export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow[] }) {
+  const language = useUiLanguage();
+  const { confirm } = useGdsConfirm();
+  const [actionError, setActionError] = useState<string | null>(null);
   const records: Array<AdminResourceRecord & SerializedLogoRow> = logos.map((logo) => ({
     ...logo,
     id: logo.id,
@@ -44,9 +52,9 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
       logo.scope && logo.scope !== 'global'
         ? getStatusChipContent(
             { tone: logo.scope === 'event' ? 'active' : 'info', label: logo.source === 'messmass' ? 'Partner, from messmass' : OWNER_LABEL[logo.scope] },
-            { tone: logo.isActive ? 'active' : 'inactive' }
+            { tone: logo.isActive ? 'active' : 'inactive', visibility: logo.isActive }
           )
-        : getStatusChipContent({ tone: logo.isActive ? 'active' : 'inactive' }),
+        : getStatusChipContent({ tone: logo.isActive ? 'active' : 'inactive', visibility: logo.isActive }),
     metadata: [
       logo.scope && logo.scope !== 'global' ? { label: OWNER_LABEL[logo.scope], value: logo.ownerName || 'Unknown' } : null,
       { label: 'Partner defaults', value: String(logo.partnerDefaultCount) },
@@ -59,6 +67,17 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
   }));
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedLogoRow>> = [
     {
+      id: 'toggle-global-sharing',
+      label: adminOperationText('Toggle sharing with partners', language),
+      // GDS maps secondary card actions to its generic Edit slot; the labeled icon avoids duplicate, misleading Edit buttons.
+      kind: 'icon',
+      disabled: (logo) => logo.scope !== 'global',
+      onSelect: (logo) => {
+        if (logo.shareToChildren === false) void updateSharing(logo.logoId, true);
+        else void confirmStopSharing(logo.logoId);
+      },
+    },
+    {
       id: 'edit',
       label: 'Edit',
       kind: 'primary',
@@ -67,6 +86,29 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
       },
     },
   ];
+
+  async function confirmStopSharing(id: string) {
+    const confirmed = await confirm({
+      title: adminOperationText('Stop sharing with child levels', language),
+      message: adminOperationText('This asset will become unavailable to every child level. Existing selections are retained and become available again if sharing is restored.', language),
+      confirmAction: 'confirm',
+    });
+    if (confirmed) await updateSharing(id, false);
+  }
+
+  async function updateSharing(id: string, shareToChildren: boolean) {
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/visual-assets/logos/${encodeURIComponent(id)}/sharing`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shareToChildren }),
+      });
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || `Request failed (${response.status})`);
+      window.location.reload();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : adminOperationText('Could not update asset sharing.', language));
+    }
+  }
 
   if (logos.length === 0) {
     return (
@@ -82,5 +124,8 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
     );
   }
 
-  return <AdminResourceManager records={records} state="ready" actions={actions} />;
+  return <>
+    {actionError ? <InlineAlert title={adminOperationText('Asset sharing was not changed', language)} message={actionError} severity="error" /> : null}
+    <AdminResourceManager records={records} state="ready" actions={actions} />
+  </>;
 }

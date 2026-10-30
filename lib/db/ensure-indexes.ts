@@ -79,6 +79,14 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
     }
   };
 
+  // Reusable experience templates are selected by their stable id. A unique
+  // key keeps duplicate provisioning and retries from creating ambiguous refs.
+  await track(COLLECTIONS.EXPERIENCE_TEMPLATES, () =>
+    db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).createIndex(
+      { templateId: 1 }, { unique: true, name: 'experience_templates_templateId_unique' },
+    )
+  );
+
   // --- organizations (messmass provisioning master lookup) ---
   await track(COLLECTIONS.ORGANIZATIONS, () =>
     db.collection(COLLECTIONS.ORGANIZATIONS).createIndex(
@@ -177,10 +185,22 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
   await track(COLLECTIONS.FRAMES, () =>
     db.collection(COLLECTIONS.FRAMES).createIndex({ partnerId: 1, isActive: 1 }, { name: 'frames_partnerId_isActive' })
   );
+  await track(COLLECTIONS.FRAMES, () =>
+    db.collection(COLLECTIONS.FRAMES).createIndex({ imageUrl: 1 }, { name: 'frames_imageUrl' })
+  );
+  await track(COLLECTIONS.FRAMES, () =>
+    db.collection(COLLECTIONS.FRAMES).createIndex({ thumbnailUrl: 1 }, { name: 'frames_thumbnailUrl' })
+  );
 
   // --- logos ---
   await track(COLLECTIONS.LOGOS, () =>
     db.collection(COLLECTIONS.LOGOS).createIndex({ isActive: 1, createdAt: -1 }, { name: 'logos_isActive_createdAt' })
+  );
+  await track(COLLECTIONS.LOGOS, () =>
+    db.collection(COLLECTIONS.LOGOS).createIndex({ imageUrl: 1 }, { name: 'logos_imageUrl' })
+  );
+  await track(COLLECTIONS.LOGOS, () =>
+    db.collection(COLLECTIONS.LOGOS).createIndex({ thumbnailUrl: 1 }, { name: 'logos_thumbnailUrl' })
   );
 
   // --- images (the Images library, camera#368): by id, the global list, and the own uploads of a partner or an event ---
@@ -195,6 +215,12 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
   );
   await track(COLLECTIONS.IMAGES, () =>
     db.collection(COLLECTIONS.IMAGES).createIndex({ scope: 1, eventId: 1, createdAt: -1 }, { name: 'images_scope_eventId_createdAt' })
+  );
+  await track(COLLECTIONS.IMAGES, () =>
+    db.collection(COLLECTIONS.IMAGES).createIndex({ imageUrl: 1 }, { name: 'images_imageUrl' })
+  );
+  await track(COLLECTIONS.IMAGES, () =>
+    db.collection(COLLECTIONS.IMAGES).createIndex({ thumbnailUrl: 1 }, { name: 'images_thumbnailUrl' })
   );
 
   // --- submissions (hot paths: slideshow aggregate, user gallery, admin) ---
@@ -353,6 +379,18 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
     db
       .collection(COLLECTIONS.LANDING_PAGES)
       .createIndex({ eventMongoId: 1, createdAt: -1 }, { name: 'landing_pages_eventMongoId_createdAt' })
+  );
+  await track(COLLECTIONS.LANDING_PAGES, () =>
+    db.collection(COLLECTIONS.LANDING_PAGES).createIndex(
+      { eventMongoId: 1, isDefault: 1 },
+      { name: 'landing_pages_eventMongoId_isDefault' },
+    )
+  );
+  await track(COLLECTIONS.LANDING_PAGES, () =>
+    db.collection(COLLECTIONS.LANDING_PAGES).createIndex(
+      { eventMongoId: 1, inheritedFromPartnerId: 1 },
+      { name: 'landing_pages_eventMongoId_inheritedPartner' },
+    )
   );
   await track(COLLECTIONS.LANDING_PAGE_CSS_PRESETS, () =>
     db

@@ -27,7 +27,7 @@ export default function PartnersInventoryList({ partners }: { partners: Serializ
     id: partner.id,
     title: partner.name,
     description: partner.description || partner.partnerId,
-    status: getStatusChipContent({ tone: partner.isActive ? 'active' : 'inactive' }),
+    status: getStatusChipContent({ tone: partner.isActive ? 'active' : 'inactive', visibility: partner.isActive }),
     metadata: [
       { label: 'Partner ID', value: partner.partnerId },
       { label: 'Events', value: String(partner.eventCount) },

@@ -10,6 +10,24 @@ deleted; no `dev`/`preview` branch exists. Every push to `main` deploys. Policy
 and current practice (PRs recommended; most changes are pushed directly) in
 [docs/BRANCHING.md](docs/BRANCHING.md).
 
+## Visual asset inheritance and experience defaults
+
+The Global → Partner → Event catalog and experience-template system is described in [docs/VISUAL_ASSET_HIERARCHY.md](docs/VISUAL_ASSET_HIERARCHY.md). New partners use the version-2 catalog contract and new events inherit it. Existing partners are intentionally not migrated automatically.
+
+To enable a legacy partner, open its Frames, Logos or Images library and use **Enable inherited catalog**. The server derives local hide references from the current catalog before it enables version 2, preserving the existing visible set. Verify all three libraries and the event's existing assignments after the save. This is an explicit partner-level opt-in; do not bulk-enable production partners from a migration script without a read-only inventory, dry run, backup and reviewed report.
+
+Parent asset changes take effect immediately for descendants that still follow that parent. If an asset becomes unavailable, descendants cannot override that restriction; re-share or reactivate it at its owner to restore availability. Hiding an asset at a child changes only that child's catalog and never deletes media or existing assignments.
+
+Deleting an asset is a two-pass operation. A 409 means Camera found references and has not deleted the catalog row or media file. Use the conflict panel's links to open each named partner/event setting, remove the reference, select a replacement, or upload a saved copy at its new owner level. Return to the original asset page, refresh the usage list, and retry Delete. The server repeats the scan at deletion time; do not manually edit MongoDB references to bypass the guard. If the list says it has more than 500 uses, resolve all pages before retrying. If a known field is missing from the list, keep the asset and report the field/path so the scanner can be updated.
+
+Experience templates are managed from Global Settings → Experience defaults, Partner → Experience defaults, and Event → Edit → Experience defaults. Set the global selection first; optionally create and select a partner template; then confirm the event is set to follow its parent or select an event template. The event editor preserves historical local configuration until an editor opts in. If a parent selection is disabled, the event's stored configuration remains in use. Template writes and selections are reversible through their settings pages. Selected templates cannot be deleted; remove their references first. There is no job queue or external service for template application.
+
+For release, run `npm run db:ensure-indexes` through the normal approved database-index procedure to create the unique experience-template key. Do not run production migrations, change production defaults, or bulk-opt-in partners as part of a code-only deployment. Verify authorization, template selection, known library asset scope checks, guest response stripping, and keyboard/screen-reader states before opening the change for merge review.
+
+## Finding every event for a partner
+
+The partner overview shows the total event count and a compact preview of its 10 most recently created events. Use **Open Events** to open the Events inventory scoped by the partner's stable ID. The inventory shows 50 matching events per page; use the page links to continue through the full set. Event name/location search remains scoped to that partner, and the partner/search filter chips can be removed independently. The **Clear** action returns to the unfiltered Events inventory. Partner-scoped users continue to see only events covered by their active assignments. The overview count and partner-delete guard use the complete count, not the preview size. See [Partner event inventory](docs/PARTNER_EVENT_INVENTORY.md).
+
 ## Deploying to production
 
 Production deploys from git: every push to `main` builds and promotes
@@ -249,7 +267,7 @@ panel and the backfill follow (camera#235 to #238).
 - **The event emoji as the logo (camera#274):** a partner with no logo gets the first emoji of the event title in the logo spot (see the
   plan, decision 17). Images drawn with an older drawing code are drawn again by "Redraw the older images" on `/admin/frames/generated`
   (dry run first; it only touches images, never the snapshot).
-- **Rolling the frame out to existing events (camera#238):** `/admin/frames/generated` (Libraries, "Generated Frames",
+- **Rolling the frame out to existing events (camera#238):** `/admin/frames/generated` (Blocks, "Generated Frames",
   global admin only), API `POST /api/admin/frame-backfill`. It covers every event with no active frame of its own and no
   generated images; events with an own active frame are never touched, events with images are skipped, so it can be
   repeated and continued. Order:
@@ -486,6 +504,10 @@ The event menu **Analytics** and the Operations hub **Analytics** show the measu
 - **Messmass counter delivery is available but off by default.** The document `messmass-counters` in `admin_settings` is the switch (off unless `enabled` is the boolean `true`). If enabled, vetting/marking, new submissions, journey batches and tracked-link hits schedule a coalesced whole-event snapshot. The payload contains only aggregate counters under `camera_`; it never contains images, names, e-mails, account IDs or journey IDs. Review [docs/ANALYTICS_DATA_DICTIONARY.md](docs/ANALYTICS_DATA_DICTIONARY.md) for the counter families and limits. Do not send production test data; use the Messmass Analytics tab preview to inspect values before enabling.
 - **Time to first decision** needs `photoReview.submittedAt` and a `reviewHistory` entry; photos approved when vetting was switched on for the event have no record and no time (the Vetting tab says how many).
 - **Journey switch and retention.** The Journey recorder uses the global Admin Analytics switch. When it is off, no Journey event is written. Daily aggregates, including completed-duration sum/sample counts, are retained for reporting; raw timing/event rows expire after 30 days through Mongo's `journey_events_at_ttl` index (`npm run db:ensure-indexes` creates or verifies it). Average completion duration remains available from daily totals; median and duration distribution are limited to the 30-day raw window.
+
+## Admin interface language preference
+
+Each signed-in admin can set an interface language from the selector in the admin header or from **Account settings** in the account panel. The header selector saves immediately; the account page also supports an explicit save action. A setting is keyed by the SSO subject in `admin_user_preferences`; selecting **Use device language** saves `uiLanguage: null`. Resolution is saved preference → supported `Accept-Language` preference → English. The setting is user-specific and does not change partner/event guest languages. Both account-preference API routes require a Camera admin workspace session, are rate-limited, and send private/no-store responses. If the preference database read fails, admin rendering falls back to the device language. See `docs/ADMIN_ACCOUNT_SETTINGS.md`.
 - **Interpret the measures carefully.** Transition edges show observed next steps, not why a guest left. CTA return means the capture tab became visible/focused after an external action, not proof the external destination completed. Provider-choice percentages are distinct from bounded SSO callback outcomes. Rejection reason percentages can add above 100% because a photo can carry several reasons. Within-event and all-event returning/new reports describe photo submitters, not repeat website visits; the all-event cohort is computed in memory for global admins and is not persisted as a person map.
 
 ## Scheduled jobs and workers

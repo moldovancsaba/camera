@@ -1,6 +1,9 @@
 'use client';
 
 import SemanticButton from '@/components/gds/CameraSemanticButton';
+import { Radio } from '@/components/gds/PublicPrimitives';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
 /**
  * Admin-only: upload files into the event gallery (creates submissions via API).
  * Supports drag/drop, multi-file batches, folder import, and client-side resize/compression.
@@ -285,8 +288,11 @@ export default function EventGalleryUpload({
   onUploaded,
   frameAvailable = false,
 }: Props) {
+  const language = useUiLanguage();
+  const translate = (value: string) => adminOperationText(value, language);
   // On by default whenever the event has a frame (owner, 2026-10-09: an automatic default is also the default; the editor switches it off, it is not an extra to remember).
   const [withFrame, setWithFrame] = useState(true);
+  const [frameMode, setFrameMode] = useState<'random' | 'individual'>('random');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const activeUploadsRef = useRef(0);
@@ -366,7 +372,7 @@ export default function EventGalleryUpload({
         formData.append('file', prepared.file);
         if (prepared.width > 0) formData.append('imageWidth', String(prepared.width));
         if (prepared.height > 0) formData.append('imageHeight', String(prepared.height));
-        if (withFrame && frameAvailable) formData.append('withFrame', '1');
+        if (withFrame && frameAvailable && frameMode === 'random') formData.append('withFrame', '1');
 
         const res = await fetch(
           `/api/admin/events/${encodeURIComponent(eventMongoId)}/gallery-upload`,
@@ -413,7 +419,7 @@ export default function EventGalleryUpload({
         activeUploadsRef.current = Math.max(0, activeUploadsRef.current - 1);
       }
     },
-    [eventMongoId, onUploaded, withFrame, frameAvailable]
+    [eventMongoId, onUploaded, withFrame, frameAvailable, frameMode]
   );
 
   useEffect(() => {
@@ -477,14 +483,33 @@ export default function EventGalleryUpload({
               Supported: {ACCEPT_COPY}. Target upload size per file: under {formatBytes(MAX_DIRECT_UPLOAD_BYTES)}.
             </p>
             <label style={{ alignItems: 'center', display: 'flex', fontSize: '0.875rem', gap: '0.5rem', marginTop: '0.25rem', opacity: frameAvailable ? 1 : 0.6 }}>
-              <input type="checkbox" checked={withFrame && frameAvailable} disabled={!frameAvailable} onChange={(event) => setWithFrame(event.target.checked)} />
-              Add the event&apos;s frame to the photos I upload
+              <input type="checkbox" checked={withFrame && frameAvailable} disabled={!frameAvailable || busy} onChange={(event) => setWithFrame(event.target.checked)} />
+              {translate('Add a frame to the photos I upload')}
             </label>
-            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
-              {frameAvailable
-                ? 'The photo is cropped to the frame\'s shape and the frame laid over it, so it looks like the photos the users take. The plain upload is kept.'
-                : 'The event has no frame yet (the Frames page), so there is nothing to add.'}
-            </p>
+            {frameAvailable && withFrame ? (
+              <Radio.Group
+                name="gallery-frame-selection"
+                label={translate('How should the frame be selected?')}
+                value={frameMode}
+                disabled={busy}
+                onChange={(value) => setFrameMode(value === 'individual' ? 'individual' : 'random')}
+              >
+                <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <Radio value="random" label={translate('Random frame for each photo')} />
+                  <Radio value="individual" label={translate('Choose individually after upload')} />
+                </div>
+              </Radio.Group>
+            ) : null}
+            {frameAvailable && withFrame && frameMode === 'individual' ? (
+              <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
+                {translate('Click each photo to choose or change its frame.')}
+              </p>
+            ) : null}
+            {!frameAvailable ? (
+              <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
+                The event has no frame yet (the Frames page), so there is nothing to add.
+              </p>
+            ) : null}
           </div>
           <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             <input

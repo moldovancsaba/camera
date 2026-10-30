@@ -13,7 +13,7 @@ import { ObjectId } from 'mongodb';
 import { type Frame } from '@/lib/db/schemas';
 import { parseMessageArea } from '@/lib/frame/message-area';
 import { regenerateEventsUsingFrame } from '@/lib/frame/regenerate';
-import { inUseSentence, usageOfItem } from '@/lib/library/db';
+import { assetUsageRefusal, findAssetUsages } from '@/lib/library/usages';
 import {
   requireAdmin,
   withErrorHandler,
@@ -126,9 +126,10 @@ export const DELETE = withErrorHandler(async (
   }
 
   // A frame that an event or a partner library uses is not deleted (camera#392): the events would show a picture that is gone. Switch it off instead.
-  const refusal = inUseSentence('frame', await usageOfItem(db, 'frames', String(frame.frameId)));
-  if (refusal) {
-    throw apiError(refusal, 409);
+  const imageUrls = [frame.imageUrl].filter((value): value is string => typeof value === 'string' && Boolean(value));
+  const usages = await findAssetUsages(db, 'frames', String(frame.frameId), imageUrls);
+  if (usages.usages.length || usages.truncated) {
+    throw apiError(assetUsageRefusal('frame', usages), 409, { kind: 'frames', assetId: String(frame.frameId), usages: usages.usages, total: usages.total, truncated: usages.truncated });
   }
 
   const result = await db.collection<Frame>('frames').deleteOne({ _id: new ObjectId(id) });

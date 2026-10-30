@@ -48,11 +48,21 @@ test("a partner's own frame can be renamed and given a message area; another par
   assert.equal((await PATCH(...patch('p1', { kind: 'frames', messageArea: { messageBox: { x: -1, y: 0, width: 10, height: 10 } } }))).status, 400);
 });
 
-test("a partner's own frame is deleted and leaves the defaults; a frame that is not its own is refused", async (t) => {
-  const { data } = setup(t);
+test("deleting a partner's frame requires removing its default use first", async (t) => {
+  const { data, db, calls } = setup(t);
   const { DELETE } = await importRoute('delete');
   assert.equal((await DELETE(...del('x1'))).status, 400);
+  const blocked = await DELETE(...del('p1'));
+  assert.equal(blocked.status, 409);
+  const body = (await blocked.json()) as { details: { usages: Array<{ uses: string[] }> } };
+  assert.deepEqual(body.details.usages.flatMap((usage) => usage.uses), ['Default for new events']);
+  assert.deepEqual((data.partners[0] as { defaultFrames: string[] }).defaultFrames, ['p1']);
+
+  // Simulate removing the default in partner settings before retrying.
+  await db.collection('partners').updateOne({ partnerId: 'P' }, { $pull: { defaultFrames: 'p1' } } as never);
+  calls.length = 0;
   assert.equal((await DELETE(...del('p1'))).status, 200);
   assert.deepEqual(data.frames.map((f) => f.frameId).sort(), ['g1', 'x1']);
+  assert.deepEqual((data.partners[0] as { defaultFrames: string[] }).defaultFrames, []);
   assert.deepEqual((data.partners[0] as { defaultFrames: string[] }).defaultFrames, []);
 });

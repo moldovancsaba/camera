@@ -70,8 +70,10 @@ collected for an event:
 - **Email addresses** — `GET /api/admin/events/[id]/export/emails` returns a deduplicated
   CSV of every address collected from SSO sign-ins and the guest onboarding form.
 - **Images** — `GET /api/admin/events/[id]/export/images?format=csv|zip` covers originals,
-  finals, and any try-on result an event stored while the removed integration ran. `csv` (default) lists every image URL with metadata;
-  `zip` streams the actual files from their stored URLs (Vercel Blob, or imgbb for older photos), capped at 500 files (larger events use the CSV).
+  finals, and any try-on result an event stored while the removed integration ran. Add
+  `kind=original|final` for a separate rendition ZIP; the event gallery also lets managers
+  download selected originals or framed photos. CSV (default) lists image URLs and metadata;
+  ZIPs contain the files and are capped at 500 images.
 
 Shared logic lives in `lib/events/event-export.ts`. Access requires partner-scoped Events
 `manager` (global admins included). See [docs/EVENT_EXPORTS.md](docs/EVENT_EXPORTS.md).

@@ -174,6 +174,8 @@ export interface EventLogoPanels {
   slots: SlotPanelData[];
   /** The items the editor can pick: the partner's library and the event's own uploads. */
   candidates: LibraryItemView[];
+  /** Event-owned logo uploads switched off at source, retained for restoration. */
+  inactiveUploads: LibraryItemView[];
 }
 
 /** The panels of the event: the event's logo and each place of use, with what each uses now and what it takes from above. */
@@ -215,6 +217,7 @@ export async function loadEventLogoPanels(db: Db, event: Document): Promise<Even
       effective: withView(panel.effective, views, lostFor),
     })),
     candidates: library.available,
+    inactiveUploads: library.inactiveOwn.filter((item) => item.kind === 'logos'),
   };
 }
 

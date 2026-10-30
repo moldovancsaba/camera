@@ -11,12 +11,17 @@
 'use client';
 
 import SemanticButton from '@/components/gds/CameraSemanticButton';
+import { Radio } from '@/components/gds/PublicPrimitives';
+import { AdminModal } from '@sovereignsquad/gds-admin/client';
 import { frameInBatches, frameOutcome } from '@/lib/gallery/frame-batches';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { InlineAlert, ListingCard, StateBlock, type ListingMetadataRow } from '@sovereignsquad/gds-core/client';
 import EventGalleryUpload from './EventGalleryUpload';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
+import { imageExportText } from '@/lib/i18n/image-exports';
 import { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
 import { DRAG_THRESHOLD_PX, boxBetween, dragSelection, extendSelection, idsInBox, toggleId, type Box } from '@/lib/gallery/selection';
 
@@ -39,11 +44,23 @@ interface SubmissionRecord {
   playCount?: number;
   slideshowPlays?: Record<string, SlideshowPlayInfo | undefined>;
   canReturnToVetting?: boolean;
+  galleryFrame?: boolean;
+  galleryUpload?: boolean;
+  frameId?: string | null;
+  frameVariant?: { index: number | null; message: string | null; imageUrl: string } | null;
+  /** An image that is read-only in this manager view and is not eligible for public display. */
+  recoveryOnly?: boolean;
 }
 
 interface SlideshowRecord {
   slideshowId: string;
   name: string;
+}
+
+interface GalleryFrameOption {
+  key: string;
+  label: string;
+  imageUrl: string;
 }
 
 interface EventGalleryProps {
@@ -54,6 +71,8 @@ interface EventGalleryProps {
   canManage?: boolean;
   /** The event has a frame to put on photos (camera#488). */
   hasFrame?: boolean;
+  /** The exact frames currently available to the event, used by the per-photo frame picker. */
+  frameOptions?: GalleryFrameOption[];
   /** Photos of the event that are left out because their picture is gone (never shown as an error, lib/media/broken.ts). */
   hiddenBroken?: number;
   /** Photos an editor uploaded here that have no frame yet: the gallery offers to frame them all in one press. */
@@ -123,9 +142,12 @@ export default function EventGallery({
   slideshows,
   canManage = true,
   hasFrame = false,
+  frameOptions = [],
   hiddenBroken = 0,
   unframedUploadIds = [],
 }: EventGalleryProps) {
+  const language = useUiLanguage();
+  const translate = (value: string) => adminOperationText(value, language);
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -143,7 +165,7 @@ export default function EventGallery({
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allVisibleIds = useMemo(
-    () => submissions.map((submission) => submissionIdOf(submission)),
+    () => submissions.filter((submission) => !submission.recoveryOnly).map((submission) => submissionIdOf(submission)),
     [submissions]
   );
   const allSelected =
@@ -164,7 +186,13 @@ export default function EventGallery({
   };
 
   const handleUploaded = (submission: Record<string, unknown>) => {
-    setSubmissions((prev) => [submission as unknown as SubmissionRecord, ...prev].slice(0, GALLERY_PAGE_SIZE));
+    const metadata = submission.metadata && typeof submission.metadata === 'object' ? submission.metadata as Record<string, unknown> : {};
+    const normalized = {
+      ...submission,
+      galleryFrame: metadata.galleryFrame === true,
+      galleryUpload: metadata.adminGalleryUpload === true,
+    } as unknown as SubmissionRecord;
+    setSubmissions((prev) => [normalized, ...prev].slice(0, GALLERY_PAGE_SIZE));
   };
 
   /** A click on a checkbox or, with a modifier or in Select mode, on a picture: Shift extends from the last clicked photo, anything else toggles this one. */
@@ -185,6 +213,7 @@ export default function EventGallery({
   const onGridPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!canManage || event.button !== 0) return;
     const target = event.target as HTMLElement;
+    if (target.closest('[data-gallery-readonly]')) return;
     const onGap = event.target === event.currentTarget;
     if (!onGap && !(selectMode && !target.closest('button, input, select, textarea'))) return;
     dragRef.current = { x: event.clientX, y: event.clientY, before: selectedIds, additive: event.shiftKey || event.metaKey || event.ctrlKey, active: false };
@@ -281,6 +310,8 @@ export default function EventGallery({
   const [frameState, setFrameState] = useState<{ busy: boolean; message: string | null; error: string | null; progress: string | null }>({ busy: false, message: null, error: null, progress: null });
   // The photos the person has asked to frame and not yet confirmed: the confirmation is in the page (the browser's own pop-up can be blocked and then nothing happens at all).
   const [frameConfirm, setFrameConfirm] = useState<string[] | null>(null);
+  const [framePickerId, setFramePickerId] = useState<string | null>(null);
+  const [frameDraftKey, setFrameDraftKey] = useState('');
   const [unframed, setUnframed] = useState(unframedUploadIds);
   const [returnNotice, setReturnNotice] = useState<string | null>(null);
 
@@ -323,9 +354,62 @@ export default function EventGallery({
       (done, total) => setFrameState((current) => ({ ...current, progress: `Adding the frame… ${done} of ${total}` }))
     );
     setUnframed((current) => current.filter((id) => !result.framed.some((f) => f.id === id)));
-    const newUrl = new Map(result.framed.map((f) => [f.id, f.imageUrl]));
-    setSubmissions((prev) => prev.map((s) => (newUrl.has(submissionIdOf(s)) ? { ...s, imageUrl: newUrl.get(submissionIdOf(s)), finalImageUrl: newUrl.get(submissionIdOf(s)), previewImageUrl: null } : s)));
+    const framedById = new Map(result.framed.map((photo) => [photo.id, photo]));
+    setSubmissions((prev) => prev.map((s) => {
+      const photo = framedById.get(submissionIdOf(s));
+      return photo ? { ...s, imageUrl: photo.imageUrl, finalImageUrl: photo.imageUrl, previewImageUrl: null, galleryFrame: true, frameId: photo.frameId ?? null, frameVariant: photo.frameVariant ?? null } : s;
+    }));
     setFrameState({ busy: false, progress: null, ...frameOutcome(result) });
+  };
+
+  const openFramePicker = (submission: SubmissionRecord) => {
+    setFramePickerId(submissionIdOf(submission));
+    const current = submission.frameVariant?.imageUrl
+      ? `generated:${submission.frameVariant.imageUrl}`
+      : submission.frameId
+        ? `frame:${submission.frameId}`
+        : '';
+    setFrameDraftKey(current || frameOptions[0]?.key || '');
+  };
+
+  const frameOptionLabel = (label: string) => {
+    const generated = label.match(/^Frame (\d+)(?::\s*(.*))?$/);
+    return generated ? `${translate('Frame')} ${generated[1]}${generated[2] ? `: ${generated[2]}` : ''}` : label;
+  };
+
+  const framePickerSubmission = submissions.find((row) => submissionIdOf(row) === framePickerId);
+  const currentFrameKey = framePickerSubmission?.frameVariant?.imageUrl
+    ? `generated:${framePickerSubmission.frameVariant.imageUrl}`
+    : framePickerSubmission?.frameId
+      ? `frame:${framePickerSubmission.frameId}`
+      : '';
+  const selectedFrameAlreadyApplied = framePickerSubmission?.galleryFrame === true && frameDraftKey === currentFrameKey;
+
+  const applyChosenFrame = async () => {
+    const submissionId = framePickerId;
+    const submission = submissions.find((row) => submissionIdOf(row) === submissionId);
+    if (!submissionId || !submission || !frameDraftKey) return;
+    setFrameState({ busy: true, message: null, error: null, progress: 'Applying the selected frame…' });
+    try {
+      const response = await fetch(`/api/admin/events/${eventId}/gallery-frame`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionIds: [submissionId], frameKey: frameDraftKey, replaceExisting: submission.galleryFrame === true }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof json.error === 'string' ? json.error : typeof json.message === 'string' ? json.message : `The server answered ${response.status}`);
+      const framed = json.data?.framed?.[0] as { id?: string; imageUrl?: string; frameId?: string | null; frameName?: string | null; frameVariant?: SubmissionRecord['frameVariant'] } | undefined;
+      const skipped = json.data?.skipped?.[0] as { reason?: string } | undefined;
+      if (!framed?.imageUrl || framed.id !== submissionId) throw new Error(skipped?.reason || 'The selected frame was not applied.');
+      setSubmissions((prev) => prev.map((row) => submissionIdOf(row) === submissionId
+        ? { ...row, imageUrl: framed.imageUrl, finalImageUrl: framed.imageUrl, previewImageUrl: null, galleryFrame: true, frameId: framed.frameId ?? null, frameVariant: framed.frameVariant ?? null }
+        : row));
+      setUnframed((current) => current.filter((id) => id !== submissionId));
+      setFramePickerId(null);
+      setFrameState({ busy: false, message: 'The selected frame was applied.', error: null, progress: null });
+    } catch (error) {
+      setFrameState({ busy: false, message: null, error: error instanceof Error ? error.message : 'The selected frame could not be applied.', progress: null });
+    }
   };
 
   const frameSelected = () => setFrameConfirm([...selectedIds]);
@@ -469,6 +553,24 @@ export default function EventGallery({
             >
               {allSelected ? 'Clear selection' : 'Select all visible'}
             </SemanticButton>
+            {selectedIds.length > 0 ? (
+              <>
+                <form action={`/api/admin/events/${eventId}/export/images`} method="post" target="_blank" style={{ display: 'contents' }}>
+                  <input type="hidden" name="kind" value="original" />
+                  {selectedIds.map((submissionId) => <input key={submissionId} type="hidden" name="submissionIds" value={submissionId} />)}
+                  <SemanticButton action="event-gallery:download-selected-originals" type="submit" variant="secondary">
+                    {imageExportText('selectedOriginals', language)} ({selectedIds.length})
+                  </SemanticButton>
+                </form>
+                <form action={`/api/admin/events/${eventId}/export/images`} method="post" target="_blank" style={{ display: 'contents' }}>
+                  <input type="hidden" name="kind" value="final" />
+                  {selectedIds.map((submissionId) => <input key={submissionId} type="hidden" name="submissionIds" value={submissionId} />)}
+                  <SemanticButton action="event-gallery:download-selected-framed" type="submit" variant="secondary">
+                    {imageExportText('selectedFramed', language)} ({selectedIds.length})
+                  </SemanticButton>
+                </form>
+              </>
+            ) : null}
             {selectedIds.length > 0 && hasFrame ? (
               <SemanticButton
                 action="event-gallery:frame-selected"
@@ -532,7 +634,7 @@ export default function EventGallery({
         // A press that can start a dragged box must not start a text selection either.
         onMouseDown={(event) => {
           const target = event.target as HTMLElement;
-          if (canManage && (event.target === event.currentTarget || (selectMode && !target.closest('button, input, select, textarea')))) {
+          if (canManage && (event.target === event.currentTarget || (selectMode && !target.closest('button, input, select, textarea, [data-gallery-readonly]')))) {
             event.preventDefault();
             window.getSelection()?.removeAllRanges();
           }
@@ -549,11 +651,12 @@ export default function EventGallery({
           const imageUrl = submission.previewImageUrl || submission.imageUrl || submission.finalImageUrl;
           // Consent-pending photos intentionally have no public share page. Admins still need to inspect
           // their visible gallery thumbnail while the guest finishes the login-page consent step.
-          const viewHref = awaitingConsent ? imageUrl : `/share/${submission._id}`;
+          const viewHref = awaitingConsent || submission.recoveryOnly ? imageUrl : `/share/${submission._id}`;
           const selected = selectedSet.has(submissionId);
           const singleConfirm = removeState.singleConfirmId === submissionId;
           const busy = removeState.busyIds.includes(submissionId);
           const displayName = getDisplayName(submission);
+          const frameActionLabel = `${translate('Choose or change frame')} — ${translate('Photo of')} ${displayName}`;
 
           const metadata: ListingMetadataRow[] = [
             { id: 'captured', label: 'Captured', value: formatDateTime(submission.createdAt), tone: 'muted' },
@@ -576,7 +679,7 @@ export default function EventGallery({
             <a key="view" href={viewHref} target={awaitingConsent ? '_blank' : undefined} rel={awaitingConsent ? 'noopener noreferrer' : undefined} style={{ textDecoration: 'none' }}>
               <SemanticButton action="event-gallery:view-submission" size="xs" variant="secondary">View</SemanticButton>
             </a>,
-            <a
+            ...(!submission.recoveryOnly ? [<a
               key="download"
               href={submission.imageUrl || submission.finalImageUrl || undefined}
               download
@@ -588,9 +691,9 @@ export default function EventGallery({
               <SemanticButton action="event-gallery:download-submission" size="xs" variant="secondary" disabled={!submission.imageUrl && !submission.finalImageUrl}>
                 Download
               </SemanticButton>
-            </a>,
+            </a>] : []),
           ];
-          if (canManage) {
+          if (canManage && !submission.recoveryOnly) {
             if (singleConfirm) {
               actions.push(
                 <SemanticButton
@@ -642,14 +745,15 @@ export default function EventGallery({
           return (
             <div
               key={submissionId}
-              data-gallery-id={submissionId}
+              data-gallery-id={submission.recoveryOnly ? undefined : submissionId}
+              data-gallery-readonly={submission.recoveryOnly ? '' : undefined}
               style={{ outline: selected ? '3px solid var(--mantine-primary-color-filled)' : undefined, outlineOffset: 2, borderRadius: '0.875rem' }}
             >
             <ListingCard
               title={displayName}
               image={
                 <div style={{ position: 'relative' }}>
-                  {canManage ? (
+                  {canManage && !submission.recoveryOnly ? (
                     <input
                       type="checkbox"
                       checked={selected}
@@ -661,13 +765,18 @@ export default function EventGallery({
                   ) : null}
                   <a
                     href={viewHref}
+                    aria-label={canManage && submission.galleryUpload && frameOptions.length > 0 ? frameActionLabel : undefined}
+                    title={canManage && submission.galleryUpload && frameOptions.length > 0 ? frameActionLabel : undefined}
                     target={awaitingConsent ? '_blank' : undefined}
                     rel={awaitingConsent ? 'noopener noreferrer' : undefined}
                     onClick={(event) => {
-                      // With Shift or Ctrl/Cmd held, or in Select mode, a click on the picture selects it instead of opening it.
-                      if (canManage && (selectMode || event.shiftKey || event.metaKey || event.ctrlKey)) {
+                      // With Shift or Ctrl/Cmd held, or in Select mode, a click on the picture selects it. An ordinary manager click opens that upload's frame picker.
+                      if (canManage && !submission.recoveryOnly && (selectMode || event.shiftKey || event.metaKey || event.ctrlKey)) {
                         event.preventDefault();
                         selectClick(submissionId, event.shiftKey);
+                      } else if (canManage && submission.galleryUpload && frameOptions.length > 0) {
+                        event.preventDefault();
+                        openFramePicker(submission);
                       }
                     }}
                   >
@@ -689,6 +798,34 @@ export default function EventGallery({
           );
         })}
       </div>
+
+      {canManage && framePickerId ? (
+        <AdminModal
+          opened
+          onClose={() => setFramePickerId(null)}
+          title={translate('Choose a frame')}
+          description={translate('Select a frame for this photo. You can change it later.')}
+          state="ready"
+          size="lg"
+        >
+          {frameState.busy ? <InlineAlert title="Applying frame" message="The selected frame is being rendered from the original photo." severity="info" /> : null}
+          <Radio.Group value={frameDraftKey} onChange={setFrameDraftKey} name="gallery-frame-choice" label={translate('Choose a frame')}>
+            <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))' }}>
+              {frameOptions.map((option) => (
+                <div key={option.key} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
+                  <Radio value={option.key} label={frameOptionLabel(option.label)} disabled={frameState.busy} />
+                  <Image src={option.imageUrl} alt={`${frameOptionLabel(option.label)} preview`} width={240} height={160} unoptimized style={{ display: 'block', height: 120, marginTop: '0.5rem', objectFit: 'contain', width: '100%' }} />
+                </div>
+              ))}
+            </div>
+          </Radio.Group>
+          {frameState.error ? <InlineAlert title="Frame was not applied" message={frameState.error} severity="error" /> : null}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <SemanticButton action="event-gallery:cancel-frame-choice" type="button" onClick={() => setFramePickerId(null)} disabled={frameState.busy} variant="secondary">Cancel</SemanticButton>
+            <SemanticButton action="event-gallery:apply-frame" type="button" onClick={() => void applyChosenFrame()} disabled={frameState.busy || !frameDraftKey || selectedFrameAlreadyApplied}>{translate('Apply frame')}</SemanticButton>
+          </div>
+        </AdminModal>
+      ) : null}
 
       {dragBox ? (
         <div

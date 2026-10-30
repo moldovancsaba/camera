@@ -13,7 +13,7 @@ import EmailPreview from '@/components/admin/kit/EmailPreview';
 import EmailTextEditor from '@/components/admin/kit/EmailTextEditor';
 import { standardLegalLine, type LegalByLanguage } from '@/lib/email/legal-rules';
 import { emailDefaults } from '@/lib/email/submission-template-defaults';
-import { isUiLanguage, UI_LANGUAGES, UI_LANGUAGE_LABELS, type UiLanguage } from '@/lib/i18n';
+import { isUiLanguage, UI_LANGUAGES, UI_LANGUAGE_LABELS, uiLanguageOptionLabel, type UiLanguage } from '@/lib/i18n';
 
 export interface InheritedLegal {
   /** How the level is named in a sentence ("the general legal part", "the partner's legal part"). */
@@ -65,7 +65,7 @@ export default function LegalPartEditor({ own, inherited, eventId, initialLangua
           <select aria-label="Language" value={language} onChange={(event) => { const next = event.currentTarget.value; if (isUiLanguage(next)) setLanguage(next); }} style={{ minHeight: 34 }}>
             {UI_LANGUAGES.map((code) => (
               <option key={code} value={code}>
-                {UI_LANGUAGE_LABELS[code]}
+                {uiLanguageOptionLabel(code)}
               </option>
             ))}
           </select>

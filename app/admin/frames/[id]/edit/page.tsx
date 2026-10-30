@@ -22,6 +22,7 @@ import {
 import { InlineAlert, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import { notifyAdminError } from '@/components/admin/notify';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
+import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import { parseMessageArea, type MessageArea } from '@/lib/frame/message-area';
 
 interface FrameRecord {
@@ -56,6 +57,14 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Frame request failed';
 }
 
+function isFrameRecord(value: unknown): value is FrameRecord {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<FrameRecord>;
+  return typeof candidate._id === 'string'
+    && typeof candidate.name === 'string'
+    && typeof candidate.imageUrl === 'string';
+}
+
 export default function EditFramePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
@@ -68,15 +77,33 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [usageConflict, setUsageConflict] = useState(false);
   const { confirmDestructive } = useGdsConfirm();
 
   useEffect(() => {
     async function fetchFrame() {
+      setFrame(null);
+      setIsLoading(true);
+      setNotFound(false);
+      setError(null);
       try {
         const response = await fetch(`/api/frames/${id}`);
-        if (!response.ok) throw new Error('Frame not found');
-        const data = await response.json();
-        const nextFrame = data.frame as FrameRecord;
+        const payload = await response.json().catch(() => null) as {
+          data?: { frame?: unknown };
+          error?: string;
+        } | null;
+        if (!response.ok) {
+          setNotFound(response.status === 404);
+          throw new Error(payload?.error || (response.status === 404 ? 'Frame not found' : 'Could not load frame'));
+        }
+
+        // apiSuccess wraps route payloads in a data object; validate it before updating editor state.
+        const nextFrame = payload?.data?.frame;
+        if (!isFrameRecord(nextFrame)) {
+          throw new Error('The frame response was incomplete. Refresh the page and try again.');
+        }
         setFrame(nextFrame);
         setName(nextFrame.name);
         setDescription(nextFrame.description ?? '');
@@ -90,7 +117,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
     }
 
     void fetchFrame();
-  }, [id]);
+  }, [id, loadAttempt]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -130,6 +157,11 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
       const response = await fetch(`/api/frames/${id}`, { method: 'DELETE' });
       if (!response.ok) {
         const data = await response.json();
+        if (response.status === 409) {
+          setUsageConflict(true);
+          setIsDeleting(false);
+          return;
+        }
         throw new Error(data.error || 'Failed to delete frame');
       }
 
@@ -163,14 +195,28 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
     return (
       <StateBlock
         variant="error"
-        title="Frame not found"
+        title={notFound ? 'Frame not found' : 'Could not load frame'}
         description={error || undefined}
         action={
-          <Link href="/admin/frames" style={{ textDecoration: 'none' }}>
-            <SemanticButton action="frames:back-to-list" variant="secondary">
-              Back to frames
+          notFound ? (
+            <Link href="/admin/frames" style={{ textDecoration: 'none' }}>
+              <SemanticButton action="frames:back-to-list" variant="secondary">
+                Back to frames
+              </SemanticButton>
+            </Link>
+          ) : (
+            <SemanticButton
+              action="frames:retry-load"
+              variant="secondary"
+              onClick={() => {
+                setError(null);
+                setIsLoading(true);
+                setLoadAttempt((attempt) => attempt + 1);
+              }}
+            >
+              Try again
             </SemanticButton>
-          </Link>
+          )
         }
       />
     );
@@ -191,6 +237,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
       maxWidth={960}
     >
       {error ? <InlineAlert title="Error" message={error} severity="error" /> : null}
+      {usageConflict && frame.frameId ? <AssetUsageResolution kind="frames" assetId={frame.frameId} /> : null}
 
       <form onSubmit={handleSubmit}>
         <AdminCrudForm title="Frame settings" description="Update metadata for this frame resource.">

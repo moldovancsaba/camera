@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
 import { fakeDb } from './fake-db';
-import { checkEventAssign, deleteLibraryUpload, inUseSentence, itemView, loadEventLibrary, loadPartnerLibrary, savePartnerLibrary, updateLibraryUpload, usageOfItem } from './db';
+import { checkEventAssign, deleteLibraryUpload, inUseSentence, itemView, loadEventLibrary, loadPartnerLibrary, savePartnerLibrary, updateEventAssetPolicy, updateLibraryUpload, updatePartnerAssetPolicy, usageOfItem } from './db';
 
 /** A colour from its digits: the colour gate allows no raw hex literal in a test. */
 const hex = (digits: string) => `#${digits}`;
@@ -28,6 +28,11 @@ function seed() {
       frame('e2', { scope: 'event', eventId: OTHER_EVENT_UUID, partnerId: 'P' }),
     ],
     logos: [{ logoId: 'l1', name: 'Logo 1', imageUrl: 'https://img.example/l1.png', isActive: true }],
+    images: [
+      { pictureId: 'p1', name: 'Partner image', imageUrl: 'https://img.example/p1.png', scope: 'partner', partnerId: 'P', isActive: true },
+      { pictureId: 'e1', name: 'Event image', imageUrl: 'https://img.example/e1.png', scope: 'event', partnerId: 'P', eventId: 'E', isActive: true },
+      { pictureId: 'x1', name: 'Other image', imageUrl: 'https://img.example/x1.png', scope: 'partner', partnerId: 'OTHER', isActive: true },
+    ],
     partners: [{ partnerId: 'P', name: 'Partner P', defaultFrames: ['g1'] }],
     events: [
       { _id: EVENT, eventId: EVENT_UUID, partnerId: 'P', name: 'Event', frames: [assignment('g2'), assignment('e1'), assignment('gone')] },
@@ -147,6 +152,14 @@ test('an event takes an item only from its partner library or its own uploads', 
   assert.deepEqual([unknown.ok, unknown.ok ? 0 : unknown.status], [false, 404]);
 });
 
+test('event upload catalog retains inactive own uploads so the owner can restore them', async () => {
+  const { db } = seed();
+  await db.collection('frames').updateOne({ frameId: 'e1' }, { $set: { isActive: false } });
+  const library = await loadEventLibrary(db, (await db.collection('events').findOne({ _id: EVENT }))!, 'frames');
+  assert.deepEqual(ids(library.inactiveOwn), ['e1']);
+  assert.equal(library.available.some((item) => item.id === 'e1'), false, 'inactive event uploads are not selectable');
+});
+
 test('an event cannot take a global item its partner does not have', async () => {
   const { db } = seed();
   const event = (await db.collection('events').findOne({ _id: EVENT }))!;
@@ -154,6 +167,21 @@ test('an event cannot take a global item its partner does not have', async () =>
   const refused = await checkEventAssign(db, event, 'frames', 'g1');
   assert.equal(refused.ok, false);
   assert.match(refused.ok ? '' : refused.reason, /partner library/);
+});
+
+test('explicit source privacy applies to legacy partner and event catalogs without enabling inherited-policy v2', async () => {
+  const { db } = seed();
+  await db.collection('frames').insertOne(frame('private-global', { shareToChildren: false }));
+  const legacyPartner = partner({ library: { frames: [], logos: [], images: [] } });
+  const partnerLibrary = await loadPartnerLibrary(db, legacyPartner, 'frames');
+  assert.equal(partnerLibrary.inheritanceEnabled, undefined);
+  assert.equal(partnerLibrary.available.some((item) => item.id === 'private-global'), false);
+  const event = (await db.collection('events').findOne({ _id: EVENT }))!;
+  const eventLibrary = await loadEventLibrary(db, event, 'frames');
+  assert.equal(eventLibrary.available.some((item) => item.id === 'private-global'), false);
+  assert.equal((await checkEventAssign(db, event, 'frames', 'private-global')).ok, false);
+  const add = await savePartnerLibrary(db, legacyPartner, 'frames', { add: ['private-global'] }, NOW);
+  assert.equal(add.ok, false, 'a legacy partner cannot override the source owner’s explicit private setting');
 });
 
 // Logos (camera#367): the same levels; a default carries its scenario and order, and a logo is assigned once per scenario.
@@ -290,6 +318,17 @@ test('the owner of an own upload can rename it and say where a message is writte
   assert.equal('messageArea' in (data.frames.find((f) => f.frameId === 'e1') as object), false);
 });
 
+test('an own upload can be switched off and on at its source level, and invalid active values are refused', async () => {
+  const { db, data } = seed();
+  const off = await updateLibraryUpload(db, 'images', 'p1', { scope: 'partner', partnerId: 'P' }, { isActive: false }, NOW);
+  assert.equal(off.ok && off.item.isActive, false);
+  assert.equal(data.images.find((item) => item.pictureId === 'p1')?.isActive, false);
+  const invalid = await updateLibraryUpload(db, 'images', 'p1', { scope: 'partner', partnerId: 'P' }, { isActive: 'false' }, NOW);
+  assert.deepEqual([invalid.ok, invalid.ok ? 0 : invalid.status], [false, 400]);
+  assert.equal((await updateLibraryUpload(db, 'images', 'e1', { scope: 'event', eventId: 'E' }, { isActive: false }, NOW)).ok, true);
+  assert.equal((await updateLibraryUpload(db, 'images', 'x1', { scope: 'partner', partnerId: 'P' }, { isActive: false }, NOW)).ok, false, 'another partner cannot switch off this upload');
+});
+
 test("only the owner's level can change an upload: not a global frame, not another event's or another partner's, and no empty name", async () => {
   const { db } = seed();
   const level = { scope: 'event' as const, eventId: EVENT_UUID };
@@ -320,5 +359,32 @@ test('where an item is used: the events that have it, the partner libraries that
   assert.equal(inUseSentence('frame', { events: 0, partnerLibraries: 0, partnerDefaults: 0 }), null, 'an unused item may be deleted');
   assert.match(inUseSentence('frame', { events: 2, partnerLibraries: 2, partnerDefaults: 1 }) ?? '', /^This frame is used by 2 events, 2 partner libraries, 1 partner that makes it a default for new events\. Switch it off instead/);
   assert.match(inUseSentence('logo', { events: 1, partnerLibraries: 0, partnerDefaults: 0 }) ?? '', /^This logo is used by 1 event\. Switch it off instead/);
+});
+
+test('partner inheritance opt-in preserves its legacy visible catalog, then supports a separate forwarding boundary', async () => {
+  const { db, data } = seed();
+  const changed = await updatePartnerAssetPolicy(db, partner(), 'frames', 'g1', 'stop-forwarding', NOW);
+  assert.equal(changed.ok, true);
+  if (!changed.ok) return;
+  const storedPartner = data.partners[0] as Record<string, unknown>;
+  assert.deepEqual((storedPartner.visualAssetPolicy as { hidden: Array<{ id: string }> }).hidden.map((ref) => ref.id).sort(), ['g3', 'l1'], 'legacy defaults and event usage remain available; assets outside the prior library remain hidden');
+  assert.deepEqual(ids((await loadPartnerLibrary(db, storedPartner, 'frames')).items), ['g1', 'g2', 'p1']);
+  assert.deepEqual(ids((await loadEventLibrary(db, data.events[0], 'frames')).available), ['p1'], 'g1 is blocked from the event catalog while the partner can still see it; the partner-owned frame remains available');
+  assert.equal((await checkEventAssign(db, data.events[0], 'frames', 'g1')).ok, false);
+  assert.equal((await checkEventAssign(db, data.events[0], 'frames', 'g2')).ok, true, 'an existing event assignment remains available');
+});
+
+test('an event hide is local, while a parent forwarding block cannot be restored by the event', async () => {
+  const { db, data } = seed();
+  assert.equal((await updatePartnerAssetPolicy(db, partner(), 'frames', 'g1', 'allow-forwarding', NOW)).ok, true);
+  const event = data.events[0];
+  assert.equal((await updateEventAssetPolicy(db, event, 'frames', 'g2', true, NOW)).ok, true);
+  assert.equal((await checkEventAssign(db, event, 'frames', 'g2')).ok, false);
+  const eventLibrary = await loadEventLibrary(db, event, 'frames');
+  assert.deepEqual(ids(eventLibrary.hidden ?? []), ['g2']);
+  assert.deepEqual(ids((await loadPartnerLibrary(db, data.partners[0], 'frames')).items.filter((row) => row.scope === 'global')), ['g1', 'g2']);
+  assert.equal((await updatePartnerAssetPolicy(db, data.partners[0], 'frames', 'g1', 'stop-forwarding', NOW)).ok, true);
+  const cannotRestore = await updateEventAssetPolicy(db, event, 'frames', 'g1', false, NOW);
+  assert.equal(cannotRestore.ok, false);
 });
 

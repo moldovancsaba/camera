@@ -9,6 +9,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { GLOBAL_FILTER, itemView } from './db';
 import { withoutSampleSelfies } from './sample-selfie';
 import type { GlobalImageEntry, LibraryItemView } from './types';
+import { assetUsageRefusal, findAssetUsages, type AssetUsage } from './usages';
 
 /** The most images one list returns, as for the other libraries. */
 const LIST_LIMIT = 500;
@@ -63,12 +64,24 @@ export async function setGlobalImageActive(db: Db, pictureId: string, isActive: 
 }
 
 /**
- * Deletes a global image and takes it out of every partner library that holds it. The file stays in the store, so a picture field that shows
- * it keeps its address and the picture keeps showing; only the library forgets it.
+ * Deletes a global catalog entry only after the admin has resolved every partner, event, and picture-field use. The stored media file is
+ * not deleted here; child copies and existing direct URLs keep working independently of this catalog record.
  */
-export async function deleteGlobalImage(db: Db, pictureId: string): Promise<{ ok: true; partnersUpdated: number } | { ok: false; status: 400 | 404; reason: string }> {
+export async function deleteGlobalImage(db: Db, pictureId: string): Promise<{ ok: true; partnersUpdated: number } | { ok: false; status: 400 | 404 | 409; reason: string; usages?: AssetUsage[]; total?: number; truncated?: boolean }> {
   const found = await globalImage(db, pictureId);
   if (!found.ok) return found;
+  const imageUrls = [found.doc.imageUrl, found.doc.thumbnailUrl].filter((value): value is string => typeof value === 'string' && Boolean(value));
+  const dependencies = await findAssetUsages(db, 'images', pictureId, imageUrls);
+  if (dependencies.usages.length || dependencies.truncated) {
+    return {
+      ok: false,
+      status: 409,
+      reason: assetUsageRefusal('image', dependencies),
+      usages: dependencies.usages,
+      total: dependencies.total,
+      truncated: dependencies.truncated,
+    };
+  }
   const pulled = await db.collection(COLLECTIONS.PARTNERS).updateMany({ 'library.images': pictureId }, { $pull: { 'library.images': pictureId } as Document });
   await images(db).deleteOne({ pictureId });
   return { ok: true, partnersUpdated: pulled.modifiedCount };

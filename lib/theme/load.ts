@@ -11,20 +11,22 @@ import { resolveEventTheme, type EventTheme } from '@/lib/theme/event-theme';
 import { storedPartnerPictures } from '@/lib/events/partner-pictures';
 import { brokenAddresses, pictureOrNull } from '@/lib/media/pictures';
 import { welcomeButtonColours } from '@/lib/theme/welcome-buttons';
+import { filterUnavailableVisualAssetUrls } from '@/lib/visual-assets/filter';
 
 // The function lives in its own file (no imports) so that a light module can read it without the loader's imports; it is still exported from here for its tests and callers.
 export { welcomeButtonColours };
 
-async function partnerEmailFooter(db: Db, event: Document): Promise<string | null> {
-  if (typeof event.partnerId !== 'string' || !event.partnerId) return null;
-  const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }, { projection: { pictures: 1 } });
+async function partnerEmailFooter(partner: Document | null): Promise<string | null> {
+  if (!partner) return null;
   return storedPartnerPictures(partner?.pictures).emailFooter ?? null;
 }
 
 export async function loadEventTheme(db: Db, event: Document): Promise<EventTheme> {
+  const partner = typeof event.partnerId === 'string' && event.partnerId
+    ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId })
+    : null;
   let context = (event.frameDesign as { context?: FrameContext } | undefined)?.context ?? null;
   if (!context) {
-    const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }, { projection: { name: 1, logoUrl: 1 } });
     context = nativeFrameContext(
       {
         eventName: String(event.name ?? ''),
@@ -35,11 +37,15 @@ export async function loadEventTheme(db: Db, event: Document): Promise<EventThem
     );
   }
   // The e-mail footer picture is the event's own, else its partner's default (lib/events/partner-pictures.ts, issue 368): one small read, only for an event with none.
-  const emailFooterImageUrl = typeof event.emailFooterImageUrl === 'string' && event.emailFooterImageUrl ? event.emailFooterImageUrl : await partnerEmailFooter(db, event);
+  const emailFooterImageUrl = typeof event.emailFooterImageUrl === 'string' && event.emailFooterImageUrl ? event.emailFooterImageUrl : await partnerEmailFooter(partner);
   const theme = resolveEventTheme({ buttons: welcomeButtonColours(event.customPages), brandColor: typeof event.brandColor === 'string' ? event.brandColor : null, brandBorderColor: typeof event.brandBorderColor === 'string' ? event.brandBorderColor : null, context, emailFooterImageUrl });
-  // A logo or footer picture that its host no longer has is left out, never shown as an error (issue 514, CLAUDE.md section 9); the e-mails, the share page and every guest page read the theme from here.
+  // This shared loader serves capture pages, e-mails, screens and slideshows;
+  // resolve inherited library URLs here so every public consumer sees the same
+  // parent sharing policy (rather than relying on one API response to filter it).
+  const visibleTheme = await filterUnavailableVisualAssetUrls(db, theme, event, partner);
+  // A logo or footer picture that its host no longer has is left out, never shown as an error (issue 514, CLAUDE.md section 9).
   const broken = await brokenAddresses(db);
-  return { ...theme, logoUrl: pictureOrNull(theme.logoUrl, broken), emailFooterImageUrl: pictureOrNull(theme.emailFooterImageUrl, broken), font: { ...theme.font, url: browserFontUrl(theme.font.file) } };
+  return { ...visibleTheme, logoUrl: pictureOrNull(visibleTheme.logoUrl, broken), emailFooterImageUrl: pictureOrNull(visibleTheme.emailFooterImageUrl, broken), font: { ...visibleTheme.font, url: browserFontUrl(visibleTheme.font.file) } };
 }
 
 /** The custom font file on the messmass origin, as the browser must ask for it: messmass.com redirects to www, and a redirect carries no CORS header. */

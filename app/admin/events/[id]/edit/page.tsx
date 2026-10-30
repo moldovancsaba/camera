@@ -26,6 +26,7 @@ import {
   TextInput,
 } from '@/components/gds/PublicPrimitives';
 import ImagePicker from '@/components/admin/library/ImagePicker';
+import EventExperienceTemplateSettings from '@/components/admin/EventExperienceTemplateSettings';
 import { EMAIL_PICTURE_TYPES, EMAIL_PICTURE_WORDS } from '@/lib/library/image-files';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { FormSection } from '@sovereignsquad/gds-admin/client';
@@ -38,7 +39,7 @@ import {
   normalizeEventButtonSize,
   type EventButtonSize,
 } from '@/lib/events/visual-settings';
-import { isUiLanguage, normalizeUiLanguage, UI_LANGUAGES, UI_LANGUAGE_LABELS, type UiLanguage } from '@/lib/i18n';
+import { isUiLanguage, normalizeUiLanguage, UI_LANGUAGES, uiLanguageOptionLabel, type UiLanguage } from '@/lib/i18n';
 import { CAMERA_MODES, CAMERA_MODE_LABELS, DEFAULT_CAMERA_MODE, isCameraMode, type CameraMode } from '@/lib/camera/mode';
 import {
   DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
@@ -401,8 +402,8 @@ export default function EditEventPage({
               label="User interface language"
               description="The language of the default texts of the user journey, the photo page and the emails. Same as the partner follows the partner's default language. A text written for this event in the page editor still wins."
               data={[
-                { value: '', label: uiLanguage === '' ? `Same as the partner (${UI_LANGUAGE_LABELS[shownLanguage]})` : 'Same as the partner' },
-                ...UI_LANGUAGES.map((language) => ({ value: language, label: UI_LANGUAGE_LABELS[language] })),
+                { value: '', label: uiLanguage === '' ? `Same as the partner (${uiLanguageOptionLabel(shownLanguage)})` : 'Same as the partner' },
+                ...UI_LANGUAGES.map((language) => ({ value: language, label: uiLanguageOptionLabel(language) })),
               ]}
               value={uiLanguage}
               onChange={(value) => setUiLanguage(isUiLanguage(value) ? value : '')}
@@ -588,6 +589,8 @@ export default function EditEventPage({
           </Group>
         </Stack>
       </form>
+
+      {event ? <EventExperienceTemplateSettings eventMongoId={mongoId} sourceEventId={mongoId} /> : null}
 
     </EditorScaffold>
   );

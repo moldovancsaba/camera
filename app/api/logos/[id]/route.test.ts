@@ -19,7 +19,6 @@ function setup(t: TestContext, extra: { events?: Array<Record<string, unknown>>;
   return seeded;
 }
 const del = (id = String(LOGO_OID)) => [new NextRequest(`http://localhost/api/logos/${id}`, { method: 'DELETE' }), { params: Promise.resolve({ id }) }] as const;
-const errorOf = async (response: Response) => ((await response.json()) as { error?: string }).error ?? '';
 const row = (logoId: string) => ({ logoId, scenario: 'onboarding-thankyou', order: 0, isActive: true });
 
 test('a logo that nothing uses is deleted, and an unknown logo is not found', async (t) => {
@@ -30,21 +29,29 @@ test('a logo that nothing uses is deleted, and an unknown logo is not found', as
   assert.equal(data.logos.length, 0);
 });
 
-test('a logo that an event has is not deleted any more, and not pulled from the event: the answer says how many events', async (t) => {
-  const { data } = setup(t, { events: [{ eventId: 'e1', logos: [row('l1')] }] });
+test('a logo assigned to an event returns the exact event destination and remains in place', async (t) => {
+  const { data } = setup(t, { events: [{ _id: new ObjectId(), eventId: 'e1', name: 'Event One', logos: [row('l1')] }] });
   const { DELETE } = await importRoute('delete-event');
   const response = await DELETE(...del());
   assert.equal(response.status, 409);
-  assert.match(await errorOf(response), /used by 1 event\. Switch it off instead/);
+  const body = (await response.json()) as { error: string; details?: { total?: number; usages?: Array<{ ownerName: string; uses: string[]; href: string }> } };
+  assert.match(body.error, /still used in 1 event/);
+  assert.equal(body.details?.total, 1);
+  assert.equal(body.details?.usages?.[0]?.ownerName, 'Event One');
+  assert.deepEqual(body.details?.usages?.[0]?.uses, ['Assigned event logo']);
+  assert.equal(body.details?.usages?.[0]?.href, `/admin/events/${(data.events[0]._id as ObjectId).toString()}/logos`);
   assert.equal(data.logos.length, 1);
   assert.equal((data.events[0].logos as unknown[]).length, 1, 'the event keeps its logo');
 });
 
 test('a logo that a partner library holds, or a partner makes a default, is not deleted either', async (t) => {
-  const { data } = setup(t, { partners: [{ partnerId: 'P', defaultLogos: [row('l1')], library: { frames: [], logos: ['l1'] } }] });
+  const { data } = setup(t, { partners: [{ _id: new ObjectId(), partnerId: 'P', name: 'Partner P', defaultLogos: [row('l1')], library: { frames: [], logos: ['l1'] } }] });
   const { DELETE } = await importRoute('delete-partner');
   const response = await DELETE(...del());
   assert.equal(response.status, 409);
-  assert.match(await errorOf(response), /1 partner library, 1 partner that makes it a default for new events/);
+  const body = (await response.json()) as { error: string; details?: { total?: number; usages?: Array<{ ownerName: string; uses: string[]; href: string }> } };
+  assert.match(body.error, /still used in 1 partner/);
+  assert.equal(body.details?.total, 1, 'the library membership and default are grouped at one destination');
+  assert.deepEqual(body.details?.usages?.[0]?.uses, ['In the partner library · Default logo for new events']);
   assert.equal(data.logos.length, 1);
 });

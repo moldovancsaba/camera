@@ -15,6 +15,7 @@
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, type FrameMessageSelectionDisplay, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
@@ -22,9 +23,16 @@ import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmi
 import { DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID, dedupeActiveRolePages } from '@/lib/events/default-pages';
 import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type CheckboxMode, type EffectiveCheckboxes, type StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 import CheckboxSettingsFields, { type CheckboxModes } from '@/components/admin/CheckboxSettingsFields';
+import WelcomeCompositionEditor from '@/components/admin/WelcomeCompositionEditor';
+import { validateWelcomeElements, welcomeElementsFromLegacy, type WelcomeElement } from '@/lib/events/welcome-composition';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminShellText } from '@/lib/i18n/admin-shell';
 
 export interface CustomPagesManagerProps {
   eventId: string;
+  /** Event-generated slideshow artwork used by the welcome screen. */
+  eventWelcomeScreenUrl?: string;
+  eventTheme?: { background?: string; font?: { family?: string } };
   initialPages: CustomPage[];
   /** What decides which default pages the event gets (`GET /api/events/<id>`): with it the list is the journey as the user goes through it (camera#378). */
   journeyContext?: JourneyContext;
@@ -154,7 +162,9 @@ function MoveButtons({ canUp, canDown, onUp, onDown }: { canUp: boolean; canDown
   );
 }
 
-export default function CustomPagesManager({ eventId, initialPages, journeyContext, acceptanceOnWhoAreYou = null, galleryConsent = null, consentSettings = null, partnerCheckboxes, frameMessageSelectionDisplay = 'automatic', onSave }: CustomPagesManagerProps) {
+export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eventTheme, initialPages, journeyContext, acceptanceOnWhoAreYou = null, galleryConsent = null, consentSettings = null, partnerCheckboxes, frameMessageSelectionDisplay = 'automatic', onSave }: CustomPagesManagerProps) {
+  const language = useUiLanguage();
+  const journeyTitle = adminShellText('Event User Journey', language);
   const [pages, setPages] = useState<CustomPage[]>(initialPages);
   // One value for each kind of checkbox (issue 558): the list at the top and the page editors that show a kind (the Who-are-you page's acceptance, the consent page's acceptance and gallery permission)
   // read and write it here, so they are always the same one. "" is no choice of its own: the event follows its partner.
@@ -446,7 +456,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
       <div style={{ display: 'grid', gap: '1.5rem' }}>
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <h2 style={{ margin: 0 }}>Pages of the user journey</h2>
+            <h2 style={{ margin: 0 }}>{journeyTitle}</h2>
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
               {journeyContext
                 ? 'The pages a user visits, in order. A default page is used until you customise it. Fixed steps such as approval, e-mails and the public photo page are managed in their dedicated settings.'
@@ -556,7 +566,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
                     #{index + 1}
                       </code>
                       <LabelTag tone="neutral" label={page.pageType} />
-                      {page.isActive ? null : <LabelTag tone="warning" label="Switched off: users do not see it" />}
+                      {page.isActive ? null : <VisibilityStatusIcon isVisible={false} />}
                     </div>
                     <strong style={{ fontSize: '0.875rem' }}>
                     {page.config.title || '[Untitled]'}
@@ -648,8 +658,11 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
           <h2 id="custom-page-editor-title" style={{ marginTop: 0 }}>{editingPage ? `Edit ${editingPage.pageType} Page` : 'Edit Page'}</h2>
           {editingPage ? (
             <PageEditModal
+              key={editingPage.pageId}
               page={editingPage}
               eventId={eventId}
+              eventWelcomeScreenUrl={eventWelcomeScreenUrl}
+              eventTheme={eventTheme}
               modes={modes}
               onModeChange={changeMode}
               partnerCheckboxes={partnerCheckboxes}
@@ -676,6 +689,8 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
 function PageEditModal({
   page,
   eventId,
+  eventWelcomeScreenUrl,
+  eventTheme,
   modes,
   onModeChange,
   partnerCheckboxes,
@@ -686,6 +701,8 @@ function PageEditModal({
 }: {
   page: CustomPage;
   eventId: string;
+  eventWelcomeScreenUrl?: string;
+  eventTheme?: { background?: string; font?: { family?: string } };
   modes: CheckboxModes;
   onModeChange: (kind: CheckboxKind, mode: CheckboxMode) => void;
   partnerCheckboxes?: EffectiveCheckboxes;
@@ -769,13 +786,13 @@ function PageEditModal({
     page.config.restartButtonText || page.config.buttonText || 'Start again'
   );
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(page.config.backgroundImageUrl || '');
-  const [bottomImageUrl, setBottomImageUrl] = useState(page.config.bottomImageUrl || '');
-  const [cornerImageUrl, setCornerImageUrl] = useState(page.config.cornerImageUrl || '');
-  const [screenImageUrl, setScreenImageUrl] = useState(page.config.screenImageUrl || '');
-  const [screenImageAlt, setScreenImageAlt] = useState(page.config.screenImageAlt || '');
+  const [welcomeElements, setWelcomeElements] = useState<WelcomeElement[]>(() =>
+    page.config.welcomeElements ?? welcomeElementsFromLegacy(page.config, eventWelcomeScreenUrl)
+  );
   const [buttonColor, setButtonColor] = useState(page.config.buttonColor || '');
   const [buttonTextColor, setButtonTextColor] = useState(page.config.buttonTextColor || '');
   const [buttonBorderColor, setButtonBorderColor] = useState(page.config.buttonBorderColor || '');
+  const welcomeElementsError = page.pageType === CustomPageType.WELCOME ? validateWelcomeElements(welcomeElements) : null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -845,10 +862,7 @@ function PageEditModal({
         }),
         ...(page.pageType === CustomPageType.WELCOME && {
           backgroundImageUrl: backgroundImageUrl.trim() || undefined,
-          bottomImageUrl: bottomImageUrl.trim() || undefined,
-          cornerImageUrl: cornerImageUrl.trim() || undefined,
-          screenImageUrl: screenImageUrl.trim() || undefined,
-          screenImageAlt: screenImageAlt.trim() || undefined,
+          welcomeElements,
           buttonColor: buttonColor.trim() || undefined,
           buttonTextColor: buttonTextColor.trim() || undefined,
           buttonBorderColor: buttonBorderColor.trim() || undefined,
@@ -935,49 +949,25 @@ function PageEditModal({
 
         {page.pageType === CustomPageType.WELCOME ? (
           <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <h4 style={{ margin: 0 }}>Landing page elements (each one is optional)</h4>
-              <Field
-                label="Start button text"
-                value={buttonText}
-                onChange={setButtonText}
-                required
-                placeholder="e.g., START"
-                helper="The only words on the page. Write it in the language of the event."
-              />
-              <ImagePicker
-                label="Background picture"
-                value={backgroundImageUrl}
-                onChange={setBackgroundImageUrl}
-                level={pictureLevel}
-                helper="Fills the screen in portrait and landscape (scaled to cover, centred). Leave empty for no picture: the page colour of the event shows."
-              />
-              <ImagePicker
-                label="Left image (bottom left)"
-                value={bottomImageUrl}
-                onChange={setBottomImageUrl}
-                level={pictureLevel}
-                helper="Transparent PNG on the bottom edge: full width in portrait, half the width at the left edge in landscape. Leave empty for no left image."
-              />
-              <ImagePicker
-                label="Right image (bottom right)"
-                value={cornerImageUrl}
-                onChange={setCornerImageUrl}
-                level={pictureLevel}
-                helper="Transparent PNG of the same size as the left image, at the same scale: over it in portrait, half the width at the right edge in landscape. Leave empty for no right image."
-              />
-              <ImagePicker
-                label="Giant screen picture"
-                value={screenImageUrl}
-                onChange={setScreenImageUrl}
-                level={pictureLevel}
-                helper="Shown on a 3D giant screen above the Start button (drawn by camera, tilted and swaying). 16:9 works best. Leave empty: an event that has the picture drawn from its default slideshow (Slideshows, Welcome page screen) shows that one; any other event has no giant screen."
-              />
-              <Field label="Giant screen picture description" value={screenImageAlt} onChange={setScreenImageAlt} placeholder="What the screen shows, for screen readers" />
-              <Field label="Start button colour" value={buttonColor} onChange={setButtonColor} placeholder="e.g., the club's official colour, as #RRGGBB" />
-              <Field label="Start button label colour" value={buttonTextColor} onChange={setButtonTextColor} placeholder="#RRGGBB" />
-              <Field label="Start button ring colour" value={buttonBorderColor} onChange={setButtonBorderColor} placeholder="#RRGGBB" />
-            </div>
+            <WelcomeCompositionEditor
+              eventId={eventId}
+              elements={welcomeElements}
+              onElementsChange={setWelcomeElements}
+              buttonText={buttonText}
+              onButtonTextChange={setButtonText}
+              backgroundImageUrl={backgroundImageUrl}
+              onBackgroundImageChange={setBackgroundImageUrl}
+              eventWelcomeScreenUrl={eventWelcomeScreenUrl}
+              stageBackgroundColor={eventTheme?.background}
+              eventFontFamily={eventTheme?.font?.family}
+              buttonColors={{ fill: buttonColor, label: buttonTextColor, ring: buttonBorderColor }}
+              onButtonColorsChange={(colors) => {
+                setButtonColor(colors.fill ?? '');
+                setButtonTextColor(colors.label ?? '');
+                setButtonBorderColor(colors.ring ?? '');
+              }}
+            />
+            {welcomeElementsError ? <InlineAlert title="Finish the welcome composition" message={welcomeElementsError} severity="warning" /> : null}
           </section>
         ) : null}
 
@@ -1373,7 +1363,7 @@ function PageEditModal({
         ) : null}
 
         <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', paddingTop: '0.5rem' }}>
-          <SemanticButton action="custom-pages:save-page" type="submit">Save Page</SemanticButton>
+          <SemanticButton action="custom-pages:save-page" type="submit" disabled={Boolean(welcomeElementsError)}>Save Page</SemanticButton>
           <SemanticButton action="custom-pages:cancel-page" type="button" variant="secondary" onClick={onCancel}>
             Cancel
           </SemanticButton>

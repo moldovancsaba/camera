@@ -35,12 +35,22 @@ const del = (itemId: string, kind = 'frames') => [
   { params: Promise.resolve({ eventId: String(EVENT_MONGO_ID), itemId }) },
 ] as const;
 
-test("deleting an event's own upload unassigns it and removes it; the other frames stay", async (t) => {
-  const { data } = setup(t);
+test("deleting an event's own frame requires removing its event assignment first", async (t) => {
+  const { data, db, calls } = setup(t);
   const { DELETE } = await importRoute('own');
+  const blocked = await DELETE(...del('e1'));
+  assert.equal(blocked.status, 409);
+  const body = (await blocked.json()) as { details: { usages: Array<{ uses: string[] }> } };
+  assert.deepEqual(body.details.usages.flatMap((usage) => usage.uses), ['Assigned event frame']);
+  assert.deepEqual(data.frames.map((f) => f.frameId).sort(), ['e1', 'e2', 'g1']);
+
+  // Simulate removing the assignment in event settings before retrying.
+  await db.collection('events').updateOne({ eventId: 'e-uuid' }, { $pull: { frames: { frameId: 'e1' } } } as never);
+  calls.length = 0;
   const response = await DELETE(...del('e1'));
   assert.equal(response.status, 200);
   assert.deepEqual(data.frames.map((f) => f.frameId).sort(), ['e2', 'g1']);
+  assert.deepEqual((data.events[0] as { frames: Array<{ frameId: string }> }).frames.map((f) => f.frameId), ['g1']);
   assert.deepEqual((data.events[0] as { frames: Array<{ frameId: string }> }).frames.map((f) => f.frameId), ['g1']);
 });
 

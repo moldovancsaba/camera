@@ -8,6 +8,10 @@ import {
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
 import { getStatusChipContent } from '@/lib/gds/statusChipContent';
+import { useState } from 'react';
+import { InlineAlert, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
 
 export interface SerializedFrameRow {
   id: string;
@@ -24,9 +28,13 @@ export interface SerializedFrameRow {
   eventId?: string | null;
   eventName?: string | null;
   eventAdminId?: string | null;
+  shareToChildren?: boolean;
 }
 
 export default function FramesInventoryList({ frames }: { frames: SerializedFrameRow[] }) {
+  const language = useUiLanguage();
+  const { confirm } = useGdsConfirm();
+  const [actionError, setActionError] = useState<string | null>(null);
   const records: Array<AdminResourceRecord & SerializedFrameRow> = frames.map((frame) => ({
     ...frame,
     id: frame.id,
@@ -39,7 +47,7 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
         tone: frame.scope === 'event' ? 'active' : frame.scope === 'partner' ? 'info' : 'inactive',
         label: frame.scope === 'global' ? 'Global' : frame.scope === 'partner' ? 'Partner' : 'Event',
       },
-      { tone: frame.isActive ? 'active' : 'inactive' }
+      { tone: frame.isActive ? 'active' : 'inactive', visibility: frame.isActive }
     ),
     metadata: [
       { label: 'Category', value: frame.category || 'general' },
@@ -50,6 +58,17 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
   }));
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedFrameRow>> = [
     {
+      id: 'toggle-global-sharing',
+      label: adminOperationText('Toggle sharing with partners', language),
+      // GDS maps secondary card actions to its generic Edit slot; the labeled icon avoids duplicate, misleading Edit buttons.
+      kind: 'icon',
+      disabled: (frame) => frame.scope !== 'global',
+      onSelect: (frame) => {
+        if (frame.shareToChildren === false) void updateSharing(frame.id, true);
+        else void confirmStopSharing(frame.id);
+      },
+    },
+    {
       id: 'edit',
       label: 'Edit',
       kind: 'primary',
@@ -58,6 +77,29 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
       },
     },
   ];
+
+  async function confirmStopSharing(id: string) {
+    const confirmed = await confirm({
+      title: adminOperationText('Stop sharing with child levels', language),
+      message: adminOperationText('This asset will become unavailable to every child level. Existing selections are retained and become available again if sharing is restored.', language),
+      confirmAction: 'confirm',
+    });
+    if (confirmed) await updateSharing(id, false);
+  }
+
+  async function updateSharing(id: string, shareToChildren: boolean) {
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/visual-assets/frames/${encodeURIComponent(id)}/sharing`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shareToChildren }),
+      });
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || `Request failed (${response.status})`);
+      window.location.reload();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : adminOperationText('Could not update asset sharing.', language));
+    }
+  }
 
   if (frames.length === 0) {
     return (
@@ -73,7 +115,8 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
     );
   }
 
-  return (
+  return <>
+    {actionError ? <InlineAlert title={adminOperationText('Asset sharing was not changed', language)} message={actionError} severity="error" /> : null}
     <AdminResourceManager records={records} state="ready" actions={actions} />
-  );
+  </>;
 }

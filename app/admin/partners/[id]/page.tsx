@@ -10,12 +10,17 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
 import { AccentPanel, AccessSummary, StatsStrip } from '@/components/gds/ClientWrappers';
-import { Badge, Breadcrumbs, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
+import { Breadcrumbs, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
+import PartnerEventsOpenAll from '@/components/admin/PartnerEventsOpenAll';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import DeletePartnerButton from '@/components/admin/DeletePartnerButton';
+import ExperienceTemplateDefaultSettings from '@/components/admin/ExperienceTemplateDefaultSettings';
+import { fetchPartnerStyleContext } from '@/lib/messmassClient';
+import { parseMessmassStylePalette, type MessmassStylePalette } from '@/lib/theme/messmass-style-palette';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
@@ -59,6 +64,7 @@ interface PartnerDoc {
   isActive?: boolean;
   contactName?: string;
   contactEmail?: string;
+  messmassPartnerId?: string;
   createdAt: string;
   updatedAt: string;
   defaultBrandColors?: { primary?: string; secondary?: string };
@@ -138,6 +144,8 @@ export default async function PartnerDetailPage({
   let submissions: SubmissionDoc[] = [];
   let partnerAccessAssignments: PartnerAccessAssignmentDoc[] = [];
   let participantCount = 0;
+  let partnerEventCount = 0;
+  let messmassStyle: MessmassStylePalette | null = null;
   let dbError: string | null = null;
   const session = await getSession();
   const canManagePartner = isGlobalAdminSession(session);
@@ -157,6 +165,10 @@ export default async function PartnerDetailPage({
       redirect('/admin/partners');
     }
 
+    const messmassStyleRequest = partner.messmassPartnerId
+      ? fetchPartnerStyleContext(partner.messmassPartnerId)
+      : Promise.resolve(null);
+
     const assignments = await listSessionPartnerAssignments(db, session!);
     if (!isGlobalAdminSession(session)) {
       const eventAssignment = assignments.find(
@@ -172,12 +184,18 @@ export default async function PartnerDetailPage({
       );
     }
 
-    events = (await db
-      .collection(COLLECTIONS.EVENTS)
-      .find({ partnerId: partner.partnerId })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray()) as unknown as EventDoc[];
+    const partnerEventQuery = { partnerId: partner.partnerId };
+    const [partnerEvents, totalPartnerEvents] = await Promise.all([
+      db
+        .collection(COLLECTIONS.EVENTS)
+        .find(partnerEventQuery)
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .toArray(),
+      db.collection(COLLECTIONS.EVENTS).countDocuments(partnerEventQuery),
+    ]);
+    events = partnerEvents as unknown as EventDoc[];
+    partnerEventCount = totalPartnerEvents;
 
     submissions = (await db
       .collection(COLLECTIONS.SUBMISSIONS)
@@ -270,6 +288,12 @@ export default async function PartnerDetailPage({
         };
       });
     }
+
+    const styleResponse = await messmassStyleRequest;
+    const styleContext = styleResponse && typeof styleResponse === 'object' && !Array.isArray(styleResponse)
+      ? (styleResponse as { style?: unknown }).style
+      : null;
+    messmassStyle = parseMessmassStylePalette(styleContext);
   } catch (error) {
     console.error('Error fetching partner details:', error);
     dbError = error instanceof Error ? error.message : 'Unknown error';
@@ -289,7 +313,7 @@ export default async function PartnerDetailPage({
         eyebrow="Camera Core"
         title={partner.name}
         description={partner.description}
-        status={partner.isActive ? 'Active' : 'Inactive'}
+        status={<VisibilityStatusIcon isVisible={partner.isActive === true} />}
         actions={
           <>
             {canManagePartner ? (
@@ -310,7 +334,7 @@ export default async function PartnerDetailPage({
 
       <StatsStrip
         stats={[
-          { label: 'Events', value: events.length },
+          { label: 'Events', value: partnerEventCount },
           { label: 'Frames', value: partner.frameCount || 0 },
           { label: 'Photos', value: submissions.length },
           { label: 'Participants', value: participantCount },
@@ -427,7 +451,7 @@ export default async function PartnerDetailPage({
               <Title order={3} mb="md">
                 Danger Zone
               </Title>
-              <DeletePartnerButton partnerId={id} partnerName={partner.name} hasEvents={events.length > 0} eventCount={events.length} />
+              <DeletePartnerButton partnerId={id} partnerName={partner.name} hasEvents={partnerEventCount > 0} eventCount={partnerEventCount} />
             </Card>
           ) : null}
         </Stack>
@@ -462,9 +486,23 @@ export default async function PartnerDetailPage({
             id={id}
             brandColor={partner.defaultBrandColors?.primary}
             brandBorderColor={partner.defaultBrandColors?.secondary}
+            messmassStyle={messmassStyle}
+            messmassLinked={Boolean(partner.messmassPartnerId)}
             frames={partner.defaultFramesWithDetails || []}
             logos={partner.defaultLogosWithDetails || []}
           />
+
+          {canManageEvents ? (
+            <div id="partner-user-journey" style={{ scrollMarginTop: '1.5rem' }}>
+              <ExperienceTemplateDefaultSettings
+                level="partner"
+                resourceId={id}
+                sourceEventId={events[0]?._id.toString()}
+                canManage={Boolean(events[0])}
+                sectionTitle="Partner User Journey"
+              />
+            </div>
+          ) : null}
 
           <Card p={0}>
             <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-default-border)', padding: '1.5rem' }}>
@@ -474,11 +512,14 @@ export default async function PartnerDetailPage({
                   Event app instances that inherit this partner’s defaults and can override them when needed.
                 </Text>
               </div>
-              {canManageEvents ? (
-                <Link href={`/admin/events/new?partnerId=${partner.partnerId}`} style={{ textDecoration: 'none' }}>
-                  <Button>+ Add Event</Button>
-                </Link>
-              ) : null}
+              <Group gap="sm" wrap="wrap">
+                <PartnerEventsOpenAll partnerId={partner.partnerId} partnerName={partner.name} eventCount={partnerEventCount} />
+                {canManageEvents ? (
+                  <Link href={`/admin/events/new?partnerId=${encodeURIComponent(partner.partnerId)}`} style={{ textDecoration: 'none' }}>
+                    <Button>+ Add Event</Button>
+                  </Link>
+                ) : null}
+              </Group>
             </Group>
 
             {events.length === 0 ? (
@@ -533,9 +574,7 @@ export default async function PartnerDetailPage({
                       </Group>
                     </Stack>
                     <Group gap="sm" justify="flex-end">
-                      <Badge color={event.isActive ? 'green' : 'gray'}>
-                        {event.isActive ? '● Active' : '○ Inactive'}
-                      </Badge>
+                      <VisibilityStatusIcon isVisible={event.isActive === true} />
                       {canManageEvents ? <Link href={`/admin/events/${event._id}/edit`}>Edit</Link> : null}
                     </Group>
                   </Group>
@@ -546,7 +585,7 @@ export default async function PartnerDetailPage({
         </Stack>
       </SimpleGrid>
 
-      <Card p={0}>
+      <Card id="partner-gallery" p={0} style={{ scrollMarginTop: '1.5rem' }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <Title order={2}>Partner Gallery</Title>
           <Text c="dimmed" mt="xs">

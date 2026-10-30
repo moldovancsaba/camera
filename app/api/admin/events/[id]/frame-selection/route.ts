@@ -18,6 +18,7 @@ import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorizat
 import { parseFrameSelection } from '@/lib/frame/selection';
 import { loadSelectionContext } from '@/lib/frame/selection-options';
 import { allowedImage } from '@/lib/theme/event-theme';
+import { applyExperienceConfig, resolveEventExperienceConfig, selectionWithExperienceOverrides } from '@/lib/visual-assets/templates';
 
 type RouteContext = { params?: Promise<{ id: string }> };
 
@@ -35,7 +36,12 @@ export const GET = withErrorHandler(async (request: NextRequest, context?: Route
   const session = await requireAuth(request);
   const { id } = await context!.params!;
   const { db, event } = await loadEvent(id, session, 'viewer');
-  return apiSuccess({ ...await loadSelectionContext(db, event), tiles: event.frameSelectionTiles ?? {} });
+  const partner = typeof event.partnerId === 'string' ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null;
+  const effective = applyExperienceConfig(
+    event as Record<string, unknown>,
+    await resolveEventExperienceConfig(db, event as Record<string, unknown>, partner as Record<string, unknown> | null),
+  );
+  return apiSuccess({ ...await loadSelectionContext(db, effective), tiles: effective.frameSelectionTiles ?? {} });
 });
 
 export const PUT = withErrorHandler(async (request: NextRequest, context?: RouteContext) => {
@@ -47,7 +53,12 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object' || !('selection' in body)) throw apiBadRequest('A JSON body with a selection is required');
 
-  const current = await loadSelectionContext(db, event);
+  const partner = typeof event.partnerId === 'string' ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null;
+  const effective = applyExperienceConfig(
+    event as Record<string, unknown>,
+    await resolveEventExperienceConfig(db, event as Record<string, unknown>, partner as Record<string, unknown> | null),
+  );
+  const current = await loadSelectionContext(db, effective);
   const parsed = parseFrameSelection((body as { selection: unknown }).selection, {
     layouts: current.layouts.map((layout) => layout.id),
     messages: current.messages.map((message) => message.text),
@@ -79,9 +90,14 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   else unset.frameSelection = '';
   if (Object.keys(tiles).length) set.frameSelectionTiles = tiles;
   else unset.frameSelectionTiles = '';
+  const templateSelection = selectionWithExperienceOverrides(
+    event.experienceTemplate,
+    { frameSelection: parsed.value, frameSelectionTiles: tiles },
+  );
+  if (templateSelection) set.experienceTemplate = templateSelection;
   await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, {
     ...(Object.keys(set).length ? { $set: set } : {}),
     ...(Object.keys(unset).length ? { $unset: unset } : {}),
   });
-  return apiSuccess({ ...await loadSelectionContext(db, { ...event, frameSelection: parsed.value ?? undefined }), tiles });
+  return apiSuccess({ ...await loadSelectionContext(db, { ...effective, frameSelection: parsed.value ?? undefined }), tiles });
 });
