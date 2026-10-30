@@ -12,6 +12,7 @@ import { repairDefaultSlideshowQr } from '@/lib/short-links/slideshow-qr';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { scheduleWelcomeScreen } from '@/lib/screen/welcome-screen-store';
 import { loadEventTheme } from '@/lib/theme/load';
+import { applyPartnerSlideshowDefault } from '@/lib/slideshow/default-slideshow';
 import { brokenAddresses } from '@/lib/media/pictures';
 import { cachedStageTheme } from '@/lib/slideshow/stage-theme';
 import { stageColours } from '@/lib/slideshow/stage-colours';
@@ -199,6 +200,14 @@ export async function GET(
       return NextResponse.json({ error: 'Slideshow not found' }, { status: 404 });
     }
 
+    const event = await findEventForSlideshow(db, String(slideshow.eventId));
+    timer.lap('event');
+
+    if (!event) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+
+    Object.assign(slideshow, await applyPartnerSlideshowDefault(db, event as unknown as Document, slideshow));
     if (slideshow.isActive === false) {
       return NextResponse.json(
         {
@@ -214,26 +223,13 @@ export async function GET(
     }
 
     // `bufferSize` = upcoming slides behind the current; total pipeline slots = upcoming + 1
-    const upcomingSlots = Math.max(
-      1,
-      Math.min(50, Math.floor(Number(slideshow.bufferSize) || 10))
-    );
+    const upcomingSlots = Math.max(1, Math.min(50, Math.floor(Number(slideshow.bufferSize) || 10)));
     const isOnceMode = slideshow.playMode === 'once';
     /** Loop: current + N upcoming. Once: initial pass length (no +1 — no separate prefetch tail). */
-    const defaultLimit = Math.min(
-      100,
-      isOnceMode ? upcomingSlots : upcomingSlots + 1
-    );
+    const defaultLimit = Math.min(100, isOnceMode ? upcomingSlots : upcomingSlots + 1);
     const limit = limitParam
       ? Math.max(1, Math.min(100, parseInt(limitParam, 10) || defaultLimit))
       : defaultLimit;
-
-    const event = await findEventForSlideshow(db, String(slideshow.eventId));
-    timer.lap('event');
-
-    if (!event) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
-    }
 
     if (event.isActive === false) {
       return NextResponse.json(

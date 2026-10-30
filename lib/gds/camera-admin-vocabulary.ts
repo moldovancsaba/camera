@@ -64,6 +64,10 @@ export const cameraAdminVocabularyPacks = [
     delete: { defaultMessage: 'Delete landing page', icon: GdsIcons.Delete, feedback: deletedFeedback },
     open: { defaultMessage: 'Open landing page', icon: GdsIcons.Eye, feedback: openedFeedback },
     'copy-url': { defaultMessage: 'Copy URL', icon: GdsIcons.Copy, feedback: savedFeedback },
+    'inherit-partner-default': { defaultMessage: 'Use partner default', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    'open-event-url': { defaultMessage: 'Open event URL', icon: GdsIcons.Eye, feedback: openedFeedback },
+    'copy-event-url': { defaultMessage: 'Copy event URL', icon: GdsIcons.Copy, feedback: savedFeedback },
+    'set-default': { defaultMessage: 'Set as event default', icon: GdsIcons.Check, feedback: savedFeedback },
     'editor-action': { defaultMessage: 'Landing page action', icon: GdsIcons.Edit, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('slideshows', {
@@ -74,6 +78,7 @@ export const cameraAdminVocabularyPacks = [
     'copy-url': { defaultMessage: 'Copy URL', icon: GdsIcons.Copy, feedback: savedFeedback },
     'editor-action': { defaultMessage: 'Slideshow action', icon: GdsIcons.Edit, feedback: savedFeedback },
     'make-default': { defaultMessage: 'Make default', icon: GdsIcons.Check, feedback: savedFeedback },
+    'inherit-partner-default': { defaultMessage: 'Use partner default', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'create-default': { defaultMessage: 'Create the default slideshow', icon: GdsIcons.Add, feedback: savedFeedback },
     'draw-welcome-screen': { defaultMessage: 'Draw the welcome page screen', icon: GdsIcons.Capture, feedback: savedFeedback },
     'pick-another-selfie': { defaultMessage: 'Pick another', icon: GdsIcons.Refresh, feedback: savedFeedback },

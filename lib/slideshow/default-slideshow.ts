@@ -51,6 +51,87 @@ export async function findDefaultSlideshow(db: Db, eventUuid: string): Promise<D
   return db.collection(COLLECTIONS.SLIDESHOWS).findOne({ eventId: eventUuid, isDefault: true });
 }
 
+/** Refreshes the event's generated default from its current partner template, but never overwrites an editor's event-level override. */
+export async function applyPartnerSlideshowDefault(db: Db, event: Document, source: Document): Promise<Document> {
+  const partnerId = typeof event.partnerId === 'string' ? event.partnerId : '';
+  if (!partnerId || source.isDefault !== true || source.inheritanceMode === 'override') return source;
+  const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId }, { projection: { contentDefaults: 1 } });
+  const defaults = partner?.contentDefaults as { revision?: number; slideshow?: Record<string, unknown> | null } | undefined;
+  const template = defaults?.slideshow;
+  const isAlreadyInherited = source.inheritedFromPartnerId === partnerId;
+  const isLegacyGeneratedDefault = !source.inheritedFromPartnerId && source.createdBy === 'system';
+  if (!template) {
+    if (!isAlreadyInherited) return source;
+    const baseline = source.inheritanceBaseline && typeof source.inheritanceBaseline === 'object'
+      ? source.inheritanceBaseline as Record<string, unknown>
+      : null;
+    const restored = baseline ? { ...baseline, updatedAt: generateTimestamp() } : {};
+    await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
+      { _id: source._id, inheritedFromPartnerId: partnerId },
+      { ...(baseline ? { $set: restored } : {}), $unset: { inheritedFromPartnerId: '', inheritedPartnerRevision: '', inheritanceBaseline: '' } },
+    );
+    const detached: Document = { ...source, ...restored };
+    delete detached.inheritedFromPartnerId;
+    delete detached.inheritedPartnerRevision;
+    delete detached.inheritanceBaseline;
+    return detached;
+  }
+  if (!isAlreadyInherited && !isLegacyGeneratedDefault) return source;
+  const revision = Math.max(0, Number(defaults?.revision) || 0);
+  if (isAlreadyInherited && Number(source.inheritedPartnerRevision) === revision) return source;
+  const baseline = source.inheritanceBaseline && typeof source.inheritanceBaseline === 'object'
+    ? source.inheritanceBaseline as Record<string, unknown>
+    : {
+        name: source.name,
+        isActive: source.isActive,
+        transitionDurationMs: source.transitionDurationMs,
+        fadeDurationMs: source.fadeDurationMs,
+        bufferSize: source.bufferSize,
+        refreshStrategy: source.refreshStrategy,
+        playMode: source.playMode,
+        orderMode: source.orderMode,
+        crossfade: source.crossfade,
+        backgroundPrimaryColor: source.backgroundPrimaryColor,
+        backgroundAccentColor: source.backgroundAccentColor,
+        backgroundImageUrl: source.backgroundImageUrl ?? null,
+        viewportScale: source.viewportScale ?? 'fit',
+        stageAspect: source.stageAspect ?? null,
+        screenDesign: source.screenDesign ?? null,
+      };
+  const sourceDesign = source.screenDesign && typeof source.screenDesign === 'object' ? source.screenDesign as Record<string, unknown> : null;
+  const baselineDesign = baseline.screenDesign && typeof baseline.screenDesign === 'object' ? baseline.screenDesign as Record<string, unknown> : null;
+  const templateDesign = template.screenDesign && typeof template.screenDesign === 'object' ? template.screenDesign as Record<string, unknown> : null;
+  const sourceQr = sourceDesign?.qr && typeof sourceDesign.qr === 'object' ? sourceDesign.qr as Record<string, unknown> : null;
+  const baselineQr = baselineDesign?.qr && typeof baselineDesign.qr === 'object' ? baselineDesign.qr as Record<string, unknown> : null;
+  const templateQr = templateDesign?.qr && typeof templateDesign.qr === 'object' ? templateDesign.qr as Record<string, unknown> : null;
+  const screenDesign = templateDesign
+    ? { ...templateDesign, ...(templateQr && (sourceQr?.url || baselineQr?.url) ? { qr: { ...templateQr, url: sourceQr?.url || baselineQr?.url } } : {}) }
+    : baseline.screenDesign ?? null;
+  const set: Record<string, unknown> = {
+    name: template.name ?? baseline.name ?? source.name,
+    isActive: template.isActive !== false,
+    transitionDurationMs: template.transitionDurationMs,
+    fadeDurationMs: template.fadeDurationMs,
+    bufferSize: template.bufferSize,
+    refreshStrategy: template.refreshStrategy,
+    playMode: template.playMode,
+    orderMode: template.orderMode,
+    crossfade: template.crossfade === true,
+    backgroundPrimaryColor: template.backgroundPrimaryColor,
+    backgroundAccentColor: template.backgroundAccentColor,
+    backgroundImageUrl: template.backgroundImageUrl ?? null,
+    viewportScale: template.viewportScale ?? 'fit',
+    screenDesign,
+    inheritedFromPartnerId: partnerId,
+    inheritedPartnerRevision: revision,
+    inheritanceBaseline: baseline,
+    updatedAt: generateTimestamp(),
+  };
+  if (template.stageAspect === null || typeof template.stageAspect === 'number') set.stageAspect = template.stageAspect;
+  await db.collection(COLLECTIONS.SLIDESHOWS).updateOne({ _id: source._id }, { $set: set, $unset: { inheritanceMode: '' } });
+  return { ...source, ...set };
+}
+
 /**
  * The address written under the photos (owner, 2026-10-09): the event's own short address (`shortUrlSlug`, e.g. go.messmass.com/mtk-vasas) whenever it has one, else the slug of the
  * tracked "Giant screen" link. It is the public address without the protocol. The QR code keeps pointing at the tracked link, so its scans are still counted on their own.
@@ -68,9 +149,10 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
 
   const existing = await findDefaultSlideshow(db, eventUuid);
   if (existing) {
-    const repaired = await repairDefaultSlideshowQr(db, event, existing, deps.origin(), deps.now());
+    const inherited = await applyPartnerSlideshowDefault(db, event, existing);
+    const repaired = await repairDefaultSlideshowQr(db, event, inherited, deps.origin(), deps.now());
     if (!repaired.ok) return repaired;
-    return { ok: true, slideshowId: String(existing.slideshowId), created: false };
+    return { ok: true, slideshowId: String(inherited.slideshowId), created: false };
   }
 
   // The link: the event's own "Giant screen" QR link when it has one, else a new one. Its slug is the whole address on the screen.
@@ -100,7 +182,7 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
   // which is what the default slideshow always had. Once it is a text of the slideshow the editor owns it.
   const qrText = await chooseQrText(db, event, { random: deps.random });
   const slideshowId = generateId();
-  await db.collection(COLLECTIONS.SLIDESHOWS).insertOne({
+  const createdSlideshow = {
     slideshowId,
     eventId: eventUuid,
     eventName: String(event.name ?? ''),
@@ -130,7 +212,9 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
     createdBy: 'system',
     createdAt: now,
     updatedAt: now,
-  });
+  };
+  const inserted = await db.collection(COLLECTIONS.SLIDESHOWS).insertOne(createdSlideshow);
+  await applyPartnerSlideshowDefault(db, event, { ...createdSlideshow, _id: inserted.insertedId } as unknown as Document);
   if (stage) await storeStagePick(db, event, stage.pictureId, now);
   if (qrText) await storeQrTextPick(db, event, qrText, now);
   return { ok: true, slideshowId, created: true };

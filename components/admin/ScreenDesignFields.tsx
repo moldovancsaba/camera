@@ -82,7 +82,7 @@ function Num({ label, value, onChange, helper, disabled }: { label: string; valu
 }
 
 /** `eventMongoId` is the event of the slideshow: the overlay is chosen from that event's images library (camera#368). */
-export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { draft: ScreenDesignDraft; onChange: (next: ScreenDesignDraft) => void; eventMongoId: string }) {
+export default function ScreenDesignFields({ draft, onChange, eventMongoId, partnerId }: { draft: ScreenDesignDraft; onChange: (next: ScreenDesignDraft) => void; eventMongoId?: string; partnerId?: string }) {
   const set = <K extends keyof ScreenDesignDraft>(key: K, value: ScreenDesignDraft[K]) => onChange({ ...draft, [key]: value });
   const setText = (i: number, patch: Partial<ScreenDesignTextDraft>) => onChange({ ...draft, texts: draft.texts.map((t, j) => (j === i ? (patch.text !== undefined ? placeUnderWindow({ ...t, ...patch }, draft) : { ...t, ...patch }) : t)) });
 
@@ -93,7 +93,7 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { 
         helper="A 16:9 picture (1920×1080) drawn over the stage, transparent where the photos play. Choose it from the partner library, upload it for this event, or paste an https address (PNG, WebP or SVG). Leave empty for a plain slideshow."
         value={draft.overlayImageUrl}
         onChange={(url) => set('overlayImageUrl', url)}
-        level={{ scope: 'event', eventId: eventMongoId }}
+        level={partnerId ? { scope: 'partner', partnerId } : { scope: 'event', eventId: eventMongoId ?? '' }}
         fileTypes={OVERLAY_PICTURE_TYPES}
         fileTypeWords={OVERLAY_PICTURE_WORDS}
       />
