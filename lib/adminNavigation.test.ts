@@ -28,8 +28,8 @@ test('a global admin and a partner user see the same items of the event menu, An
 
 test('the partner menu has its own pages', () => {
   const menu = adminContextMenu({ kind: 'partner', id: ID }, `/admin/partners/${ID}`, GLOBAL_ADMIN);
-  assert.deepEqual(menu.items.map((item) => item.label), ['Overview', 'Edit', 'Partner User Journey', 'Partner Images', 'Partner Frames', 'Partner Frame Slots', 'Partner Logos', 'Partner Selfies', 'Partner Stadiums', 'Partner Dictionary', 'Partner Vetting words', 'Partner Email', 'Partner Gallery']);
-  assert.deepEqual(menu.items.map((item) => item.href), [`/admin/partners/${ID}`, `/admin/partners/${ID}/edit`, `/admin/partners/${ID}#partner-user-journey`, `/admin/partners/${ID}/images`, `/admin/partners/${ID}/frames`, `/admin/partners/${ID}/frame-slots`, `/admin/partners/${ID}/logos`, `/admin/partners/${ID}/selfies`, `/admin/partners/${ID}/stadiums`, `/admin/partners/${ID}/texts`, `/admin/partners/${ID}/annotation-words`, `/admin/partners/${ID}/emails`, `/admin/partners/${ID}#partner-gallery`]);
+  assert.deepEqual(menu.items.map((item) => item.label), ['Overview', 'Edit', 'Partner User Journey', 'Partner Images', 'Partner Frames', 'Partner Frame Slots', 'Partner Logos', 'Partner Selfies', 'Partner Stadiums', 'Partner Dictionary', 'Partner Vetting words', 'Partner Email', 'Partner Landing Pages', 'Partner Slideshows', 'Partner Gallery']);
+  assert.deepEqual(menu.items.map((item) => item.href), [`/admin/partners/${ID}`, `/admin/partners/${ID}/edit`, `/admin/partners/${ID}#partner-user-journey`, `/admin/partners/${ID}/images`, `/admin/partners/${ID}/frames`, `/admin/partners/${ID}/frame-slots`, `/admin/partners/${ID}/logos`, `/admin/partners/${ID}/selfies`, `/admin/partners/${ID}/stadiums`, `/admin/partners/${ID}/texts`, `/admin/partners/${ID}/annotation-words`, `/admin/partners/${ID}/emails`, `/admin/partners/${ID}/landing-pages`, `/admin/partners/${ID}/slideshows`, `/admin/partners/${ID}#partner-gallery`]);
 });
 
 const activeLabels = (pathname: string, kind: 'event' | 'partner' = 'event') =>

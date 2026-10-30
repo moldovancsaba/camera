@@ -1,5 +1,15 @@
 # RELEASE_NOTES.md
 
+## Unreleased — partner landing-page and slideshow defaults
+
+- **Added:** partner-scoped editors and authenticated APIs for saving/removing a default landing-page template and slideshow configuration.
+- **Added:** events inherit partner defaults. Partner revisions refresh inherited event records; editing/choosing an event default detaches it and preserves that event override.
+- **Added:** the stable public URL `/landing/event/<event Mongo id>` resolves the event's own default first, otherwise the current partner default, and redirects to its event-specific canonical page. Partner capture-action URLs can use `{eventCaptureUrl}`.
+- **Added:** event controls to apply/reset to the partner default, choose an event default landing page, and open/copy the event landing URL.
+- **Security and recovery:** partner writes require partner Events manager access, event changes require event manager access, and no partner template data is exposed in public APIs. Landing-page materialization is idempotent and uses event-specific target/QR/capture data.
+- **Documentation:** added `docs/PARTNER_CONTENT_DEFAULTS.md` and updated the current architecture and navigation delivery notes.
+- **Verification:** targeted landing-default and slideshow-default unit tests and TypeScript pass. Full release checks remain to be run.
+
 ## Unreleased — icon-based visibility indicators
 
 - **Changed:** replaced repetitive Active/Inactive and switched-off status badges across event, partner, and visual-asset admin views with a green Material Icons eye for visible items and a red eye-off for hidden items. The saved status values and visibility behavior are unchanged.

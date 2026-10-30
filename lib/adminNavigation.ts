@@ -338,6 +338,8 @@ const scopedItems = (kind: AdminContextKind): AdminContextItem[] => {
         { section: 'Content', label: 'Event Gallery', description: 'The event photos: upload, select, and manage visibility.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
       ]
     : [
+        { section: 'Content', label: 'Partner Landing Pages', description: 'Set the landing page template inherited by this partner’s events.', iconKey: 'world', path: '/landing-pages', isVisible: everyone },
+        { section: 'Content', label: 'Partner Slideshows', description: 'Set the slideshow defaults inherited by this partner’s events.', iconKey: 'photoScan', path: '/slideshows', isVisible: everyone },
         { section: 'Content', label: 'Partner Gallery', description: 'Photos captured across this partner’s events.', iconKey: 'photoScan', path: '#partner-gallery', isVisible: everyone },
       ];
   const operations: AdminContextItem[] = kind === 'event'

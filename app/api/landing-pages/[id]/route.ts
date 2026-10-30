@@ -177,6 +177,10 @@ export const PATCH = withErrorHandler(async (
   if (body.cookieConsentRequired !== undefined) updates.cookieConsentRequired = body.cookieConsentRequired !== false;
   if (body.isActive !== undefined) updates.isActive = Boolean(body.isActive);
 
+  // An editor change turns a materialized partner default into an event-owned override.
+  // Event-specific identity (slug, target, and stored content) stays intact.
+  const breaksInheritance = Boolean(existing.inheritedFromPartnerId);
+
   if (
     body.customCssPresetId !== undefined ||
     body.customCssClassName !== undefined ||
@@ -241,9 +245,13 @@ export const PATCH = withErrorHandler(async (
     updates.targetName = target.targetName;
   }
 
-  await db
-    .collection(COLLECTIONS.LANDING_PAGES)
-    .updateOne({ _id: new ObjectId(id) }, { $set: updates });
+  await db.collection(COLLECTIONS.LANDING_PAGES).updateOne(
+    { _id: new ObjectId(id) },
+    {
+      $set: updates,
+      ...(breaksInheritance ? { $unset: { inheritedFromPartnerId: '', inheritedPartnerRevision: '' } } : {}),
+    },
+  );
 
   const updated = await db
     .collection(COLLECTIONS.LANDING_PAGES)

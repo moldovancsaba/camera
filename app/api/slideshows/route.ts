@@ -361,7 +361,10 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
     }
     const result = await db.collection(COLLECTIONS.SLIDESHOWS).findOneAndUpdate(
       { _id: new ObjectId(id) },
-      { $set: updates },
+      {
+        $set: { ...updates, ...(existing.isDefault === true ? { inheritanceMode: 'override' } : {}) },
+        ...(existing.isDefault === true ? { $unset: { inheritedFromPartnerId: '', inheritedPartnerRevision: '', inheritanceBaseline: '' } } : {}),
+      },
       { returnDocument: 'after' }
     );
 

@@ -8,7 +8,8 @@ import { DEFAULT_STAGE, renderDefaultOverlay } from '@/lib/screen/default-stage'
 import { clearBrokenCache } from '@/lib/media/pictures';
 import { loadEventTheme } from '@/lib/theme/load';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { GIANT_SCREEN_PLACEMENT, ensureDefaultSlideshow, findDefaultSlideshow, writtenAddress, type DefaultSlideshowDeps } from './default-slideshow';
+import { SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY } from '@/lib/gds/tokens/colors';
+import { GIANT_SCREEN_PLACEMENT, applyPartnerSlideshowDefault, ensureDefaultSlideshow, findDefaultSlideshow, writtenAddress, type DefaultSlideshowDeps } from './default-slideshow';
 import { en } from '@/lib/i18n/messages.en';
 import { hu } from '@/lib/i18n/messages.hu';
 
@@ -24,6 +25,24 @@ function deps(uploads: Array<{ pathname: string; bytes: number }> = []): Default
     now: () => '2026-10-09T10:00:00.000Z',
   };
 }
+
+test('clearing the partner screen design restores the event baseline and keeps its tracked QR URL', async () => {
+  const baselineDesign = { overlayImageUrl: 'https://blob.example/event-stage.png', qr: { url: 'https://go.messmass.com/mtk-event', x: 1 }, texts: [] };
+  const source = {
+    _id: 'slideshow-1', slideshowId: 's1', eventId: EVENT.eventId, eventName: EVENT.name, name: 'Old inherited screen',
+    isActive: true, isDefault: true, createdBy: 'system', inheritedFromPartnerId: EVENT.partnerId, inheritedPartnerRevision: 1,
+    inheritanceBaseline: { name: 'Generated', isActive: true, transitionDurationMs: 5000, fadeDurationMs: 1000, bufferSize: 10, refreshStrategy: 'continuous', playMode: 'loop', orderMode: 'fixed', crossfade: false, backgroundPrimaryColor: SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY, backgroundAccentColor: SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, backgroundImageUrl: null, viewportScale: 'fit', stageAspect: null, screenDesign: baselineDesign },
+    screenDesign: { overlayImageUrl: 'https://partner.example/old.png', qr: { url: 'https://go.messmass.com/mtk-event', x: 99 }, texts: [{ text: 'old' }] },
+  };
+  const { db } = fakeDb({
+    [COLLECTIONS.PARTNERS]: [{ partnerId: EVENT.partnerId, contentDefaults: { revision: 2, slideshow: { name: 'Partner screen', isActive: true, transitionDurationMs: 5000, fadeDurationMs: 1000, bufferSize: 10, refreshStrategy: 'continuous', playMode: 'loop', orderMode: 'fixed', crossfade: false, backgroundPrimaryColor: SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY, backgroundAccentColor: SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, backgroundImageUrl: null, viewportScale: 'fit', stageAspect: null, screenDesign: null } } }],
+    [COLLECTIONS.SLIDESHOWS]: [source],
+  });
+
+  const updated = await applyPartnerSlideshowDefault(db, EVENT, source as never);
+  assert.deepEqual(updated.screenDesign, baselineDesign);
+  assert.equal(updated.inheritedPartnerRevision, 2);
+});
 
 test('a new event gets a default slideshow: picture, tracked link and one line, the written address', async () => {
   const { db, data } = fakeDb({ events: [EVENT], partners: [{ partnerId: 'p1', name: 'MTK' }] });
