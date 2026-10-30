@@ -1,18 +1,18 @@
 # Text levels: the Dictionary, a partner's texts, an event's texts
 
-Issue 353, step 6 of the order of 139 (`docs/BUILDING_BRICKS.md` section 8), owner decisions 159 (global default texts in English and Hungarian, a partner level and an event level) and 167 (an event looks at its parent, nothing is copied down).
+Issue 353, step 6 of the order of 139 (`docs/BUILDING_BRICKS.md` section 8), owner decisions 159 (global default texts, a partner level and an event level) and 167 (an event looks at its parent, nothing is copied down). The locale set has since expanded: the canonical registry in `lib/i18n/index.ts` contains 23 UI locale variants.
 
 ## The model
 
-Every default text of the user journey is a key of the dictionary (`lib/i18n/messages.en.ts` and `messages.hu.ts`, 236 keys, one flat list). A text is found by walking the levels, nearest first:
+Every default text of the user journey is a key of the dictionary (`lib/i18n/messages.en.ts` defines the 253-key catalog, with a matching dictionary for each registered UI locale). A text is found by walking the levels, nearest first:
 
 1. **a text an editor wrote on a page** of the journey (the page's own title, button, description): always wins, as before;
 2. **the event's wording** (`Event.texts`), written on the event's Texts page;
 3. **the partner's wording** (`Partner.texts`), written on the partner's Texts page: it applies to all events of the partner;
 4. **the global wording** (`admin_settings`, `settingId: 'dictionary'`), written on the Dictionary page: it applies to every partner and event;
-5. **the code dictionary** (English, or Hungarian for an event in Hungarian).
+5. **the code dictionary** in the event or partner's effective UI locale, with English as the final locale fallback.
 
-A level stores **only what an editor wrote**, per language (`{ en: { key: text }, hu: { ... } }`); where it wrote nothing it looks at the level above each time. A new partner or event therefore starts with nothing stored and shows what its parent shows, and a wording written at a level is its own and never changed by a later change above. A missing key means "use the one from above". An empty string is an explicit hide, allowing an editor to suppress a dictionary label such as “(optional)” without changing the dictionary for other events.
+A level stores **only what an editor wrote**, per language (keys are members of the canonical UI locale registry); where it wrote nothing it looks at the level above each time. A new partner or event therefore starts with nothing stored and shows what its parent shows, and a wording written at a level is its own and never changed by a later change above. A missing key means "use the one from above". An empty string is an explicit hide, allowing an editor to suppress a dictionary label such as “(optional)” without changing the dictionary for other events.
 
 The old `Event.loadingText` field is migrated into the event's `capture.loading` wording when the event is read. It appears as the event's own value under **Event → Texts** (search `capture.loading`); saving that editor removes the old field. `capture.loading` controls the long full-screen load. `event.loading` is a different, independently editable message for event-flow loading states. The route-level suspense fallback has no visible wording because it runs before the event language and text levels are available.
 
