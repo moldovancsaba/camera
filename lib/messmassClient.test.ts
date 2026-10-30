@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
-import { fetchFrameContext, PARTNER_PUSH_TIMEOUT_MS, pushPartnerToMessmass, pushPhotoStatsToMessmass, pushSsoSessionToMessmass } from './messmassClient';
+import { fetchFrameContext, fetchPartnerStyleContext, PARTNER_PUSH_TIMEOUT_MS, pushPartnerToMessmass, pushPhotoStatsToMessmass, pushSsoSessionToMessmass } from './messmassClient';
 
 const realFetch = globalThis.fetch;
 const realLog = console.log;
@@ -93,6 +93,37 @@ test('fetchFrameContext is null for a refusal, a timeout, bad JSON, a malformed 
   assert.equal(await fetchFrameContext('../admin'), null);
   delete process.env.MESSMASS_BASE_URL;
   assert.equal(await fetchFrameContext(EVENT_ID), null);
+  assert.equal(called, false);
+});
+
+test('fetchPartnerStyleContext asks Messmass for the linked partner style using the shared secret', async () => {
+  let url = '';
+  let headers: Record<string, string> = {};
+  globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
+    url = String(input);
+    headers = (init?.headers ?? {}) as Record<string, string>;
+    return Response.json({ success: true, style: { name: 'MTK Budapest' } });
+  }) as typeof fetch;
+
+  assert.deepEqual(await fetchPartnerStyleContext(EVENT_ID), { success: true, style: { name: 'MTK Budapest' } });
+  assert.equal(url, `https://messmass.example.test/api/integrations/camera/partners/${EVENT_ID}/style-context`);
+  assert.equal(headers['x-camera-secret'], 'test-shared-secret');
+  assert.equal(headers.authorization, 'Bearer test-shared-secret');
+});
+
+test('fetchPartnerStyleContext is null on refusals, timeout, malformed ids, or missing configuration', async () => {
+  globalThis.fetch = (async () => new Response(null, { status: 404 })) as typeof fetch;
+  assert.equal(await fetchPartnerStyleContext(EVENT_ID), null);
+
+  globalThis.fetch = ((_url: unknown, init?: RequestInit) =>
+    new Promise((_resolve, reject) => init?.signal?.addEventListener('abort', () => reject(init.signal?.reason)))) as typeof fetch;
+  assert.equal(await fetchPartnerStyleContext(EVENT_ID, 20), null);
+
+  let called = false;
+  globalThis.fetch = (async () => ((called = true), new Response('{}'))) as typeof fetch;
+  assert.equal(await fetchPartnerStyleContext('../admin'), null);
+  delete process.env.CAMERA_MESSMASS_INTERNAL_SECRET;
+  assert.equal(await fetchPartnerStyleContext(EVENT_ID), null);
   assert.equal(called, false);
 });
 
