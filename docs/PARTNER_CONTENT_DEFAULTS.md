@@ -24,7 +24,7 @@ Partner defaults are available only to authenticated users with partner Events v
 - Resetting to a missing or inactive partner template returns HTTP 409 and leaves the event's current default unchanged.
 - If an event has no usable default slideshow while materializing the landing page, the event URL returns an error rather than publishing a page with a broken target. Create/repair the event default slideshow, then retry.
 - Landing-page slug collisions are resolved with a deterministic event/partner suffix; the event URL does not depend on that slug and stays stable if the canonical slug later changes.
-- Removing a partner template stops further inheritance. Existing slideshow copies are detached and retained; an inherited landing copy is removed. Event overrides are unaffected.
+- Removing a partner template stops further inheritance. Existing inherited slideshow copies return to their saved event-generated baseline; inherited landing copies are removed. Event overrides are unaffected.
 - The app writes the materialized landing page before clearing other event-default flags. If the operation fails, the previous event default remains available. Repeating the request is safe.
 
 ## Verification and operations

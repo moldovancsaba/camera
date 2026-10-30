@@ -62,11 +62,19 @@ export async function applyPartnerSlideshowDefault(db: Db, event: Document, sour
   const isLegacyGeneratedDefault = !source.inheritedFromPartnerId && source.createdBy === 'system';
   if (!template) {
     if (!isAlreadyInherited) return source;
-    await db.collection(COLLECTIONS.SLIDESHOWS).updateOne({ _id: source._id }, { $unset: { inheritedFromPartnerId: '', inheritedPartnerRevision: '' } });
-    const frozen = { ...source };
-    delete frozen.inheritedFromPartnerId;
-    delete frozen.inheritedPartnerRevision;
-    return frozen;
+    const baseline = source.inheritanceBaseline && typeof source.inheritanceBaseline === 'object'
+      ? source.inheritanceBaseline as Record<string, unknown>
+      : null;
+    const restored = baseline ? { ...baseline, updatedAt: generateTimestamp() } : {};
+    await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
+      { _id: source._id, inheritedFromPartnerId: partnerId },
+      { ...(baseline ? { $set: restored } : {}), $unset: { inheritedFromPartnerId: '', inheritedPartnerRevision: '', inheritanceBaseline: '' } },
+    );
+    const detached: Document = { ...source, ...restored };
+    delete detached.inheritedFromPartnerId;
+    delete detached.inheritedPartnerRevision;
+    delete detached.inheritanceBaseline;
+    return detached;
   }
   if (!isAlreadyInherited && !isLegacyGeneratedDefault) return source;
   const revision = Math.max(0, Number(defaults?.revision) || 0);

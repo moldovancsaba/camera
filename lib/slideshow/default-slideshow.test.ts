@@ -44,6 +44,35 @@ test('clearing the partner screen design restores the event baseline and keeps i
   assert.equal(updated.inheritedPartnerRevision, 2);
 });
 
+test('removing the partner slideshow default restores the generated event baseline and clears inheritance', async () => {
+  const baseline = {
+    name: 'Generated event screen', isActive: true, transitionDurationMs: 5000, fadeDurationMs: 1000,
+    bufferSize: 10, refreshStrategy: 'continuous', playMode: 'loop', orderMode: 'fixed', crossfade: false,
+    backgroundPrimaryColor: SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY, backgroundAccentColor: SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
+    backgroundImageUrl: null, viewportScale: 'fit', stageAspect: null,
+    screenDesign: { overlayImageUrl: 'https://blob.example/event.png', qr: { url: 'https://go.messmass.com/event-qr' }, texts: [] },
+  };
+  const source = {
+    _id: 'slideshow-1', slideshowId: 's1', eventId: EVENT.eventId, isDefault: true, createdBy: 'system',
+    inheritedFromPartnerId: EVENT.partnerId, inheritedPartnerRevision: 3, inheritanceBaseline: baseline,
+    ...baseline, name: 'Inherited partner screen', backgroundPrimaryColor: '#112233',
+  };
+  const { db, data } = fakeDb({
+    [COLLECTIONS.PARTNERS]: [{ partnerId: EVENT.partnerId, contentDefaults: { revision: 4, slideshow: null } }],
+    [COLLECTIONS.SLIDESHOWS]: [source],
+  });
+
+  const updated = await applyPartnerSlideshowDefault(db, EVENT, source as never);
+
+  assert.equal(updated.name, baseline.name);
+  assert.equal(updated.backgroundPrimaryColor, baseline.backgroundPrimaryColor);
+  assert.deepEqual(updated.screenDesign, baseline.screenDesign);
+  assert.equal(updated.inheritedFromPartnerId, undefined);
+  assert.equal(updated.inheritanceBaseline, undefined);
+  assert.equal(data.slideshows[0].inheritedFromPartnerId, undefined);
+  assert.equal(data.slideshows[0].inheritanceBaseline, undefined);
+});
+
 test('a new event gets a default slideshow: picture, tracked link and one line, the written address', async () => {
   const { db, data } = fakeDb({ events: [EVENT], partners: [{ partnerId: 'p1', name: 'MTK' }] });
   const uploads: Array<{ pathname: string; bytes: number }> = [];

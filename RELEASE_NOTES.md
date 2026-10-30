@@ -4,6 +4,7 @@
 
 - **Added:** partner-scoped editors and authenticated APIs for saving/removing a default landing-page template and slideshow configuration.
 - **Added:** events inherit partner defaults. Partner revisions refresh inherited event records; editing/choosing an event default detaches it and preserves that event override.
+- **Changed:** removing a partner default restores inherited event slideshows to their generated event baseline and removes inherited landing-page copies; event overrides remain unchanged.
 - **Added:** the stable public URL `/landing/event/<event Mongo id>` resolves the event's own default first, otherwise the current partner default, and redirects to its event-specific canonical page. Partner capture-action URLs can use `{eventCaptureUrl}`.
 - **Added:** event controls to apply/reset to the partner default, choose an event default landing page, and open/copy the event landing URL.
 - **Security and recovery:** partner writes require partner Events manager access, event changes require event manager access, and no partner template data is exposed in public APIs. Landing-page materialization is idempotent and uses event-specific target/QR/capture data.
