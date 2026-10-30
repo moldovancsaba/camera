@@ -11,7 +11,7 @@ import type { Db } from 'mongodb';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { findShareSubmission, shareStateOf, type ShareLookup } from '@/lib/submissions/share-lookup';
 import PhotoStatusNotice from '@/components/share/PhotoStatusNotice';
 import EventThemeScope from '@/components/theme/EventThemeScope';
@@ -32,6 +32,7 @@ import { formatDateTime } from '@/lib/i18n/date';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { isCountableVisit } from '@/lib/short-links/device';
 import { recordServerJourney } from '@/lib/journey/store';
+import { inactiveEventSelfiesPath } from '@/lib/events/inactive-event-destination';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -103,7 +104,7 @@ async function requestLanguagePreferences(): Promise<string[]> {
 async function resolveEventForSubmission(
   db: Db,
   submission: Record<string, unknown>
-): Promise<{ mongoId: string; name: string; sharePageSettings: EventSharePageSettings; theme: EventTheme; language: UiLanguage; texts: TextOverrides } | null> {
+): Promise<{ mongoId: string; name: string; sharePageSettings: EventSharePageSettings; theme: EventTheme; language: UiLanguage; texts: TextOverrides; isActive: boolean; greatestHitsSlug?: string | null } | null> {
   const eventLookupKeys = getSubmissionEventLookupKeys(submission);
   if (!eventLookupKeys.length) {
     return null;
@@ -141,6 +142,8 @@ async function resolveEventForSubmission(
     theme: await loadEventTheme(db, eventDoc),
     language,
     texts,
+    isActive: eventDoc.isActive !== false,
+    greatestHitsSlug: typeof eventDoc.greatestHitsSlug === 'string' ? eventDoc.greatestHitsSlug : null,
   };
 }
 
@@ -317,6 +320,9 @@ export default async function SharePage({ params }: Props) {
 
   const db = await connectToDatabase();
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
+  if (event && !event.isActive) {
+    redirect(inactiveEventSelfiesPath({ _id: new ObjectId(event.mongoId), greatestHitsSlug: event.greatestHitsSlug }));
+  }
   const language = event?.language ?? DEFAULT_UI_LANGUAGE;
   const texts = event?.texts ?? null;
   const sharePageSettings = event?.sharePageSettings ?? FALLBACK_SHARE_PAGE_SETTINGS;

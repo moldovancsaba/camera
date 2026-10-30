@@ -7,16 +7,24 @@ import { pwaPageColor, pwaShortName } from '@/lib/pwa/event-manifest';
 import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
 import { cachedStageTheme } from '@/lib/slideshow/stage-theme';
 import type { EventTheme } from '@/lib/theme/event-theme';
+import { inactiveEventSelfiesPath } from '@/lib/events/inactive-event-destination';
+import { redirect } from 'next/navigation';
 
 /** The slideshow, its event and the event's theme; null when the slideshow is not found (the player then says so itself). */
-async function loadScreen(slideshowId: string): Promise<{ name: string; brandColor: unknown; theme: EventTheme | null } | null> {
+async function loadScreen(slideshowId: string): Promise<{ name: string; brandColor: unknown; theme: EventTheme | null; inactiveDestination: string | null } | null> {
   try {
     const db = await connectToDatabase();
     const slideshow = await db.collection(COLLECTIONS.SLIDESHOWS).findOne({ slideshowId }, { projection: { name: 1, eventId: 1 } });
     const event = slideshow ? await findEventForSlideshow(db, String(slideshow.eventId)) : null;
     if (!slideshow || !event) return null;
-    const theme = await cachedStageTheme(db, event as unknown as Record<string, unknown>);
-    return { name: String(slideshow.name ?? event.name ?? 'Screen'), brandColor: (event as { brandColor?: unknown }).brandColor, theme };
+    const inactiveDestination = event.isActive === false ? inactiveEventSelfiesPath(event) : null;
+    const theme = inactiveDestination ? null : await cachedStageTheme(db, event as unknown as Record<string, unknown>);
+    return {
+      name: String(slideshow.name ?? event.name ?? 'Screen'),
+      brandColor: (event as { brandColor?: unknown }).brandColor,
+      theme,
+      inactiveDestination,
+    };
   } catch {
     return null;
   }
@@ -48,6 +56,7 @@ export async function generateViewport({ params }: { params: Promise<{ slideshow
 export default async function SlideshowLayout({ children, params }: { children: ReactNode; params: Promise<{ slideshowId: string }> }) {
   const { slideshowId } = await params;
   const screen = await loadScreen(slideshowId);
+  if (screen?.inactiveDestination) redirect(screen.inactiveDestination);
   if (!screen?.theme) return children;
   return <EventThemeScope theme={screen.theme}>{children}</EventThemeScope>;
 }

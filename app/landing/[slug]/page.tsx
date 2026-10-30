@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Bebas_Neue } from 'next/font/google';
 import Image from 'next/image';
 import LandingPageCookieConsent from '@/components/landing/LandingPageCookieConsent';
@@ -7,6 +7,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type SlideshowLayoutArea } from '@/lib/db/schemas';
 import { LANDING_PAGE_BASE_CSS } from '@/lib/gds/tokens/landing-page-base-css';
 import { getActiveLandingPageBySlug } from '@/lib/landing-pages';
+import { inactiveEventSelfiesPath } from '@/lib/events/inactive-event-destination';
 import { computeCompactGridSpec } from '@/lib/slideshow/layout-geometry';
 import {
   layoutGridCellUnits,
@@ -85,6 +86,13 @@ export default async function PublicLandingPage({
   if (!landingPage) {
     notFound();
   }
+
+  const db = await connectToDatabase();
+  const event = await db.collection(COLLECTIONS.EVENTS).findOne(
+    { eventId: landingPage.eventId },
+    { projection: { _id: 1, isActive: 1, greatestHitsSlug: 1 } },
+  );
+  if (event?.isActive === false) redirect(inactiveEventSelfiesPath(event));
 
   const targetUrl =
     landingPage.targetType === 'layout'

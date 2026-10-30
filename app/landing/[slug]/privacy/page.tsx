@@ -1,6 +1,9 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import LandingLegalDocument from '@/components/public/LandingLegalDocument';
 import { getActiveLandingPageBySlug } from '@/lib/landing-pages';
+import { connectToDatabase } from '@/lib/db/mongodb';
+import { COLLECTIONS } from '@/lib/db/schemas';
+import { inactiveEventSelfiesPath } from '@/lib/events/inactive-event-destination';
 
 export default async function LandingPrivacyPage({
   params,
@@ -12,6 +15,12 @@ export default async function LandingPrivacyPage({
   if (!landingPage || !landingPage.privacyMarkdown) {
     notFound();
   }
+
+  const event = await (await connectToDatabase()).collection(COLLECTIONS.EVENTS).findOne(
+    { eventId: landingPage.eventId },
+    { projection: { _id: 1, isActive: 1, greatestHitsSlug: 1 } },
+  );
+  if (event?.isActive === false) redirect(inactiveEventSelfiesPath(event));
 
   return (
     <LandingLegalDocument

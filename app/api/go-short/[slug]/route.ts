@@ -12,6 +12,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { defaultCameraOrigin } from '@/lib/site-hosts';
 import { resolveTrackedLink } from '@/lib/short-links/store';
 import { countVisit } from '@/lib/short-links/visit';
+import { inactiveEventSelfiesPath } from '@/lib/events/inactive-event-destination';
 import { checkRateLimit, RATE_LIMITS, withErrorHandler, apiNotFound } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,9 @@ export const GET = withErrorHandler(async (
   const tracked = await resolveTrackedLink(db, slug);
   if (tracked) {
     after(() => countVisit(db, { event: tracked.event, slug, kind: tracked.link.kind, method: request.method, headers: request.headers }));
+    if (tracked.event.isActive === false) {
+      return NextResponse.redirect(new URL(inactiveEventSelfiesPath(tracked.event), defaultCameraOrigin()), 302);
+    }
     const destination = new URL(`/capture/${tracked.event._id.toString()}`, defaultCameraOrigin());
     destination.searchParams.set('source', slug);
     return NextResponse.redirect(destination, 302);
@@ -40,6 +44,10 @@ export const GET = withErrorHandler(async (
 
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ shortUrlSlug: slug });
   if (event?._id) {
+    if (event.isActive === false) {
+      after(() => countVisit(db, { event: { _id: event._id as ObjectId, messmassEventId: event.messmassEventId as string | undefined }, slug, kind: 'link', method: request.method, headers: request.headers }));
+      return NextResponse.redirect(new URL(inactiveEventSelfiesPath(event), defaultCameraOrigin()), 302);
+    }
     const destination = new URL(`/capture/${(event._id as ObjectId).toString()}`, defaultCameraOrigin());
     destination.searchParams.set('source', slug);
     after(() => countVisit(db, { event: { _id: event._id as ObjectId, messmassEventId: event.messmassEventId as string | undefined }, slug, kind: 'link', method: request.method, headers: request.headers }));

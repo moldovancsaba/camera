@@ -7,10 +7,17 @@ event's QR scans and link clicks. The link is `go.messmass.com/<slug>` and sends
 
 - **`short_links`**: `{slug, eventId, placement, kind, active, createdAt}`. `kind` is `qr` (a QR code, counted as scans) or `link` (a plain link, counted as
   clicks). The slug is six characters from an alphabet without look-alikes (`k7f3q2`), which keeps a QR code coarse and easy to scan; the admin can choose
-  one instead. A slug is unique across tracked links and events' own short URLs, and the event routes refuse a short URL that a tracked link already uses. (Events also had a
-  Greatest Hits address once; that page and its slug check went with the try-on integration, issue 557.) At most 20 links per event. A link is switched off, not deleted: it answers "not found", its counts stay.
+  one instead. A slug is unique across tracked links and events' own short URLs, and the event routes refuse a short URL that a tracked link already uses. The event's
+  `greatestHitsSlug` is the public destination used when an event is inactive. At most 20 links per event. A link is switched off, not deleted: it answers "not found", its counts stay.
 - **`short_link_hits`**: one row per link, UTC day and kind of phone (`android`, `iphone`, `other`), bumped with `$inc`; there is no row per visit.
   The event's own short URL (`shortUrlSlug`) is counted into the same rows as a plain link.
+
+## Inactive events
+
+When `Event.isActive` is false, tracked links and the event's own short URL still redirect to the event's Greatest Selfies page instead of opening capture.
+The same redirect applies to the event capture URL and manifest, event landing page and its legal pages, slideshow and layout pages, slideshow manifest,
+and public photo-share pages. The target uses `greatestHitsSlug` when it is a safe slug; otherwise it uses the event's Mongo id. The destination only displays
+photos that are approved, explicitly visible in the public gallery, and still pass the current consent, retention, and privacy-erasure checks.
 
 ## What is counted
 
