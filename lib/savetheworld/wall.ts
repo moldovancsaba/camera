@@ -1,6 +1,7 @@
 import { eventMatchFor, galleryConsentMarkerClause } from './publishSelfies';
 import { notWaitingOrRejectedClause } from '@/lib/submissions/visibility';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
+import { ownerMediaUseMongoFilter } from '@/lib/events/consent-eligibility';
 
 /**
  * Filter for GET /api/internal/savetheworld/pledges (savetheworld's public wall
@@ -17,7 +18,7 @@ export function buildWallFilter(eventKeys: string[], asked = false): Record<stri
       PRIVACY_ERASURE_ACTIVE_FILTER,
       { submissionKind: { $ne: 'tryon_result' } },
       { isShareVisible: true },
-      ...(asked ? [galleryConsentMarkerClause] : []),
+      ...(asked ? [{ $or: [galleryConsentMarkerClause, ownerMediaUseMongoFilter('public_gallery', eventKeys)] }] : []),
       // A vetted photo that is waiting or was rejected is never on the wall (camera#270).
       notWaitingOrRejectedClause,
       // Only fields this route will return; the raw originalImageUrl is never shown here.

@@ -3,7 +3,7 @@ import type { Document } from 'mongodb';
 import { checkPicture } from '@/lib/media/broken';
 import { detectImageProvider, isRenderableImgbbImageUrl } from '@/lib/imgbb/url';
 import { blobStoreHostFromToken } from '@/lib/submissions/original-image';
-import { cameraOriginalR2CopyExists, deleteCameraOriginalR2Copy, isCameraOriginalR2Key } from '@/lib/storage/r2';
+import { cameraImageR2CopyExists, deleteCameraImageR2Copy, isCameraImageR2Key } from '@/lib/storage/r2';
 
 export type MediaProvider = 'blob' | 'r2' | 'imgbb' | 'unsupported';
 export type MediaTaskState = 'pending' | 'processing' | 'retry' | 'deleted' | 'already_absent' | 'unknown' | 'failed';
@@ -95,7 +95,7 @@ export function collectMediaReferences(encryptedPayload: Document, blobToken?: s
     for (const [index, value] of encryptedPayload.imageCopies.entries()) {
       const copy = record(value);
       const deletedBlob = copy.store === 'blob' && copy.state === 'deleted';
-      if (copy.store === 'r2' && copy.state !== 'deleted' && isCameraOriginalR2Key(copy.objectKey)) {
+      if (copy.store === 'r2' && copy.state !== 'deleted' && isCameraImageR2Key(copy.objectKey)) {
         candidates.push({ url: null, deleteUrl: null, objectKey: copy.objectKey, variant: typeof copy.role === 'string' ? copy.role : `imageCopy${index + 1}` });
       } else if (!deletedBlob) {
         add(copy.url, typeof copy.role === 'string' ? copy.role : `imageCopy${index + 1}`, copy.deleteUrl);
@@ -107,7 +107,7 @@ export function collectMediaReferences(encryptedPayload: Document, blobToken?: s
   for (const candidate of candidates) {
     if (candidate.alreadyDeleted) continue;
     const detected = candidate.url ? detectImageProvider(candidate.url) : null;
-    const provider: MediaProvider = candidate.objectKey && isCameraOriginalR2Key(candidate.objectKey)
+    const provider: MediaProvider = candidate.objectKey && isCameraImageR2Key(candidate.objectKey)
       ? 'r2'
       : candidate.url && new URL(candidate.url).protocol !== 'https:'
       ? 'unsupported'
@@ -199,10 +199,10 @@ export async function deleteAndVerifyMediaReference(
   const imageUrl = reference.url;
   if (reference.provider === 'r2') {
     const key = reference.objectKey;
-    if (!key || !isCameraOriginalR2Key(key)) return { state: 'unknown', errorCode: 'r2_object_key_invalid' };
+    if (!key || !isCameraImageR2Key(key)) return { state: 'unknown', errorCode: 'r2_object_key_invalid' };
     try {
-      if (!await cameraOriginalR2CopyExists(key)) return { state: 'already_absent' };
-      await deleteCameraOriginalR2Copy(key);
+      if (!await cameraImageR2CopyExists(key)) return { state: 'already_absent' };
+      await deleteCameraImageR2Copy(key);
       return { state: 'deleted' };
     } catch {
       return { state: 'retry', errorCode: 'r2_delete_or_verify_failed' };
