@@ -61,7 +61,7 @@ export function AdminChromeView({
   const compactHeader = useMediaQuery('(max-width: 48em)', false, { getInitialValueInEffect: true });
   const ui = (text: string) => adminShellText(text, language);
   const contextInfo = useContextInfo(context);
-  const tourController = useTourController('admin:v1', getAdminTourSteps(navigationAccess, { inContext: Boolean(context) }), { autoStart: !context });
+  const tourController = useTourController('admin:v1', getAdminTourSteps(navigationAccess, { inContext: Boolean(context), contextKind: context?.kind, language }), { autoStart: !context });
 
   useEffect(() => {
     const toggleButton = document.querySelector('button[aria-label="Toggle navigation"]');

@@ -6,7 +6,7 @@
 
 ## 1. Product outcome
 
-Camera must render each public capture/share screen in the visitor's preferred supported device language. When that language is not available, it must use the partner's default language; if the partner has no default, it may use an explicitly configured event fallback, then English as the final application fallback. A manual language selector is a separate future UX decision and is not part of the current requested behavior.
+Camera renders each public capture/share screen in the visitor's preferred supported device language. When that language is not available, it uses the partner's default language; if the partner has no default, it may use an explicitly configured event fallback, then English as the final application fallback. Public visitors do not yet have an in-flow language selector. Signed-in admin users have a separate personal language preference in the admin header and Account settings; it does not change guest language settings.
 
 Every string a person can see or hear must be covered: headings, labels, helper text, buttons, consent copy, enum/status labels, errors, loading and empty states, notifications, date/number formatting, accessible names, image alternatives, and document metadata. Dynamic values such as partner/event names, participant-provided names, and counts stay data; the surrounding words and formatting are localized. Stable API and database values remain language-neutral.
 
@@ -18,8 +18,9 @@ The application will use one locale-resolution and message-formatting contract o
 
 - `lib/i18n/index.ts` now registers the requested locales, both Chinese scripts, both Portuguese regions, and both Serbian scripts. The English source catalog has 253 keys; each locale catalog has matching typed keys.
 - `lib/i18n/locale-negotiation.ts` parses weighted `Accept-Language` preferences and matches BCP 47 region/script variants. Capture and public share resolve a supported device language first, then partner default, then event fallback, then English.
-- `app/layout.tsx` exposes the supported device locale through the root provider; capture/share use partner default, event fallback, then English when the device preference is unsupported. The server document uses the resolved locale only on localized capture/share routes; other routes keep English document metadata until their page copy is migrated. `proxy.ts` continues to preserve the existing auth, OAuth, and short-link behaviors while forwarding the pathname. Localized regions set their own `lang` and `dir`.
+- `app/layout.tsx` resolves the initial interface locale before rendering. Capture/share pages use the supported device locale, then partner/event fallback and English; authenticated admin pages use the saved per-user preference, then supported device locale and English. Other unlocalized routes retain English document metadata. `proxy.ts` continues to preserve the existing auth, OAuth, and short-link behaviors while forwarding the pathname. Localized regions set their own `lang` and `dir`.
 - The shared admin navigation/account shell, shared admin list/dashboard vocabulary, vetting/Fanmass operations vocabulary, and common editor-control vocabulary have drafts in all 23 registered locale variants. Review pages, common fields/buttons/options, pagination, and event exports use these catalogs. This improves selected routes but does not translate all admin page bodies or operational copy.
+- Admin guided-tour descriptions now follow the selected admin UI locale; page titles reuse the shared admin and account catalogs. The tour wording is machine-drafted and still needs native review.
 - Partner/event `uiLanguage` schemas and API validators use the shared registry. The text and email legal editors can select the supported locale set; date and email-preview formatting use the selected locale.
 - Structural tests check locale/key parity, nonempty strings, interpolation marker parity, locale matching, and language-setting API acceptance.
 
@@ -28,7 +29,7 @@ The application will use one locale-resolution and message-formatting contract o
 - The 21 new dictionaries are machine-translated drafts, not native-reviewed copy. Georgian retains English in five long e-mail bodies. Legal, consent, privacy, and safety copy has no qualified translation approval; see `docs/LOCALIZATION_TRANSLATION_REVIEW.md`.
 - The guest catalog contains 253 keys and shared admin catalogs contain 218 phrases; neither is a complete inventory of every visible string in Camera. Analytics/report pages, many event/gallery/library forms, page-specific descriptions, API/error copy, and other admin surfaces still contain hard-coded English. A route/component inventory and migration are still required.
 - No full WCAG 2.2 AA or route-by-route axe audit was completed. Arabic RTL layout, font glyph/shaping coverage, screen-reader pronunciation, keyboard/touch, zoom/reflow, contrast, focus behavior, and real-device checks remain unverified.
-- There is no visitor language picker or persisted manual preference. Current public event language resolution is device-first as requested; partner/event settings are fallback values.
+- Public visitors do not yet have a language picker or persisted language preference. Signed-in admin users do have a separate persisted personal preference; it does not change guest language settings. Public event language resolution is device-first, with partner/event settings as fallbacks.
 - Timezone behavior is not fully independent yet: Hungarian share timestamps explicitly use Budapest, while other locales use the runtime default. Events have no canonical timezone field.
 - Locale-specific staged flags and a verified per-locale emergency-disable mechanism are not implemented.
 
@@ -320,7 +321,7 @@ The recommendation is to proceed with the explicit choices in this plan; these a
 - Ship `pt-BR` and `pt-PT`, or choose a single initial Portuguese market (recommended: both if both are commercially relevant).
 - A manual visitor language selector is deferred; add it only as a separate UX decision. Device preference remains above partner/event fallback.
 - Use the partner language as the first configured fallback after device preferences; consult explicit event language only when the partner has no default. A “force one language for every visitor” mode would need a separate requirement.
-- Confirm which admin roles need a persistent personal UI-language choice and which admin route families are in the initial scope; recommendation: localize all Camera admin routes and keep admin preference separate from guest locale configuration.
+- The persistent admin-language preference is implemented for the same authorized global-admin and partner-workspace users who can access the admin shell. Full route-by-route admin localization remains open and must keep this preference separate from guest locale configuration.
 
 ### Rollback
 

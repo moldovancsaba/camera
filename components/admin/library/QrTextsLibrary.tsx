@@ -14,6 +14,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { Button, Select, TextInput } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import { QR_TEXT_MAX_LENGTH, type QrTextView } from '@/lib/library/qr-texts-shared';
+import { UI_LANGUAGES, isUiLanguage, uiLanguageOptionLabel, type UiLanguage } from '@/lib/i18n';
 
 interface Payload<T> {
   data?: T;
@@ -21,10 +22,7 @@ interface Payload<T> {
 }
 
 const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
-const LANGUAGES = [
-  { value: 'en', label: 'English' },
-  { value: 'hu', label: 'Magyar (Hungarian)' },
-];
+const LANGUAGES = UI_LANGUAGES.map((value) => ({ value, label: uiLanguageOptionLabel(value) }));
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -45,7 +43,7 @@ export default function QrTextsLibrary({ embedded = false }: { embedded?: boolea
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [text, setText] = useState('');
-  const [language, setLanguage] = useState('en');
+  const [language, setLanguage] = useState<UiLanguage>('en');
 
   const reload = useCallback(async () => {
     setItems((await call<{ items: QrTextView[] }>('/api/qr-texts')).items);
@@ -136,7 +134,7 @@ export default function QrTextsLibrary({ embedded = false }: { embedded?: boolea
                 <div style={{ display: 'grid', flex: '1 1 14rem', gap: '0.25rem', minWidth: 0, overflowWrap: 'anywhere' }}>
                   <strong>{item.text}</strong>
                   <span style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                    <LabelTag tone="neutral" label={item.language === 'hu' ? 'Hungarian' : 'English'} />
+                    <LabelTag tone="neutral" label={uiLanguageOptionLabel(item.language)} />
                     <VisibilityStatusIcon isVisible={item.isActive} />
                   </span>
                   {deleting === item.id ? <span style={{ fontSize: '0.8125rem' }}>Delete it for good? Events that have it keep it on their stage.</span> : null}
@@ -181,7 +179,7 @@ export default function QrTextsLibrary({ embedded = false }: { embedded?: boolea
           }}
         >
           <TextInput label="Text" placeholder="e.g. Scan & smile" value={text} onChange={(event) => setText(event.currentTarget.value)} maxLength={QR_TEXT_MAX_LENGTH} disabled={busy} required />
-          <Select label="Language" data={LANGUAGES} value={language} onChange={(value) => setLanguage(value ?? 'en')} allowDeselect={false} disabled={busy} />
+          <Select label="Language" data={LANGUAGES} value={language} onChange={(value) => setLanguage(isUiLanguage(value) ? value : 'en')} allowDeselect={false} disabled={busy} />
           <div>
             <Button type="submit" loading={busy} disabled={busy || !text.trim()}>
               Add the text

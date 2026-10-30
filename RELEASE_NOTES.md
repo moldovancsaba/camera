@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — locale selector consistency
+
+- **Fixed:** changing the admin header language now announces a successful save to assistive technology; the header control and Account settings continue to share the same per-user preference.
+- **Fixed:** the admin guided-tour descriptions now use the selected interface language across all 23 registered locales; titles reuse the shared admin catalogs.
+- **Fixed:** the QR-text editor now offers all 23 canonical UI locales and shows each existing QR text's correct native and English locale name. API comments and the library documentation now describe the same supported locale set.
+- **Coverage:** added a check that every canonical locale is accepted for QR text.
+
 ## Unreleased — icon-based visibility indicators
 
 - **Changed:** replaced repetitive Active/Inactive and switched-off status badges across event, partner, and visual-asset admin views with a green Material Icons eye for visible items and a red eye-off for hidden items. The saved status values and visibility behavior are unchanged.

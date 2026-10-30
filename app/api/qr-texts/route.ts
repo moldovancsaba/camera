@@ -3,7 +3,7 @@
  * once, when the event's default slideshow is made. Global admins.
  *
  * GET:  every QR text, switched off ones too, newest first.
- * POST: `{ text, language }` adds one (a line of at most 40 characters, `en` or `hu`); the same text in the same language twice is refused (409).
+ * POST: `{ text, language }` adds one (a line of at most 40 characters in any supported UI language); the same text in the same language twice is refused (409).
  * A text is switched off or on, and deleted, with `PATCH` and `DELETE /api/qr-texts/<qrTextId>`.
  */
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminSelect } from '@sovereignsquad/gds-admin/client';
+import { VisuallyHidden } from '@sovereignsquad/gds-core/client';
 import { useSetUiLanguage, useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { UI_LANGUAGES, isUiLanguage, type UiLanguage, uiLanguageOptionLabel } from '@/lib/i18n';
 import { adminAccountText } from '@/lib/i18n/admin-account';
@@ -34,6 +35,7 @@ export default function AdminUiLanguageSelector({ compact = false }: { compact?:
   const [savedSelection, setSavedSelection] = useState<string>(language);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<'load' | 'save' | null>(null);
 
   const options = useMemo(() => [
@@ -71,6 +73,7 @@ export default function AdminUiLanguageSelector({ compact = false }: { compact?:
 
     setSelection(value);
     setSaving(true);
+    setSaved(false);
     setError(null);
     const uiLanguage = value === DEVICE_LANGUAGE ? null : value;
     try {
@@ -87,9 +90,11 @@ export default function AdminUiLanguageSelector({ compact = false }: { compact?:
       setDeviceLanguage(data.deviceLanguage);
       setUiLanguage(resolved);
       setSavedSelection(value);
+      setSaved(true);
       router.refresh();
     } catch {
       setSelection(savedSelection);
+      setSaved(false);
       setError('save');
     } finally {
       setSaving(false);
@@ -110,6 +115,11 @@ export default function AdminUiLanguageSelector({ compact = false }: { compact?:
         error={error === 'load' ? t('Settings could not be loaded.') : error === 'save' ? t('Settings could not be saved.') : undefined}
         aria-label={t('Interface language')}
       />
+      <VisuallyHidden>
+        <span role="status" aria-live="polite" aria-atomic="true">
+          {saved ? t('Settings saved.') : ''}
+        </span>
+      </VisuallyHidden>
     </div>
   );
 }
