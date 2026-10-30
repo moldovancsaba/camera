@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
-import { CONSENT_ELIGIBLE_FILTER } from '@/lib/events/consent-eligibility';
+import { mediaUseEligibleFilter, ownerMediaUseMongoFilter } from '@/lib/events/consent-eligibility';
 import { processingContactMongoFilter } from '@/lib/submissions/guest-contact';
+import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { countPhotoQueue, countWaitingPhotos, isQueueStatus, loadPhotoQueue, queueFilter, toPhotoQueueItem } from './queue';
 
 const base = () => ({
@@ -84,17 +85,20 @@ test('the reject reasons of a rejected photo are on its item: the keys, none for
 });
 
 test('the queue covers photos that went through vetting for one event, not archived', () => {
+  const ownerReviewGrant = ownerMediaUseMongoFilter('admin_review', 'e1');
   assert.deepEqual(queueFilter('e1', 'pending_review'), {
     $and: [
       { $or: [{ eventId: 'e1' }, { eventIds: { $in: ['e1'] } }] },
-      CONSENT_ELIGIBLE_FILTER,
-      processingContactMongoFilter,
+      mediaUseEligibleFilter('admin_review', 'e1'),
+      { $or: [processingContactMongoFilter, ownerReviewGrant] },
       {
-        photoReview: { $exists: true },
         reviewStatus: 'pending_review',
         isArchived: { $ne: true },
-        retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
-        'privacyErasure.state': { $nin: ['fenced', 'record_erased'] },
+        $and: [
+          { $or: [{ photoReview: { $exists: true } }, ownerReviewGrant] },
+          { $or: [{ retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } }, ownerReviewGrant] },
+        ],
+        ...PRIVACY_ERASURE_ACTIVE_FILTER,
       },
     ],
   });
