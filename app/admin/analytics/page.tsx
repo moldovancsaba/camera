@@ -4,6 +4,10 @@ import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AllEventsAnalyticsPage from '@/components/admin/analytics/AllEventsAnalyticsPage';
 
 export const dynamic = 'force-dynamic';
+// The all-events report reads the full photo history before aggregating it.
+// Give the streaming page enough time to finish so the RSC response is not cut
+// off while the client is still consuming it.
+export const maxDuration = 120;
 
 // The Analytics menu of Operations (issue 521): the numbers of every event together, for global admins. It lived at /admin/tryon/analytics, the address of
 // the try-on report it used to be; that address is redirected here (next.config.ts) now that the try-on integration is removed (issue 557).

@@ -16,6 +16,9 @@ import { defaultTimeZone } from '@/lib/analytics/time';
 import { formatCount } from '@/lib/analytics/format';
 
 export const dynamic = 'force-dynamic';
+// This report reads and aggregates the event's photo history and related
+// records. Keep its runtime budget aligned with the all-events report.
+export const maxDuration = 120;
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
