@@ -353,3 +353,45 @@ Track the percentage of organisers who complete each task unaided, median comple
 - [W3C WAI: WCAG 2.2 Non-text Contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)
 - Camera GDS contract: [`gds-adoption.json`](../gds-adoption.json), [`docs/GDS_COMPONENT_RULES.md`](GDS_COMPONENT_RULES.md), [`docs/GDS_EXCEPTION_STANDARD.md`](GDS_EXCEPTION_STANDARD.md)
 - GDS 6.8.0 styling contract: General Design System `docs/SAFE_STYLING.md`, `docs/DESIGN_TOKENS_DTCG.md`, and `docs/SEMANTIC_ROLE_TOKENS.md`
+
+## Current UI consistency gap inventory — 2026-10-30
+
+This is a source-based inventory of gaps to deliver later in small slices, as requested. It covers admin and guest-facing interfaces. It does not claim that every responsive state or assistive-technology flow has been visually exercised. Counts below are reproducible search results from the Camera repository at the audit date; they are triage signals, not defect counts.
+
+### Recent baseline already delivered
+
+- Global, partner, and event navigation now use a shared structure; user-journey links and maintenance tools have explicit locations.
+- Partner landing-page and slideshow defaults, inherited visual assets, and the corresponding editors are present.
+- The admin language selector is persisted per signed-in user, and language names include their English names. The header selector's visible label was removed in `3bb591cc`; its accessible name remains on the control.
+- The event palette path now displays resolved Messmass colours in Camera.
+- The old event-admin screenshots and source audits still need to be reconciled against a current browser session after deployment.
+
+### Gaps to address
+
+| Priority | Gap | Current evidence | What a later delivery must establish |
+| --- | --- | --- | --- |
+| P0 | **A current route, role, viewport, and language baseline is missing.** | The original audit is dated 2026-10-15. The GDS manifest's `lastReviewedAt` is 2026-08-21. Recent fixes have changed navigation, account settings, event defaults, galleries, and analytics since those baselines. | Inventory global, partner, and event routes by role; test desktop, tablet, and phone; include English, a long-label locale, RTL Arabic, and a CJK locale. Record screenshots and expected loading, empty, error, disabled, and success states. |
+| P0 | **Gallery still has a special recovery-only path that conflicts with the requested ordinary approved-photo workflow.** | `app/admin/events/[id]/gallery/page.tsx` separately queries records by `adminRecovery`; `components/admin/EventGallery.tsx` marks them read-only and excludes them from selection and normal download/removal actions. The owner said these images are approved, belong in the normal gallery, and must not appear under a “Recovered” category. The current source no longer contains the screenshot's exact heading text, so the deployed page must be compared with this source before changing stored consent/retention state. | Reconcile the displayed cards with their current production status and the consent evidence the owner identified. Make the approved/gallery experience consistent without using a separate user-facing category. Do not infer consent or clear an erasure marker from an event-level form alone. |
+| P1 | **Form-control appearance and behavior is not yet proven consistent across the admin.** | A source scan finds 44 native `<button>`, `<select>`, `<input>`, and `<textarea>` sites under `app/admin` and `components/admin`; the set includes hidden inputs and intentionally custom controls, so each needs classification. Examples to inspect include `components/admin/FrameSlotsEditor.tsx`, `CheckboxSettingsFields.tsx`, `CustomPagesManager.tsx`, and `app/admin/events/[id]/edit/page.tsx`. | For each visible control, verify GDS ownership, visible border, focus, disabled/loading/error states, label association, keyboard use, minimum touch target, and narrow-screen fit. Replace only controls that lack a justified custom interaction. |
+| P1 | **Visible copy and locale coverage need a cross-surface audit.** | The 23-locale system and admin translations exist, but localized wrappers do not establish that every runtime string is translated. A source scan still finds English-only examples such as `FanmassStatusAutoRefresh.tsx`, `DefaultStageCard.tsx`, `LandingPageManager.tsx`, and `StyleSections.tsx`; several labels are appropriate content, while others are admin instructions. | Classify each string as admin UI, guest UI, partner-authored content, or technical identifier. Verify browser → partner → English fallback on guest pages and saved-user → browser → English precedence in admin. Add an untranslated-string scan that distinguishes authored content from UI labels. |
+| P1 | **Responsive layouts need route-level visual checks.** | The owner has reported mobile-only visibility and content overlap in prior screenshots. Static GDS/type checks cannot prove that desktop and mobile render the same required sections or that titles, descriptions, and CTAs do not overlap. | Capture the same key flow at phone, tablet, and desktop widths; check overflow, sticky actions, card columns, modal height, long translations, and browser safe areas. Treat the screenshot as evidence for one viewport only. |
+| P1 | **Loading, empty, failure, and retry states are unevenly verified.** | Camera has both page-level and API-backed editors, but the current release checks are primarily static/unit/build checks. The admin analytics error was fixed in recent work, while no current browser-state inventory is attached to this audit. | Exercise each data-backed admin page with slow network, empty data, 4xx, 5xx, retry, and save-conflict responses. Preserve user input after failure; prevent duplicate writes; announce state changes accessibly. |
+| P2 | **GDS styling debt is not classified at file/property level.** | The admin tree has 189 source files and a text scan reports 1,073 `style={{...}}` occurrences. The scan also finds six `@mantine/core` imports, all in test files. Inline styles often represent image composition or runtime geometry and are not automatically defects; the current exception file already names such boundaries. | Produce a reviewed inventory that labels each style as GDS token/component, authored event content, runtime geometry, or an approved exception. Migrate only admin chrome. Refresh exception ownership and review dates; do not blanket-rewrite composition or playback styles. |
+| P2 | **Icon and text substitutions need a single interaction rule.** | [`ADMIN_ICON_AUDIT.md`](ADMIN_ICON_AUDIT.md) defines the green/red visibility-eye behavior and lists candidates. It also correctly keeps consequential states and scope labels as words. | Use icons only for familiar repeated status/action affordances; retain visible text for decisions, warnings, permissions, and unclear actions. Every icon-only control needs a localized accessible name, tooltip where useful, and visible keyboard focus. |
+| P2 | **Admin localization and guest/event localization are separate settings surfaces.** | Per-user admin language now exists, while partner/event language remains guest-facing configuration. Similar labels such as “User interface language” can be mistaken for the administrator's own preference. | Keep account preference terminology distinct from event/partner language settings; verify ownership, inheritance, fallback, and preview behavior on each editor. |
+
+### Recommended execution order
+
+1. Establish the current route/role/viewport/language baseline and reconcile production screenshots with the deployed commit.
+2. Resolve the approved-photo gallery mismatch using verified record state and the owner's stated consent source.
+3. Fix the highest-impact form-control accessibility and responsive defects found in that baseline.
+4. Close visible-string and locale-fallback gaps across admin and guest journeys.
+5. Exercise loading/error/retry flows for data-backed screens and add regression coverage for reproduced failures.
+6. Classify remaining styles and retire only the admin-chrome exceptions that have a supported GDS replacement.
+
+### Audit commands and interpretation
+
+- `rg -n 'style=\{\{' app/admin components/admin | wc -l` — 1,073 matches; includes valid content/layout/runtime styling, not 1,073 defects.
+- `rg -n "from ['\"]@mantine/core['\"]" app/admin components/admin | wc -l` — 6 matches, all test files in this snapshot.
+- `rg -n '<(button|select|input|textarea)([[:space:]>])' app/admin components/admin | wc -l` — 44 matches, including hidden inputs and custom interactions.
+- `npm run gds:check` and `npm run release:check` verify the package boundary and build contracts; neither substitutes for the route/viewport/keyboard audit above.
