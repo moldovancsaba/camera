@@ -30,7 +30,7 @@ const ALLOWED: Record<string, string> = {
   'lib/privacy/erasure.ts': 'encrypts and decrypts media deletion references for the restricted erasure worker; no public surface reads the values',
   'lib/privacy/media-erasure.ts': 'server-only erasure worker reads encrypted provider references to remove exact media objects; the route returns only counts and states',
   'lib/submissions/original-image.ts': 'server-only source and image-copy validation helpers; no public surface returns copy metadata',
-  'scripts/restore-mtk-approved-photos.ts': 'one-time server-side MTK restoration migration reads verified copy metadata for retries and writes; it never prints image addresses or delete links',
+  'lib/mtk-photo-restoration.ts': 'one-time server-side MTK restoration operation reads verified copy metadata for retries and writes; it never returns image addresses or delete links',
 };
 
 const PUBLIC_SURFACES = [

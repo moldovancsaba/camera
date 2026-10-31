@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — MTK approved-photo restoration
+
+- **Changed:** replaced the deleted local production-data script with a global-admin-only, event-locked Camera operation that restores one of the 40 owner-authorized MTK archive matches per request into the ordinary Approved and Gallery flow. No Recovered category is added.
+- **Safety:** each composed image is SHA-256 verified in Vercel Blob, Cloudflare R2, and ImgBB before publication. The private recovery source is retained until those copies and the regular submission record are durable; retries resume safely. No original selfie, participant consent audit, contact address, or decision e-mail is fabricated.
+- **Status:** implementation is prepared for review; the production data operation has not run. It requires the PR to merge/deploy and a global admin to start it from MTK → Vetting.
+- **Verification:** type-check, lint, focused restoration-route tests, visibility tests, and the full release check passed before the final preflight hardening; final release check will run before opening the PR.
+
 ## Unreleased — global frame ownership and editor loading
 
 - **Fixed:** the frame editor reads the standard API response envelope (`data.frame`) and validates the record before rendering, preventing a valid frame from crashing as “Frame not found”. Non-404 and malformed responses now show a retryable load error.
