@@ -7,6 +7,8 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { isQueueStatus, type QueueStatus } from '@/lib/photo-vetting/queue';
 import { initialUiLanguages } from '@/lib/i18n/server-language';
+import MtkApprovedPhotoRestore from '@/components/admin/MtkApprovedPhotoRestore';
+import { MTK_RESTORATION_EVENT_MONGO_ID, MTK_RESTORATION_EVENT_UUID } from '@/lib/mtk-photo-restoration';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +51,7 @@ export default async function EventVettingTab({
   return (
     <div style={{ display: 'grid', gap: '2.5rem' }}>
       <EventPhotoVetting db={db} eventMongoId={id} event={event as { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown } }} status={photoStatus} page={page} view={view === 'list' ? 'list' : undefined} canChangeSetting={globalAdmin} language={interfaceLanguage} />
+      {globalAdmin && id === MTK_RESTORATION_EVENT_MONGO_ID && event.eventId === MTK_RESTORATION_EVENT_UUID ? <MtkApprovedPhotoRestore eventMongoId={id} /> : null}
     </div>
   );
 }

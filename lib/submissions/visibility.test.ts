@@ -15,6 +15,37 @@ test('a plain photo is public unless it is pending or rejected; a missing status
   assert.equal(isPubliclyVisible({ consentStatus: 'expired' }), false, 'an expired photo stays private');
 });
 
+test('the owner-authorized MTK restore grant can expose only the event-scoped approved photo despite expired consent history', () => {
+  const grant = {
+    version: 1,
+    source: 'event_owner_instruction',
+    status: 'active',
+    authorizationId: '00000000-0000-4000-8000-000000000001',
+    eventId: 'mtk-event',
+    grantedAt: '2026-10-30T12:00:00.000Z',
+    scopes: ['storage', 'admin_review', 'public_gallery', 'public_share', 'slideshow', 'download'],
+  };
+  assert.equal(isPubliclyVisible({
+    submissionKind: 'original',
+    reviewStatus: 'approved',
+    eventId: 'mtk-event',
+    eventIds: ['mtk-event'],
+    consentStatus: 'expired',
+    retentionStatus: 'erased',
+    mediaUseAuthorization: grant,
+  }), true);
+  assert.equal(isPubliclyVisible({
+    submissionKind: 'original',
+    reviewStatus: 'approved',
+    eventId: 'mtk-event',
+    eventIds: ['mtk-event'],
+    consentStatus: 'expired',
+    retentionStatus: 'erased',
+    privacyErasure: { state: 'record_erased' },
+    mediaUseAuthorization: grant,
+  }), false, 'a verified privacy-erasure fence always wins');
+});
+
 test('a stored try-on result is never public, whatever its review or sharing flag says (issue 557)', () => {
   for (const reviewStatus of ['approved', 'pending_review', 'rejected', null, undefined]) {
     for (const isShareVisible of [true, false, null, undefined]) {
