@@ -1,13 +1,19 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Db } from 'mongodb';
+import { ownerMediaUseMongoFilter } from '@/lib/events/consent-eligibility';
 import { eventAsksForGalleryPermission } from './gallery-asked';
 import { buildPublishSelfiesFilter, eventMatchFor } from './publishSelfies';
 import { buildWallFilter } from './wall';
 
 const KEYS = ['evt-uuid-1', '650000000000000000000001'];
 const MARKER = { 'publicGalleryConsent.version': 1 };
-const hasMarker = (filter: Record<string, unknown>) => (filter.$and as unknown[]).some((c) => JSON.stringify(c) === JSON.stringify(MARKER));
+function hasMarker(value: unknown): boolean {
+  if (JSON.stringify(value) === JSON.stringify(MARKER)) return true;
+  if (Array.isArray(value)) return value.some(hasMarker);
+  if (value && typeof value === 'object') return Object.values(value).some(hasMarker);
+  return false;
+}
 
 test('an event that does not ask: the wall and the bulk publish are exactly what they were', () => {
   assert.deepEqual(buildWallFilter(KEYS, false), buildWallFilter(KEYS));
@@ -16,10 +22,13 @@ test('an event that does not ask: the wall and the bulk publish are exactly what
   assert.equal(hasMarker(buildPublishSelfiesFilter(KEYS)), false);
 });
 
-test('an event that asks: the wall needs the ticked-box marker next to isShareVisible, still event-scoped', () => {
+test('an event that asks: the wall accepts the ticked-box marker or explicit event-owner grant, still event-scoped', () => {
   const clauses = buildWallFilter(KEYS, true).$and as Record<string, unknown>[];
   assert.deepEqual(clauses[0], eventMatchFor(KEYS));
   assert.deepEqual(clauses.find((c) => 'isShareVisible' in c), { isShareVisible: true });
+  assert.deepEqual(clauses[4], {
+    $or: [MARKER, ownerMediaUseMongoFilter('public_gallery', KEYS)],
+  });
   assert.ok(hasMarker(buildWallFilter(KEYS, true)));
 });
 

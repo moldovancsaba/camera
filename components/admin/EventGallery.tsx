@@ -48,8 +48,8 @@ interface SubmissionRecord {
   galleryUpload?: boolean;
   frameId?: string | null;
   frameVariant?: { index: number | null; message: string | null; imageUrl: string } | null;
-  /** An image that is read-only in this manager view and is not eligible for public display. */
-  recoveryOnly?: boolean;
+  /** Explicit event-owner restoration authorization for this archived image. */
+  ownerAuthorized?: boolean;
 }
 
 interface SlideshowRecord {
@@ -165,7 +165,7 @@ export default function EventGallery({
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allVisibleIds = useMemo(
-    () => submissions.filter((submission) => !submission.recoveryOnly).map((submission) => submissionIdOf(submission)),
+    () => submissions.map((submission) => submissionIdOf(submission)),
     [submissions]
   );
   const allSelected =
@@ -647,11 +647,11 @@ export default function EventGallery({
       >
         {submissions.map((submission) => {
           const submissionId = submissionIdOf(submission);
-          const awaitingConsent = submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired';
+          const awaitingConsent = !submission.ownerAuthorized && (submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired');
           const imageUrl = submission.previewImageUrl || submission.imageUrl || submission.finalImageUrl;
           // Consent-pending photos intentionally have no public share page. Admins still need to inspect
           // their visible gallery thumbnail while the guest finishes the login-page consent step.
-          const viewHref = awaitingConsent || submission.recoveryOnly ? imageUrl : `/share/${submission._id}`;
+          const viewHref = awaitingConsent ? imageUrl : `/share/${submission._id}`;
           const selected = selectedSet.has(submissionId);
           const singleConfirm = removeState.singleConfirmId === submissionId;
           const busy = removeState.busyIds.includes(submissionId);
@@ -679,7 +679,7 @@ export default function EventGallery({
             <a key="view" href={viewHref} target={awaitingConsent ? '_blank' : undefined} rel={awaitingConsent ? 'noopener noreferrer' : undefined} style={{ textDecoration: 'none' }}>
               <SemanticButton action="event-gallery:view-submission" size="xs" variant="secondary">View</SemanticButton>
             </a>,
-            ...(!submission.recoveryOnly ? [<a
+            ...[<a
               key="download"
               href={submission.imageUrl || submission.finalImageUrl || undefined}
               download
@@ -691,9 +691,9 @@ export default function EventGallery({
               <SemanticButton action="event-gallery:download-submission" size="xs" variant="secondary" disabled={!submission.imageUrl && !submission.finalImageUrl}>
                 Download
               </SemanticButton>
-            </a>] : []),
+            </a>],
           ];
-          if (canManage && !submission.recoveryOnly) {
+          if (canManage) {
             if (singleConfirm) {
               actions.push(
                 <SemanticButton
@@ -745,15 +745,14 @@ export default function EventGallery({
           return (
             <div
               key={submissionId}
-              data-gallery-id={submission.recoveryOnly ? undefined : submissionId}
-              data-gallery-readonly={submission.recoveryOnly ? '' : undefined}
+              data-gallery-id={submissionId}
               style={{ outline: selected ? '3px solid var(--mantine-primary-color-filled)' : undefined, outlineOffset: 2, borderRadius: '0.875rem' }}
             >
             <ListingCard
               title={displayName}
               image={
                 <div style={{ position: 'relative' }}>
-                  {canManage && !submission.recoveryOnly ? (
+                  {canManage ? (
                     <input
                       type="checkbox"
                       checked={selected}
@@ -771,7 +770,7 @@ export default function EventGallery({
                     rel={awaitingConsent ? 'noopener noreferrer' : undefined}
                     onClick={(event) => {
                       // With Shift or Ctrl/Cmd held, or in Select mode, a click on the picture selects it. An ordinary manager click opens that upload's frame picker.
-                      if (canManage && !submission.recoveryOnly && (selectMode || event.shiftKey || event.metaKey || event.ctrlKey)) {
+                      if (canManage && (selectMode || event.shiftKey || event.metaKey || event.ctrlKey)) {
                         event.preventDefault();
                         selectClick(submissionId, event.shiftKey);
                       } else if (canManage && submission.galleryUpload && frameOptions.length > 0) {

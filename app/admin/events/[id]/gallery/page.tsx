@@ -18,6 +18,7 @@ import { galleryFrameKey, loadGalleryFrames } from '@/lib/gallery/frame';
 import { countBroken } from '@/lib/media/broken';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
+import { hasOwnerMediaUseAuthorization } from '@/lib/events/consent-eligibility';
 
 export default async function EventGalleryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,23 +41,6 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
     label: frame.frameName || (frame.variant?.message ? `Frame ${index + 1}: ${frame.variant.message}` : `Frame ${index + 1}`),
     imageUrl: frame.imageUrl,
   }));
-  // Keep the normal/public gallery filter strict. These archive images are added only to this manager-only Camera view.
-  const managerOnlyImages = canManage
-    ? await db.collection(COLLECTIONS.SUBMISSIONS).find({
-        $and: [
-          { $or: [{ eventId: event.eventId }, { eventIds: { $in: [String(event.eventId)] } }] },
-          {
-            consentStatus: 'expired',
-            retentionStatus: 'erased',
-            'adminRecovery.state': 'available',
-            'adminRecovery.store': 'camera-mtk-recovery',
-            'adminRecovery.originalReviewStatus': 'approved',
-            isArchived: { $ne: true },
-          },
-          PRIVACY_ERASURE_ACTIVE_FILTER,
-        ],
-      }, { projection: { _id: 1, createdAt: 1, userName: 1 } }).sort({ createdAt: -1 }).limit(100).toArray()
-    : [];
   // Photos whose picture is gone are not listed (lib/media/broken.ts); the gallery says how many it hides.
   const hiddenBroken = await countBroken(db, [String(event.eventId), id]);
   // Photos an editor uploaded that have no frame yet (before the option existed, or uploaded with it off): the gallery offers to frame them in one press.
@@ -81,14 +65,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
       galleryUpload: (submission.metadata as { adminGalleryUpload?: boolean } | undefined)?.adminGalleryUpload === true,
       frameId: typeof submission.frameId === 'string' ? submission.frameId : null,
       frameVariant: submission.frameVariant ?? null,
-    })),
-    ...managerOnlyImages.map((submission) => ({
-      _id: String(submission._id),
-      previewImageUrl: `/api/admin/events/${id}/recovered-photos/${String(submission._id)}/image`,
-      consentStatus: 'expired',
-      userName: typeof submission.userName === 'string' ? submission.userName : 'NO USER',
-      createdAt: typeof submission.createdAt === 'string' ? submission.createdAt : '',
-      recoveryOnly: true,
+      ownerAuthorized: hasOwnerMediaUseAuthorization(submission, 'public_gallery'),
     })),
   ];
 

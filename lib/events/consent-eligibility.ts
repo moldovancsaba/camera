@@ -23,11 +23,57 @@ export function hasConsentEvidenceForProcessing(submission: Record<string, unkno
   return submission.consentStatus === 'received' && hasVerifiableConsentAudit(submission.consents);
 }
 
+/**
+ * A separate, explicit rights basis recorded by the service owner for a specific event/photo set.
+ * It never mutates or impersonates participant consent. Keep the accepted source and scopes closed.
+ */
+export const OWNER_MEDIA_USE_SCOPES = [
+  'storage', 'admin_review', 'manual_analysis', 'analytics', 'public_gallery', 'public_share', 'slideshow', 'download',
+] as const;
+export type OwnerMediaUseScope = (typeof OWNER_MEDIA_USE_SCOPES)[number];
+
+export function hasOwnerMediaUseAuthorization(submission: Record<string, unknown>, scope?: OwnerMediaUseScope): boolean {
+  const value = submission.mediaUseAuthorization;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const grant = value as Record<string, unknown>;
+  if (grant.version !== 1 || grant.source !== 'event_owner_instruction' || grant.status !== 'active') return false;
+  if (typeof grant.eventId !== 'string' || !grant.eventId.trim()) return false;
+  if (typeof grant.authorizationId !== 'string' || !/^[a-f0-9-]{36}$/i.test(grant.authorizationId)) return false;
+  if (typeof grant.grantedAt !== 'string' || !Number.isFinite(Date.parse(grant.grantedAt))) return false;
+  if (!Array.isArray(grant.scopes) || !grant.scopes.every((item) => (OWNER_MEDIA_USE_SCOPES as readonly unknown[]).includes(item))) return false;
+  return scope ? grant.scopes.includes(scope) : grant.scopes.length > 0;
+}
+
+export function hasParticipantConsentOrOwnerMediaUse(submission: Record<string, unknown>, scope: OwnerMediaUseScope): boolean {
+  return hasConsentEvidenceForProcessing(submission) || hasOwnerMediaUseAuthorization(submission, scope);
+}
+
+/** A durable owner-use grant is separate from and must not be written into the participant's consent audit. */
+export function ownerMediaUseMongoFilter(scope: OwnerMediaUseScope, eventId?: string | readonly string[]): Document {
+  return {
+    'mediaUseAuthorization.version': 1,
+    'mediaUseAuthorization.source': 'event_owner_instruction',
+    'mediaUseAuthorization.status': 'active',
+    'mediaUseAuthorization.authorizationId': { $type: 'string', $ne: '' },
+    'mediaUseAuthorization.grantedAt': { $type: 'string', $ne: '' },
+    'mediaUseAuthorization.eventId': typeof eventId === 'string'
+      ? eventId
+      : eventId ? { $in: [...eventId] } : { $type: 'string', $ne: '' },
+    'mediaUseAuthorization.scopes': scope,
+  };
+}
+
+/** Uses that require a valid participant audit or an explicit owner grant for this event. */
+export function mediaUseEligibleFilter(scope: OwnerMediaUseScope, eventId?: string): Document {
+  return { $or: [CONSENT_ELIGIBLE_FILTER, ownerMediaUseMongoFilter(scope, eventId)] };
+}
+
 export const CONSENT_AUDIT_ERASURE_STATUSES = ['received', 'expired'] as const;
 
 /** A received or expired legacy status without its proof must be erased, not trusted. */
 export function requiresConsentAuditErasure(submission: Record<string, unknown>): boolean {
-  return (CONSENT_AUDIT_ERASURE_STATUSES as readonly unknown[]).includes(submission.consentStatus)
+  return !hasOwnerMediaUseAuthorization(submission, 'storage')
+    && (CONSENT_AUDIT_ERASURE_STATUSES as readonly unknown[]).includes(submission.consentStatus)
     && !hasVerifiableConsentAudit(submission.consents);
 }
 

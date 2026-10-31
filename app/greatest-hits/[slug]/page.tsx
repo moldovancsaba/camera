@@ -5,7 +5,7 @@ import { SimpleGrid, Stack, Title } from '@/components/gds/PublicPrimitives';
 import PublicShell from '@/components/public/PublicPageShell';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { CONSENT_ELIGIBLE_FILTER } from '@/lib/events/consent-eligibility';
+import { CONSENT_ELIGIBLE_FILTER, ownerMediaUseMongoFilter } from '@/lib/events/consent-eligibility';
 import { plainPhotoClause } from '@/lib/submissions/visibility';
 
 export const dynamic = 'force-dynamic';
@@ -33,12 +33,12 @@ export default async function GreatestSelfiesPage({ params }: { params: Promise<
       { $or: [{ eventId: { $in: eventKeys } }, { eventIds: { $in: eventKeys } }] },
       { reviewStatus: 'approved', isShareVisible: true, isArchived: { $ne: true } },
       { 'mediaHealth.broken': { $ne: true } },
-      { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
-      { analyticsDeletion: { $nin: ['manual', 'automatic_no_login', 'automatic_other'] } },
+      { $or: [{ retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } }, ownerMediaUseMongoFilter('public_gallery', event.eventId)] },
+      { $or: [{ analyticsDeletion: { $nin: ['manual', 'automatic_no_login', 'automatic_other'] } }, ownerMediaUseMongoFilter('public_gallery', event.eventId)] },
       { 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } },
       { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: eventKeys } }] },
       plainPhotoClause,
-      CONSENT_ELIGIBLE_FILTER,
+      { $or: [CONSENT_ELIGIBLE_FILTER, ownerMediaUseMongoFilter('public_gallery', event.eventId)] },
     ],
   }, { projection: { _id: 1, imageUrl: 1, finalImageUrl: 1 } })
     .sort({ approvedAt: -1, createdAt: -1 })

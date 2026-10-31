@@ -981,20 +981,19 @@ export interface Submission {
   retentionStatus?: 'pending_erasure' | 'erasing' | 'erased';
   retentionExpiresAt?: string;
   retentionErasedAt?: string;
-  /**
-   * A manager-only image copy retained from an offline archive after the normal image references
-   * were erased. It can be displayed in the event's existing decision/gallery views, but does not
-   * restore consent, public publication, e-mail, or Fanmass eligibility.
-   */
-  adminRecovery?: {
-    state: 'available';
-    store: 'camera-mtk-recovery';
-    pathname: string;
-    sourceArchive: string;
-    sourceFileName: string;
-    sha256: string;
-    recoveredAt: string;
-    originalReviewStatus: 'approved' | 'rejected';
+  /** Event-owner media-use authorization. This is a separate rights basis and never participant consent. */
+  mediaUseAuthorization?: {
+    version: 1;
+    status: 'active';
+    source: 'event_owner_instruction';
+    batchId?: string;
+    authorizationId: string;
+    eventId: string;
+    grantedAt: string;
+    scopes: Array<'storage' | 'admin_review' | 'manual_analysis' | 'analytics' | 'public_gallery' | 'public_share' | 'slideshow' | 'download'>;
+    note: string;
+    sourceSha256: string;
+    historicalReviewStatus: 'approved' | 'rejected';
   } | null;
   /** A verified privacy request permanently fences this photo from all normal reads and writes before its record is scrubbed. */
   privacyErasure?: {
