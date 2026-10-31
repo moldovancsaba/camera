@@ -37,6 +37,16 @@ test('an approved photo shows the real picture and the last decision', () => {
   assert.deepEqual(item.last, { action: 'approve', by: 'mod@example.com', at: 't2', reason: null });
 });
 
+test('owner-authorized media keeps its approval audit but does not display the authorization note as a moderator note', () => {
+  const item = toPhotoQueueItem({
+    ...base(),
+    reviewStatus: 'approved',
+    mediaUseAuthorization: { source: 'event_owner_instruction' },
+    reviewHistory: [{ action: 'approve', by: 'admin@example.com', at: 't2', reason: 'Owner-directed restoration details' }],
+  });
+  assert.deepEqual(item.last, { action: 'approve', by: 'admin@example.com', at: 't2', reason: null });
+});
+
 test('a rejected photo falls back to its saved original when the moderation address is absent', () => {
   const item = toPhotoQueueItem({
     ...base(),

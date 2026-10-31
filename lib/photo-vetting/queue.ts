@@ -43,6 +43,7 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
   const review = (doc.photoReview ?? {}) as Document;
   const history = Array.isArray(doc.reviewHistory) ? (doc.reviewHistory as Document[]) : [];
   const last = history[history.length - 1];
+  const ownerAuthorizedMedia = doc.mediaUseAuthorization?.source === 'event_owner_instruction';
   const contact = guestContactOf(doc);
   const name = contact.name ?? text(doc.userInfoDraft?.name) ?? text(doc.userName) ?? 'Guest';
   const email = contact.email;
@@ -66,7 +67,7 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
     rejectReasons: Array.isArray(doc.rejectReasons) ? doc.rejectReasons.filter((key): key is string => typeof key === 'string' && key.length > 0) : [],
     last:
       last && (last.action === 'approve' || last.action === 'reject' || last.action === 'return_to_vetting')
-        ? { action: last.action, by: text(last.by) ?? 'unknown', at: text(last.at) ?? '', reason: text(last.reason) }
+        ? { action: last.action, by: text(last.by) ?? 'unknown', at: text(last.at) ?? '', reason: ownerAuthorizedMedia ? null : text(last.reason) }
         : null,
   };
 }
