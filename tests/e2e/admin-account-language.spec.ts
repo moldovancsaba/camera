@@ -6,7 +6,7 @@ async function signInAsGlobalAdmin(page: import('@playwright/test').Page, destin
     access: 'true',
     email: 'language-admin@camera.local',
     name: 'Language Admin',
-    userId: 'language-admin-e2e',
+    userId: `language-admin-e2e-${Date.now()}`,
     redirectTo: destination,
   });
   await page.goto(`/api/auth/dev-login?${login.toString()}`);
@@ -43,8 +43,35 @@ test('admin language preference shows bilingual locale names and saves on deskto
 
   const language = page.getByRole('textbox', { name: 'Interface language' });
   await expect(language).toBeVisible();
-  await language.click();
+
+  const unboundedControls = await page.locator(
+    '[data-camera-admin] button:visible, [data-camera-admin] input:not([type="hidden"]):visible, [data-camera-admin] select:visible, [data-camera-admin] textarea:visible, [data-camera-admin] [role="button"]:visible, [data-camera-admin] [role="combobox"]:visible'
+  ).evaluateAll((elements) => elements.flatMap((element) => {
+    const style = getComputedStyle(element);
+    const label = element.getAttribute('aria-label') || element.getAttribute('title') ||
+      element.textContent?.trim().replace(/\s+/g, ' ') ||
+      (element instanceof HTMLInputElement ? element.labels?.[0]?.textContent?.trim() : '') ||
+      element.tagName;
+    const borderWidth = Number(style.borderTopWidth.replace('px', ''));
+    const borderAlpha = style.borderTopColor.includes('/')
+      ? style.borderTopColor.split('/').at(-1)?.replace(')', '').trim()
+      : style.borderTopColor.slice(0, 4) === 'rgba'
+        ? style.borderTopColor.slice(style.borderTopColor.lastIndexOf(',') + 1, -1).trim()
+        : '1';
+    if (borderWidth >= 1 && style.borderTopStyle !== 'none' && borderAlpha !== '0') return [];
+    return [{ label, border: style.border }];
+  }));
+  expect(unboundedControls, 'visible admin buttons and fields must have a discernible GDS boundary').toEqual([]);
+
+  await page.locator('form input:visible').click();
   await page.getByRole('option', { name: 'Magyar (Hungarian)' }).click();
+  await language.press('Tab');
+  const focusedControl = await page.evaluate(() => {
+    const style = getComputedStyle(document.activeElement!);
+    return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth };
+  });
+  expect(focusedControl.outlineStyle, 'keyboard focus must remain visible').not.toBe('none');
+  expect(Number(focusedControl.outlineWidth.replace('px', ''))).toBeGreaterThanOrEqual(2);
   await page.getByRole('button', { name: 'Save changes' }).click();
 
   await expect.poll(() => patchBody?.uiLanguage).toBe('hu');
@@ -53,22 +80,41 @@ test('admin language preference shows bilingual locale names and saves on deskto
 
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-    const overflowingElements = await page.evaluate(() => Array.from(document.querySelectorAll('body *'))
-      .map((element) => {
+    await page.evaluate(() => new Promise<void>((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame()))));
+    await expect.poll(() => page.evaluate(() => document.body.scrollWidth)).toBeLessThanOrEqual(width);
+    const layout = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+      innerWidth: window.innerWidth,
+      shell: Array.from(document.querySelectorAll('.mantine-AppShell-main, .mantine-AppShell-navbar')).map((element) => {
         const rect = element.getBoundingClientRect();
-        return { tag: element.tagName, id: element.id, className: typeof element.className === 'string' ? element.className : '', right: Math.round(rect.right), width: Math.round(rect.width) };
-      })
-      .filter((element) => element.right > window.innerWidth + 1)
-      .slice(0, 8));
-    expect(documentWidth, `document width at ${width}px; overflow: ${JSON.stringify(overflowingElements)}`).toBeLessThanOrEqual(width);
+        return { className: element.className, x: Math.round(rect.x), right: Math.round(rect.right), width: Math.round(rect.width) };
+      }),
+      overflowingElements: Array.from(document.querySelectorAll('body *'))
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return { tag: element.tagName, id: element.id, className: typeof element.className === 'string' ? element.className : '', x: Math.round(rect.x), right: Math.round(rect.right), width: Math.round(rect.width) };
+        })
+        .filter((element) => element.right > window.innerWidth + 1)
+        .slice(0, 8),
+    }));
+    expect(layout.documentWidth, `layout at ${width}px: ${JSON.stringify(layout)}`).toBeLessThanOrEqual(width);
   }
+
+  await page.locator('form input:visible').click();
+  await page.getByRole('option', { name: 'العربية (Arabic)' }).click();
+  await page.locator('form button[type="submit"]').click();
+  await expect.poll(() => patchBody?.uiLanguage).toBe('ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.evaluate(() => new Promise<void>((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame()))));
+  await expect.poll(() => page.evaluate(() => document.body.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
-test('all-events analytics renders a clear database error instead of crashing when storage is unavailable', async ({ page }) => {
+test('all-events analytics renders its data and unavailable metrics without crashing', async ({ page }) => {
   await signInAsGlobalAdmin(page, '/admin/analytics');
   await expect(page).toHaveURL(/\/admin\/analytics$/);
-  await expect(page.getByRole('heading', { name: 'Analytics', level: 1 })).toBeVisible();
-  await expect(page.getByText('Database connection error').first()).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Not measured yet' }).first()).toBeVisible();
   await expect(page.getByText('Oops! Something went wrong')).toHaveCount(0);
 });

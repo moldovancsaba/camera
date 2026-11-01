@@ -1,5 +1,7 @@
 # Camera admin UX audit and delivery plan
 
+> **Audit status (2026-11-01):** The historical source/screenshot-only limitation below was partly closed by a production-build Playwright audit of all 71 admin page routes at desktop, tablet, and mobile widths. See [UI consistency audit, 2026-11-01](UI_CONSISTENCY_AUDIT_2026-11-01.md) for the route/control results, role and language coverage, state coverage, fixes, and remaining gaps. Do not interpret this update as a complete manual WCAG or all-locales visual certification.
+
 **Audit date:** 2026-10-15
 **Source reviewed:** GitHub `main`, commit `051cff3153f8ec22407abea1529c2c64bc96f183`
 **Tracking issue:** [camera#673](https://github.com/moldovancsaba/camera/issues/673)
