@@ -24,18 +24,22 @@ export interface ScreenDesignText {
   fit?: boolean;
   /** Hex colour; white when omitted. */
   color?: string;
+  /** Explicitly hidden layers keep their configuration; omitted stays visible for designs saved before this option existed. */
+  visible?: boolean;
 }
 
 export interface ScreenDesign {
-  /** The picture drawn over the stage; transparent where the photos show. */
-  overlayImageUrl: string;
+  /** The optional picture drawn over the stage; transparent where the photos show. */
+  overlayImageUrl?: string;
+  /** Hidden overlays keep their URL so an editor can show them again without re-uploading. Omitted means visible for legacy designs. */
+  overlayVisible?: boolean;
   /** Where the photos play, % of the stage. */
   window: { left: number; top: number; width: number; height: number };
   photoFit: 'cover' | 'contain';
   /** A Google font for the texts that replaces the event's own (its messmass report style); leave it out to use the event's font. */
   fontFamily?: string;
   /** The QR code: where it points, its top left corner (% of the stage) and its side (% of the stage width). */
-  qr?: { url: string; x: number; y: number; size: number; color?: string };
+  qr?: { url: string; x: number; y: number; size: number; color?: string; visible?: boolean };
   texts?: ScreenDesignText[];
 }
 
@@ -87,45 +91,53 @@ const isHttps = (v: unknown, max: number): v is string => {
   }
 };
 
-/** The design from a request, or why it is refused. `null` or an empty overlay removes the design. */
+/** The design from a request, or why it is refused. A design needs a photo window and may have any combination of optional visual layers. */
 export function parseScreenDesign(input: unknown): Result {
   if (input === null || input === undefined) return { ok: true, value: null };
   if (typeof input !== 'object' || Array.isArray(input)) return { ok: false, error: 'screenDesign must be an object or null' };
   const d = input as Record<string, unknown>;
-  if (!isHttps(d.overlayImageUrl, 1000)) return { ok: false, error: 'screenDesign.overlayImageUrl must be an https address' };
+  if (d.overlayImageUrl !== undefined && d.overlayImageUrl !== null && d.overlayImageUrl !== '' && typeof d.overlayImageUrl !== 'string') {
+    return { ok: false, error: 'screenDesign.overlayImageUrl must be an https address or omitted' };
+  }
+  if (d.overlayVisible !== undefined && typeof d.overlayVisible !== 'boolean') return { ok: false, error: 'screenDesign.overlayVisible must be a boolean' };
+  const overlayImageUrl = typeof d.overlayImageUrl === 'string' ? d.overlayImageUrl.trim() : '';
+  if (overlayImageUrl && !isHttps(overlayImageUrl, 1000)) return { ok: false, error: 'screenDesign.overlayImageUrl must be an https address' };
   const w = (d.window ?? {}) as Record<string, unknown>;
   const win = { left: num(w.left, 0, 100), top: num(w.top, 0, 100), width: num(w.width, 1, 100), height: num(w.height, 1, 100) };
   if (win.left === null || win.top === null || win.width === null || win.height === null || win.left + win.width > 100.01 || win.top + win.height > 100.01) {
     return { ok: false, error: 'screenDesign.window must be left, top, width and height in percent, inside the stage' };
   }
   const out: ScreenDesign = {
-    overlayImageUrl: d.overlayImageUrl,
     window: { left: win.left, top: win.top, width: win.width, height: win.height },
     photoFit: d.photoFit === 'contain' ? 'contain' : 'cover',
   };
+  if (overlayImageUrl) out.overlayImageUrl = overlayImageUrl;
+  if (d.overlayVisible === false && overlayImageUrl) out.overlayVisible = false;
   if (d.fontFamily !== undefined && d.fontFamily !== null && d.fontFamily !== '') {
     if (typeof d.fontFamily !== 'string' || !FONT.test(d.fontFamily)) return { ok: false, error: 'screenDesign.fontFamily must be a font name (letters, digits, spaces)' };
     out.fontFamily = d.fontFamily;
   }
   if (d.qr !== undefined && d.qr !== null) {
     const q = d.qr as Record<string, unknown>;
+    if (q.visible !== undefined && typeof q.visible !== 'boolean') return { ok: false, error: 'screenDesign.qr.visible must be a boolean' };
     const x = num(q.x, 0, 100), y = num(q.y, 0, 100), size = num(q.size, 2, 100);
     if (!isHttps(q.url, 300)) return { ok: false, error: 'screenDesign.qr: the QR code address must start with https:// (for example https://go.messmass.com/mtk-vasas) and be at most 300 characters' };
     if (x === null || y === null || size === null || x + size > 100.01) return { ok: false, error: 'screenDesign.qr: left, top and side must be numbers in percent, and left plus side must stay inside the stage (at most 100)' };
     if (q.color !== undefined && q.color !== '' && !(typeof q.color === 'string' && HEX.test(q.color))) return { ok: false, error: 'screenDesign.qr.color must be a hex colour' };
-    out.qr = { url: q.url, x, y, size, ...(q.color ? { color: String(q.color) } : {}) };
+    out.qr = { url: q.url, x, y, size, ...(q.color ? { color: String(q.color) } : {}), ...(q.visible === false ? { visible: false } : {}) };
   }
   if (d.texts !== undefined && d.texts !== null) {
     if (!Array.isArray(d.texts) || d.texts.length > MAX_TEXTS) return { ok: false, error: `screenDesign.texts must be a list of at most ${MAX_TEXTS}` };
     out.texts = [];
     for (const raw of d.texts) {
       const t = (raw ?? {}) as Record<string, unknown>;
+      if (t.visible !== undefined && typeof t.visible !== 'boolean') return { ok: false, error: 'screenDesign text visible must be a boolean' };
       const x = num(t.x, 0, 100), y = num(t.y, 0, 100), width = num(t.width, 1, 100), size = num(t.size, 0.5, 30);
       if (typeof t.text !== 'string' || !t.text.trim() || t.text.length > 120 || x === null || y === null || width === null || size === null) {
         return { ok: false, error: 'each screenDesign text needs a text (up to 120 characters), x, y, width and size in percent' };
       }
       if (t.color !== undefined && t.color !== '' && !(typeof t.color === 'string' && HEX.test(t.color))) return { ok: false, error: 'screenDesign text color must be a hex colour' };
-      out.texts.push({ text: t.text.trim(), x, y, width, size, align: t.align === 'left' || t.align === 'right' ? t.align : 'center', ...(t.fit === true ? { fit: true } : {}), ...(t.color ? { color: String(t.color) } : {}) });
+      out.texts.push({ text: t.text.trim(), x, y, width, size, align: t.align === 'left' || t.align === 'right' ? t.align : 'center', ...(t.fit === true ? { fit: true } : {}), ...(t.color ? { color: String(t.color) } : {}), ...(t.visible === false ? { visible: false } : {}) });
     }
   }
   return { ok: true, value: out };
@@ -152,7 +164,7 @@ export function resolveScreenDesign(stored: unknown, themeFont?: ScreenDesignFon
   const parsed = parseScreenDesign(stored);
   if (!parsed.ok || !parsed.value) return null;
   const design: ResolvedScreenDesign = { ...parsed.value };
-  if (design.qr) design.qrSvg = qrSvg(design.qr.url, design.qr.color);
+  if (design.qr && design.qr.visible !== false) design.qrSvg = qrSvg(design.qr.url, design.qr.color);
   if (themeFont) design.font = themeFont;
   return design;
 }

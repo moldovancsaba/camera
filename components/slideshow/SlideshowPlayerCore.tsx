@@ -473,7 +473,7 @@ export function SlideshowPlayerCore({
       }
 
       // The screen design's picture is loaded with the first slides, so the design does not pop in after the photos.
-      const overlayUrl: string | undefined = data.slideshow.screenDesign?.overlayImageUrl;
+      const overlayUrl: string | undefined = data.slideshow.screenDesign?.overlayVisible === false ? undefined : data.slideshow.screenDesign?.overlayImageUrl;
       const overlayReady = overlayUrl
         ? Promise.race([preloader.preload(overlayUrl, { urgent: true }), new Promise((resolve) => setTimeout(resolve, OVERLAY_WAIT_MS))])
         : Promise.resolve();

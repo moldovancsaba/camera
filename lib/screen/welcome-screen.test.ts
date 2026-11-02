@@ -84,6 +84,18 @@ test('the QR code is drawn on its panel: dark modules and light gaps in the QR b
   assert.ok(dark / (dark + light) > 0.3 && dark / (dark + light) < 0.7);
 });
 
+test('hidden overlay, QR and text leave only the photo window on the stage', async () => {
+  const hidden: ScreenDesign = {
+    ...design,
+    overlayVisible: false,
+    qr: { ...design.qr!, visible: false },
+    texts: design.texts?.map((text) => ({ ...text, visible: false })),
+  };
+  const configuredHidden = await renderWelcomeScreen(await sources({ design: hidden, overlay: null }));
+  const plainWindow = await renderWelcomeScreen(await sources({ design: { window: design.window, photoFit: design.photoFit }, overlay: null }));
+  assert.ok(configuredHidden.equals(plainWindow), 'hidden layers are not drawn, while the photo window remains');
+});
+
 test('the address is drawn in its colour inside its box, one line scaled to fill the box width', async () => {
   const png = await renderWelcomeScreen(await sources());
   const text = rgbOf(palette.text);

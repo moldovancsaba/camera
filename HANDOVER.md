@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — optional slideshow screen layers
+
+The slideshow screen-design editor now has reversible visibility controls for the overlay image, dynamic QR code and each text line. Hidden layers keep their saved URL/text and can be restored without re-uploading or retyping. The screen design can also run without an overlay while retaining its photo-window, QR and text layers. Existing designs without visibility flags remain visually unchanged. The live slideshow, generated Welcome image and broken-overlay fallback all use the same layer rules. New controls and guidance are translated across all 23 admin locales. Unit tests cover legacy defaults, hidden-layer round trips, overlay-free designs and localization. `npm run release:check` and `npm run inventory:check` passed; browser E2E could not run because no MongoDB URI is configured for a disposable local test database. No production settings or data have been changed.
+
 ## Current change — ImgBB backup URLs are not production image sources
 
 The shared Fanmass photo URL resolver now accepts only first-party Vercel Blob sources. Fanmass photo cards and the one-photo review do not render ImgBB backup links; when no Blob copy or eligible Blob original is recorded, the existing photo-unavailable state is shown. Guest theme/logo resolution and frame-logo fetching also reject ImgBB, while CSP and the Next image optimizer allowlist block it as an image source. Regression coverage covers the legacy ImgBB cases and first-party fallbacks. The owner’s serving rule is documented in `docs/FANMASS_RESULTS_IN_CAMERA.md`, `RUNBOOK.md`, `ARCHITECTURE.md`, and `docs/STORAGE_ARCHITECTURE.md`. Focused tests passed; full checks and GitHub Verify are pending. This does not add the still-missing general public R2 CDN for event photos or migrate legacy ImgBB-only records. No production data or deployment was changed.
