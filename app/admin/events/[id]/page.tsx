@@ -176,7 +176,7 @@ export default async function EventDetailPage({
     try {
       const theme = await loadEventTheme(db, event as unknown as Record<string, unknown>);
       const style = (event as unknown as { frameDesign?: { context?: { style?: { name?: unknown } } } }).frameDesign?.context?.style;
-      themeColours = { fill: theme.buttonBackground, label: theme.buttonText, ring: theme.buttonRing, source: theme.buttonSource, styleName: typeof style?.name === 'string' ? style.name : null };
+      themeColours = { fill: theme.buttonBackground, label: theme.buttonText, ring: theme.buttonRing, controlAccent: theme.controlAccent, contrastWarnings: theme.contrastWarnings, source: theme.buttonSource, styleName: typeof style?.name === 'string' ? style.name : null };
     } catch (error) {
       console.error('Error resolving the event theme for the colours panel:', error);
     }

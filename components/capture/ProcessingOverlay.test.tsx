@@ -37,7 +37,7 @@ test('the veil and the spinner take their colours from the event\'s theme, never
   const render = await load(t, 'theme');
   const html = render();
   assert.match(html, /var\(--event-bg\)/);
-  assert.match(html, /var\(--event-button-bg\)/);
+  assert.match(html, /var\(--event-control-accent\)/);
   assert.doesNotMatch(html, /bg-black|rgba\(0, ?0, ?0/);
 });
 

@@ -75,7 +75,7 @@ export async function redrawStage(db: Db, event: Document, deps: StageRedrawDeps
   if (!isGeneratedOverlay(current, eventUuid)) return { ok: false, reason: 'The default slideshow has a stage picture of its own, so a stadium background does not apply to it.' };
 
   const theme = await loadEventTheme(db, event);
-  const colours = { background: theme.background, accent: theme.buttonBackground };
+  const colours = { background: theme.background, accent: theme.controlAccent };
   const stage = await chooseStageBackground(db, event, deps.background, { again: options.again });
   const png = await renderStageOverlay(colours, stage?.picture ?? null);
   const url = await deps.upload(`screens/${eventUuid}/default-${createHash('sha256').update(png).digest('hex').slice(0, 16)}.png`, png);

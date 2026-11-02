@@ -66,6 +66,8 @@ export async function ensureWelcomeScreen(db: Db, event: Document, deps: Welcome
   const design = parsed.value;
 
   const theme = await loadEventTheme(db, event);
+  // The generated welcome screen contains guest actions, so its accent follows the same configured button fill as the journey.
+  // Contrast diagnostics are shown in the editor; they must never rewrite the palette used for the image.
   const colours = { background: theme.background, accent: theme.buttonBackground };
   const font = await deps.resolveFont({ fontFamily: design.fontFamily ?? theme.font.family, fontSource: design.fontFamily ? 'google' : theme.font.source, fontFile: design.fontFamily ? null : theme.font.file });
   const frameUrl = frameImageUrl(event);

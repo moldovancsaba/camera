@@ -4,24 +4,22 @@
  * the pages and the frame agree; an event without a snapshot gets the system default style of messmass, with the event's own brand
  * colour as the button colour when it has one.
  *
- * Contrast is guaranteed, not trusted: text is only used where it reads (WCAG 4.5:1, 3:1 for the large button labels), a button colour
- * only where it stands out from its card and from the page (3:1). A colour that fails is **repaired, not replaced** (camera#336): the same hue,
- * darker or lighter in steps of 5% until it passes; white or black only when no variant of it can pass. So a messmass style can never make
- * a page unreadable, and the page keeps the colours of the club.
+ * Configured colors are never contrast-corrected. The admin receives contrast warnings, while the guest experience renders the selected palette
+ * exactly as configured. This lets partners keep their Messmass design without Camera silently changing any color.
  * Pure and DOM-free; unit-tested in event-theme.test.ts.
  */
 
 import { EVENT_THEME_DEFAULT } from '@/lib/gds/tokens/colors';
 import type { FrameContext, PageStyle } from '@/lib/frame/context';
 import { eventEmoji } from '@/lib/frame/emoji';
-import { bestOfWhiteOrBlack, contrast, isDark, mix, opaque, readable, repaired } from '@/lib/theme/color';
+import { contrast, isDark, mix, opaque } from '@/lib/theme/color';
 import { isLogoStorageHostname } from '@/lib/imgbb/url';
 
 export type FontSource = 'google' | 'custom' | 'system';
 
 /**
  * Where the fill of the buttons comes from, in the order of precedence: `welcome` the colours of the Start button of the welcome page, `event` the event's own
- * colour (set in the editor, or the default of its partner), `messmass` the style of the event's report in messmass, `default` the system default look.
+ * colour (set in the editor, or the default of its partner), `messmass` the configured report button fill, `default` the system default look.
  */
 export type ButtonColourSource = 'welcome' | 'event' | 'messmass' | 'default';
 
@@ -32,20 +30,26 @@ export interface EventTheme {
   background: string;
   /** Heading and other text on the page background. */
   heading: string;
-  /** Dimmed text (descriptions, hints) on the page background: the heading colour, softened, still 4.5:1. */
+  /** Secondary text on the page; currently the configured heading color because Messmass has no separate muted token. */
   headingMuted: string;
   cardBackground: string;
   cardBorder: string;
   /** Text on a card. */
   cardText: string;
-  /** Dimmed text (descriptions, hints, placeholders) on a card, still 4.5:1. */
+  /** Secondary text on a card; currently the configured card text color because Messmass has no separate muted token. */
   cardMuted: string;
-  /** The edge of an input on a card, at least 3:1 against the card. */
+  /** The configured card border color, reused for input edges. */
   inputBorder: string;
   buttonBackground: string;
   buttonText: string;
-  /** The ring round every button (camera#334): the colour the club set on its welcome page's Start button, else the label colour. */
+  /** The ring round every button, using the configured source color. */
   buttonRing: string;
+  /** Accent used for selection and focus controls, kept separate from the configured button fill. */
+  controlAccent: string;
+  /** Configured mark/label color on `controlAccent`. */
+  controlAccentText: string;
+  /** Contrast warnings for the admin editor. These describe the palette; guest colors are never auto-corrected. */
+  contrastWarnings: string[];
   /** Where the fill of the buttons comes from (the admin shows it next to the colours, so the editor knows which setting decides). */
   buttonSource: ButtonColourSource;
   /** Link colour on a card. */
@@ -70,13 +74,13 @@ export interface EventTheme {
 }
 
 export interface ThemeInput {
-  /** The event's own brand colour from the editor (#RRGGBB), used for buttons when messmass gives no usable button colour. */
+  /** The event's own brand colour from the editor (#RRGGBB), used for buttons before the Messmass style. */
   brandColor?: string | null;
   /** The event's own ring colour from the editor (#RRGGBB): the ring of every button when the welcome page sets none. */
   brandBorderColor?: string | null;
   /**
    * The colours the club set on the Start button of its welcome page (fill, label, ring). The button of the whole flow looks like the Start button
-   * (camera#334), so these win over everything else; only the label is still checked for contrast.
+   * (camera#334), so these win over everything else. Colors are rendered as configured and contrast issues are reported to admins.
    */
   buttons?: { fill?: unknown; label?: unknown; ring?: unknown } | null;
   /** The event's email footer picture (event.emailFooterImageUrl). */
@@ -85,7 +89,7 @@ export interface ThemeInput {
   context?: FrameContext | null;
 }
 
-/** How much of the button colour tints a selected card (a ticked consent box): the links on it must still read. */
+/** How much of the configured accent tints a selected card (a ticked consent box). */
 export const SELECTED_TINT = 0.08;
 
 const RADIUS = /^\d{1,2}(?:\.\d{1,2})?(?:px|rem|em)$/;
@@ -116,37 +120,44 @@ export function resolveEventTheme({ brandColor, brandBorderColor, context, email
   const fromMessmass = context?.source === 'messmass';
 
   const background = opaque(style?.heroBackground) ?? opaque(EVENT_THEME_DEFAULT.heroBackground)!;
-  const heading = readable(opaque(style?.headingColor, hexRgb(background)), background);
+  const heading = opaque(style?.headingColor, hexRgb(background)) ?? EVENT_THEME_DEFAULT.textColor;
   const cardBackground = opaque(page.cardBackground, hexRgb(background)) ?? '#ffffff';
-  const cardText = readable(opaque(page.textColor, hexRgb(cardBackground)), cardBackground);
+  const cardText = opaque(page.textColor, hexRgb(cardBackground)) ?? EVENT_THEME_DEFAULT.textColor;
   const cardBorder = opaque(page.cardBorder, hexRgb(cardBackground)) ?? cardBackground;
 
-  // The colours of the buttons (camera#336), in this order of precedence: the Start button of the welcome page, then the event's own colours (the
-  // editor's brand colour and ring), then the ones derived from the style. A button sits on a card (login, consent) or straight on the page (the
-  // photo steps), so its fill must stand out from both (3:1): a colour that does not is made to, keeping its hue.
+  // Render the configured values directly. Contrast checks below are diagnostic only and never alter the guest UI.
   const brand = opaque(brandColor);
-  const stands = [cardBackground, background];
-  const fromStyle = [opaque(page.buttonBackground, hexRgb(cardBackground)), opaque(page.accentColor, hexRgb(cardBackground))].filter((c): c is string => !!c);
+  const messmassFill = fromMessmass ? opaque(page.buttonBackground, hexRgb(cardBackground)) : null;
   const welcomeFill = opaque(buttons?.fill);
-  const eventFill = repaired(brand, stands, 3);
-  // Derived: the style's own button or accent if it stands out as it is, else the accent (or the style's button) made to stand out; failing that
-  // the card's text colour, black or white, whichever stands out best.
-  const derivedFill =
-    fromStyle.find((c) => repaired(c, stands, 3) === c) ?? repaired(fromStyle[1] ?? fromStyle[0], stands, 3) ?? repaired(fromStyle[0], stands, 3) ?? null;
-  const fallbackFill = [cardText, '#000000', '#ffffff'].sort((a, b) => Math.min(contrast(b, cardBackground), contrast(b, background)) - Math.min(contrast(a, cardBackground), contrast(a, background)))[0];
-  const buttonBackground = welcomeFill ?? eventFill ?? derivedFill ?? fallbackFill;
-  const buttonSource: ButtonColourSource = welcomeFill ? 'welcome' : eventFill ? 'event' : derivedFill && fromMessmass ? 'messmass' : 'default';
-  // The label: the club's own, else the style's own label when the fill is the style's own button as it is, else white or black by contrast; always
-  // at least 3:1 on the fill.
-  const styleLabel = buttonBackground === opaque(page.buttonBackground, hexRgb(cardBackground)) ? opaque(page.buttonText, hexRgb(buttonBackground)) : null;
-  const buttonText = repaired(opaque(buttons?.label, hexRgb(buttonBackground)) ?? styleLabel, [buttonBackground], 3) ?? bestOfWhiteOrBlack([buttonBackground]);
-  const buttonRing = opaque(buttons?.ring) ?? repaired(opaque(brandBorderColor), stands, 3) ?? buttonText;
-  const selectedCard = mix(buttonBackground, cardBackground, SELECTED_TINT);
-  const link = repaired(opaque(page.linkColor, hexRgb(cardBackground)), [cardBackground, selectedCard]) ?? bestOfWhiteOrBlack([cardBackground, selectedCard]);
-  // Dimmed text and the edge of an input are shades of the text colour, and read as well as the text does (camera#336).
-  const headingMuted = readable(mix(heading, background, 0.62), background);
-  const cardMuted = readable(mix(cardText, cardBackground, 0.62), cardBackground);
-  const inputBorder = repaired(mix(cardText, cardBackground, 0.5), [cardBackground], 3) ?? bestOfWhiteOrBlack([cardBackground]);
+  const buttonBackground = welcomeFill ?? brand ?? messmassFill ?? opaque(page.buttonBackground, hexRgb(cardBackground)) ?? EVENT_THEME_DEFAULT.buttonBackground;
+  const buttonSource: ButtonColourSource = welcomeFill ? 'welcome' : brand ? 'event' : fromMessmass ? 'messmass' : 'default';
+  const buttonText = opaque(buttons?.label, hexRgb(buttonBackground)) ?? opaque(page.buttonText, hexRgb(buttonBackground)) ?? EVENT_THEME_DEFAULT.buttonText;
+  const buttonRing = opaque(buttons?.ring, hexRgb(buttonBackground)) ?? opaque(brandBorderColor, hexRgb(buttonBackground)) ?? opaque(page.accentColor, hexRgb(buttonBackground)) ?? buttonText;
+  const controlAccent = opaque(page.accentColor, hexRgb(cardBackground)) ?? buttonBackground;
+  const controlAccentText = buttonText;
+  const selectedCard = mix(controlAccent, cardBackground, SELECTED_TINT);
+  const link = opaque(page.linkColor, hexRgb(cardBackground)) ?? EVENT_THEME_DEFAULT.linkColor;
+  // Messmass has no muted-text or input-border color token. Reuse its text and card-border values rather than derive new colors.
+  const headingMuted = heading;
+  const cardMuted = cardText;
+  const inputBorder = cardBorder;
+  const contrastWarnings: string[] = [];
+  const warn = (label: string, foreground: string, surface: string, minimum: number) => {
+    const ratio = contrast(foreground, surface);
+    if (ratio < minimum) contrastWarnings.push(`${label}: ${ratio.toFixed(1)}:1 (recommended ${minimum}:1).`);
+  };
+  warn('Page heading on page background', heading, background, 4.5);
+  warn('Card text on card background', cardText, cardBackground, 4.5);
+  warn('Link on card background', link, cardBackground, 4.5);
+  warn('Link on selected card background', link, selectedCard, 4.5);
+  warn('Button text on button fill', buttonText, buttonBackground, 3);
+  warn('Button fill against card background', buttonBackground, cardBackground, 3);
+  warn('Button fill against page background', buttonBackground, background, 3);
+  warn('Button ring against button fill', buttonRing, buttonBackground, 3);
+  warn('Selected-control color on card background', controlAccent, cardBackground, 3);
+  warn('Selected-control color on page background', controlAccent, background, 3);
+  warn('Selected-control mark on selected-control color', controlAccentText, controlAccent, 3);
+  warn('Input/card border against card background', inputBorder, cardBackground, 3);
 
   const partnerLogo = allowedImage(context?.partner?.logoUrl);
   const emoji = partnerLogo || !context ? null : eventEmoji({ name: context.event.name, homeTeam: context.event.homeTeam, visitorTeam: context.event.visitorTeam }, context.partner?.name);
@@ -165,6 +176,9 @@ export function resolveEventTheme({ brandColor, brandBorderColor, context, email
     buttonText,
     buttonRing,
     buttonSource,
+    controlAccent,
+    controlAccentText,
+    contrastWarnings,
     link,
     radius: radiusOf(page.cardRadius),
     dark: isDark(background),

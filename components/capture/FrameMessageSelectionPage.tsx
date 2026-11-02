@@ -70,7 +70,7 @@ export default function FrameMessageSelectionPage({
                   onClick={() => onFrameSelect(frame)}
                   aria-pressed={selectedFrameId === frame.frameId}
                   className="aspect-square overflow-hidden rounded-xl border-2 transition-all"
-                  style={{ backgroundColor: tile?.color || undefined, borderColor: selectedFrameId === frame.frameId ? `var(--event-button-bg, ${brandColor || 'var(--mantine-color-blue-6)'})` : undefined }}
+                  style={{ backgroundColor: tile?.color || undefined, borderColor: selectedFrameId === frame.frameId ? `var(--event-control-accent, ${brandColor || 'var(--mantine-color-blue-6)'})` : undefined }}
                   data-frame-choice
                 >
                   {tile?.imageUrl ? (
@@ -100,7 +100,7 @@ export default function FrameMessageSelectionPage({
                   aria-pressed={selectedLayoutId === id}
                   aria-label={name}
                   className="aspect-square overflow-hidden rounded-xl border-2 transition-all"
-                  style={{ backgroundColor: tile?.color || undefined, borderColor: selectedLayoutId === id ? `var(--event-button-bg, ${brandColor || 'var(--mantine-color-blue-6)'})` : undefined }}
+                  style={{ backgroundColor: tile?.color || undefined, borderColor: selectedLayoutId === id ? `var(--event-control-accent, ${brandColor || 'var(--mantine-color-blue-6)'})` : undefined }}
                   data-layout-choice
                 >
                   {tile?.imageUrl ? (

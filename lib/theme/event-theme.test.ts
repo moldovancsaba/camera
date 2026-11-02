@@ -42,23 +42,25 @@ test('the pages take the background, heading, card, button and radius of the mes
   assert.deepEqual(theme.font, { family: 'Aquatic', source: 'system', file: null, url: null });
 });
 
-test('a style that cannot be read is corrected: text, card text and button text always pass', () => {
+test('configured Messmass and Camera colors are preserved and low contrast is reported instead of corrected', () => {
   const bad = { heroBackground: '#ffffffff', headingColor: '#fafafaff', page: { ...PAGE, cardBackground: '#ffffffff', textColor: '#f0f0f0ff', buttonBackground: '#ffffffff', buttonText: '#ffffffff', accentColor: '#fefefeff' } };
   const theme = resolveEventTheme({ context: context(bad), brandColor: '#0057b8' });
-  assert.ok(contrast(theme.heading, theme.background) >= 4.5, 'heading');
-  assert.ok(contrast(theme.cardText, theme.cardBackground) >= 4.5, 'card text');
-  assert.ok(contrast(theme.buttonText, theme.buttonBackground) >= 3, 'button text');
-  assert.ok(contrast(theme.buttonBackground, theme.cardBackground) >= 3, 'the button stands out from its card');
-  assert.ok(contrast(theme.buttonBackground, theme.background) >= 3, 'and from the page');
-  assert.equal(theme.buttonBackground, '#0057b8', 'the event brand colour follows the style button, its accent and the page colour');
+  assert.equal(theme.heading, '#fafafa');
+  assert.equal(theme.cardText, '#f0f0f0');
+  assert.equal(theme.buttonBackground, '#0057b8', 'the Camera event override is preserved');
+  assert.equal(theme.buttonText, '#ffffff', 'the configured label is preserved');
+  assert.ok(theme.contrastWarnings.length > 0);
+  assert.ok(theme.contrastWarnings.some((warning) => warning.startsWith('Page heading on page background')));
+  assert.ok(theme.contrastWarnings.some((warning) => warning.startsWith('Card text on card background')));
 });
 
-test('the system default style gives a light page with a readable button', () => {
+test('the system default style keeps its configured colors and reports any contrast issue', () => {
   const theme = resolveEventTheme({ context: nativeFrameContext({ eventName: 'Derby', partnerName: 'Club', partnerLogoUrl: null }, NOW) });
   assert.equal(theme.source, 'default');
   assert.equal(theme.dark, false);
   assert.ok(contrast(theme.heading, theme.background) >= 4.5);
-  assert.ok(contrast(theme.buttonBackground, theme.cardBackground) >= 3, 'the default white button is replaced by the accent');
+  assert.equal(theme.buttonBackground, '#ffffff');
+  assert.ok(theme.contrastWarnings.some((warning) => warning.startsWith('Button fill against card background')));
 });
 
 test('with no snapshot at all the system default look is used, with the brand colour on the buttons', () => {
@@ -67,7 +69,7 @@ test('with no snapshot at all the system default look is used, with the brand co
   assert.equal(none.logoUrl, null);
   const branded = resolveEventTheme({ brandColor: '#9333ea' });
   assert.equal(branded.source, 'event');
-  assert.ok(contrast(branded.buttonBackground, branded.cardBackground) >= 3);
+  assert.equal(branded.buttonBackground, '#9333ea', 'the configured event color is used exactly');
 });
 
 test('an event without a logo falls back to its emoji', () => {
@@ -84,36 +86,42 @@ test('transparent colours are flattened and a huge or odd radius is limited', ()
   assert.equal(resolveEventTheme({ context: context({ page: { ...PAGE, cardRadius: 'calc(1px)' } }) }).radius, '0.75rem');
 });
 
-test('a snapshot taken before page colours existed still themes the page from its hero and heading colours', () => {
+test('a snapshot taken before page colours existed still uses its hero and heading colors without correction', () => {
   const theme = resolveEventTheme({ context: context({}) });
   assert.equal(theme.background, '#171d37');
   assert.equal(theme.heading, '#ffffff');
-  assert.ok(contrast(theme.cardText, theme.cardBackground) >= 4.5);
+  assert.equal(theme.cardText, '#111827');
 });
 
-test('a button must stand out from the page as well as from the card: on a dark page a dark button is not used', () => {
-  const theme = resolveEventTheme({ context: context({ page: { ...PAGE, buttonBackground: '#171d37ff', accentColor: '#171d37ff' } }), brandColor: '#3b82f6' });
-  assert.ok(contrast(theme.buttonBackground, theme.background) >= 3, `button ${theme.buttonBackground} on page ${theme.background}`);
-  assert.ok(contrast(theme.buttonBackground, theme.cardBackground) >= 3);
-  assert.equal(theme.buttonBackground, '#3b82f6');
+test('an event button color is preserved even when it does not stand out from its configured surfaces', () => {
+  const theme = resolveEventTheme({ context: context({ page: { ...PAGE, buttonBackground: '#171d37ff', accentColor: '#171d37ff' } }), brandColor: '#171d37' });
+  assert.equal(theme.buttonBackground, '#171d37');
+  assert.ok(theme.contrastWarnings.some((warning) => warning.startsWith('Button fill against page background')));
 });
 
-test('a style colour that does not stand out is repaired, keeping its hue: grey on grey becomes a darker grey, not black', () => {
+test('a style fill that does not stand out is preserved and produces a contrast warning', () => {
   const theme = resolveEventTheme({ context: context({ heroBackground: '#808080ff', page: { ...PAGE, cardBackground: '#808080ff', buttonBackground: '#808080ff', accentColor: '#808080ff' } }) });
-  assert.ok(contrast(theme.buttonBackground, theme.cardBackground) >= 3 && contrast(theme.buttonBackground, theme.background) >= 3);
+  assert.equal(theme.buttonBackground, '#808080');
+  assert.ok(theme.contrastWarnings.some((warning) => warning.startsWith('Button fill against card background')));
 });
 
-test('when no variant of any colour stands out from both card and page, the best of the card text, black and white is used', () => {
-  // A light card on a dark page: no shade can be 3:1 from both, so the last resort applies.
+test('a difficult palette is not replaced by a fallback color', () => {
   const theme = resolveEventTheme({ context: context({ heroBackground: '#3a3a3aff', page: { ...PAGE, cardBackground: '#d0d0d0ff', buttonBackground: '#808080ff', accentColor: '#808080ff', textColor: '#111111ff' } }) });
-  assert.ok(['#000000', '#ffffff'].includes(theme.buttonBackground) || theme.buttonBackground === theme.cardText);
+  assert.equal(theme.buttonBackground, '#808080');
+  assert.equal(theme.controlAccent, '#808080');
+  assert.ok(theme.contrastWarnings.length > 0);
 });
 
-test('MTK x Vasas (camera#336): the navy text on the page blue is made 20% darker, keeping the hue, not replaced by black', () => {
+test('MTK x Vasas keeps every configured Messmass color and reports the cyan button-label contrast', () => {
   const theme = resolveEventTheme({ context: context({ heroBackground: '#00b5e4ff', headingColor: '#004c87ff', page: { ...PAGE, cardBackground: '#f3f4f6ff', textColor: '#004c87ff', buttonBackground: '#ffffffff', buttonText: '#00b5e4ff', accentColor: '#00b5e4ff' } }) });
-  assert.equal(theme.heading, '#003d6c');
-  assert.ok(contrast(theme.heading, theme.background) >= 4.5);
-  assert.equal(theme.cardText, '#004c87', 'on the card the navy already reads');
+  assert.equal(theme.heading, '#004c87');
+  assert.equal(theme.cardText, '#004c87');
+  assert.equal(theme.buttonBackground, '#ffffff');
+  assert.equal(theme.buttonText, '#00b5e4');
+  assert.equal(theme.buttonRing, '#00b5e4');
+  assert.equal(theme.controlAccent, '#00b5e4');
+  assert.ok(theme.contrastWarnings.some((warning) => warning.startsWith('Button text on button fill')));
+  assert.ok(theme.contrastWarnings.some((warning) => warning.startsWith('Selected-control mark on selected-control color')));
 });
 
 test('button colours: the welcome page first, then the event\'s own colours, then the ones derived from the style', () => {
@@ -126,19 +134,17 @@ test('button colours: the welcome page first, then the event\'s own colours, the
   const welcome = resolveEventTheme({ context: ctx, brandColor: '#0a7d3e', brandBorderColor: '#b45309', buttons: { fill: '#1b3a69', label: '#ffffff', ring: '#189cd8' } });
   assert.deepEqual([welcome.buttonBackground, welcome.buttonText, welcome.buttonRing], ['#1b3a69', '#ffffff', '#189cd8'], 'the welcome page wins over the event');
   const noRing = resolveEventTheme({ context: ctx, brandColor: '#0a7d3e' });
-  assert.equal(noRing.buttonRing, noRing.buttonText, 'with no ring colour anywhere the ring is the label colour');
+  assert.equal(noRing.buttonRing, '#3b82f6', 'with no explicit Camera ring, use the configured Messmass accent');
 });
 
-test('an event colour that does not stand out is repaired, keeping its hue, and its label is white or black by contrast', () => {
+test('an event color and configured label are preserved even when contrast is low', () => {
   const theme = resolveEventTheme({ context: context({ heroBackground: '#f8fafcff', page: { ...PAGE, cardBackground: '#ffffffff' } }), brandColor: '#d8e0ff' });
-  assert.ok(contrast(theme.buttonBackground, theme.cardBackground) >= 3 && contrast(theme.buttonBackground, theme.background) >= 3);
-  const [r, , b] = [1, 3, 5].map((i) => parseInt(theme.buttonBackground.slice(i, i + 2), 16));
-  assert.ok(b > r, 'still bluish');
-  assert.ok(['#ffffff', '#000000'].includes(theme.buttonText));
-  assert.ok(contrast(theme.buttonText, theme.buttonBackground) >= 3);
+  assert.equal(theme.buttonBackground, '#d8e0ff');
+  assert.equal(theme.buttonText, '#ffffff');
+  assert.ok(theme.contrastWarnings.some((warning) => warning.startsWith('Button text on button fill')));
 });
 
-test('dimmed text and the edge of an input read as well as the text: 4.5:1 and 3:1, on every kind of style', () => {
+test('secondary text and input edges reuse the configured Messmass text and border colors', () => {
   const styles = [
     context({ page: PAGE }),
     context({ heroBackground: '#00b5e4ff', headingColor: '#004c87ff', page: { ...PAGE, cardBackground: '#f3f4f6ff', textColor: '#004c87ff' } }),
@@ -147,9 +153,9 @@ test('dimmed text and the edge of an input read as well as the text: 4.5:1 and 3
   ];
   for (const ctx of styles) {
     const theme = resolveEventTheme({ context: ctx });
-    assert.ok(contrast(theme.headingMuted, theme.background) >= 4.5, `dimmed text ${theme.headingMuted} on page ${theme.background}`);
-    assert.ok(contrast(theme.cardMuted, theme.cardBackground) >= 4.5, `dimmed text ${theme.cardMuted} on card ${theme.cardBackground}`);
-    assert.ok(contrast(theme.inputBorder, theme.cardBackground) >= 3, `input edge ${theme.inputBorder} on card ${theme.cardBackground}`);
+    assert.equal(theme.headingMuted, theme.heading);
+    assert.equal(theme.cardMuted, theme.cardText);
+    assert.equal(theme.inputBorder, theme.cardBorder);
   }
 });
 
@@ -174,21 +180,27 @@ test('the colours the club set on its welcome page Start button become the butto
   const own = resolveEventTheme({ context, buttons: { fill: '#1b3a69', label: '#ffffff', ring: '#189cd8' } });
   assert.deepEqual([own.buttonBackground, own.buttonText, own.buttonRing], ['#1b3a69', '#ffffff', '#189cd8']);
   const noRing = resolveEventTheme({ context, buttons: { fill: '#1b3a69', label: '#ffffff' } });
-  assert.equal(noRing.buttonRing, '#ffffff');
-  // a label that cannot be read on its fill is corrected; text that is not a colour is ignored
+  assert.equal(noRing.buttonRing, '#3b82f6', 'with no explicit welcome ring, use the configured Messmass accent');
+  // even an unreadable configured label stays exactly as entered; malformed values are ignored
   const unreadable = resolveEventTheme({ context, buttons: { fill: '#1b3a69', label: '#223344' } });
-  assert.ok(contrast(unreadable.buttonText, unreadable.buttonBackground) >= 3);
+  assert.equal(unreadable.buttonText, '#223344');
+  assert.ok(unreadable.contrastWarnings.some((warning) => warning.startsWith('Button text on button fill')));
   const junk = resolveEventTheme({ context, buttons: { fill: 'red; background:url(x)', label: 42, ring: {} } });
   assert.deepEqual([junk.buttonBackground, junk.buttonText, junk.buttonRing], [base.buttonBackground, base.buttonText, base.buttonRing]);
 });
 
 
-test('the link colour reads on the card and on a ticked, tinted card (the consent boxes)', () => {
+test('the configured link color is preserved and low contrast on a selected card is reported', () => {
   for (const ctx of [context({ page: PAGE }), context({ heroBackground: '#00b5e4ff', headingColor: '#004c87ff', page: { ...PAGE, cardBackground: '#f3f4f6ff', textColor: '#004c87ff', linkColor: '#2563ebff' } })]) {
     const theme = resolveEventTheme({ context: ctx });
-    const ticked = mix(theme.buttonBackground, theme.cardBackground, SELECTED_TINT);
-    assert.ok(contrast(theme.link, theme.cardBackground) >= 4.5, `link ${theme.link} on the card`);
-    assert.ok(contrast(theme.link, ticked) >= 4.5, `link ${theme.link} on the ticked card ${ticked}`);
+    const ticked = mix(theme.controlAccent, theme.cardBackground, SELECTED_TINT);
+    assert.equal(theme.link, '#2563eb');
+    if (contrast(theme.link, theme.cardBackground) < 4.5) {
+      assert.ok(theme.contrastWarnings.some((warning) => warning.startsWith('Link on card background')));
+    }
+    if (contrast(theme.link, ticked) < 4.5) {
+      assert.ok(theme.contrastWarnings.some((warning) => warning.startsWith('Link on selected card background')));
+    }
   }
 });
 

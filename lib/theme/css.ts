@@ -58,6 +58,8 @@ export function themeVariables(theme: EventTheme): Record<string, string> {
     '--event-button-bg': theme.buttonBackground,
     '--event-button-text': theme.buttonText,
     '--event-button-ring': theme.buttonRing,
+    '--event-control-accent': theme.controlAccent,
+    '--event-control-accent-text': theme.controlAccentText,
     '--event-link': theme.link,
     '--event-radius': theme.radius,
     '--event-font': fontStack(theme),
@@ -87,11 +89,11 @@ export const EVENT_THEME_CSS = `
   color: var(--event-heading);
   font-family: var(--event-font);
   color-scheme: normal;
-  /* Dimmed text on the page itself (not on a card) is the heading colour softened, and still readable. */
+  /* Messmass has no separate muted-text token, so secondary page text uses the configured heading color. */
   --mantine-color-dimmed: var(--event-muted);
-  /* The GDS controls (the zoom slider, the segmented control) take the event's button colour, not the GDS purple. */
-  --gds-brand-primary: var(--event-button-bg);
-  --gds-vibe-primary: var(--event-button-bg);
+  /* Selection/focus controls use a distinct palette color so preserving a configured Messmass button fill cannot hide their state. */
+  --gds-brand-primary: var(--event-control-accent);
+  --gds-vibe-primary: var(--event-control-accent);
 }
 .event-theme .mantine-Paper-root,
 .event-theme [data-event-card] {
@@ -111,8 +113,8 @@ export const EVENT_THEME_CSS = `
 .event-theme {
   --mantine-font-family: var(--event-font);
   --mantine-font-family-headings: var(--event-font);
-  --mantine-primary-color-filled: var(--event-button-bg);
-  --mantine-primary-color-filled-hover: color-mix(in srgb, var(--event-button-bg) 86%, var(--event-button-text));
+  --mantine-primary-color-filled: var(--event-control-accent);
+  --mantine-primary-color-filled-hover: color-mix(in srgb, var(--event-control-accent) 86%, var(--event-control-accent-text));
 }
 .event-theme .mantine-Button-root {
   /* The Start button of the welcome page is the button of the whole flow (item 59 of the welcome page planning): a round pill with a ring, bold capitals and a soft glow. */
@@ -175,12 +177,12 @@ export const EVENT_THEME_CSS = `
   --button-color: var(--event-button-bg) !important;
   --button-bd: var(--ring) solid var(--event-button-ring) !important;
 }
-/* The chosen segment of a segmented control (how the photo fits the frame) is drawn in the button colours, label included. */
+/* The chosen segment of a segmented control (how the photo fits the frame) is drawn in the selected-control colors. */
 .event-theme .mantine-SegmentedControl-indicator {
-  background: var(--event-button-bg);
+  background: var(--event-control-accent);
 }
 .event-theme .mantine-SegmentedControl-label[data-active] {
-  color: var(--event-button-text) !important;
+  color: var(--event-control-accent-text) !important;
 }
 /* An alert inside a themed page (a status or an error on a page) is a card of the event too, not Mantine's blue or yellow box. */
 .event-theme .mantine-Alert-root {
@@ -210,10 +212,10 @@ export const EVENT_THEME_CSS = `
 .mantine-Notification-closeButton {
   color: var(--event-card-muted);
 }
-/* A ticked checkbox takes the event's button colours, not the default purple (the consent page is the first page every user sees). */
+/* A ticked checkbox uses the configured selection color independent of the configured button fill. */
 .event-theme .mantine-Checkbox-root {
-  --checkbox-color: var(--event-button-bg) !important;
-  --checkbox-icon-color: var(--event-button-text) !important;
+  --checkbox-color: var(--event-control-accent) !important;
+  --checkbox-icon-color: var(--event-control-accent-text) !important;
 }
 .event-theme .mantine-Input-input,
 .event-theme .mantine-TextInput-input {

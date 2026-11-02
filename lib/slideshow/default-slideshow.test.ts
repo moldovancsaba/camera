@@ -168,7 +168,7 @@ const stadiumPicture = () => sharp({ create: { width: 1920, height: 1080, channe
 /** The address the stage of the event is stored at when it is drawn by code: the hash of `renderDefaultOverlay` in the event's colours, the function the stage was always made with. */
 async function builtInStagePath(seeded: ReturnType<typeof fakeDb>): Promise<string> {
   const theme = await loadEventTheme(seeded.db, EVENT);
-  const png = renderDefaultOverlay({ background: theme.background, accent: theme.buttonBackground });
+  const png = renderDefaultOverlay({ background: theme.background, accent: theme.controlAccent });
   return `screens/event-uuid-1/default-${createHash('sha256').update(png).digest('hex').slice(0, 16)}.png`;
 }
 

@@ -166,7 +166,7 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
   const origin = deps.origin();
 
   const theme = await loadEventTheme(db, event);
-  const colours = { background: theme.background, accent: theme.buttonBackground };
+  const colours = { background: theme.background, accent: theme.controlAccent };
   const palette = stagePalette(colours);
   // The stage is drawn on a stadium background of the library when the event has one to use (issue 326: its own, its partner's, else a random global one, picked once and stored on the event); with none, as
   // while the library is empty, it is the built-in stage in the event's colours, byte for byte what every event had before.
