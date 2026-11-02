@@ -65,6 +65,21 @@ test('asking again with nothing changed draws nothing: the stored picture is kep
   assert.equal(log.uploads.length, 1);
 });
 
+test('a hidden overlay is not fetched and a window-only welcome picture is still generated', async () => {
+  const { db, data, event } = await eventWithDefaultSlideshow();
+  const slideshow = data.slideshows[0] as { screenDesign: { overlayImageUrl: string; overlayVisible?: boolean; qr?: { visible?: boolean }; texts?: Array<{ visible?: boolean }> } };
+  const overlayUrl = slideshow.screenDesign.overlayImageUrl;
+  slideshow.screenDesign.overlayVisible = false;
+  if (slideshow.screenDesign.qr) slideshow.screenDesign.qr.visible = false;
+  slideshow.screenDesign.texts = slideshow.screenDesign.texts?.map((text) => ({ ...text, visible: false }));
+
+  const log = { uploads: [] as string[], fetched: [] as string[] };
+  const result = await ensureWelcomeScreen(db, event, deps(log));
+  assert.ok(result.ok && result.created, 'the welcome image is generated without optional graphic layers');
+  assert.ok(!log.fetched.includes(overlayUrl), 'a hidden overlay does not make a storage request');
+  assert.equal(log.uploads.length, 1);
+});
+
 test('when the design changes (another QR address) the picture is drawn again; the key follows', async () => {
   const { db, data, event } = await eventWithDefaultSlideshow();
   const log = { uploads: [] as string[], fetched: [] as string[] };
