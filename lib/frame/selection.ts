@@ -142,6 +142,8 @@ export function layoutOptionsOf(input: {
   ownFrames: readonly LayoutOption[];
   carriers: readonly LayoutOption[];
   design: DesignLike | null;
+  /** Whether the generated layout is an enabled choice for this event. */
+  generatedEnabled: boolean;
 }): LayoutOption[] {
   if (input.ownFrames.length > 0) return [...input.ownFrames];
   const carrierById = new Map(input.carriers.map((carrier) => [carrier.id, carrier]));
@@ -150,10 +152,10 @@ export function layoutOptionsOf(input: {
   const messages = input.design ? usableOf(input.design).map((message) => message.text) : [];
   for (const message of messages) {
     const ids = framesOfMessage(input.design?.messageFrames, message).filter((id) => carrierById.has(id));
-    if (ids.length === 0) generated = true;
+    if (ids.length === 0) generated = input.generatedEnabled;
     ids.forEach((id) => used.add(id));
   }
-  if (messages.length === 0) generated = true;
+  if (messages.length === 0 && input.generatedEnabled) generated = true;
   const layouts = input.carriers.filter((carrier) => used.has(carrier.id));
   return generated ? [...layouts, { id: GENERATED_LAYOUT, name: 'Generated layout' }] : layouts;
 }

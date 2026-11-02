@@ -84,8 +84,10 @@ default frame of the event is built from:
 - `updatedAt`.
 
 The messmass answer is untrusted: it is parsed in `lib/frame/context.ts` (https logos only, drawable colours only,
-a plain `/fonts/` file for a custom font). The generated frame applies only while the event has no active frame of
-its own (`frames[]` with `isActive`).
+a plain `/fonts/` file for a custom font). `events.generatedFrameEnabled` is an explicit event-level opt-in: new
+events set it false, and missing/false means off. Even when enabled, the generated frame applies only while the event
+has no active complete frame of its own (`frames[]` with `isActive`). Provisioning does not take a snapshot or draw
+variants; the event Frames page's **Generate default frame** action does both, enabling only after drawing succeeds.
 
 `frameDesign.variants[]` (camera#235) holds one generated image per usable message: `index` (position in `messages`, or
 null for the single image without a message), `message` (the filled text drawn), `imageUrl` (Vercel Blob,
@@ -157,7 +159,7 @@ Image fields (camera#210):
 - `originalImageUrl` is the pure full-frame camera image (not cropped, not framed, not mirrored) in Vercel Blob under `originals/<eventId>/<captureId>.jpg`. The URL is unguessable but Vercel Blob itself is URL-accessible; Camera never returns it from guest-facing routes (`lib/submissions/original-exposure.test.ts` guards this). A successful new original also has three verified `imageCopies` entries: Vercel Blob, private EU R2, and ImgBB (public URL and server-only delete link). Submissions made before camera#210, and legacy submissions without an original, may carry the composite here instead.
 - `reframe` is present exactly when `originalImageUrl` is a distinct full-frame original: `{version: 1, mode: fill|fit|custom, zoom, crop {x, y, width, height} in source pixels (may extend past the image in fit), sourceWidth, sourceHeight, frameAspect, mirrored}`. `lib/submissions/public-image.ts` never falls back to the original when it exists.
 - `metadata.originalWidth`, `originalHeight`, `originalFileSize` and `originalMimeType` describe the original (the file's size and type come from a Blob lookup); `metadata.finalWidth` and `finalHeight` still describe the composite, which the slideshow reads.
-- `frameVariant` `{index, message, imageUrl}` is present when the photo used the generated default frame of an event with no frame of its own (camera#236, `frameId` is then null): the position and text of the message drawn and the generated image in Vercel Blob (`frames/generated/`), kept because try-on composes with it later. It is never deleted with the submission (it is shared by every photo of that variant). A try-on result made from such a photo is composed with this image and keeps the same `frameVariant` (camera#238).
+- `frameVariant` `{index, message, imageUrl}` is present only when the photo used the explicitly enabled generated default frame of an event with no active complete frame of its own (camera#236, `frameId` is then null): the position and text of the message drawn and the generated image in Vercel Blob (`frames/generated/`). It is never deleted with the submission (it is shared by every photo of that variant).
 
 A photo of an event with vetting required (camera#266) is saved pending and carries, instead of the image fields above:
 

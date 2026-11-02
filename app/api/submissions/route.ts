@@ -149,7 +149,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const vettingEvent =
     typeof eventId === 'string' && eventId.trim()
       ? ((await db.collection(COLLECTIONS.EVENTS).findOne(buildEventLookupFilterByIdentifier(eventId), {
-          projection: { eventId: 1, messmassEventId: 1, photoVetting: 1, galleryConsent: 1, partnerId: 1, consentSettings: 1, acceptanceOnWhoAreYou: 1, customPages: 1, journeyDefaults: 1, defaultPageOrders: 1, shortUrlSlug: 1 },
+          projection: { eventId: 1, messmassEventId: 1, photoVetting: 1, galleryConsent: 1, partnerId: 1, consentSettings: 1, acceptanceOnWhoAreYou: 1, customPages: 1, journeyDefaults: 1, defaultPageOrders: 1, shortUrlSlug: 1, generatedFrameEnabled: 1 },
         })) as (GuardEvent & { _id: unknown; galleryConsent?: unknown; partnerId?: unknown; journeyDefaults?: unknown }) | null)
       : null;
   const vetted = photoVettingRequired(vettingEvent);
@@ -258,11 +258,13 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
     }
 
-    // The generated default frame applies only to a photo without a frame of its own. A claim that is not one of this
-    // project's generated frame images is dropped; the photo still saves.
+    // The generated default frame applies only when the event explicitly opted in and the photo has no frame of its own.
+    // A claim while disabled, or one that is not a project-generated image, is dropped; the photo still saves.
     let frameVariant: RecordedFrameVariant | null = null;
     if (!frame && claimedFrameVariant !== undefined && claimedFrameVariant !== null) {
-      frameVariant = sanitizeFrameVariant(claimedFrameVariant, blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN));
+      frameVariant = vettingEvent && (vettingEvent as { generatedFrameEnabled?: unknown }).generatedFrameEnabled === true
+        ? sanitizeFrameVariant(claimedFrameVariant, blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN))
+        : null;
       if (!frameVariant) {
         logWarn('submissions.frame_variant_dropped', 'The claimed generated frame variant is not valid; saving without it', {
           eventId: typeof eventId === 'string' ? eventId : null,

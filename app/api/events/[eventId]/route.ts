@@ -180,7 +180,7 @@ export const GET = withErrorHandler(async (
   }
 
   // The generated default frame reaches the capture page as `generatedFrame`, derived: present only while the event
-  // has no active frame of its own (camera#236). The stored `frameDesign` (snapshot of messmass data, message list,
+  // explicitly enabled the optional default frame, has usable generated images, and has no active frame of its own (camera#236). The stored `frameDesign` (snapshot of messmass data, message list,
   // render internals) is admin data and is not part of this public response; admins read it from .../frame-design.
   // `photoVetting` (who changed it, when) is admin data: guests get `photoVettingRequired`, and when asked as a guest
   // (`?audience=guest`, the capture page) a vetted event with no "who are you" page before the photo gets the default one first:
@@ -266,6 +266,7 @@ export const GET = withErrorHandler(async (
       _id: event._id.toString(),
       generatedFrame: captureFrameOf({
         frames: guestSafeEvent.frames as EventFrameAssignment[] | undefined,
+        generatedFrameEnabled: event.generatedFrameEnabled === true,
         frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'],
         frameSelection: guestSafeEvent.frameSelection as Parameters<typeof captureFrameOf>[0]['frameSelection'],
       }),

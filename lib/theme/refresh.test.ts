@@ -5,7 +5,7 @@ import { needsThemeRefresh, refreshEventTheme, refreshStaleEvents, THEME_MAX_AGE
 
 const NOW = new Date('2026-10-06T12:00:00.000Z');
 const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
-const linked = (extra: Record<string, unknown> = {}) => ({ _id: new ObjectId(), messmassEventId: 'm1', eventId: 'e1', frameDesign: { context: { fetchedAt: ago(1000) } }, ...extra });
+const linked = (extra: Record<string, unknown> = {}) => ({ _id: new ObjectId(), messmassEventId: 'm1', eventId: 'e1', generatedFrameEnabled: true, frameDesign: { context: { fetchedAt: ago(1000) } }, ...extra });
 
 test('only a linked event whose snapshot is stale or a day old, and was not tried lately, needs a refresh', () => {
   assert.equal(needsThemeRefresh(linked(), NOW), false, 'fresh');
@@ -53,6 +53,13 @@ test('an event without frame images is not drawn: only its snapshot is taken', a
   const { db } = fakeDb();
   const calls: string[] = [];
   assert.equal(await refreshEventTheme(db, linked(), deps({ changed: true }, calls)), 'updated');
+  assert.deepEqual(calls, ['refresh']);
+});
+
+test('a saved frame design does not regenerate until its event has opted in', async () => {
+  const { db } = fakeDb();
+  const calls: string[] = [];
+  assert.equal(await refreshEventTheme(db, linked({ generatedFrameEnabled: false, frameDesign: { context: {}, variants: [{}] } }), deps({ changed: true }, calls)), 'updated');
   assert.deepEqual(calls, ['refresh']);
 });
 

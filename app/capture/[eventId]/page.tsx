@@ -246,7 +246,7 @@ export default function EventCapturePage({
   const [onboardingLogoUrl, setOnboardingLogoUrl] = useState<string | null>(null);
   const [frames, setFrames] = useState<Frame[]>([]);
   const [selectedFrame, setSelectedFrame] = useState<Frame | null>(null);
-  // The generated default frame of an event without a frame of its own (camera#236): the guest never sees a picker,
+  // When the event explicitly opted in and has no active frame of its own (camera#236), the guest never sees a picker;
   // each shutter press takes a random variant (never the one before) and the live view and reframe show territories.
   const [generatedFrame, setGeneratedFrame] = useState<CaptureFrame | null>(null);
   const lastVariantIndex = useRef<number | null>(null);

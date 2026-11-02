@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * Rollout of the generated default frame to the events that already exist (camera#238). Dry run first: it writes
+ * Maintenance for generated default frames already opted into by event managers (camera#238). Dry run first: it writes
  * nothing and, with the messmass check, only reads. Run is enabled once a dry-run report is on screen and has been
- * ticked as read; it works through the events a few per request until none is left, can be stopped, and can be repeated
- * (events with an own frame are never touched, events with images are skipped).
+ * ticked as read; it refreshes opted-in events a few per request until none is left, can be stopped, and can be
+ * repeated. It never enables an event; events without explicit opt-in are skipped.
  */
 
 import { useRef, useState } from 'react';
@@ -83,7 +83,7 @@ export default function FrameBackfillConsole() {
         })
       : await confirm({
           title: 'Give the events a generated frame',
-          message: `This takes the messmass snapshot and draws the frame images for up to ${report.todo} events without a frame of their own, ${BATCH} at a time, and writes them to the events and to Blob storage. Events with a frame of their own are not touched. You can stop at any time and run again; finished events are skipped.`,
+          message: `This takes the messmass snapshot and draws the frame images for up to ${report.todo} events that explicitly enabled the generated frame and have no frame of their own, ${BATCH} at a time, and writes them to the events and to Blob storage. Events with the generated frame off or with a frame of their own are not touched. You can stop at any time and run again; finished events are skipped.`,
           targetName: `${report.todo} event${report.todo === 1 ? '' : 's'}`,
         });
     if (!confirmed) return;
@@ -143,6 +143,7 @@ export default function FrameBackfillConsole() {
             <dl style={{ display: 'grid', gap: '0.375rem 1rem', gridTemplateColumns: 'minmax(0, 40%) minmax(0, 1fr)', overflowWrap: 'anywhere', margin: 0 }}>
               {row('Events', report.total)}
               {row('With a frame of their own', report.ownFrame, 'not touched')}
+              {row('Generated frame off', report.optedOut, 'not generated or redrawn')}
               {row('Already have generated images', report.done, 'skipped by the first run')}
               {row('…drawn with an older drawing code', report.doneStale, 'the redraw run draws these again')}
               {row('To do', report.todo)}

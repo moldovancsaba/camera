@@ -12,7 +12,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import type { Session } from '@/lib/auth/session';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
-import { apiBadRequest, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, requireAuth, withErrorHandler } from '@/lib/api';
+import { apiBadRequest, apiError, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, requireAuth, withErrorHandler } from '@/lib/api';
 import type { FrameDesign } from '@/lib/frame/context';
 import { previewSlots } from '@/lib/frame/preview';
 import { parseSlots } from '@/lib/frame/slots';
@@ -37,6 +37,7 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: Rout
   await checkRateLimit(request, RATE_LIMITS.ADMIN);
   const { id } = await context!.params!;
   const { db, event } = await loadEvent(id, session);
+  if (event.generatedFrameEnabled !== true) throw apiError('Generate the default frame before previewing its slots.', 409);
 
   const body = (await request.json().catch(() => null)) as { slots?: unknown; messageIndex?: unknown } | null;
   if (!body || typeof body !== 'object') throw apiBadRequest('A JSON body is required');

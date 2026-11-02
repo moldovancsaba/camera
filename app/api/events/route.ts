@@ -206,6 +206,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     notifications: sanitizeNotificationSettings(notifications),
     // Photo vetting (camera#263): the default of the rollout; only a global admin changes it afterwards.
     photoVetting: defaultPhotoVetting(now),
+    // The generated default frame is optional and must be explicitly requested from this event's Frames page.
+    generatedFrameEnabled: false,
     ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
     submissionCount: 0,
     createdBy: session.user.id,

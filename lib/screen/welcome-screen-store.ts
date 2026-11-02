@@ -45,6 +45,7 @@ export type WelcomeScreenResult = { ok: true; url: string; created: boolean } | 
 
 /** The frame/message variant chosen for the welcome composition, else the historical no-message/first-variant default. */
 function frameImageUrl(event: Document): string | null {
+  if (event.generatedFrameEnabled !== true) return null;
   const variants = (event.frameDesign as FrameDesign | undefined)?.variants ?? [];
   const selected = event.welcomeScreenComposition as { frameId?: unknown; messageIndex?: unknown } | undefined;
   const chosen = selected && variants.find((variant) => (variant.frameId ?? null) === (typeof selected.frameId === 'string' ? selected.frameId : null) && variant.index === (Number.isInteger(selected.messageIndex) ? selected.messageIndex : null));

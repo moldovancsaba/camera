@@ -87,7 +87,7 @@ test('the event\'s frame is fetched and drawn in the window, and it is part of w
   assert.ok(!log.fetched.includes(frameUrl));
 
   // The same event once its frame has been generated: same slideshow, same colours, one more thing to draw from.
-  const framed = { ...data.events[0], frameDesign: { variants: [{ index: null, message: null, imageUrl: frameUrl }] } };
+  const framed = { ...data.events[0], generatedFrameEnabled: true, frameDesign: { variants: [{ index: null, message: null, imageUrl: frameUrl }] } };
   const result = await ensureWelcomeScreen(db, framed, deps(log, { [frameUrl]: frame }));
   assert.ok(result.ok && result.created);
   assert.ok(log.fetched.includes(frameUrl));

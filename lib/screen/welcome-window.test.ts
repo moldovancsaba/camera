@@ -151,7 +151,7 @@ const frameDesign = { variants: [{ index: null, imageUrl: FRAME_URL }] };
 
 async function photoWorld(photo: Record<string, unknown>, images: Array<Record<string, unknown>> = []) {
   const id = new ObjectId();
-  const w = await world(images, { frameDesign });
+  const w = await world(images, { generatedFrameEnabled: true, frameDesign });
   w.data[COLLECTIONS.SUBMISSIONS] = [{ _id: id, eventId: 'event-uuid-1', eventIds: ['event-uuid-1'], createdAt: '2026-10-10T10:00:00.000Z', ...photo }];
   w.event.welcomeWindow = { source: 'photo', photoId: String(id) } as never;
   return { ...w, id };

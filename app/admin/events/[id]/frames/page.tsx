@@ -50,6 +50,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
 export default function EventFramesPage({ params }: { params: Promise<{ id: string }> }) {
   const [eventId, setEventId] = useState('');
   const [eventName, setEventName] = useState<string | null>(null);
+  const [generatedFrameEnabled, setGeneratedFrameEnabled] = useState(false);
   const [library, setLibrary] = useState<EventLibrary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,9 +80,10 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
     void (async () => {
       try {
         setLoading(true);
-        const loaded = await call<{ event?: { name: string } }>(`/api/events/${eventId}`);
+        const loaded = await call<{ event?: { name: string; generatedFrameEnabled?: boolean } }>(`/api/events/${eventId}`);
         if (!loaded.event) throw new Error('Event not found');
         setEventName(loaded.event.name);
+        setGeneratedFrameEnabled(loaded.event.generatedFrameEnabled === true);
         await reload();
       } catch (loadError) {
         setError(errorText(loadError));
@@ -147,6 +149,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   }
 
   const partnerName = library.partner?.name ?? 'its partner';
+  const hasOwnActiveFrame = library.assigned.some((entry) => entry.assignment.isActive === true && entry.messageArea === null);
 
   return (
     <div style={{ display: 'grid', gap: '2rem' }}>
@@ -169,19 +172,20 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
       <GeneratedFramePanel
         key={library.assigned.map((entry) => `${entry.id}:${entry.assignment.isActive === true ? 1 : 0}:${entry.messageArea ? 1 : 0}`).join(',')}
         eventId={eventId}
+        onEnabledChanged={setGeneratedFrameEnabled}
         onLibraryChanged={async (notice) => {
           setPanelNotice(notice);
           await reload();
         }}
         onDesignChanged={onDesignChanged}
         initialNotice={panelNotice}
-        hasOwnActiveFrame={library.assigned.some((entry) => entry.assignment.isActive === true && entry.messageArea === null)}
+        hasOwnActiveFrame={hasOwnActiveFrame}
       />
 
-      <FrameSelectionPanel
+      {generatedFrameEnabled || hasOwnActiveFrame ? <FrameSelectionPanel
         key={`${designVersion}:${library.assigned.map((entry) => `${entry.id}:${entry.assignment.isActive === true ? 1 : 0}:${entry.messageArea ? 1 : 0}`).join(',')}`}
         eventId={eventId}
-      />
+      /> : null}
 
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
       {!library.partner ? <InlineAlert title="No partner" message="This event has no partner, so it has no library to take frames from. You can still upload frames for this event." severity="warning" /> : null}

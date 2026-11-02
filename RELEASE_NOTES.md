@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — generated default frame is event-level opt-in
+
+- **Changed:** the generated default frame is off for new events, imported events and existing records without an explicit opt-in. Creating/provisioning an event no longer snapshots Messmass data or draws generated-frame images.
+- **Added:** Event → Frames shows only a **Generate default frame** action while the option is off. The action takes the snapshot, creates the frame variants and enables the frame only after image generation succeeds. Editing and refresh controls appear after generation.
+- **Safety:** capture, frame selection, gallery composition, welcome composition and moderation submissions ignore generated-frame data unless `events.generatedFrameEnabled` is exactly `true`. A failed generation leaves the event off. The global rollout skips events that have not opted in.
+- **Verification:** `npm run inventory:check` passed (718 links, no broken references); `npm run release:check` passed, including 378 unit-test files and a production build. A focused Playwright test passed at 1440 px and 390 px using an isolated `camera_test` database. The default Turbopack dev runner hit a GDS stylesheet parse error before rendering, so the browser check used Webpack dev mode. No production event settings or images were changed; this change has not been deployed.
+
 ## Unreleased — MTK approved-photo restoration
 
 - **Changed:** replaced the deleted local production-data script with a global-admin-only, event-locked Camera operation that restores one of the 40 owner-authorized MTK archive matches per request into the ordinary Approved and Gallery flow. No Recovered category is added.

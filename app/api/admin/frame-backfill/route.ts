@@ -6,8 +6,10 @@
  *   { mode: 'run', limit?: 1..10 (default 3), after?: string, redraw?: boolean } -> { batch }   snapshot and images for the next events without images;
  *     with `redraw`, the events whose images were drawn with an older drawing code get those images drawn again (nothing else changes)
  *
- * Events with an active frame of their own are never touched and events that already have images are skipped, so a run
- * can be repeated and continued: call again with `batch.nextAfter` until `batch.done`. Failures are listed per event.
+ * Only events with `generatedFrameEnabled === true` are candidates. Events without that explicit opt-in are skipped;
+ * this route never enables them. Events with an active frame of their own are never touched and current images are
+ * skipped, so a run can be repeated and continued: call again with `batch.nextAfter` until `batch.done`. Failures are
+ * listed per event.
  */
 
 import { NextRequest } from 'next/server';

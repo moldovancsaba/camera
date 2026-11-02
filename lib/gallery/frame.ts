@@ -43,7 +43,11 @@ export async function loadGalleryFrames(db: Db, event: Document): Promise<Galler
     .filter((row) => isOwnActiveFrame({ isActive: row.isActive, frameDetails: row.frameDetails }) && row.frameDetails?.imageUrl)
     .map((row): GalleryFrame => ({ imageUrl: row.frameDetails!.imageUrl as string, frameId: row.frameId as string, frameName: row.frameDetails!.name ?? null, variant: null }));
   if (own.length > 0) return own;
-  const generated = captureFrameOf({ frames: rows, frameDesign: event.frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] });
+  const generated = captureFrameOf({
+    frames: rows,
+    generatedFrameEnabled: event.generatedFrameEnabled === true,
+    frameDesign: event.frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'],
+  });
   return (generated?.variants ?? []).map((variant): GalleryFrame => ({
     imageUrl: variant.imageUrl,
     frameId: variant.frameId,

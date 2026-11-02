@@ -28,7 +28,7 @@ savetheworld  --(partners/events, pledge wall, publish)-->  camera
 camera        --(browser handoff: post-selfie CTA)----->  savetheworld
 ```
 
-Camera is mostly inbound but DOES call messmass outbound in five cases (see §4): two more than the three described here are the tracked-link totals (`pushLinkStatsToMessmass`, `POST {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/link-stats`, camera#320, [SHORT_LINKS.md](SHORT_LINKS.md)) and the optional photo counters (`pushPhotoStatsToMessmass`, `.../photo-stats`, currently off by default, [ANALYTICS.md](ANALYTICS.md)). The three: it reads the resolved theme of an event for its generated default frame from `GET {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/frame-context` (`fetchFrameContext`, [lib/messmassClient.ts](../lib/messmassClient.ts), bounded at 5000 ms, null on any failure; called when messmass provisions an event and when an admin refreshes the event's frame design, see RUNBOOK "Generated default frame"), and it
+Camera is mostly inbound but DOES call messmass outbound in five cases (see §4): two more than the three described here are the tracked-link totals (`pushLinkStatsToMessmass`, `POST {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/link-stats`, camera#320, [SHORT_LINKS.md](SHORT_LINKS.md)) and the optional photo counters (`pushPhotoStatsToMessmass`, `.../photo-stats`, currently off by default, [ANALYTICS.md](ANALYTICS.md)). The three: it reads the resolved theme of an event for its generated default frame from `GET {MESSMASS_BASE_URL}/api/integrations/camera/events/[id]/frame-context` (`fetchFrameContext`, [lib/messmassClient.ts](../lib/messmassClient.ts), bounded at 5000 ms, null on any failure; called only when a manager explicitly generates or refreshes the frame on the event's Frames page, see RUNBOOK "Generated default frame"). Event provisioning does not request this context or generate frame images; the global maintenance/backfill route also skips events unless they have explicitly opted in. It also
 pushes partners it creates natively to `POST {MESSMASS_BASE_URL}/api/integrations/camera/partners`
 (`pushPartnerToMessmass`, [lib/messmassClient.ts:79-102](../lib/messmassClient.ts),
 called from [app/api/partners/route.ts:136](../app/api/partners/route.ts) and
@@ -111,8 +111,8 @@ refresh the next time a guest opens them (after the response), and a snapshot ol
 messmass sends the notice best-effort with a 4 s timeout; it never blocks a save.
 
 ### `POST /api/internal/messmass/frame-backfill` (camera#285)
-Draws the generated frame images of the events that have none: the work of the admin console's "Give the events a generated frame", for a
-holder of the messmass secret. Body `{ "limit": 1..10 (default 3), "after": "<event id>", "redraw": false }`, answer `{ batch }` with
+Refreshes generated frame images only for events that explicitly opted in and have no active complete event frame: the work of the admin console's "Give the events a generated frame", for a
+holder of the messmass secret. It never enables an event or opts it in. Body `{ "limit": 1..10 (default 3), "after": "<event id>", "redraw": false }`, answer `{ batch }` with
 `done` and `nextAfter`; call again with `nextAfter` until `done`. Events with a frame of their own are untouched and events that already
 have images are skipped, so it can be repeated.
 

@@ -66,7 +66,7 @@ test('a new messmass style asks for the redraw; the same style, a failed refresh
   const scheduled = mockScheduler(t);
   const { refreshEventTheme } = await fresh<typeof import('@/lib/theme/refresh')>('@/lib/theme/refresh', 'redraw');
   const db = { collection: () => ({ updateOne: async () => ({ matchedCount: 1 }) }) } as unknown as Db;
-  const event = () => ({ _id: new ObjectId(), messmassEventId: 'm1', eventId: 'e1', frameDesign: { context: {}, variants: [{}] }, welcomeScreen: { url: 'https://blob.example/w.png' } });
+  const event = () => ({ _id: new ObjectId(), messmassEventId: 'm1', eventId: 'e1', generatedFrameEnabled: true, frameDesign: { context: {}, variants: [{}] }, welcomeScreen: { url: 'https://blob.example/w.png' } });
   const deps = (result: { changed: boolean; messmassUnavailable?: boolean }) => ({
     refresh: async () => ({ design: { context: {}, messages: [], messagesOverridden: false, updatedAt: 'x' } as never, changed: result.changed, messmassUnavailable: result.messmassUnavailable ?? false }),
     generate: async () => ({ design: {} as never, generated: 0, reused: 0 }),

@@ -348,7 +348,7 @@ not assigned to an event: a picture field keeps the plain address of one picture
 **Settings and levels added in October 2026** (the model is in [docs/BUILDING_BRICKS.md](docs/BUILDING_BRICKS.md)): `admin_settings` also holds `dictionary` (the global wordings, [docs/TEXT_LEVELS.md](docs/TEXT_LEVELS.md))
 and `email-legal` (the general legal part of the e-mails); `Partner.texts`, `Partner.pictures`, `Partner.uiLanguage`, `Partner.emailLegal`; `Event.texts`, `Event.uiLanguage` (an event that
 sets none follows its partner), `activity_log` and `activity_exports` (the activity log and its weekly CSV, `lib/activity/*`, RUNBOOK), `Event.emailLegal`, `Event.frameSelection`, `Event.frameSelectionTiles` (event-level frame/layout tile image or colour), `Event.acceptanceOnWhoAreYou` (the consent page as one checkbox on the Who-are-you page, `lib/events/acceptance.ts`, docs/JOURNEY_DEFAULT_PAGES.md), `Event.welcomeScreen`, `Event.welcomeScreenComposition` (the frame/message variant used in the welcome screen image, `lib/screen/welcome-screen-store.ts`), `Event.slotSnapshots` (the last-known-good copy of the slots an event uses),
-`Event.frameDesign` (the generated frame: snapshot, messages, `messageFrames`, `darkArea`, one image per message and design).
+`Event.frameDesign` (the optional generated frame: snapshot, messages, `messageFrames`, `darkArea`, one image per message and design) and `Event.generatedFrameEnabled` (only an explicit event-level Generate default frame action sets this true; absent/false means no generated frame is served or applied).
 
 ## 9. Submission pipeline
 
@@ -485,7 +485,7 @@ The long capture loading label is `capture.loading` at the same text levels. The
 
 ([docs/FRAME_LAYOUT_SELECTION_PLAN.md](docs/FRAME_LAYOUT_SELECTION_PLAN.md), [docs/FRAME_MESSAGE_SELECTION_CONSISTENCY.md](docs/FRAME_MESSAGE_SELECTION_CONSISTENCY.md), [docs/DEFAULT_FRAME_PLAN.md](docs/DEFAULT_FRAME_PLAN.md), [docs/LIBRARIES.md](docs/LIBRARIES.md).)
 
-- **Layouts** are the designs of the event: library frames with a message area (text-free, carrying messages), the generated layout (logo, teams, bar, message from the messmass snapshot) and
+- **Layouts** are the designs of the event: library frames with a message area (text-free, carrying messages), an optional generated layout (logo, teams, bar, message from the messmass snapshot; available only after explicit event opt-in) and
   complete frames the event uploads. `Event.frameDesign.messageFrames[message]` is one frame id or a list: a message can be written on several designs; `lib/frame/variants.ts` draws one
   image for each message and design (at most 40, reused by key). `Event.frameSelection` says how users get the layout and the message, each `editor`, `random` or `user`
   (`lib/frame/selection*.ts`, panel on the event's Frames page, `GET`/`PUT /api/admin/events/<id>/frame-selection`).

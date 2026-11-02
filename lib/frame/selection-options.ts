@@ -45,10 +45,11 @@ async function ownFramesOf(db: Db, event: Document): Promise<LayoutOption[]> {
 }
 
 export async function loadSelectionContext(db: Db, event: Document): Promise<SelectionContext> {
-  const design = (event.frameDesign as FrameDesign | undefined) ?? null;
+  const generatedEnabled = event.generatedFrameEnabled === true;
+  const design = generatedEnabled ? (event.frameDesign as FrameDesign | undefined) ?? null : null;
   const ownFrames = await ownFramesOf(db, event);
-  const carriers = [...(await loadMessageFrames(db, event)).values()].map((frame) => ({ id: frame.frameId, name: frame.name, previewUrl: frame.imageUrl }));
-  const options = layoutOptionsOf({ ownFrames, carriers, design });
+  const carriers = generatedEnabled ? [...(await loadMessageFrames(db, event)).values()].map((frame) => ({ id: frame.frameId, name: frame.name, previewUrl: frame.imageUrl })) : [];
+  const options = layoutOptionsOf({ ownFrames, carriers, design, generatedEnabled });
   const { layouts, messages } = withPreviews(options, ownFrames.length > 0 ? [] : messageOptionsOf(design), design?.variants, design?.messages ?? []);
   return {
     layouts,

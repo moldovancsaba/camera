@@ -65,7 +65,7 @@ test('without a frame of its own the generated frame is used, one image for each
     { index: 0, message: 'Go MTK', imageUrl: 'https://store.test/frames/generated/a.png', width: 1080, height: 1350, layers: [], frameId: null },
     { index: 1, message: 'Hajra', imageUrl: 'https://store.test/frames/generated/b.png', width: 1080, height: 1350, layers: [], frameId: null },
   ] };
-  const frames = await loadGalleryFrames(db, event({ frames: [{ frameId: 'f2', isActive: true }], frameDesign: design }));
+  const frames = await loadGalleryFrames(db, event({ generatedFrameEnabled: true, frames: [{ frameId: 'f2', isActive: true }], frameDesign: design }));
   assert.deepEqual(frames.map((f) => f.variant), [
     { index: 0, message: 'Go MTK', imageUrl: 'https://store.test/frames/generated/a.png' },
     { index: 1, message: 'Hajra', imageUrl: 'https://store.test/frames/generated/b.png' },
@@ -108,7 +108,7 @@ test('the MTK shape: two text-free frames that carry messages give the generated
     { index: 0, message: 'HAJRÁ, MTK!', imageUrl: 'https://store.test/frames/generated/a.png', width: 1920, height: 1080, layers: [], frameId: 'blue' },
     { index: 1, message: 'MTK SZÍV!', imageUrl: 'https://store.test/frames/generated/b.png', width: 1920, height: 1080, layers: [], frameId: 'pink' },
   ] };
-  const frames = await loadGalleryFrames(db, event({ frames: [{ frameId: 'blue', isActive: true }, { frameId: 'pink', isActive: true }], frameDesign: design }));
+  const frames = await loadGalleryFrames(db, event({ generatedFrameEnabled: true, frames: [{ frameId: 'blue', isActive: true }, { frameId: 'pink', isActive: true }], frameDesign: design }));
   assert.deepEqual(frames.map((f) => f.imageUrl), ['https://store.test/frames/generated/a.png', 'https://store.test/frames/generated/b.png']);
   assert.deepEqual(frames.map((f) => f.variant?.message), ['HAJRÁ, MTK!', 'MTK SZÍV!']);
 });
