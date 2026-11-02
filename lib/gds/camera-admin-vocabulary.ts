@@ -171,6 +171,9 @@ export const cameraAdminVocabularyPacks = [
   }),
   createGdsVocabularyPack('welcome', {
     'add-image': { defaultMessage: 'Add image', icon: GdsIcons.Add, feedback: savedFeedback },
+    'choose-image': { defaultMessage: 'Choose or upload a different image', icon: GdsIcons.Gallery, feedback: openedFeedback },
+    'apply-image': { defaultMessage: 'Use this image address', icon: GdsIcons.Check, feedback: savedFeedback },
+    'cancel-image': { defaultMessage: 'Cancel image replacement', icon: GdsIcons.Cancel, feedback: openedFeedback },
     'add-text': { defaultMessage: 'Add text', icon: GdsIcons.Add, feedback: savedFeedback },
     'select-layer': { defaultMessage: 'Select layer', icon: GdsIcons.Edit, feedback: openedFeedback },
     'layer-back': { defaultMessage: 'Move backward', icon: GdsIcons.TrendingDown, feedback: savedFeedback },

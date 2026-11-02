@@ -31,10 +31,13 @@ export interface ImagePickerProps {
   onChange: (value: string) => void;
   /** The library the field chooses from and uploads to: the level of the page it is on. */
   level: PickerLevel;
+  /** Called only when an image is selected from the library or the upload completes, not while an address is being typed. */
+  onChoose?: (value: string) => void;
   /** The file types the field takes, and the same in words (default: every type of the Images library). Others are not offered or uploaded here. */
   fileTypes?: readonly ImageFileType[];
   fileTypeWords?: string;
   placeholder?: string;
+  initialPanel?: 'library' | 'upload';
 }
 
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))' } as const;
@@ -45,14 +48,14 @@ function errorText(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export default function ImagePicker({ label, helper, value, onChange, level, fileTypes = IMAGE_FILE_TYPES, fileTypeWords = IMAGE_FILE_WORDS, placeholder = 'https://…' }: ImagePickerProps) {
+export default function ImagePicker({ label, helper, value, onChange, onChoose, level, fileTypes = IMAGE_FILE_TYPES, fileTypeWords = IMAGE_FILE_WORDS, placeholder = 'https://…', initialPanel }: ImagePickerProps) {
   const uid = useId();
   const endpoints = pickerEndpoints(level);
   const listUrl = endpoints.list;
   const scope = level.scope;
   // A string, so a list written in place does not reload the library on every render.
   const typesKey = fileTypes.join(',');
-  const [panel, setPanel] = useState<'library' | 'upload' | null>(null);
+  const [panel, setPanel] = useState<'library' | 'upload' | null>(initialPanel ?? null);
   const [items, setItems] = useState<LibraryItemView[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
@@ -87,7 +90,9 @@ export default function ImagePicker({ label, helper, value, onChange, level, fil
   const wrongType = currentType !== null && !fileTypes.includes(currentType);
 
   const choose = (item: LibraryItemView) => {
-    onChange(chosenValue(item));
+    const imageUrl = chosenValue(item);
+    onChange(imageUrl);
+    onChoose?.(imageUrl);
     setPanel(null);
   };
 
@@ -137,6 +142,7 @@ export default function ImagePicker({ label, helper, value, onChange, level, fil
       if (!response.ok || !item?.imageUrl) throw new Error(payload?.error || `The upload failed (${response.status})`);
       setItems((list) => [item, ...(list ?? [])]);
       onChange(chosenValue(item));
+      onChoose?.(chosenValue(item));
       clearFile();
       setFileName('');
       setPanel(null);
