@@ -4,6 +4,7 @@
  */
 
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
+import { resolveSubmissionIdentity } from '@/lib/admin/submission-identity';
 
 export interface UserManagementProps {
   email: string;
@@ -35,46 +36,31 @@ export async function buildUserManagementPropsFromSubmissions(
 
   const accountDisabledMirror = submissions.some((s) => s.cameraAccountDisabled === true);
   const submission = submissions[0];
-
-  const hasUserInfo = submission.userInfo?.email && submission.userInfo?.name;
-  const isMergedPseudo = hasUserInfo && submission.userInfo?.mergedWith;
-  const isAnonymous =
-    !hasUserInfo &&
-    (submission.userId === 'anonymous' ||
-      submission.userEmail === 'anonymous@event.com' ||
-      submission.userEmail === 'anonymous@event');
+  const identities = submissions.map((s) => resolveSubmissionIdentity(s));
+  const identity = identities.find((candidate) => candidate.accountId) ?? identities[0];
+  const accountId = identity.accountId;
+  const mergedWith = identities.find((candidate) => candidate.mergedWith)?.mergedWith;
+  const isAnonymous = identities.every((candidate) => candidate.isAnonymous);
 
   if (isAnonymous) return null;
 
-  const isPseudoUser = hasUserInfo && !isMergedPseudo;
-  const isRealOrAdmin = !hasUserInfo && !isAnonymous;
-  const isMergedUser = isMergedPseudo;
-
-  let ssoIdForPermission: string | null = null;
-  if (isMergedUser && submission.userInfo?.mergedWith) {
-    ssoIdForPermission = submission.userInfo.mergedWith;
-  } else if (isRealOrAdmin && submission.userId && submission.userId !== 'anonymous') {
-    ssoIdForPermission = submission.userId;
-  }
+  const isPseudoUser = !accountId && identities.some((candidate) => candidate.isPseudo);
+  const isRealOrAdmin = Boolean(accountId) && !isAnonymous;
+  const ssoIdForPermission = isRealOrAdmin ? accountId : null;
 
   let userType: UserManagementProps['type'] = 'pseudo';
   let role = 'user';
   let isActive = true;
 
-  if (isMergedUser) {
-    userType = 'real';
-  } else if (isRealOrAdmin) {
+  if (isRealOrAdmin) {
     userType = 'real';
   } else if (isPseudoUser) {
     isActive = submission.userInfo?.isActive !== false;
     userType = 'pseudo';
   }
 
-  const email = hasUserInfo ? submission.userInfo.email : submission.userEmail;
-  const name = hasUserInfo
-    ? resolveDisplayName(submission.userInfo?.name)
-    : resolveDisplayName(submission.userName);
-  const mergedWith = submission.userInfo?.mergedWith;
+  const email = identity.email;
+  const name = resolveDisplayName(identity.name);
 
   if (accessToken && ssoIdForPermission) {
     try {
@@ -102,6 +88,6 @@ export async function buildUserManagementPropsFromSubmissions(
     type: userType,
     role,
     isActive,
-    mergedWith,
+    mergedWith: mergedWith ?? undefined,
   };
 }

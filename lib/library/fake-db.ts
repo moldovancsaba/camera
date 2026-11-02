@@ -19,6 +19,7 @@ function valuesAt(doc: unknown, path: string[]): unknown[] {
 }
 
 function matchesValue(value: unknown, want: unknown): boolean {
+  if (want instanceof RegExp) return typeof value === 'string' && want.test(value);
   if (want && typeof want === 'object' && !Array.isArray(want) && Object.keys(want).some((k) => k.startsWith('$'))) {
     const ops = want as Doc;
     return Object.entries(ops).every(([op, arg]) => {

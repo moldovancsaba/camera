@@ -11,6 +11,11 @@ import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 const FIELD = 'cameraAccountDisabled' as const;
 
+function exactEmailPattern(email: string): RegExp {
+  const escaped = email.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escaped}$`, 'i');
+}
+
 /** Emails of SSO-backed users marked inactive via Camera admin (not pseudo form). */
 export async function getInactiveUserEmailsFromMirror(db: Db): Promise<Set<string>> {
   const emails = await db
@@ -31,7 +36,7 @@ export async function getInactiveUserEmailsFromMirror(db: Db): Promise<Set<strin
 export async function resolveSsoUserIdByEmail(db: Db, email: string): Promise<string | null> {
   const row = await db.collection(COLLECTIONS.SUBMISSIONS).findOne(
     {
-      userEmail: email,
+      userEmail: exactEmailPattern(email),
       ...PRIVACY_ERASURE_ACTIVE_FILTER,
       userId: { $exists: true, $nin: ['anonymous', null, ''] },
     },

@@ -10,6 +10,7 @@ import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 import { redirect } from 'next/navigation';
 import UsersInventoryView, { type SerializedAdminUserRow } from '@/components/gds/UsersInventoryView';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
+import { resolveSubmissionIdentity } from '@/lib/admin/submission-identity';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,29 +87,13 @@ export default async function AdminUsersPage({
     const userMap = new Map<string, AdminUserListItem>();
 
     for (const submission of submissions) {
-      const hasUserInfo = submission.userInfo?.email && submission.userInfo?.name;
-      const isMergedPseudo = hasUserInfo && submission.userInfo?.mergedWith;
-
-      const identifier = isMergedPseudo
-        ? submission.userInfo.mergedWith
-        : hasUserInfo
-          ? submission.userInfo.email
-          : submission.userId || submission.userEmail;
-
-      const isAnonymous =
-        !hasUserInfo && (submission.userId === 'anonymous' || submission.userEmail === 'anonymous@event');
+      const identity = resolveSubmissionIdentity(submission);
+      const { accountId, isAnonymous, isPseudo: isPseudoUser, mergedWith: mergedTarget, key: identifier } = identity;
 
       if (!userMap.has(identifier)) {
-        const isPseudoUser = hasUserInfo && !isMergedPseudo;
-        const isRealOrAdmin = !hasUserInfo && !isAnonymous;
-        const isMergedUser = isMergedPseudo;
+        const isRealOrAdmin = Boolean(accountId) && !isAnonymous;
 
-        let ssoIdForPermission: string | null = null;
-        if (isMergedUser && submission.userInfo?.mergedWith) {
-          ssoIdForPermission = submission.userInfo.mergedWith;
-        } else if (isRealOrAdmin && submission.userId && submission.userId !== 'anonymous') {
-          ssoIdForPermission = submission.userId;
-        }
+        const ssoIdForPermission = isRealOrAdmin ? accountId : null;
 
         let userType: AdminUserListItem['type'] = 'pseudo';
         const role = 'user';
@@ -116,8 +101,6 @@ export default async function AdminUsersPage({
 
         if (isAnonymous) {
           userType = 'anonymous';
-        } else if (isMergedUser) {
-          userType = 'real';
         } else if (isRealOrAdmin) {
           userType = 'real';
         } else if (isPseudoUser) {
@@ -128,15 +111,13 @@ export default async function AdminUsersPage({
         const accountDisabledMirror = submission.cameraAccountDisabled === true;
 
         userMap.set(identifier, {
-          email: hasUserInfo ? submission.userInfo.email : submission.userEmail,
-          name: hasUserInfo
-            ? resolveDisplayName(submission.userInfo.name, isAnonymous)
-            : resolveDisplayName(submission.userName, isAnonymous),
+          email: identity.email,
+          name: resolveDisplayName(identity.name, isAnonymous),
           isAnonymous,
           type: userType,
           role,
           isActive,
-          mergedWith: submission.userInfo?.mergedWith,
+          mergedWith: mergedTarget ?? undefined,
           collectedAt: submission.userInfo?.collectedAt || submission.createdAt,
           eventId: submission.eventId,
           eventName: submission.eventName || 'Unknown Event',
@@ -149,6 +130,7 @@ export default async function AdminUsersPage({
         if (ent && submission.cameraAccountDisabled) {
           ent.accountDisabledMirror = true;
         }
+        if (ent && mergedTarget) ent.mergedWith = mergedTarget;
       }
 
       userMap.get(identifier)?.submissions.push({
