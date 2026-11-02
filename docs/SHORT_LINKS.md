@@ -19,6 +19,12 @@ The same redirect applies to the event capture URL and manifest, event landing p
 and public photo-share pages. The target uses `greatestHitsSlug` when it is a safe slug; otherwise it uses the event's Mongo id. The destination only displays
 photos that are approved, explicitly visible in the public gallery, and still pass the current consent, retention, and privacy-erasure checks.
 
+## Changing event visibility in Camera
+
+On the Events inventory cards, the event's eye control is also its status button for global admins and partner event managers. The same control appears in a partner's event list and the event workspace, including Gallery and Photo analysis. An open green eye means active; a red closed eye means inactive. Activating or deactivating saves `Event.isActive` through `PATCH /api/events/[eventId]`; the API accepts only a boolean and enforces the existing global-admin or partner-manager permission. The control announces the action and event name to assistive technology, disables itself while saving, and leaves the current state unchanged if the request fails. Viewers without management permission see a read-only eye indicator.
+
+Deactivating an event does not delete submissions or assets. Its public event-specific URLs follow the inactive-event redirect above; reactivation makes those URLs available according to their normal route behavior. The inventory continues to include inactive events so a manager can reactivate one from the same control.
+
 ## What is counted
 
 A count is a person's browser being sent on (`GET /api/go-short/[slug]`, after the redirect is sent), not a different person: a guest who scans twice

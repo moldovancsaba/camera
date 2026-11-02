@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — event visibility eye button
+
+Event managers can toggle active/inactive from the Events inventory cards, the partner event list, and event workspace headers. A green open eye is active; a red closed eye is inactive. The API accepts only boolean state changes and rechecks manager permissions. Viewers retain a read-only icon. Inactive events stay in the admin inventory and public event-specific URLs continue to redirect to Greatest Selfies. Focused UI, API, and translation tests pass, as do `npm run release:check` and `npm run inventory:check`. A local mocked-API browser check passed at desktop and mobile widths. The database-backed Playwright test was not run because no disposable local `MONGODB_URI` is configured; GitHub Verify remains the merge gate.
+
 ## Current change — optional slideshow screen layers
 
 The slideshow screen-design editor now has reversible visibility controls for the overlay image, dynamic QR code and each text line. Hidden layers keep their saved URL/text and can be restored without re-uploading or retyping. The screen design can also run without an overlay while retaining its photo-window, QR and text layers. Existing designs without visibility flags remain visually unchanged. The live slideshow, generated Welcome image and broken-overlay fallback all use the same layer rules. New controls and guidance are translated across all 23 admin locales. `npm run release:check` and `npm run inventory:check` passed. A Chromium interaction smoke check at 390px verified all three switches and confirmed no horizontal overflow. The full safe E2E suite was not run because no MongoDB URI is configured for a disposable local test database. No production settings or data have been changed.

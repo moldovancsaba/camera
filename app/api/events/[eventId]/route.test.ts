@@ -154,6 +154,26 @@ test('PATCH: a global admin switches photo vetting off and the change is attribu
   assert.ok(setting.updatedAt);
 });
 
+test('PATCH: a global admin can activate and deactivate an event with explicit booleans only', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-event-visibility');
+  assert.equal((await PATCH(patchRequest({ isActive: false }), params)).status, 200);
+  assert.equal(h.updates[0].isActive, false);
+  assert.equal((await PATCH(patchRequest({ isActive: true }), params)).status, 200);
+  assert.equal(h.updates[1].isActive, true);
+  for (const bad of ['false', 0, null, {}]) {
+    assert.equal((await PATCH(patchRequest({ isActive: bad }), params)).status, 400, String(bad));
+  }
+  assert.equal(h.updates.length, 2, 'invalid status values never reach the database');
+});
+
+test('PATCH: an authorized partner event manager can change event visibility', async (t) => {
+  const h = mockDeps(t, { event: { isActive: true }, session: PARTNER_MANAGER, partnerAllowed: true });
+  const { PATCH } = await importRouteModule('patch-manager-event-visibility');
+  assert.equal((await PATCH(patchRequest({ isActive: false }), params)).status, 200);
+  assert.equal(h.updates[0].isActive, false);
+});
+
 test('PATCH: a partner events manager cannot change photo vetting, and nothing is written', async (t) => {
   const h = mockDeps(t, { event: { photoVetting: STORED_VETTING }, session: PARTNER_MANAGER, partnerAllowed: true });
   const { PATCH } = await importRouteModule('patch-manager');
