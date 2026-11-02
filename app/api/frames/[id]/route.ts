@@ -14,6 +14,9 @@ import { type Frame } from '@/lib/db/schemas';
 import { parseMessageArea } from '@/lib/frame/message-area';
 import { regenerateEventsUsingFrame } from '@/lib/frame/regenerate';
 import { assetUsageRefusal, findAssetUsages } from '@/lib/library/usages';
+import { replaceLibraryFrameImage } from '@/lib/library/upload';
+import { GLOBAL_FILTER } from '@/lib/library/db';
+import { generateTimestamp } from '@/lib/db/schemas';
 import {
   requireAdmin,
   withErrorHandler,
@@ -102,6 +105,24 @@ export const PUT = withErrorHandler(async (
   }
 
   return apiSuccess({ success: true });
+});
+
+/** Replace a global frame's image while preserving its id, assignments, and owner. */
+export const POST = withErrorHandler(async (
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) => {
+  const { id } = await params;
+  await requireAdmin();
+  if (!ObjectId.isValid(id)) throw apiBadRequest('Invalid frame ID');
+  const db = await connectToDatabase();
+  const selector = { _id: new ObjectId(id), ...GLOBAL_FILTER };
+  const form = await request.formData();
+  const result = await replaceLibraryFrameImage(db, selector, form.get('file'), form.get('name'), generateTimestamp());
+  if (!result.ok) throw result.status === 404 ? apiNotFound('Global frame') : apiError(result.reason, result.status);
+  const frameId = typeof result.item.frameId === 'string' ? result.item.frameId : null;
+  if (frameId) afterResponse(() => regenerateEventsUsingFrame(db, frameId).then((done) => { if (done.failed.length) console.error('Frame images could not be redrawn', done.failed); }));
+  return apiSuccess({ frame: result.item });
 });
 
 /**

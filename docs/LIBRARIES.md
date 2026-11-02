@@ -58,9 +58,11 @@ have it: they keep it, and their page says "No longer in the partner library" (t
 | `GET /api/partners/<id>/library?kind=frames` | The partner library with pictures, what is a default, and the global items it can still add. Viewer and above. |
 | `PUT /api/partners/<id>/library` | `{ kind, add?, remove?, defaults? }`. Manager and above. Cascades changed defaults to the events that have not edited their own list. For logos, `defaults` is `[{ logoId, scenario, order }]` and the answer carries the saved `defaultLogos`. |
 | `POST /api/partners/<id>/library/upload` | Multipart `kind`, `file`, `name`: an item that belongs to the partner. Manager and above. |
+| `POST /api/partners/<id>/library/items/<itemId>` | Multipart `file`, `name`: replace an owned frame image while preserving its id and assignments. Manager and above. |
 | `DELETE /api/partners/<id>/library/items/<itemId>?kind=frames` | Delete the partner's own upload (refused while one of its events has it). |
 | `GET /api/events/<id>/library?kind=frames` | What the event assigned (with pictures, with a flag for items its partner no longer has) and what it can still take. |
 | `POST /api/events/<id>/library/upload` | An upload for the event, assigned at once, sets `framesOverridden`. |
+| `POST /api/events/<id>/library/items/<itemId>` | Multipart `file`, `name`: replace an event-owned frame image while preserving its id and assignment. Manager and above. |
 | `DELETE /api/events/<id>/library/items/<itemId>?kind=frames` | Delete the event's own upload (unassigns it first). |
 | `POST /api/events/<id>/frames` | Assign: now checked by the one-way rule (400 with a plain message). |
 | `POST /api/events/<id>/logos` | Assign a logo to a scenario: checked by the one-way rule as well. |
@@ -70,6 +72,16 @@ have it: they keep it, and their page says "No longer in the partner library" (t
 
 `<id>` is the Mongo `_id` of the partner or the event, as in the other admin routes. The code is in `lib/library/` (`kinds.ts`, `rules.ts`, `db.ts`, `upload.ts`, `types.ts`)
 and `components/admin/library/` (the thumbnail, the item card and the upload form shared by every library page).
+
+## Frame setup in the admin
+
+The Global, Partner and Event **Frames** workspaces are the everyday entry point for frame assets and generated-frame composition. A frame upload asks for **Frame name users see in the chooser**; that name labels the user's choice and is not printed on the photo. The preview uses this label. When uploading an event-owned frame, the editor can also leave it complete, choose an existing event message to print on it, or add a new event message in the same upload form. The chooser name and printed message are separate: the frame is assigned to the event, the message is saved to that event, and the message-to-frame mapping is created together. A newly added message uses a lower-center text box by default; after upload, edit the frame's message area to adjust the box and its preview. This upload never turns on the generated default frame; use **Generate default frame** when ready to render it for the guest flow. Global and Partner uploads remain reusable and do not capture event-specific wording.
+
+Use **Edit frame name/image** on a partner- or event-owned frame, or the global frame editor, to change the chooser name or replace its PNG/SVG without changing its ID or assignments. Image replacement is owner-scoped and validated before writing; generated event photos that use the frame are redrawn. If another editor changes the same frame while the new image is uploading, Camera returns a conflict and asks the user to reload. Old media is retained because generated files may still refer to it until redraw completes.
+
+**Advanced generated-frame layout** is a collapsed section inside each Frames workspace. It configures optional text and picture slots; it is not a second frame library and does not by itself add a frame to the user's chooser. At event level, the generated default frame is off until the editor chooses **Generate default frame**. The legacy Frame Slots URLs redirect to the matching Frames page and section; the slot APIs and saved configurations remain supported.
+
+New events start with no welcome sample selfie selected. **Event Selfies** are optional sample images inside the Welcome page screen only; they do not populate the slideshow. The slideshow uses the event's **Gallery**. This default affects newly created events only; existing event choices are unchanged.
 
 ## The capture page
 
@@ -87,6 +99,7 @@ is the same as before (checked on the real data: 14 of 14 events).
   the table **Which message goes on which design** in the generated frame panel of the event (one image for each message and design, at most 40), among
   the event's frames that are assigned, switched on, switched on in the library, and have a message area. The choice goes by the text of the message, so it stays with the
   message when messages are moved; it is checked on save (400 with a plain message) and dropped when its message goes or the list is reset. A snapshot refresh keeps it.
+- **Upload-time association:** on Event → Frames, choosing an existing message or adding one during upload sets the new frame's message area, persists the event-owned message and adds the frame ID to that message's `messageFrames` entry. Existing design choices are preserved. The server validates message limits and current event state before linking; concurrent message-list changes are retried three times and then return a visible link-failed notice without discarding the uploaded frame.
 - **Drawing** (`lib/frame/variants.ts`): for each message: the chosen frame (written with the event's font, `renderBaseFrame`), else the older base picture, else the generated
   layout. The image key covers the frame's picture and message area, so only the messages of a changed frame are drawn again; a message with no frame keeps the key it had.
   A chosen frame that is no longer usable falls back quietly (the panel says so); a picture that cannot be fetched fails the run and leaves the images as they were.

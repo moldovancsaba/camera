@@ -19,10 +19,15 @@ import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPoli
 import LibraryUploadActiveToggle from '@/components/admin/library/LibraryUploadActiveToggle';
 import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
+import FrameAssetEditor from '@/components/admin/library/FrameAssetEditor';
+import EventFrameMessageUploadFields from '@/components/admin/library/EventFrameMessageUploadFields';
+import AdvancedFrameLayout from '@/components/admin/AdvancedFrameLayout';
 import type { MessageArea } from '@/lib/frame/message-area';
 import { InlineAlert, LabelTag, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import type { EventLibrary } from '@/lib/library/types';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
 
 interface Payload<T> {
   data?: T;
@@ -48,6 +53,8 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export default function EventFramesPage({ params }: { params: Promise<{ id: string }> }) {
+  const language = useUiLanguage();
+  const t = (source: string) => adminOperationText(source, language);
   const [eventId, setEventId] = useState('');
   const [eventName, setEventName] = useState<string | null>(null);
   const [generatedFrameEnabled, setGeneratedFrameEnabled] = useState(false);
@@ -57,6 +64,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  const [editingFrame, setEditingFrame] = useState<string | null>(null);
   // What the panel said after it changed the frames: the panel starts again with the new frames, and takes the message with it.
   const [panelNotice, setPanelNotice] = useState<Notice | null>(null);
   // Bumped when the messages or their frames change, so the selection setting reads them again.
@@ -187,6 +195,8 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         eventId={eventId}
       /> : null}
 
+      <AdvancedFrameLayout level={{ scope: 'event', eventId, onDesignChanged }} />
+
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
       {!library.partner ? <InlineAlert title="No partner" message="This event has no partner, so it has no library to take frames from. You can still upload frames for this event." severity="warning" /> : null}
       {library.missing.length > 0 ? (
@@ -228,7 +238,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                     thumbnailUrl={entry.thumbnailUrl}
                     noun="frame"
                     scope={entry.scope}
-                    wide={editing === entry.id}
+                    wide={editing === entry.id || editingFrame === entry.id}
                     note={entry.messageArea ? 'Users never pick this frame: the messages of this event are written on it.' : undefined}
                     badges={
                       <>
@@ -246,6 +256,11 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                         <SemanticButton action="event-frames:remove" variant="danger" size="xs" disabled={busy} onClick={() => void remove(entry.id, entry.name)}>
                           Remove frame
                         </SemanticButton>
+                        {entry.scope === 'event' ? (
+                          <SemanticButton action="library:message-area" variant="secondary" size="xs" disabled={busy} onClick={() => setEditingFrame(editingFrame === entry.id ? null : entry.id)}>
+                            Edit frame name/image
+                          </SemanticButton>
+                        ) : null}
                         {entry.scope === 'event' ? (
                           <LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={entry.id} itemActive={entry.itemActive} onSaved={reload} />
                         ) : null}
@@ -265,6 +280,18 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                   >
                     {editing === entry.id ? (
                       <MessageAreaEditor pictureUrl={entry.imageUrl} name={entry.name} value={entry.messageArea} disabled={busy} onSave={(area) => saveMessageArea(entry.id, area)} onCancel={() => setEditing(null)} />
+                    ) : null}
+                    {editingFrame === entry.id && entry.scope === 'event' ? (
+                      <FrameAssetEditor
+                        endpoint={`/api/events/${eventId}/library/items/${entry.id}`}
+                        scope="event"
+                        name={entry.name}
+                        imageUrl={entry.imageUrl}
+                        thumbnailUrl={entry.thumbnailUrl}
+                        disabled={busy}
+                        onSaved={async () => { setEditingFrame(null); await reload(); onDesignChanged(); }}
+                        onCancel={() => setEditingFrame(null)}
+                      />
                     ) : null}
                   </LibraryItemCard>
                 );
@@ -300,14 +327,33 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                   thumbnailUrl={item.thumbnailUrl}
                   noun="frame"
                   scope={item.scope}
+                  wide={editingFrame === item.id}
                   badges={item.messageArea ? <LabelTag tone="info" label="Carries messages" /> : undefined}
                   actions={
-                    <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <SemanticButton action="event-frames:assign" size="xs" disabled={busy} onClick={() => void assign(item.id)}>Assign frame</SemanticButton>
+                      {item.scope === 'event' ? (
+                        <SemanticButton action="frames:edit" variant="secondary" size="xs" disabled={busy} onClick={() => setEditingFrame(editingFrame === item.id ? null : item.id)}>
+                          Edit frame name/image
+                        </SemanticButton>
+                      ) : null}
                       {item.scope !== 'event' ? <VisualAssetPolicyActions level="event" ownerId={eventId} kind="frames" id={item.id} scope={item.scope} onSaved={reload} /> : null}
-                    </>
+                    </div>
                   }
-                />
+                >
+                  {editingFrame === item.id && item.scope === 'event' ? (
+                    <FrameAssetEditor
+                      endpoint={`/api/events/${eventId}/library/items/${item.id}`}
+                      scope="event"
+                      name={item.name}
+                      imageUrl={item.imageUrl}
+                      thumbnailUrl={item.thumbnailUrl}
+                      disabled={busy}
+                      onSaved={async () => { setEditingFrame(null); await reload(); onDesignChanged(); }}
+                      onCancel={() => setEditingFrame(null)}
+                    />
+                  ) : null}
+                </LibraryItemCard>
               ))}
             </div>
           )}
@@ -327,16 +373,54 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
           <h3 id="inactive-event-frames-heading" style={{ margin: 0 }}>Switched off at this event</h3>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These event uploads are not assigned. Switch one on to make it available again.</p>
         </div>
-        <div style={{ padding: '1rem' }}><div style={GRID}>{library.inactiveOwn.filter((item) => !library.assigned.some((entry) => entry.id === item.id)).map((item) => <LibraryItemCard key={item.id} name={item.name} imageUrl={item.imageUrl} thumbnailUrl={item.thumbnailUrl} noun="frame" scope="event" badges={<VisibilityStatusIcon isVisible={false} />} actions={<LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={item.id} itemActive={false} onSaved={reload} />} />)}</div></div>
+        <div style={{ padding: '1rem' }}>
+          <div style={GRID}>
+            {library.inactiveOwn.filter((item) => !library.assigned.some((entry) => entry.id === item.id)).map((item) => (
+              <LibraryItemCard
+                key={item.id}
+                name={item.name}
+                imageUrl={item.imageUrl}
+                thumbnailUrl={item.thumbnailUrl}
+                noun="frame"
+                scope="event"
+                wide={editingFrame === item.id}
+                badges={<VisibilityStatusIcon isVisible={false} />}
+                actions={
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <LibraryUploadActiveToggle level="event" ownerId={eventId} kind="frames" id={item.id} itemActive={false} onSaved={reload} />
+                    <SemanticButton action="frames:edit" variant="secondary" size="xs" disabled={busy} onClick={() => setEditingFrame(editingFrame === item.id ? null : item.id)}>
+                      Edit frame name/image
+                    </SemanticButton>
+                  </div>
+                }
+              >
+                {editingFrame === item.id ? (
+                  <FrameAssetEditor
+                    endpoint={`/api/events/${eventId}/library/items/${item.id}`}
+                    scope="event"
+                    name={item.name}
+                    imageUrl={item.imageUrl}
+                    thumbnailUrl={item.thumbnailUrl}
+                    disabled={busy}
+                    onSaved={async () => { setEditingFrame(null); await reload(); onDesignChanged(); }}
+                    onCancel={() => setEditingFrame(null)}
+                  />
+                ) : null}
+              </LibraryItemCard>
+            ))}
+          </div>
+        </div>
       </section> : null}
 
       <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-          <h3 style={{ margin: 0 }}>Upload a frame for this event</h3>
-          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>It is assigned to this event at once. No other event can take it.</p>
+          <h3 style={{ margin: 0 }}>{t('Upload a frame for this event')}</h3>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>{t('Enter the chooser name, then optionally select an existing event message or add one here. You can adjust the message placement after upload.')}</p>
         </div>
         <div style={{ padding: '1rem' }}>
-          <LibraryUploadForm endpoint={`/api/events/${eventId}/library/upload`} kind="frames" noun="frame" accept="image/png,image/svg+xml" acceptWords="PNG or SVG" onUploaded={reload} />
+          <LibraryUploadForm endpoint={`/api/events/${eventId}/library/upload`} kind="frames" noun="frame" accept="image/png,image/svg+xml" acceptWords="PNG or SVG" onUploaded={reload}>
+            {(setUploadField, resetVersion) => <EventFrameMessageUploadFields key={resetVersion} eventId={eventId} setUploadField={setUploadField} />}
+          </LibraryUploadForm>
         </div>
       </section>
 

@@ -32,6 +32,7 @@ import { sanitizeNotificationSettings } from '@/lib/email/notification-settings'
 import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
 import { scheduleScreenForNewEvent } from '@/lib/screen/new-event-screen';
 import { trackedSlugExists } from '@/lib/short-links/store';
+import { SELFIE_SLOT } from '@/lib/slots/selfie';
 
 /**
  * GET /api/events
@@ -200,7 +201,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     logos: inheritedDefaults.logos || [],
     logosOverridden: inheritedDefaults.logosOverridden,
     // On the slot model from the start (camera#419): the event looks at its partner for its logo and stores only what an editor sets.
-    slots: {},
+    // Sample selfies are optional welcome-screen previews, not slideshow photos.
+    // New events start with none; an editor can explicitly choose partner or global samples.
+    slots: { [SELFIE_SLOT]: { useDefault: false } },
     customPages: [],
     journeyDefaults: true, // the journey defaults (default consent page and the like) apply to events created from now on (camera#330)
     notifications: sanitizeNotificationSettings(notifications),

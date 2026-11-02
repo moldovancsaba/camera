@@ -6,6 +6,7 @@
  */
 
 import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH } from './layout';
+import { CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 
 export interface MessageBox {
   x: number;
@@ -22,6 +23,12 @@ export interface MessageArea {
   /** Boxes the live view shows as territories. */
   layers?: Array<{ id: 'header' | 'footer' } & MessageBox>;
 }
+
+/** The simple lower-center placement used when a frame is first marked as a message carrier during upload. */
+export const DEFAULT_UPLOAD_MESSAGE_AREA: MessageArea = {
+  messageBox: { x: 96, y: 864, width: 1728, height: 162 },
+  messageColor: CAMERA_STAGE_WHITE,
+};
 
 export const HEX_COLOUR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 

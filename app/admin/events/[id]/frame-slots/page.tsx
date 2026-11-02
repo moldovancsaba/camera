@@ -1,5 +1,6 @@
-import ScopedFrameSlotsPage from '@/components/admin/ScopedFrameSlotsPage';
+import { redirect } from 'next/navigation';
 
-export default function EventFrameSlotsPage({ params }: { params: Promise<{ id: string }> }) {
-  return <ScopedFrameSlotsPage params={params} scope="event" />;
+export default async function EventFrameSlotsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(`/admin/events/${id}/frames#generated-frame-layout`);
 }

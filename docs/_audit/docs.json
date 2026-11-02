@@ -4,6 +4,7 @@
   "regenerate": "python3 scripts/fleet-audit-inventory.py --write"
  },
  "items": [
+  {"file": "AGENTS.md", "title": "This is NOT the Next.js you know"},
   {"file": "ARCHITECTURE.md", "title": "Architecture"},
   {"file": "CLAUDE.md", "title": "CLAUDE.md \u2014 Standing Operating Rules"},
   {"file": "CODE_AUDIT.md", "title": "CODE_AUDIT.md"},

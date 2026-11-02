@@ -5,6 +5,7 @@
 
 import type { Document } from 'mongodb';
 import type { LibraryKind } from '../kinds';
+import type { MessageArea } from '@/lib/frame/message-area';
 
 /** What the file store answered for the uploaded file. */
 export interface StoredFile {
@@ -27,6 +28,8 @@ export interface UploadFields {
   owner: Record<string, string>;
   /** What the item is for (`lib/library/sample-selfie.ts`); only images carry tags. */
   tags?: string[];
+  /** Optional upload-time carrier area; only event frame uploads use this. */
+  messageArea?: MessageArea;
 }
 
 export interface Uploader {

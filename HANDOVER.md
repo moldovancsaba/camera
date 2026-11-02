@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — clearer frame upload and event-message setup
+
+Global, Partner and Event frame libraries now share the Frames workspace with the advanced layout controls; legacy Frame Slots page URLs redirect to the corresponding Frames workspace. Frame uploads identify the chooser name separately from optional text printed on the photo. Event frame uploads can leave the frame without a message, select an existing event message, or add one during the same upload. New event wording is linked to the uploaded frame and gets a lower-center text area; generated-frame output remains opt-in. Partner/Event-owned frame editors can change the chooser name or replace the image without changing the frame ID or assignments. New events start without a sample selfie; that sample is separate from slideshow Gallery photos. Dictionary help text distinguishes fallback dictionary copy from page-specific copy in User Journey. `npm run release:check` passed with all 382 unit-test files, production guards and a production build; `npm run inventory:check` passed. A local browser run verified existing/new message entry, chooser/message separation, and a 390px layout using API fixtures. Camera issue #775 is on project #24. No production records were changed; GitHub Verify is the merge gate.
+
 ## Current change — generated default frame opt-in
 
 Event-level generated default frames now require an explicit Generate default frame action. New and imported events start with `generatedFrameEnabled: false`; older records without the flag are treated as off. Event provisioning no longer snapshots Messmass or generates frame images. Capture, frame selection, gallery and welcome composition, and submitted frame claims all honor the opt-in. The global rollout skips events that did not opt in. Verification passed: `npm run inventory:check` (718 links, no broken references), `npm run release:check` (including all 378 unit-test files and production build), and the focused Playwright browser test at desktop (1440 px) and mobile (390 px) widths using an isolated `camera_test` database. The normal Turbopack dev runner hit a GDS stylesheet parse error before rendering; the browser check passed with Webpack dev mode. No production event settings or images were changed, and no deployment was performed.
@@ -75,7 +79,7 @@ The resolver fails closed until operations configures `CAMERA_PRIVACY_RESOLVER_S
 
 Added a source-verified cross-product inventory and `privacy.erasure.inventory.v1` snapshot in `docs/privacy/ERASURE_DATA_INVENTORY.md` and `.v1.json`. The inventory, SSO case ledger, verified SSO subject proof, and Camera subject resolver have now merged. This remains a source-code baseline; it does not assert production row counts, database parity, completed provider deletion, or backup coverage. The most material blocker is still Camera issue #509: independent image backup and complete provider inventory are not verified.
 
-**Version**: 12.3.42
+**Version**: 12.3.43
 **Last Updated**: 2026-10-15
 
 ## Current change

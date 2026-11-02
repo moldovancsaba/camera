@@ -282,6 +282,7 @@ export const cameraAdminVocabularyPacks = [
     create: { defaultMessage: 'Create frame', icon: GdsIcons.Add, feedback: savedFeedback },
     'cancel-create': { defaultMessage: 'Cancel create', icon: GdsIcons.Cancel, feedback: openedFeedback },
     'back-to-list': { defaultMessage: 'Back to frames', icon: GdsIcons.Back, feedback: openedFeedback },
+    edit: { defaultMessage: 'Edit frame name/image', icon: GdsIcons.Edit, feedback: openedFeedback },
     save: { defaultMessage: 'Save frame', icon: GdsIcons.Save, feedback: savedFeedback },
     'cancel-edit': { defaultMessage: 'Cancel edit', icon: GdsIcons.Cancel, feedback: openedFeedback },
     delete: { defaultMessage: 'Delete frame', icon: GdsIcons.Delete, feedback: deletedFeedback },
