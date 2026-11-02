@@ -1,5 +1,5 @@
 /**
- * Admin: upload a slideshow failover background image (stored on imgbb, URL on slideshow doc).
+ * Admin: upload a slideshow failover background image (served from Vercel Blob; ImgBB is backup-only).
  *
  * POST multipart/form-data: file (image, required)
  */

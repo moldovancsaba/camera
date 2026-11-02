@@ -6,8 +6,9 @@ const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
 const image = (body: BodyInit = png, headers: Record<string, string> = { 'content-type': 'image/png' }) =>
   (async () => new Response(body, { headers })) as typeof fetch;
 
-test('only https URLs on the two image hosts camera already uses are fetched', () => {
-  assert.equal(isAllowedLogoUrl('https://i.ibb.co/abc/logo.png'), true);
+test('only Camera Blob and the dedicated R2 logo bucket are image sources; ImgBB is backup-only', () => {
+  assert.equal(isAllowedLogoUrl('https://i.ibb.co/abc/logo.png'), false);
+  assert.equal(isAllowedLogoUrl('https://imgbb.com/abc/logo.png'), false);
   assert.equal(isAllowedLogoUrl('https://bidx0njghn1voknt.public.blob.vercel-storage.com/logos/a.png'), true);
   assert.equal(isAllowedLogoUrl('https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/0a1b2c.png'), true);
   for (const bad of [
@@ -28,12 +29,12 @@ test('only https URLs on the two image hosts camera already uses are fetched', (
   }
 });
 
-test('a logo comes back as bytes, untouched', async () => {
-  assert.deepEqual(await fetchLogo('https://i.ibb.co/abc/logo.png', image()), png);
+test('a logo from Camera Blob comes back as bytes, untouched', async () => {
+  assert.deepEqual(await fetchLogo('https://bidx0njghn1voknt.public.blob.vercel-storage.com/logos/a.png', image()), png);
 });
 
 test('a refusal, a redirect, a non-image, an oversize file, an empty file or a network error is no logo', async () => {
-  const url = 'https://i.ibb.co/abc/logo.png';
+  const url = 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/logos/a.png';
   assert.equal(await fetchLogo(url, (async () => new Response(null, { status: 404 })) as typeof fetch), null);
   assert.equal(await fetchLogo(url, image(png, { 'content-type': 'text/html' })), null);
   assert.equal(await fetchLogo(url, image(png, { 'content-type': 'image/png', 'content-length': String(6 * 1024 * 1024) })), null);
@@ -45,5 +46,6 @@ test('a URL that is not allowed is never requested', async () => {
   let called = false;
   const spy = (async () => ((called = true), new Response(png, { headers: { 'content-type': 'image/png' } }))) as typeof fetch;
   assert.equal(await fetchLogo('https://evil.example/logo.png', spy), null);
+  assert.equal(await fetchLogo('https://i.ibb.co/abc/logo.png', spy), null);
   assert.equal(called, false);
 });

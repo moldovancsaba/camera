@@ -90,7 +90,7 @@ Target direction:
 
 ### 9. Storage and media evolution
 
-- Vercel Blob has been the primary store since v12.2.14 (imgbb only a best-effort mirror), the logos of messmass moved to Cloudflare R2 (`docs/LOGO_STORAGE.md`), and the plan so that no picture is ever lost (R2 as the primary store, a second copy elsewhere) is `docs/STORAGE_ARCHITECTURE.md` (recommendation of 2026-10-09; the owner's decision 295 is at its top); not built
+- Vercel Blob serves live event images; private Cloudflare R2 and ImgBB hold backup copies, and ImgBB is never a browser source. The public R2 bucket currently serves logos only. A public R2 photo CDN and migration of legacy ImgBB-only records remain to be delivered (`docs/STORAGE_ARCHITECTURE.md`).
 
 ### 10. Observability and governance
 

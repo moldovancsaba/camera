@@ -29,9 +29,9 @@ function allowed(url: string): boolean {
   return hasRemoteMatch([], patterns(), new URL(url));
 }
 
-test('remotePatterns lists exactly camera Blob store + the logo bucket + i.ibb.co, https only', () => {
+test('remotePatterns lists only Camera Blob and the public logo bucket, never ImgBB', () => {
   const list = patterns();
-  assert.deepEqual(list.map((p) => p.hostname).sort(), [CAMERA_BLOB_HOST, LOGO_STORAGE_HOST, 'i.ibb.co'].sort());
+  assert.deepEqual(list.map((p) => p.hostname).sort(), [CAMERA_BLOB_HOST, LOGO_STORAGE_HOST].sort());
   for (const p of list) {
     assert.equal(p.protocol, 'https', `${p.hostname} must be https-only`);
     assert.equal(p.hostname.includes('*'), false, `${p.hostname} must not be a wildcard`);
@@ -42,8 +42,8 @@ test('remotePatterns lists exactly camera Blob store + the logo bucket + i.ibb.c
 test('stored image URLs on the measured hosts are allowed', () => {
   assert.equal(allowed(u(CAMERA_BLOB_HOST, '/tryon-result-abc123.jpg')), true);
   assert.equal(allowed(u(CAMERA_BLOB_HOST, '/submissions/2026/final.png')), true);
-  assert.equal(allowed(u('i.ibb.co', '/AbC123x/photo.jpg')), true);
   assert.equal(allowed(u(LOGO_STORAGE_HOST, '/logos/0a1b2c.png')), true);
+  assert.equal(allowed(u('i.ibb.co', '/AbC123x/photo.jpg')), false, 'ImgBB remains a backup host, not a browser image source');
 });
 
 test('other Blob stores, imgbb viewer/site hosts, http and lookalikes are refused', () => {
@@ -64,6 +64,13 @@ test('other Blob stores, imgbb viewer/site hosts, http and lookalikes are refuse
   for (const url of refused) {
     assert.equal(allowed(url), false, `${url} must not be optimizable`);
   }
+});
+
+test('Content Security Policy blocks ImgBB image and API requests from browser code', async () => {
+  const headers = await nextConfig.headers?.();
+  const policy = headers?.flatMap((rule) => rule.headers).find((header) => header.key === 'Content-Security-Policy')?.value ?? '';
+  assert.match(policy, /img-src [^;]+/);
+  assert.doesNotMatch(policy, /i\.ibb\.co|imgbb\.com/i);
 });
 
 test('every allowed host is one the app itself classifies as an image provider', () => {

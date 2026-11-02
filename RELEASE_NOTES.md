@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — keep ImgBB backup URLs out of production image serving
+
+- **Changed:** Fanmass photo cards and one-photo review return only first-party Vercel Blob sources. Guest theme/logo resolution and server-side frame-logo fetching reject ImgBB. Camera's CSP and Next image optimizer allowlist no longer permit ImgBB as an image source. A legacy photo with only an ImgBB backup shows an unavailable state rather than making a production request to ImgBB.
+- **Why:** ImgBB is backup storage only; its public URLs are not user-facing image sources.
+- **Verification:** focused Fanmass, theme, logo-fetch and email-theme tests passed before the complete release checks. Full repository checks are pending.
+- **Not changed:** the private R2 photo backups and Blob live copies are unchanged. Camera still has no general public R2 CDN path for event photos, and this change does not migrate legacy ImgBB-only assets to a serving host.
+
 ## Unreleased — replace the generated image on the Welcome journey page
 
 - **Changed:** the Welcome composition explains when its image follows the event's generated default slideshow and provides a direct **Choose or upload a different image** action. Managers can select an event or partner image, upload into the event Images library, or enter an HTTPS image address.

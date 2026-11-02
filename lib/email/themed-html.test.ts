@@ -29,10 +29,10 @@ test('the email carries the theme: page band, card, button, event name and the e
   assert.equal((html.match(/<p /g) ?? []).length, 2, 'one paragraph per block of text');
 });
 
-test('a logo is shown as an image, and an email without a button has no button', () => {
-  const logo = { ...theme, logoUrl: 'https://i.ibb.co/x/logo.png', emoji: null };
+test('a first-party logo is shown as an image, and an email without a button has no button', () => {
+  const logo = { ...theme, logoUrl: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/logo.png', emoji: null };
   const html = renderThemedEmail({ theme: logo, eventName: 'Derby', bodyText: 'Hello', button: null });
-  assert.ok(html.includes('<img src="https://i.ibb.co/x/logo.png"'));
+  assert.ok(html.includes('<img src="https://bidx0njghn1voknt.public.blob.vercel-storage.com/logo.png"'));
   assert.equal(html.includes('View your photo'), false);
   assert.equal(html.includes('display:inline-block;padding:14px'), false);
 });
