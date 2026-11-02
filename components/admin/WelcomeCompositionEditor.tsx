@@ -1,11 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { AdminSelect, AdminTextInput, AdminTextarea } from '@sovereignsquad/gds-admin/client';
-import { Field, NumberInput, Paper, SimpleGrid, Stack, Text } from '@/components/gds/PublicPrimitives';
+import { Anchor, Field, NumberInput, Paper, SimpleGrid, Stack, Text } from '@/components/gds/PublicPrimitives';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WelcomeCompositionCanvas from '@/components/capture/WelcomeCompositionCanvas';
+import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
+import { adminOperationText } from '@/lib/i18n/admin-operations';
 import type { WelcomeAnchor, WelcomeElement, WelcomeHorizontalAlignment, WelcomeParentRelation, WelcomeVerticalAlignment } from '@/lib/events/welcome-composition';
 import { WELCOME_MAX_ELEMENTS, WELCOME_PARENT_RELATIONS } from '@/lib/events/welcome-composition';
 
@@ -82,7 +85,11 @@ export default function WelcomeCompositionEditor({
   buttonColors,
   onButtonColorsChange,
 }: WelcomeCompositionEditorProps) {
+  const language = useUiLanguage();
+  const t = (source: string) => adminOperationText(source, language);
   const [selectedId, setSelectedId] = useState(elements[0]?.id ?? 'welcome-start-button');
+  const [openImagePickerFor, setOpenImagePickerFor] = useState<string | null>(null);
+  const [replacementImageUrl, setReplacementImageUrl] = useState('');
   const [previewSize, setPreviewSize] = useState<'mobile' | 'desktop'>('mobile');
   const selected = elements.find((element) => element.id === selectedId) ?? elements[0];
   const byId = useMemo(() => new Map(elements.map((element) => [element.id, element])), [elements]);
@@ -182,7 +189,11 @@ export default function WelcomeCompositionEditor({
               <Text fw={600}>Layers (back to front)</Text>
               {elements.map((element, index) => (
                 <div key={element.id} style={{ alignItems: 'center', border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', padding: '0.5rem' }}>
-                  <SemanticButton action="welcome:select-layer" label={`${index + 1}. ${element.name || element.type}`} type="button" variant={selectedId === element.id ? 'primary' : 'secondary'} size="xs" onClick={() => setSelectedId(element.id)} />
+                  <SemanticButton action="welcome:select-layer" label={`${index + 1}. ${element.name || element.type}`} type="button" variant={selectedId === element.id ? 'primary' : 'secondary'} size="xs" onClick={() => {
+                    setSelectedId(element.id);
+                    setOpenImagePickerFor(null);
+                    setReplacementImageUrl('');
+                  }} />
                   <SemanticButton action="welcome:layer-back" label="←" type="button" variant="secondary" size="compact-xs" disabled={index === 0} title="Move backward" aria-label={`Move ${element.name} backward`} onClick={() => move(element.id, -1)} />
                   <SemanticButton action="welcome:layer-front" label="→" type="button" variant="secondary" size="compact-xs" disabled={index === elements.length - 1} title="Move forward" aria-label={`Move ${element.name} forward`} onClick={() => move(element.id, 1)} />
                   {element.type !== 'start-button' ? <SemanticButton action="welcome:remove-layer" type="button" variant="secondary" size="compact-xs" onClick={() => remove(element)}>Remove</SemanticButton> : <Text size="xs" c="dimmed">Required action</Text>}
@@ -220,9 +231,70 @@ export default function WelcomeCompositionEditor({
                       comboboxProps={EDITOR_SELECT_COMBOBOX_PROPS}
                     />
                     {selected.imageSource === 'event-welcome-screen' ? (
-                      <Text size="sm" c="dimmed">This element follows the event’s generated welcome screen and updates when that screen is regenerated.</Text>
+                      <Stack gap="xs" align="flex-start">
+                        <Text size="sm" c="dimmed">{t(eventWelcomeScreenUrl
+                          ? 'The image shown here is generated from the event’s default slideshow. Choose or upload a different image to change only this welcome page; open Event Slideshows to change its source.'
+                          : 'No generated image is available yet. Choose or upload an image for this welcome page, or open Event Slideshows to set up the default slideshow.')}</Text>
+                        <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                          <SemanticButton
+                            action="welcome:choose-image"
+                            type="button"
+                            onClick={() => {
+                              setReplacementImageUrl('');
+                              setOpenImagePickerFor(selected.id);
+                            }}
+                          />
+                          <Anchor component={Link} href={`/admin/events/${eventId}#slideshows`}>
+                            {t('Open Event Slideshows')}
+                          </Anchor>
+                        </div>
+                        {openImagePickerFor === selected.id ? (
+                          <Stack gap="xs" align="flex-start" style={{ width: '100%' }}>
+                            <ImagePicker
+                              label={t('Welcome page image')}
+                              value={replacementImageUrl}
+                              onChange={setReplacementImageUrl}
+                              onChoose={(imageUrl) => {
+                                update(selected.id, { imageUrl, imageSource: undefined });
+                                setOpenImagePickerFor(null);
+                              }}
+                              level={{ scope: 'event', eventId }}
+                              helper={t('Choose an event or partner image, upload a new image to this event’s Images library, or enter an HTTPS address.')}
+                              initialPanel="library"
+                            />
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              <SemanticButton
+                                action="welcome:apply-image"
+                                type="button"
+                                disabled={!isHttpsAddress(replacementImageUrl)}
+                                onClick={() => {
+                                  update(selected.id, { imageUrl: replacementImageUrl.trim(), imageSource: undefined });
+                                  setOpenImagePickerFor(null);
+                                }}
+                              />
+                              <SemanticButton
+                                action="welcome:cancel-image"
+                                type="button"
+                                variant="secondary"
+                                label={t(eventWelcomeScreenUrl ? 'Keep the current slideshow image' : 'Cancel image replacement')}
+                                onClick={() => {
+                                  setOpenImagePickerFor(null);
+                                  setReplacementImageUrl('');
+                                }}
+                              />
+                            </div>
+                          </Stack>
+                        ) : null}
+                      </Stack>
                     ) : (
-                      <ImagePicker label="Image" value={selected.imageUrl ?? ''} onChange={(imageUrl) => update(selected.id, { imageUrl, imageSource: undefined })} level={{ scope: 'event', eventId }} helper="Choose an event or partner image, upload a new image into this event’s Images library, or enter an HTTPS address." />
+                      <ImagePicker
+                        label={t('Welcome page image')}
+                        value={selected.imageUrl ?? ''}
+                        onChange={(imageUrl) => update(selected.id, { imageUrl, imageSource: undefined })}
+                        level={{ scope: 'event', eventId }}
+                        helper={t('Choose an event or partner image, upload a new image to this event’s Images library, or enter an HTTPS address.')}
+                        initialPanel={openImagePickerFor === selected.id ? 'library' : undefined}
+                      />
                     )}
                     <AdminTextInput name={`welcome-image-alt-${selected.id}`} label="Alternative text" description="Leave empty if this image is decorative. Describe it when it communicates information." value={selected.alt ?? ''} onChange={(alt) => update(selected.id, { alt })} maxLength={300} />
                     <Field label="Width (% of stage)">
@@ -272,4 +344,12 @@ export default function WelcomeCompositionEditor({
       </SimpleGrid>
     </Stack>
   );
+}
+
+function isHttpsAddress(value: string): boolean {
+  try {
+    return new URL(value.trim()).protocol === 'https:';
+  } catch {
+    return false;
+  }
 }

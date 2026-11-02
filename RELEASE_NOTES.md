@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — replace the generated image on the Welcome journey page
+
+- **Changed:** the Welcome composition explains when its image follows the event's generated default slideshow and provides a direct **Choose or upload a different image** action. Managers can select an event or partner image, upload into the event Images library, or enter an HTTPS image address.
+- **Safety:** the generated slideshow image stays selected until a replacement is chosen or an address is explicitly applied; cancelling keeps the original source. The slideshow configuration remains one click away. The event's welcome configuration changes only when the editor is saved; uploading a replacement adds it to the event Images library immediately.
+- **Accessibility and localization:** controls use the Camera GDS vocabulary and the new guidance/actions are translated for all 23 admin locales.
+- **Verification:** `npm run inventory:check` and `npm run release:check` pass, including all 383 unit-test files and a production build. The focused Chromium journey test passes at 390px for opening the picker, switching to upload, cancelling without changing the generated source, and selecting a partner image. GitHub Verify remains required before merge. The test used the local Webpack dev server because the default Turbopack dev startup hits the repository's known GDS stylesheet import issue before rendering.
+
 ## Unreleased — generated default frame is event-level opt-in
 
 - **Changed:** the generated default frame is off for new events, imported events and existing records without an explicit opt-in. Creating/provisioning an event no longer snapshots Messmass data or draws generated-frame images.
