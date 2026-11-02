@@ -189,6 +189,14 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           return rows[0] ? { ...rows[0] } : null;
         },
         countDocuments: async (filter: Doc = {}) => list(name).filter((d) => matches(d, filter)).length,
+        distinct: async (field: string, filter: Doc = {}) => {
+          const values = list(name)
+            .filter((doc) => matches(doc, filter))
+            .flatMap((doc) => valuesAt(doc, field.split('.')))
+            .filter((value) => value !== undefined)
+            .filter((value, index, all) => all.findIndex((candidate) => candidate === value) === index);
+          return values;
+        },
         insertOne: async (doc: Doc) => {
           calls.push({ collection: name, op: 'insertOne', args: [doc] });
           // As MongoDB's own unique `_id` index does: a second document with the same `_id` is refused (the follow-up e-mail claims rely on it).

@@ -32,18 +32,110 @@ export async function getInactiveUserEmailsFromMirror(db: Db): Promise<Set<strin
   return set;
 }
 
-/** Resolve SSO user id (sub) from any submission row for this email. */
+export type SsoAccountLookup =
+  | { status: 'found'; userId: string; email: string; name: string | null; source: 'active_session' | 'submission' }
+  | { status: 'not_found' }
+  | { status: 'ambiguous' };
+
+function normalizedEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/**
+ * Resolve an SSO subject without requiring the account to have submitted a photo.
+ * A current Mongo-backed Camera session is an SSO-authenticated identity record;
+ * only an unexpired session with SSO-verified email is eligible. Existing
+ * submissions remain the durable fallback for accounts whose sessions expired.
+ * Conflicting subjects fail closed rather than guessing from a shared address.
+ */
+export async function lookupSsoAccountByEmail(db: Db, email: string): Promise<SsoAccountLookup> {
+  const normalized = normalizedEmail(email);
+  if (!normalized) return { status: 'not_found' };
+
+  const submissions = db.collection(COLLECTIONS.SUBMISSIONS);
+  const submissionFilter = {
+    userEmail: exactEmailPattern(normalized),
+    ...PRIVACY_ERASURE_ACTIVE_FILTER,
+    userId: { $exists: true, $nin: ['anonymous', null, ''] },
+  };
+  const submissionIds = await submissions.distinct('userId', submissionFilter);
+  const stableSubmissionIds = submissionIds.filter((id): id is string => typeof id === 'string' && id.trim() !== '' && id !== 'anonymous');
+
+  const now = new Date();
+  const activeSessionBaseFilter = {
+    expireAt: { $gt: now },
+    'session.user.email_verified': true,
+  };
+  const sessionCollection = db.collection(COLLECTIONS.WEB_SESSIONS);
+  const normalizedSessionFilter = {
+    ...activeSessionBaseFilter,
+    identityEmailNormalized: normalized,
+    'session.user.email': exactEmailPattern(normalized),
+  };
+  // Legacy records predate identityEmailNormalized. Their session collection is
+  // TTL-bounded, so use an escaped, anchored case-insensitive lookup until those
+  // records expire instead of requiring a production backfill.
+  const legacySessionFilter = {
+    ...activeSessionBaseFilter,
+    identityEmailNormalized: { $exists: false },
+    'session.user.email': exactEmailPattern(normalized),
+  };
+  const [normalizedSessionIds, legacySessionIds] = await Promise.all([
+    sessionCollection.distinct('session.user.id', normalizedSessionFilter),
+    sessionCollection.distinct('session.user.id', legacySessionFilter),
+  ]);
+  const sessionIds = [...normalizedSessionIds, ...legacySessionIds];
+  const stableSessionIds = sessionIds.filter((id): id is string => typeof id === 'string' && id.trim() !== '');
+
+  const candidateIds = [...new Set([...stableSubmissionIds, ...stableSessionIds])];
+  if (candidateIds.length > 1) return { status: 'ambiguous' };
+  const userId = candidateIds[0];
+  if (!userId) return { status: 'not_found' };
+
+  const normalizedSession = normalizedSessionIds.includes(userId);
+  const session = stableSessionIds.includes(userId)
+    ? await sessionCollection.findOne(
+        {
+          ...(normalizedSession ? normalizedSessionFilter : legacySessionFilter),
+          'session.user.id': userId,
+        },
+        {
+          projection: { 'session.user.email': 1, 'session.user.name': 1 },
+        }
+      )
+    : null;
+  const submission = stableSubmissionIds.includes(userId)
+    ? await submissions.findOne(
+        { ...submissionFilter, userId },
+        { projection: { userEmail: 1, userName: 1 }, sort: { createdAt: -1 } }
+      )
+    : null;
+
+  const sessionUser = session?.session?.user;
+  const resolvedEmail = typeof sessionUser?.email === 'string'
+    ? sessionUser.email.trim()
+    : typeof submission?.userEmail === 'string'
+      ? submission.userEmail.trim()
+      : normalized;
+  const resolvedName = typeof sessionUser?.name === 'string' && sessionUser.name.trim()
+    ? sessionUser.name.trim()
+    : typeof submission?.userName === 'string' && submission.userName.trim()
+      ? submission.userName.trim()
+      : null;
+
+  return {
+    status: 'found',
+    userId,
+    email: resolvedEmail,
+    name: resolvedName,
+    source: session ? 'active_session' : 'submission',
+  };
+}
+
+/** Resolve SSO user id (sub) from an authenticated session or a submission. */
 export async function resolveSsoUserIdByEmail(db: Db, email: string): Promise<string | null> {
-  const row = await db.collection(COLLECTIONS.SUBMISSIONS).findOne(
-    {
-      userEmail: exactEmailPattern(email),
-      ...PRIVACY_ERASURE_ACTIVE_FILTER,
-      userId: { $exists: true, $nin: ['anonymous', null, ''] },
-    },
-    { projection: { userId: 1 }, sort: { createdAt: -1 } }
-  );
-  const id = row?.userId;
-  return typeof id === 'string' && id !== 'anonymous' ? id : null;
+  const result = await lookupSsoAccountByEmail(db, email);
+  return result.status === 'found' ? result.userId : null;
 }
 
 export async function setCameraAccountDisabledForEmail(

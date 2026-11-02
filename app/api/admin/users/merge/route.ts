@@ -1,14 +1,15 @@
 /**
  * Admin User Merge API
  * POST /api/admin/users/merge
- * Resolves the real SSO user id from Camera submissions (no SSO MongoDB).
+ * Resolves the real SSO user id from an active verified Camera session or an
+ * existing active submission (no cross-service SSO database access).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { resolveSsoUserIdByEmail } from '@/lib/sso/submission-account';
+import { lookupSsoAccountByEmail } from '@/lib/sso/submission-account';
 import { withErrorHandler } from '@/lib/api/withErrorHandler';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { guestEmailOf } from '@/lib/submissions/guest-contact';
@@ -30,17 +31,25 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     const db = await connectToDatabase();
 
-    const realUserId = await resolveSsoUserIdByEmail(db, realUserEmail);
+    const account = await lookupSsoAccountByEmail(db, realUserEmail);
 
-    if (!realUserId) {
+    if (account.status === 'ambiguous') {
+      return NextResponse.json(
+        { error: 'More than one SSO account has this verified email. No photos were changed; resolve the account identity before retrying.' },
+        { status: 409 }
+      );
+    }
+
+    if (account.status === 'not_found') {
       return NextResponse.json(
         {
-          error:
-            'Could not find a signed-in SSO account for that email. The destination user must sign in at least once before their photos can be merged.',
+          error: 'No active verified SSO account was found for this address. The account owner must sign in to Camera once; a photo submission is not required.',
         },
         { status: 404 }
       );
     }
+
+    const realUserId = account.userId;
 
     const realUser = await db.collection(COLLECTIONS.SUBMISSIONS).findOne(
       { userId: realUserId, ...PRIVACY_ERASURE_ACTIVE_FILTER },
@@ -85,8 +94,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     }
 
     const now = new Date().toISOString();
-    const userEmail = realUser?.userEmail || realUserEmail;
-    const userName = realUser?.userName || realUserEmail.split('@')[0];
+    const userEmail = account.email || realUser?.userEmail || realUserEmail;
+    const userName = account.name || realUser?.userName || userEmail.split('@')[0];
     const alreadyLinked = pseudoSubmissions.filter((submission) => submission.userInfo?.mergedWith === realUserId).length;
 
     const result = await db.collection(COLLECTIONS.SUBMISSIONS).updateMany(
@@ -120,7 +129,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     const message = newlyLinked === 0
       ? `${submissionsMerged} photos were already linked to ${userEmail}. No additional photos needed changes.`
       : `Linked ${newlyLinked} photos to ${userName} (${userEmail}). ${alreadyLinked} were already linked.`;
-    console.log(`Merged pseudo ${pseudoEmail} → ${realUserEmail} (${newlyLinked} new, ${alreadyLinked} already linked)`);
+    console.log(`Merged pseudo submissions (${newlyLinked} new, ${alreadyLinked} already linked)`);
 
     return NextResponse.json({
       success: true,
