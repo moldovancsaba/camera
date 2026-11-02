@@ -196,7 +196,7 @@ export interface Partner {
   /** The pictures every event of this partner shows in the picture fields it left empty (lib/events/partner-pictures.ts, issue 368): the plain https address each field stores. */
   pictures?: Record<string, string>;
   contactName?: string;              // Partner contact person
-  logoUrl?: string;                  // Partner logo URL (imgbb.com)
+  logoUrl?: string;                  // Partner logo URL from a serving host (Camera Blob or the dedicated public R2 logo bucket)
   
   // Default styles for child events
   // These defaults cascade to all non-orphaned events under this partner
@@ -541,7 +541,7 @@ export interface Event {
   
   // Customization
   loadingText?: string;              // Legacy; loadEventTexts exposes a custom value as event.texts['event.loading'] and clears it on save.
-  logoUrl?: string;                  // Optional event logo URL (imgbb.com) - displayed on capture pages
+  logoUrl?: string;                  // Optional event logo URL from a serving host; ImgBB backup URLs are not rendered
   /** A picture drawn under the card of every guest email of this event (the club's footer strip); https, a host the pages may load images from (camera#310). */
   emailFooterImageUrl?: string | null;
   showLogo: boolean;                 // Whether to display logo on event pages (default: false)
@@ -624,8 +624,8 @@ export interface Logo {
   logoId: string;                    // Unique logo identifier (UUID)
   name: string;                      // Human-readable logo name
   description?: string;              // Optional logo description
-  imageUrl: string;                  // imgbb.com URL for logo image
-  thumbnailUrl: string;              // imgbb.com URL for thumbnail
+  imageUrl: string;                  // Logo image URL from a serving host; ImgBB copies are backup-only
+  thumbnailUrl: string;              // Thumbnail URL from a serving host; ImgBB copies are backup-only
   width: number;                     // Logo width in pixels
   height: number;                    // Logo height in pixels
   fileSize: number;                  // File size in bytes
@@ -680,9 +680,9 @@ export interface Frame {
   name: string;                      // Human-readable frame name
   description: string;               // Operator notes; may be an empty string
   category: string;                  // Grouping label; defaults to 'general' on create
-  imageUrl: string;                  // imgbb.com URL for the frame asset
-  deleteUrl: string;                 // imgbb.com deletion URL for the asset
-  imageId: string;                   // imgbb.com asset identifier
+  imageUrl: string;                  // Frame image URL from a serving host; ImgBB copies are backup-only
+  deleteUrl: string;                 // ImgBB deletion URL for the backup asset
+  imageId: string;                   // ImgBB asset identifier for the backup
   fileSize: number | null;           // Asset size in bytes; null when imgbb omits it
   mimeType: string;                  // e.g. "image/png"
   isActive: boolean;                 // Whether the frame is offered for selection
@@ -872,9 +872,10 @@ export interface Submission {
   eventIds: string[];                // Array of event IDs where this submission appears (supports reusability)
   eventName: string | null;          // Cached event name for display (primary event)
   
-  // Image URLs (all hosted on imgbb.com)
+  // Production/browser image sources are Camera Vercel Blob (live) or the appropriate public R2 CDN.
+  // ImgBB URLs are retained only in internal backup manifests and are never rendered or returned as image sources.
   imageUrl?: string;                 // Legacy/current primary public image URL used by share/slideshow/admin surfaces
-  previewImageUrl?: string | null;   // Smaller downscaled imgbb image for grid/list thumbnails; fall back to imageUrl/finalImageUrl when absent
+  previewImageUrl?: string | null;   // Smaller downscaled serving-store image (Vercel Blob); legacy ImgBB URLs are backup-only and must not be rendered
   /** The giant screen's picture: longest edge at most 1920 px, WebP (camera#476, S7, lib/submissions/screen-picture.ts). The slideshow sends it instead of `imageUrl` when it exists; equal to `imageUrl` when that is already small. */
   screenImageUrl?: string | null;
   screenImageBytes?: number;

@@ -1,5 +1,8 @@
 const DIRECT_IMAGE_HOST = 'i.ibb.co';
 
+// These helpers validate ImgBB addresses for backup verification, copy repair,
+// and erasure only. Browser-facing code must use Camera Blob or a public R2 CDN.
+
 // Vercel Blob public URLs: https://<random-store-id>.public.blob.vercel-storage.com/<pathname>
 // The store-id subdomain is generated at store-creation time, so this must be
 // a suffix match rather than a literal hostname.

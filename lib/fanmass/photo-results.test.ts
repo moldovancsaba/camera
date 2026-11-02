@@ -4,29 +4,54 @@ import { fanmassAnalysisImageUrl } from './photo-results';
 
 test('Fanmass review displays the unframed image it analyzed and never falls back to a framed composite', () => {
   assert.equal(fanmassAnalysisImageUrl({
-    photoReview: { photoUrl: 'https://private.test/review-crop.jpg' },
-    imageCopies: [{ role: 'unframed', state: 'verified', url: 'https://cdn.test/unframed.jpg' }],
-    originalImageUrl: 'https://cdn.test/original.jpg',
+    photoReview: { photoUrl: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/review-crop.jpg' },
+    imageCopies: [{ role: 'unframed', store: 'blob', state: 'verified', url: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/unframed.jpg' }],
+    originalImageUrl: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/original.jpg',
     reframe: { mode: 'cover' },
-  }), 'https://private.test/review-crop.jpg');
+  }), 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/review-crop.jpg');
 
   assert.equal(fanmassAnalysisImageUrl({
     photoReview: { photoUrl: null },
     imageCopies: [
-      { role: 'composed', state: 'verified', url: 'https://cdn.test/framed.jpg' },
-      { role: 'unframed', state: 'failed', url: 'https://cdn.test/failed.jpg' },
-      { role: 'unframed', state: 'verified', url: 'https://cdn.test/unframed.jpg' },
+      { role: 'composed', store: 'blob', state: 'verified', url: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/framed.jpg' },
+      { role: 'unframed', store: 'blob', state: 'failed', url: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/failed.jpg' },
+      { role: 'unframed', store: 'blob', state: 'verified', url: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/unframed.jpg' },
     ],
-  }), 'https://cdn.test/unframed.jpg');
+  }), 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/unframed.jpg');
 
   assert.equal(fanmassAnalysisImageUrl({
-    originalImageUrl: 'https://cdn.test/legacy-framed.jpg',
-    imageUrl: 'https://cdn.test/framed.jpg',
-    finalImageUrl: 'https://cdn.test/framed.jpg',
+    originalImageUrl: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/legacy-framed.jpg',
+    imageUrl: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/framed.jpg',
+    finalImageUrl: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/framed.jpg',
   }), null);
 
   assert.equal(fanmassAnalysisImageUrl({
-    originalImageUrl: 'https://cdn.test/camera-original.jpg',
+    originalImageUrl: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/camera-original.jpg',
     reframe: { mode: 'cover' },
-  }), 'https://cdn.test/camera-original.jpg');
+  }), 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/camera-original.jpg');
+});
+
+test('ImgBB backup addresses are never returned to the Camera review UI', () => {
+  const imgbb = 'https://i.ibb.co/backup/crop.jpg';
+  const blobOriginal = 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/original.jpg';
+
+  assert.equal(fanmassAnalysisImageUrl({
+    photoReview: { photoUrl: imgbb },
+    imageCopies: [
+      { role: 'unframed', store: 'imgbb', state: 'verified', url: imgbb },
+      { role: 'unframed', store: 'blob', state: 'deleted', url: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/deleted.jpg' },
+    ],
+    originalImageUrl: blobOriginal,
+    reframe: { mode: 'cover' },
+  }), blobOriginal, 'use the first-party original when a legacy review/copy field names ImgBB');
+
+  assert.equal(fanmassAnalysisImageUrl({
+    photoReview: { photoUrl: imgbb },
+    imageCopies: [{ role: 'unframed', store: 'imgbb', state: 'verified', url: imgbb }],
+  }), null, 'an ImgBB-only record shows the unavailable state instead of making a browser request to ImgBB');
+
+  assert.equal(fanmassAnalysisImageUrl({
+    photoReview: { photoUrl: 'https://outside.example/photo.jpg' },
+    imageCopies: [{ role: 'unframed', store: 'blob', state: 'verified', url: 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/unframed.jpg' }],
+  }), 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/unframed.jpg');
 });

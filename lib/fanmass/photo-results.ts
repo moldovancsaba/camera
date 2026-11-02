@@ -4,6 +4,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { CONSENT_ELIGIBLE_FILTER, CONSENT_EXPIRED_FILTER, CONSENT_PENDING_FILTER, CONSENT_UNKNOWN_FILTER } from '@/lib/events/consent-eligibility';
 import { processingContactMongoFilter } from '@/lib/submissions/guest-contact';
+import { isBlobStorageHostname } from '@/lib/imgbb/url';
 
 const PIPELINE_DATABASE = process.env.CAMERA_PIPELINE_DATABASE?.trim() || 'fanmass_camera_pipeline';
 const QUEUE_COLLECTION = 'fanmass_camera_analysis_queue';
@@ -341,15 +342,35 @@ function correctionView(review: Document | null, result: FanmassPhotoResultView 
   };
 }
 
+function blobPhotoUrl(value: unknown): string | null {
+  const valueText = text(value);
+  if (!valueText) return null;
+  try {
+    const url = new URL(valueText);
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !isBlobStorageHostname(url.hostname) || url.pathname === '/') return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Return only a first-party image address for the Camera UI. ImgBB is a backup
+ * provider: its URLs remain in imageCopies for backup and erasure operations,
+ * but must never be sent to a browser as an image source.
+ */
 export function fanmassAnalysisImageUrl(submission: Document): string | null {
-  const reviewPhoto = record(submission.photoReview)?.photoUrl;
+  const reviewPhoto = blobPhotoUrl(record(submission.photoReview)?.photoUrl);
   const copies = Array.isArray(submission.imageCopies) ? submission.imageCopies as Document[] : [];
-  const unframed = copies.find((copy) => copy.role === 'unframed' && copy.state === 'verified' && typeof copy.url === 'string')?.url;
-  if (text(reviewPhoto)) return text(reviewPhoto);
-  if (text(unframed)) return text(unframed);
+  const unframedBlob = copies.find((copy) => copy.role === 'unframed' && copy.store === 'blob' && copy.state === 'verified');
+  const unframed = blobPhotoUrl(unframedBlob?.url);
+  if (reviewPhoto) return reviewPhoto;
+  if (unframed) return unframed;
   // Legacy originalImageUrl values can contain the framed composite. Camera's
   // reframe record proves that the URL is a separate, unframed camera original.
-  return record(submission.reframe) ? text(submission.originalImageUrl) : null;
+  // It is a fallback for old records whose ImgBB crop is the only recorded crop;
+  // never expose that ImgBB backup URL to the reviewer.
+  return record(submission.reframe) ? blobPhotoUrl(submission.originalImageUrl) : null;
 }
 
 function isConfirmed(review: unknown, result: FanmassPhotoResultView | null): boolean {

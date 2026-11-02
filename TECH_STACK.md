@@ -55,12 +55,13 @@ Primary persistence layer for:
 - partner-scoped access assignments
 - server-side web session storage
 
-### Vercel Blob (primary) and imgbb (mirror)
+### Image storage and serving
 
-Every image upload goes through `lib/imgbb/upload.ts` (name kept for callers):
-Vercel Blob (`@vercel/blob`) is the required primary store since v12.2.14
-(`f799da5`); imgbb is uploaded concurrently as a best-effort mirror and never
-fails the call. Photos stored before v12.2.14 still carry `i.ibb.co` URLs.
+Every image upload goes through `lib/imgbb/upload.ts` (legacy module name):
+Vercel Blob (`@vercel/blob`) is the live image source. Private Cloudflare R2
+and ImgBB hold backup copies. ImgBB URLs are backup metadata only and must
+never be returned as production image sources. Older records can still contain
+ImgBB-only URLs; those need migration to a serving store before display.
 
 Used for:
 
@@ -193,7 +194,7 @@ npm run verify:production-guards
 
 ### Known operational constraints
 
-- submission/media lifecycle depends on Vercel Blob (imgbb only as mirror; older photos still served from `i.ibb.co`)
+- submission/media lifecycle uses Vercel Blob for live serving, with private R2 and ImgBB backup copies; public R2 photo CDN migration is not complete
 - some collection shapes are compatibility-driven and broader than the hot runtime path actually persists
 - partner-scoped authorization is newer than the original global-admin model, so docs and code must be kept in sync deliberately
 

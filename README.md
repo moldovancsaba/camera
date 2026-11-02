@@ -59,7 +59,7 @@ The admin UX is organized around that model:
 2. Optional custom pages collect guest data, consent, or CTA actions.
 3. Browser captures or uploads an image.
 4. Client-side compositing applies the selected frame where applicable.
-5. `POST /api/submissions` uploads the final raster via `lib/imgbb/upload.ts` (Vercel Blob primary, imgbb best-effort mirror, since v12.2.14) and stores metadata in MongoDB.
+5. `POST /api/submissions` uploads the final raster via `lib/imgbb/upload.ts` (Vercel Blob serves the live image; private R2 and ImgBB receive backup copies) and stores metadata in MongoDB.
 6. Submission becomes available to share pages, galleries, and slideshow playlists.
 
 ### Event data exports
@@ -172,7 +172,7 @@ Pushing to `main` auto-deploys; Vercel does not wait for CI, so run
 - Tailwind CSS 4
 - MongoDB Atlas
 - SSO OAuth2/OIDC + PKCE
-- Vercel Blob for raster hosting (primary since v12.2.14), imgbb as best-effort mirror
+- Vercel Blob for live image serving; private Cloudflare R2 and ImgBB for backup copies. ImgBB is never a production/browser image source.
 - Resend for transactional email (per-event templates and sender name)
 - optional Upstash Redis for shared rate limits
 

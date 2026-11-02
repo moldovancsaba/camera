@@ -310,7 +310,7 @@ const FRESH = new Date().toISOString();
 const SNAPSHOT = {
   context: {
     source: 'messmass', fetchedAt: FRESH, inputHash: 'h', event: { name: 'Derby', date: null, homeTeam: null, visitorTeam: null },
-    partner: { name: 'Club', logoUrl: 'https://i.ibb.co/logo.png' }, template: null,
+    partner: { name: 'Club', logoUrl: 'https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/club.png' }, template: null,
     style: { name: 'S', resolvedFrom: 'project', fontFamily: 'Aquatic', fontSource: 'system', fontFile: null, headingColor: WHITE, heroBackground: HERO },
   },
   messages: [], messagesOverridden: false, updatedAt: FRESH,
@@ -321,7 +321,7 @@ test('GET returns the theme of the event: from its messmass snapshot, without ex
   const { GET } = await importRouteModule('theme-snapshot');
   const { event } = ((await (await GET(getRequest(), params)).json()) as { data: { event: Record<string, unknown> } }).data;
   const theme = event.theme as { source: string; background: string; heading: string; logoUrl: string; font: { family: string } };
-  assert.deepEqual([theme.source, theme.background, theme.heading, theme.logoUrl, theme.font.family], ['messmass', HERO.slice(0, 7), WHITE.slice(0, 7), 'https://i.ibb.co/logo.png', 'Aquatic']);
+  assert.deepEqual([theme.source, theme.background, theme.heading, theme.logoUrl, theme.font.family], ['messmass', HERO.slice(0, 7), WHITE.slice(0, 7), 'https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/club.png', 'Aquatic']);
   assert.equal('frameDesign' in event, false, 'the snapshot is admin data');
 });
 
