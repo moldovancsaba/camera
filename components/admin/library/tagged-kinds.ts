@@ -33,11 +33,11 @@ export const TAGGED_KINDS: Record<TaggedKind, TaggedKindInfo> = {
     slotPath: 'selfie-slot',
     globalEndpoint: '/api/sample-selfies',
     panelDescription: {
-      partner: 'The picture in the photo window of the welcome page screen when an event has no photo of its own to show. Until you choose or upload your own, your events use the general sample selfies.',
-      event: 'The picture in the photo window of the welcome page screen. Until you choose or upload your own, this event uses its partner’s sample selfies. One of them is picked for the screen.',
+      partner: 'Optional sample photos for an event’s welcome-screen preview. An event uses these only after its editor chooses the partner default. These photos do not populate the slideshow.',
+      event: 'Optional sample photo for this event’s welcome-screen preview. New events start with none selected. Slideshow photos are managed in Event Gallery.',
     },
     pageDescription:
-      'The general selfies that fill the photo window of the welcome page screen. The active ones are the default of every partner until it chooses or uploads its own; an event follows its partner and gets one of them at random.',
+      'Global sample photos for the welcome-screen preview. They are not slideshow photos. Partners and events can choose whether to use these samples.',
     listNote: 'A sample selfie switched off is no longer used anywhere. With none active, the welcome page screen shows the drawn stand-in, as before.',
     emptyText: 'No sample selfies yet. Upload the first one below; until then every welcome page screen shows the stand-in.',
     uploadHint: 'Only images cleared for commercial use. A portrait or a square picture of one person works best; the event’s frame is drawn over it.',

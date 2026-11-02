@@ -6,6 +6,7 @@
  */
 
 import { GdsStack, InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import Link from 'next/link';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import TextLevelEditor from '@/components/admin/kit/TextLevelEditor';
 import { useTextLevel } from '@/components/admin/kit/useTextLevel';
@@ -21,8 +22,12 @@ export default function DictionaryPage() {
       <WorkspaceHeader
         eyebrow="Blocks"
         title="Global Dictionary"
-        description="Guest-facing text used across the product, including journey copy and the global QR text library. A partner or event can override inherited wording where supported."
+        description="Global fallback guest wording and the QR text library. Partners and events can override inherited wording; text written directly on a journey page takes priority."
       />
+      <p style={{ margin: 0, color: 'var(--mantine-color-dimmed)' }}>
+        Use the journey editor to change page order or custom page content. This dictionary sets shared fallback labels and QR text.
+        {' '}<Link href="/admin/settings/experience">Open Global User Journey</Link>
+      </p>
       <TextLevelEditor own={data.texts} inherited={[]} busy={saving} error={saveError} saved={saved} onSave={save} />
       <QrTextsLibrary embedded />
     </GdsStack>

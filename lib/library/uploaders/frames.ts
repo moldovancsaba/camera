@@ -18,6 +18,7 @@ export const framesUploader: Uploader = {
     imageId: stored.imageId,
     fileSize: stored.fileSize,
     mimeType: stored.mimeType,
+    ...(fields.messageArea ? { messageArea: fields.messageArea } : {}),
     isActive: fields.isActive,
     createdBy: fields.createdBy,
     createdAt: fields.now,

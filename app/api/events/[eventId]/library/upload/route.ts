@@ -1,7 +1,8 @@
 /**
  * Event library upload (camera#361): POST a file as an item that belongs to this event (`scope: 'event'`). It is assigned to the event at once
- * (the event now has its own list, so partner changes no longer replace it) and no other event can take it. An image is not assigned
- * (camera#368): it joins the event's images library, which the picture fields choose from. Multipart: `kind`, `file`, `name`,
+ * (the event now has its own list, so partner changes no longer replace it) and no other event can take it. For frame uploads, `name` is the
+ * chooser label; optional `frameMessageMode` (`none`, `existing`, `new`) and `frameMessage` select or create the event-owned text printed on the photo.
+ * An image is not assigned (camera#368): it joins the event's images library, which the picture fields choose from. Multipart: `kind`, `file`, `name`,
  * `description?`, `category?`; for a logo also `scenario?` (where it is shown, `onboarding-thankyou` when none is sent; camera#367), or `slot` (camera#419):
  * the logo slot it joins (`logo` or a place of use), on the slot model, instead of the old list; no scenario is then needed.
  * Events managers of the partner and global admins.
@@ -19,6 +20,13 @@ import { itemView } from '@/lib/library/db';
 import { DEFAULT_UPLOAD_SCENARIO, LOGO_SCENARIOS, isLogoScenario } from '@/lib/library/logos';
 import { LOGO_SLOT_IDS } from '@/lib/slots/logo';
 import { addLogoToEventSlot } from '@/lib/slots/logo-store';
+import { DEFAULT_UPLOAD_MESSAGE_AREA } from '@/lib/frame/message-area';
+import { DEFAULT_FRAME_MESSAGES } from '@/lib/frame/messages';
+import { refreshFrameDesign } from '@/lib/frame/sync';
+import { generateFrameVariants } from '@/lib/frame/variants';
+import { associateUploadedFrameMessage, prepareUploadMessage } from '@/lib/frame/upload-message';
+
+export const maxDuration = 60;
 
 export const POST = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ eventId: string }> }) => {
   const session = await requireAuth();
@@ -39,8 +47,29 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
   const db = await connectToDatabase();
   const access = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
   if (!access.allowed) throw apiForbidden('Partner-level Events manager access is required');
-  const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(eventId) });
+  let event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(eventId) });
   if (!event) throw apiNotFound('Event');
+
+  // Event message wording belongs to this event, so an upload can attach an
+  // existing message or add a new one. Parent-level uploads stay reusable and
+  // do not capture text that belongs to any one event.
+  const messageMode = kind === 'frames' ? form.get('frameMessageMode') : null;
+  const messageValue = kind === 'frames' ? form.get('frameMessage') : null;
+  let preparedMessage = null;
+  if (messageMode !== null && messageMode !== 'none' && messageMode !== '') {
+    if (messageMode !== 'existing' && messageMode !== 'new') throw apiBadRequest('Choose an existing event message, add a new one, or leave the frame without a message.');
+    if (!event.frameDesign || !(event.frameDesign as { context?: unknown }).context) {
+      const refreshed = await refreshFrameDesign(db, event);
+      event = { ...event, frameDesign: refreshed.design };
+    }
+    const design = event.frameDesign as { messages?: string[]; messageFrames?: Record<string, string | string[]> } | undefined;
+    preparedMessage = prepareUploadMessage(
+      messageMode,
+      messageValue,
+      design?.messages ?? [...DEFAULT_FRAME_MESSAGES],
+      design?.messageFrames,
+    );
+  }
 
   const input = {
     kind,
@@ -48,6 +77,7 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
     name: form.get('name'),
     description: form.get('description') ?? undefined,
     category: form.get('category') ?? undefined,
+    ...(preparedMessage ? { messageArea: DEFAULT_UPLOAD_MESSAGE_AREA } : {}),
     createdBy: session.user.id,
     owner: { scope: 'event' as const, eventId: String(event.eventId), partnerId: typeof event.partnerId === 'string' ? event.partnerId : null },
   };
@@ -74,5 +104,27 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
     { eventId: String(event.eventId) },
     { $push: { [kind]: assignment } as Document, $set: { updatedAt: now, ...(kind === 'frames' ? { framesOverridden: true } : { logosOverridden: true }) } }
   );
-  return apiCreated({ item: itemView(kind, result.item), assignment });
+  let messageSetup: { message: string; status: 'ready' | 'needs-generation' | 'generation-failed' | 'link-failed'; detail?: string } | undefined;
+  if (kind === 'frames' && preparedMessage) {
+    try {
+      const currentEvent = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(eventId) });
+      if (!currentEvent) throw apiNotFound('Event');
+      const design = await associateUploadedFrameMessage(db, currentEvent, String(result.item.frameId), preparedMessage);
+      if (currentEvent.generatedFrameEnabled === true) {
+        try {
+          const generated = await generateFrameVariants(db, { ...currentEvent, frameDesign: design });
+          messageSetup = { message: preparedMessage.message, status: 'ready', detail: `${generated.design.variants?.length ?? 0} event frame image(s) are ready.` };
+        } catch (generationError) {
+          console.error(`Event ${eventId}: frame message image generation failed after upload`, generationError);
+          messageSetup = { message: preparedMessage.message, status: 'generation-failed', detail: 'The message was saved and linked. Use Generate default frame to retry drawing its images.' };
+        }
+      } else {
+        messageSetup = { message: preparedMessage.message, status: 'needs-generation', detail: 'The message was saved and linked. Generate the default frame when you are ready to use it in the guest journey.' };
+      }
+    } catch (messageError) {
+      const detail = messageError instanceof Error ? messageError.message : 'The frame could not be linked to the message.';
+      messageSetup = { message: preparedMessage.message, status: 'link-failed', detail: `The frame was uploaded and assigned, but its message was not linked: ${detail}` };
+    }
+  }
+  return apiCreated({ item: itemView(kind, result.item), assignment, ...(messageSetup ? { messageSetup } : {}) });
 });

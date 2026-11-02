@@ -1,6 +1,6 @@
 # messmass + fanmass integration
 
-**Version**: 12.3.42
+**Version**: 12.3.43
 **Last Updated**: 2026-10-22
 _Current Camera/Fanmass boundary; historical release details below must be read against the current sections._
 

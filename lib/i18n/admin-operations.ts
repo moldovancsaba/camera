@@ -3,6 +3,7 @@ import { adminCommonText } from '@/lib/i18n/admin-common';
 import { UI_LANGUAGES, type UiLanguage } from '@/lib/i18n';
 import { adminVisualAssetText } from './admin-visual-assets';
 import { adminExperienceTemplateText } from './admin-experience-templates';
+import { adminFrameUploadText } from './admin-frame-upload';
 
 /**
  * Shared wording for the photo-review and Fanmass operations screens.
@@ -85,6 +86,8 @@ const EXTRA_VALUES: Record<UiLanguage, readonly string[]> = {
 const EXTRA_INDEX = new Map<string, number>(EXTRA_SOURCES.map((source, index) => [source, index]));
 
 export function adminOperationText(source: string, language: UiLanguage): string {
+  const frameUpload = adminFrameUploadText(source, language);
+  if (frameUpload !== source) return frameUpload;
   const visualAssetText = adminVisualAssetText(source, language);
   if (visualAssetText !== null) return visualAssetText;
   const experienceTemplateText = adminExperienceTemplateText(source, language);

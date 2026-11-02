@@ -29,8 +29,12 @@ export default function PartnerTextsPage({ params }: { params: Promise<{ id: str
       <WorkspaceHeader
         eyebrow="Partners"
         title={`Texts: ${data.name}`}
-        description={`The wording of the default texts for all events of ${data.name}. Where you write nothing, the global wording or the dictionary is used. An event can write its own, and a text an editor wrote on a page always wins.`}
+        description={`Default guest wording inherited by ${data.name}’s events. Where you write nothing, the global wording or dictionary is used; an event or a custom journey page can override it.`}
       />
+      <p style={{ margin: 0, color: 'var(--mantine-color-dimmed)' }}>
+        This page edits shared fallback wording. To change page order or text written directly on a custom page, use the partner journey. Page-specific edits take priority.
+        {' '}<Link href={`/admin/partners/${id}#partner-user-journey`}>Open Partner User Journey</Link>
+      </p>
       <TextLevelEditor own={data.texts} inherited={[{ label: 'the global wording', texts: data.inherited.global }]} busy={saving} error={saveError} saved={saved} onSave={save} />
     </GdsStack>
   );

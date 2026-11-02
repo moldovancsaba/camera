@@ -21,7 +21,7 @@ test('the context comes from the path: an event, a partner, or the main menu', (
 
 test('a global admin and a partner user see the same items of the event menu, Analytics included (issue 521: the numbers of the event are for its managers)', () => {
   const labels = (access: AdminNavigationAccess) => adminContextMenu({ kind: 'event', id: ID }, `/admin/events/${ID}`, access).items.map((item) => item.label);
-  const expected = ['Overview', 'Edit', 'Vetting', 'Photo analysis', 'Analytics', 'Event Images', 'Event Frames', 'Event Frame Slots', 'Event Logos', 'Event Selfies', 'Event Stadiums', 'Event Dictionary', 'Event Vetting words', 'Event Email', 'Event User Journey', 'Event Landing Pages', 'Event Slideshows', 'Event Gallery'];
+  const expected = ['Overview', 'Edit', 'Vetting', 'Photo analysis', 'Analytics', 'Event Images', 'Event Frames', 'Event Logos', 'Event Selfies', 'Event Stadiums', 'Event Dictionary', 'Event Vetting words', 'Event Email', 'Event User Journey', 'Event Landing Pages', 'Event Slideshows', 'Event Gallery'];
   assert.deepEqual(labels(GLOBAL_ADMIN), expected);
   assert.deepEqual(labels(PARTNER_USER), expected);
   const sections = adminContextMenu({ kind: 'event', id: ID }, `/admin/events/${ID}`, GLOBAL_ADMIN).sections;
@@ -31,8 +31,8 @@ test('a global admin and a partner user see the same items of the event menu, An
 
 test('the partner menu has its own pages', () => {
   const menu = adminContextMenu({ kind: 'partner', id: ID }, `/admin/partners/${ID}`, GLOBAL_ADMIN);
-  assert.deepEqual(menu.items.map((item) => item.label), ['Overview', 'Edit', 'Partner Images', 'Partner Frames', 'Partner Frame Slots', 'Partner Logos', 'Partner Selfies', 'Partner Stadiums', 'Partner Dictionary', 'Partner Vetting words', 'Partner Email', 'Partner User Journey', 'Partner Landing Pages', 'Partner Slideshows', 'Partner Gallery']);
-  assert.deepEqual(menu.items.map((item) => item.href), [`/admin/partners/${ID}`, `/admin/partners/${ID}/edit`, `/admin/partners/${ID}/images`, `/admin/partners/${ID}/frames`, `/admin/partners/${ID}/frame-slots`, `/admin/partners/${ID}/logos`, `/admin/partners/${ID}/selfies`, `/admin/partners/${ID}/stadiums`, `/admin/partners/${ID}/texts`, `/admin/partners/${ID}/annotation-words`, `/admin/partners/${ID}/emails`, `/admin/partners/${ID}#partner-user-journey`, `/admin/partners/${ID}/landing-pages`, `/admin/partners/${ID}/slideshows`, `/admin/partners/${ID}#partner-gallery`]);
+  assert.deepEqual(menu.items.map((item) => item.label), ['Overview', 'Edit', 'Partner Images', 'Partner Frames', 'Partner Logos', 'Partner Selfies', 'Partner Stadiums', 'Partner Dictionary', 'Partner Vetting words', 'Partner Email', 'Partner User Journey', 'Partner Landing Pages', 'Partner Slideshows', 'Partner Gallery']);
+  assert.deepEqual(menu.items.map((item) => item.href), [`/admin/partners/${ID}`, `/admin/partners/${ID}/edit`, `/admin/partners/${ID}/images`, `/admin/partners/${ID}/frames`, `/admin/partners/${ID}/logos`, `/admin/partners/${ID}/selfies`, `/admin/partners/${ID}/stadiums`, `/admin/partners/${ID}/texts`, `/admin/partners/${ID}/annotation-words`, `/admin/partners/${ID}/emails`, `/admin/partners/${ID}#partner-user-journey`, `/admin/partners/${ID}/landing-pages`, `/admin/partners/${ID}/slideshows`, `/admin/partners/${ID}#partner-gallery`]);
   assert.equal(menu.sections.find((section) => section.title === 'Blocks')?.items.some((item) => item.label === 'Partner User Journey'), false);
   assert.equal(menu.sections.find((section) => section.title === 'Content')?.items[0]?.label, 'Partner User Journey');
 });
@@ -63,11 +63,11 @@ test('exactly one item is active, and the overview is active only on its own add
   assert.deepEqual(activeLabels(`/admin/events/${ID}/slideshows/abc123`), ['Event Slideshows']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/layouts/abc123`), ['Event Slideshows']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/landing-pages/abc123`), ['Event Landing Pages']);
-  assert.deepEqual(activeLabels(`/admin/events/${ID}/frame-slots`), ['Event Frame Slots']);
+  assert.deepEqual(activeLabels(`/admin/events/${ID}/frame-slots`), ['Event Frames']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/selfies`), ['Event Selfies']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/stadiums`), ['Event Stadiums']);
   assert.deepEqual(activeLabels(`/admin/partners/${ID}/images`, 'partner'), ['Partner Images']);
-  assert.deepEqual(activeLabels(`/admin/partners/${ID}/frame-slots`, 'partner'), ['Partner Frame Slots']);
+  assert.deepEqual(activeLabels(`/admin/partners/${ID}/frame-slots`, 'partner'), ['Partner Frames']);
   assert.deepEqual(activeLabels(`/admin/partners/${ID}/selfies`, 'partner'), ['Partner Selfies']);
   assert.deepEqual(activeLabels(`/admin/partners/${ID}/stadiums`, 'partner'), ['Partner Stadiums']);
   assert.deepEqual(activeLabels(`/admin/partners/${ID}`, 'partner'), ['Overview']);

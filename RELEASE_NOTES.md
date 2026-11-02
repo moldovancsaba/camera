@@ -31,6 +31,15 @@
 - **Documentation:** added `docs/PARTNER_CONTENT_DEFAULTS.md` and updated the current architecture and navigation delivery notes.
 - **Verification:** GDS manifest and boundary checks, type-check, lint, all 368 unit test files, production guards, production build, and repository inventory check pass.
 
+## Unreleased — clearer frame and welcome-photo workflows
+
+- **Changed:** Global, Partner and Event frames now use one Frames workspace. Advanced generated-frame slot controls are collapsed inside it; former Frame Slots page URLs redirect to that section, while the existing slot APIs and saved layouts remain available.
+- **Changed:** frame uploads and editors label the frame name as the chooser name, distinguish it from text printed onto the photo, and show that name in previews. During Event frame upload, a manager may select an existing event message or add a new one; the frame and message association are saved together, and the printed text area starts lower-center. Partner and Event managers can edit the chooser name and replace an owned PNG/SVG without changing the frame ID or assignments. The server validates the upload, checks the source image has not changed concurrently, and redraws dependent generated event photos when the event opted into generated frames.
+- **Changed:** newly created events start with no welcome sample selfie selected. Event Selfies are described as Welcome page screen samples; slideshow photos remain in Event Gallery. Existing event settings are unchanged.
+- **Clarified:** Dictionary editors explain that they set shared fallback wording, while page order and page-specific copy belong in the User Journey editor.
+- **Recovery:** upload status distinguishes ready, generation still needed, generation failed, and message-link failure. If the message list is changing concurrently, the association retries a bounded number of times and reports a conflict; the uploaded frame remains available to finish setup without uploading it twice.
+- **Verification:** focused upload, association, replacement and 23-locale translation tests pass. `npm run release:check` passed, including all 382 unit-test files, production guards and the production build; `npm run inventory:check` passed with no broken links. The upload journey passed a local browser check at desktop and 390px using API fixtures. GitHub Verify is the remaining merge gate. No production records or event configuration were changed.
+
 ## Unreleased — locale selector consistency
 
 - **Fixed:** changing the admin header language now announces a successful save to assistive technology; the header control and Account settings continue to share the same per-user preference.

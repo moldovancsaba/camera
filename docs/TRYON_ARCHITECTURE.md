@@ -2,7 +2,7 @@
 
 > **REMOVED INTEGRATION (camera issue 557, 2026-10-10).** This document describes the try-on integration as it was at git tag `tryon-integration-final`. Try-on was switched off on every event and has been removed from the camera app; [TRYON_REMOVED.md](./TRYON_REMOVED.md) says what existed, what it left in the database and what a rebuild as an add-on needs. Nothing below is current behaviour or an operating guide; it is kept as the record of the contract.
 
-**Version**: 12.3.41  
+**Version**: 12.3.43
 **Last Updated**: 2026-10-01
 
 **Runtime status 2026-10-01**: Try-on is paused. Current events have try-on disabled, the local legacy worker is stopped, and the try-on sync cron is removed. This document records the retained Camera data/moderation contract; do not interpret the historical worker flow below as enabled production processing. The planned image.direct replacement is documented in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md) and is not live.

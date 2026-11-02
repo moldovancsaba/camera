@@ -23,6 +23,7 @@ import { InlineAlert, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core
 import { notifyAdminError } from '@/components/admin/notify';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
 import AssetUsageResolution from '@/components/admin/library/AssetUsageResolution';
+import FrameAssetEditor from '@/components/admin/library/FrameAssetEditor';
 import { parseMessageArea, type MessageArea } from '@/lib/frame/message-area';
 
 interface FrameRecord {
@@ -241,14 +242,31 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
 
       <form onSubmit={handleSubmit}>
         <AdminCrudForm title="Frame settings" description="Update metadata for this frame resource.">
-          <FormSection title="Frame preview" description="To change the image, delete this frame and upload a new one.">
+          <FormSection title="Frame preview" description="The frame name is the label users see in the chooser; it is not printed on the photo.">
             <div style={{ aspectRatio: '1 / 1', borderRadius: 12, maxWidth: 320, overflow: 'hidden', position: 'relative' }}>
               <Image src={frame.thumbnailUrl || frame.imageUrl} alt={frame.name} fill style={{ objectFit: 'contain', padding: 24 }} unoptimized />
             </div>
+            <FrameAssetEditor
+              endpoint={`/api/frames/${id}`}
+              scope="global"
+              name={name}
+              imageUrl={frame.imageUrl}
+              thumbnailUrl={frame.thumbnailUrl}
+              allowNameEdit={false}
+              disabled={isSaving || isDeleting}
+              onSaved={(updated) => {
+                setFrame((current) => current ? {
+                  ...current,
+                  ...updated,
+                  thumbnailUrl: updated.thumbnailUrl ?? undefined,
+                } : current);
+                setName(updated.name);
+              }}
+            />
           </FormSection>
 
           <AdminFormSection title="Frame details">
-            <AdminTextInput name="name" label="Frame name" value={name} onChange={setName} required />
+            <AdminTextInput name="name" label="Frame name users see in the chooser" description="This is the chooser label. It is not printed on the photo." value={name} onChange={setName} required />
             <AdminTextarea name="description" label="Description" value={description} onChange={setDescription} />
             <AdminSelect
               name="category"
@@ -308,7 +326,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
       >
         <MessageAreaEditor
           pictureUrl={frame.imageUrl}
-          name={frame.name}
+              name={name}
           value={parseMessageArea(frame.messageArea)}
           onSave={async (area: MessageArea | null) => {
             const response = await fetch(`/api/frames/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageArea: area }) });

@@ -23,7 +23,6 @@ export type AdminNavGroup = (typeof ADMIN_NAV_GROUP_ORDER)[number];
 export const ADMIN_BLOCK_ITEM_ORDER = [
   'images',
   'frames',
-  'frame-slots',
   'logos',
   'selfies',
   'stadiums',
@@ -137,14 +136,6 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         description: 'Shared frame inventory available to any event.',
         iconKey: 'frame',
         blockKey: 'frames',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
-        href: '/admin/settings/frame-slots',
-        label: 'Global Frame Slots',
-        description: 'The slots used to compose generated frames.',
-        iconKey: 'frame',
-        blockKey: 'frame-slots',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
@@ -319,8 +310,7 @@ const scopedItems = (kind: AdminContextKind): AdminContextItem[] => {
     : { section: 'Content', label: 'Partner User Journey', description: 'Choose the reusable guest journey inherited by this partner’s events.', iconKey: 'layoutDashboard', path: '#partner-user-journey', isVisible: everyone };
   const sharedBlocks: AdminContextItem[] = orderBlockItems([
     { section: 'Blocks', label: `${scope} Images`, description: `The pictures available to ${scope.toLowerCase()} content.`, iconKey: 'photo', blockKey: 'images', path: '/images', ...(kind === 'partner' ? { also: ['/pictures'] } : {}), isVisible: everyone },
-    { section: 'Blocks', label: `${scope} Frames`, description: `The frames available to ${scope.toLowerCase()} content.`, iconKey: 'frame', blockKey: 'frames', path: '/frames', isVisible: everyone },
-    { section: 'Blocks', label: `${scope} Frame Slots`, description: `The default slots used to compose generated frames for ${scope.toLowerCase()} events.`, iconKey: 'frame', blockKey: 'frame-slots', path: '/frame-slots', isVisible: everyone },
+    { section: 'Blocks', label: `${scope} Frames`, description: `The frames available to ${scope.toLowerCase()} content.`, iconKey: 'frame', blockKey: 'frames', path: '/frames', also: ['/frame-slots'], isVisible: everyone },
     { section: 'Blocks', label: `${scope} Logos`, description: `The logos available to ${scope.toLowerCase()} content.`, iconKey: 'photo', blockKey: 'logos', path: '/logos', isVisible: everyone },
     { section: 'Blocks', label: `${scope} Selfies`, description: `The sample selfie shown on ${scope.toLowerCase()} welcome screens.`, iconKey: 'photo', blockKey: 'selfies', path: '/selfies', isVisible: everyone },
     { section: 'Blocks', label: `${scope} Stadiums`, description: `The stadium backgrounds available to ${scope.toLowerCase()} slideshow stages.`, iconKey: 'photo', blockKey: 'stadiums', path: '/stadiums', isVisible: everyone },
