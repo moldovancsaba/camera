@@ -6,7 +6,7 @@
 - **Changed:** screen designs can omit the overlay while keeping the photo window, QR and text. An uploaded overlay can therefore carry its own baked-in information while Camera's duplicate QR/text layers are switched off. Broken overlay media no longer hides the remaining configured layers.
 - **Compatibility:** legacy designs with no visibility flags stay visible. The generated Welcome-screen image and live slideshow apply the same visibility settings.
 - **Accessibility and localization:** visibility controls are labeled checkboxes and all added labels/guidance are translated for 23 admin locales.
-- **Verification:** `npm run release:check` passed, including type-check, lint, 384 unit-test files, production guards and a production build. `npm run inventory:check` passed with no broken links. Browser E2E was not run because no disposable local MongoDB connection is configured. No production event configuration or data was changed.
+- **Verification:** `npm run release:check` passed, including type-check, lint, 384 unit-test files, production guards and a production build. `npm run inventory:check` passed with no broken links. A Chromium interaction smoke check at 390px verified the three visibility switches and no horizontal overflow. The full safe E2E suite was not run because no disposable local MongoDB connection is configured. No production event configuration or data was changed.
 
 ## Unreleased — keep ImgBB backup URLs out of production image serving
 
