@@ -44,6 +44,8 @@ Browser / Public Screens
 - admin pages under `/admin`
 - React client components for camera capture, admin forms, and slideshow playback
 
+Event visibility is managed from the shared event inventory and event workspaces. `EventStatusToggle` sends an authenticated boolean update to `PATCH /api/events/[eventId]`; the API rechecks global-admin or partner-manager access and rejects non-boolean values. The control is a GDS button with open/closed eye icon, accessible action name, and pending/failure behavior. Read-only event contexts keep the status icon. Public inactive-event URL handling remains centralized in the existing event and short-link route rules; changing visibility does not alter photo records.
+
 ### API layer
 
 - Next.js route handlers under `app/api/**`

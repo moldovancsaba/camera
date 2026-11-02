@@ -13,6 +13,7 @@ import { StatsStrip } from '@/components/gds/ClientWrappers';
 import { Breadcrumbs, Button, Card, Code, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
+import EventStatusToggle from '@/components/gds/EventStatusToggle';
 import StyleSections, { type ThemeColours } from '@/components/admin/StyleSections';
 import { loadEventTheme } from '@/lib/theme/load';
 import SlideshowManager from '@/components/admin/SlideshowManager';
@@ -247,7 +248,11 @@ export default async function EventDetailPage({
         eyebrow="Events"
         title={event.name}
         description={event.description}
-        status={<VisibilityStatusIcon isVisible={event.isActive === true} />}
+        status={canManageEvent ? (
+          <EventStatusToggle eventId={id} eventName={event.name} initialIsActive={event.isActive === true} />
+        ) : (
+          <VisibilityStatusIcon isVisible={event.isActive === true} />
+        )}
         actions={
           <>
             {event.messmassEventId ? (

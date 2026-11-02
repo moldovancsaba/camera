@@ -219,7 +219,7 @@ export default async function EventsPage({
       toolbarFilters={toolbarFilters.length ? toolbarFilters : undefined}
       dbError={dbError}
     >
-      <EventsInventoryList events={eventRows} canCreate={canCreate} />
+      <EventsInventoryList events={eventRows} canCreate={canCreate} canManageEvents={canCreate} />
       {!dbError ? <ListPager basePath="/admin/events" query={pagerQuery} page={page} pages={pages} total={matchingEventCount} pageSize={EVENTS_PAGE_SIZE} /> : null}
     </AdminListPageShell>
   );

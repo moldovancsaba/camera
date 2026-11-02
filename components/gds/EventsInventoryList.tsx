@@ -7,7 +7,8 @@ import {
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
 import { ResourceListGrid } from '@/components/gds/ResourceListGrid';
-import { getStatusChipContent } from '@/lib/gds/statusChipContent';
+import EventStatusToggle from '@/components/gds/EventStatusToggle';
+import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminPageText } from '@/lib/i18n/admin-pages';
 
@@ -25,9 +26,11 @@ export interface SerializedEventRow {
 export default function EventsInventoryList({
   events,
   canCreate,
+  canManageEvents,
 }: {
   events: SerializedEventRow[];
   canCreate: boolean;
+  canManageEvents: boolean;
 }) {
   const language = useUiLanguage();
   const t = (source: string) => adminPageText(source, language);
@@ -36,7 +39,6 @@ export default function EventsInventoryList({
     id: event.id,
     title: event.name,
     description: event.description || event.location || event.partnerName,
-    status: getStatusChipContent({ tone: event.isActive ? 'active' : 'inactive', visibility: event.isActive }),
     metadata: [
       { label: t('Partner'), value: event.partnerName },
       event.location ? { label: t('Location'), value: event.location } : null,
@@ -79,6 +81,15 @@ export default function EventsInventoryList({
     <ResourceListGrid
       records={records}
       actions={actions}
+      renderStatus={(event) => canManageEvents ? (
+        <EventStatusToggle
+          eventId={event.id}
+          eventName={event.name}
+          initialIsActive={event.isActive}
+        />
+      ) : (
+        <VisibilityStatusIcon isVisible={event.isActive} />
+      )}
       onPreview={(event) => {
         window.location.href = `/admin/events/${event.id}`;
       }}

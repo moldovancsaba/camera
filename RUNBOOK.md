@@ -32,6 +32,10 @@ For release, run `npm run db:ensure-indexes` through the normal approved databas
 
 The partner overview shows the total event count and a compact preview of its 10 most recently created events. Use **Open Events** to open the Events inventory scoped by the partner's stable ID. The inventory shows 50 matching events per page; use the page links to continue through the full set. Event name/location search remains scoped to that partner, and the partner/search filter chips can be removed independently. The **Clear** action returns to the unfiltered Events inventory. Partner-scoped users continue to see only events covered by their active assignments. The overview count and partner-delete guard use the complete count, not the preview size. See [Partner event inventory](docs/PARTNER_EVENT_INVENTORY.md).
 
+## Activating or deactivating an event
+
+Global admins and partner event managers can use the eye button on an event card, in a partner's event list, or in the event workspace. A green open eye means the event is active; a red closed eye means it is inactive. The control saves through the authenticated `PATCH /api/events/[eventId]` route and refreshes the current view. If the request fails, the status remains as it was and the UI displays an error so the manager can retry. Viewers see the same status as a read-only icon. Inactive events remain in the Events inventory to allow reactivation. Their public event-specific URLs redirect to the event's Greatest Selfies page; see [Tracked short links — inactive events](docs/SHORT_LINKS.md#inactive-events). No photo or event asset is removed by this switch.
+
 ## Deploying to production
 
 Production deploys from git: every push to `main` builds and promotes

@@ -393,7 +393,10 @@ export const PATCH = withErrorHandler(async (
     Object.assign(updateFields, change.fields);
   }
   if (isActive !== undefined) {
-    updateFields.isActive = Boolean(isActive);
+    if (typeof isActive !== 'boolean') {
+      throw apiBadRequest('isActive must be true or false');
+    }
+    updateFields.isActive = isActive;
   }
 
   if (shortUrlSlug !== undefined) {

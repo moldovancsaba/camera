@@ -13,6 +13,7 @@ import { AccentPanel, AccessSummary, StatsStrip } from '@/components/gds/ClientW
 import { Breadcrumbs, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
+import EventStatusToggle from '@/components/gds/EventStatusToggle';
 import PartnerEventsOpenAll from '@/components/admin/PartnerEventsOpenAll';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
@@ -574,7 +575,15 @@ export default async function PartnerDetailPage({
                       </Group>
                     </Stack>
                     <Group gap="sm" justify="flex-end">
-                      <VisibilityStatusIcon isVisible={event.isActive === true} />
+                      {canManageEvents ? (
+                        <EventStatusToggle
+                          eventId={String(event._id)}
+                          eventName={String(event.name ?? 'Event')}
+                          initialIsActive={event.isActive === true}
+                        />
+                      ) : (
+                        <VisibilityStatusIcon isVisible={event.isActive === true} />
+                      )}
                       {canManageEvents ? <Link href={`/admin/events/${event._id}/edit`}>Edit</Link> : null}
                     </Group>
                   </Group>

@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — toggle event visibility from the eye control
+
+- **Changed:** event managers can activate or deactivate an event from its Events inventory card, a partner's event list, and the event workspace. The control uses a green open-eye button for active and a red closed-eye button for inactive; view-only users retain a read-only icon.
+- **Behavior:** the status change uses the existing authenticated event update API with strict boolean validation. Inactive events remain in the admin inventory and continue to follow the Greatest Selfies redirect for public event-specific URLs. The switch does not change photo or asset records.
+- **Accessibility and localization:** the icon-only button has an action-and-event accessible name, pressed/busy states, a 44px minimum target, and translated labels/error feedback for all supported admin locales.
+- **Verification:** focused UI rendering, event API authorization/validation, and translation tests pass. `npm run release:check` and `npm run inventory:check` pass. A local mocked-API browser check passed at desktop and mobile sizes. The database-backed Playwright test was not run because no disposable local `MONGODB_URI` is configured; GitHub Verify remains the merge gate.
+
 ## Unreleased — make slideshow screen-design layers optional
 
 - **Changed:** the event and partner slideshow editors now let managers show or hide the overlay picture, dynamic QR code, and every text line separately. Hiding a layer keeps its saved configuration; it can be shown again without re-uploading or retyping.
