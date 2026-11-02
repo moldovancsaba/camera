@@ -97,6 +97,8 @@ interface FrameAssignmentRow {
 
 interface EventWithFrames {
   frames?: FrameAssignmentRow[] | null;
+  /** Explicit event-level opt-in. Old records and new events without this flag do not use the generated default frame. */
+  generatedFrameEnabled?: boolean;
   frameDesign?: { variants?: FrameVariant[] | null; messages?: string[] | null } | null;
   /** How users get the layout and the message (`Event.frameSelection`). */
   frameSelection?: unknown;
@@ -119,10 +121,11 @@ export function isOwnActiveFrame(row: FrameAssignmentRow): boolean {
 }
 
 /**
- * The generated frame of an event, or null: it applies only while the event has no active frame of its own, and only
- * once at least one image exists. Derived, never stored, so assigning or removing an own frame switches it at once.
+ * The generated frame of an event, or null: an explicit event-level opt-in and at least one image are required, and
+ * it applies only while the event has no active frame of its own. Assigning or removing an own frame switches it at once.
  */
 export function captureFrameOf(event: EventWithFrames): CaptureFrame | null {
+  if (event.generatedFrameEnabled !== true) return null;
   if (event.frames?.some(isOwnActiveFrame)) return null;
   const variants = (event.frameDesign?.variants ?? [])
     .filter((variant) => variant.imageUrl && variant.width > 0 && variant.height > 0)

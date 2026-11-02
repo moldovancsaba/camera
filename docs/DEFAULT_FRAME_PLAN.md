@@ -2,12 +2,14 @@
 
 > **Written before the try-on removal (issue 557, 2026-10-10).** Where this document mentions try-on, it describes the app as it was on its date; the integration has been removed from the app, see [TRYON_REMOVED.md](TRYON_REMOVED.md). Read those places as history.
 
-**Status**: planned, owner answers recorded 2026-10-06; tracker [camera#231](https://github.com/moldovancsaba/camera/issues/231), board [#24](https://github.com/users/moldovancsaba/projects/24).
-**Scope**: a generated, general-purpose frame for every event that has no frame of its own, built from the partner logo, the home and visitor teams and the messmass reporting theme, with a random message from a list the event editor controls.
+**Status**: implemented with event-level opt-in; tracker [camera#231](https://github.com/moldovancsaba/camera/issues/231), board [#24](https://github.com/users/moldovancsaba/projects/24).
+**Scope**: an optional generated frame for an event that explicitly enables it and has no active complete frame of its own. It is built from the partner logo, the home and visitor teams and the messmass reporting theme, with a random message from a list the event editor controls.
+
+**Current default:** off. Events created in Camera or provisioned from Messmass/SaveTheWorld store `generatedFrameEnabled: false`. Existing records with this field absent are also off. The event Frames page presents one **Generate default frame** action; its endpoint takes/refreshes the snapshot, draws the variants, and sets the flag only after successful generation. Provisioning does not create frame snapshots or images. The global backfill/rollout never opts events in and skips records without the explicit flag.
 
 ## What the owner asked for
 
-Every event gets a default frame that can be overwritten or modified in camera admin. The frame is a 1920x1080 landscape frame on every device and in both orientations (decision 9). Layers, bottom to top:
+An event can opt in to a default frame that can be overwritten or modified in camera admin. The frame is a 1920x1080 landscape frame on every device and in both orientations (decision 9). Layers, bottom to top:
 
 1. the camera image
 2. the partner logo, top right
@@ -47,12 +49,12 @@ Rules the owner set:
 | 3 | Live view territory | Each layer's own box at 50% black, through the reframe step; the real composition from the preview step on |
 | 4 | Colours | The event's effective style; `headingColor`, `heroBackground`, line in `headingColor` |
 | 5 | Fonts | Load the style's font and fall back to Inter when it is unavailable |
-| 6 | Freshness | A snapshot taken at provisioning, with a "Refresh from messmass" action |
+| 6 | Freshness | A snapshot taken on the event Frames page when a manager generates or refreshes the optional frame |
 | 7 | Logo | The home partner's logo only, in the 288x162 box |
 | 8 | Teams text | Box x 192 to 576, top 108; font size scaled so the first line is 384 px wide |
 | 9 | Portrait | None. Every device, in both orientations, uses the landscape frame |
-| 10 | Scope | All events, backward as well |
-| 11 | Try-on | The generated frame applies wherever the event has no camera frame of its own, for every event |
+| 10 | Scope | Historical rollout intent covered all events; current backfill only refreshes events that explicitly opted in. |
+| 11 | Try-on | Historical decision: generated frames were intended for events without a camera frame. Current behavior also requires explicit event opt-in (`generatedFrameEnabled === true`). |
 | 12 | Logo background | Live view: a 50% black box where the logo will be, no logo image. Final render: the logo drawn with its own transparency (alpha channel) if it has one; if it has none, drawn exactly as it is. No box or fill behind it and nothing cut from the logo, ever (decided 2026-10-06) |
 | 13 | Teams font rule | The longer of the two lines is fitted to 384 px |
 | 14 | Teams text limits (owner correction 2026-10-06, numbers confirmed) | Left aligned; box at most 25% of the frame height; font between 3% and 10% of the height; text that still does not fit at the smallest size is cut at its end with an ellipsis (an event name loses its last part) |
@@ -65,7 +67,7 @@ Rules the owner set:
 - `{partner1}` means the first side shown on the frame and `{partner2}` the second (decision 16): the home team and the visitor, or the two sides of a pairing in the event name (the list said `{partner1Id}`, which would print a database id). A message whose token cannot be filled is skipped; if every message is skipped there is no message layer.
 - A new random pick on every shutter press, never the same message twice in a row; the pick is stored with the submission.
 - At most 10 messages per event. The list lives on the event first; a partner-level default is a later step.
-- "No camera frame of its own" means: the event has no active frame assigned. Events with frames keep them and are not touched by the backfill.
+- "No camera frame of its own" means: the event has no active complete frame assigned. The generated frame is still opt-in; the global maintenance tool never enables an event.
 - Text alignment: teams text left, message centred, logo right.
 - The teams font size is kept between 3% (32.4 px) and 10% (108 px) of the frame height, so a very short name does not become huge and a long one does not become unreadable; when the visitor line is longer than the home line the size is reduced until the longer line fits 384 px.
 - An event name that is not a pairing, used as the teams text, wraps inside the 384 px box at the largest size (at most 10% of the height) that keeps its longest word inside the box and the block inside 25% of the height, smaller down to 3%; if it still does not fit, the last part is cut and the last line ends with an ellipsis.
@@ -97,9 +99,9 @@ messmass  --GET frame-context (secret)-->  camera sync  -->  event.frameDesign.c
 - **Why server rendering**: fonts are fetched server to server (messmass `/fonts/*` is public static, no CORS change, no camera CSP change), the emoji font is bundled once, and the try-on composer (`sharp`, no text engine) can reuse the PNG.
 - **Why one PNG per message**: the message changes per photo, so one image per event is not enough. A message costs one render and one stored PNG, hence the cap of 10.
 - **Territories** are drawn in the browser from the layer boxes stored with the variant (text boxes depend on font metrics, which the browser does not have).
-- **Picker**: an event that has no frames of its own and a generated design skips the frame picker (like an event with a single frame today) and goes straight to the camera. Variants are not shown as separate frames.
-- **Capture flow (camera#236)**: the public `GET /api/events/[eventId]` returns `generatedFrame` (variants with image URL, message and layer boxes; null while the event has an active frame of its own or no image exists) and no longer returns the stored `frameDesign`, which is admin data. The page picks a variant at every shutter press (`pickVariant`, never the one before while another exists), shows the layer boxes as 50% black territories over the live view's frame guide and over the reframe stage (`components/capture/FrameTerritories.tsx`; the logo is a box, never the image; no logo means no box), and draws the real composition from the preview step on, so the saved and shared image is that composite. Try again picks again. The pick is per page load: a reload may repeat the last message once.
-- **Data** (built in F4): `Event.frameDesign = { context, messages, messagesOverridden, updatedAt }`, where `context` carries `source` (`messmass` or `camera`), the snapshot and its `inputHash`; whether the generated frame applies is derived (the event has no active frame), not stored. F5 adds `variants: [{ message, imageUrl, width, height, layers, inputHash }]`. A submission records `frameVariant: { index, message, imageUrl }` (checked on the server: the image must be one of this project's `frames/generated/` PNGs) and keeps `frameId: null`; the stored variant URL is what try-on later composes with. (The first draft of this plan had a synthetic `frameId`; the submission route looks every `frameId` up in `frames` and answers 404 for an unknown one, so a generated frame is recorded in its own field instead, camera#236.)
+- **Picker**: an event with no complete own frame skips the frame picker for the generated layout only when `generatedFrameEnabled` is true and usable generated images exist. Variants are not shown as separate frames.
+- **Capture flow (camera#236)**: the public `GET /api/events/[eventId]` returns `generatedFrame` only when the event explicitly enabled it, it has no active complete frame of its own, and at least one usable image exists; otherwise it returns null. It no longer returns stored `frameDesign`, which is admin data. The page picks a variant at every shutter press (`pickVariant`, never the one before while another exists), shows the layer boxes as 50% black territories over the live view's frame guide and over the reframe stage (`components/capture/FrameTerritories.tsx`; the logo is a box, never the image; no logo means no box), and draws the real composition from the preview step on, so the saved and shared image is that composite. Try again picks again. The pick is per page load: a reload may repeat the last message once.
+- **Data** (built in F4): `Event.frameDesign = { context, messages, messagesOverridden, updatedAt }`, where `context` carries `source` (`messmass` or `camera`), the snapshot and its `inputHash`; `Event.generatedFrameEnabled` is the explicit opt-in and is false for new events. F5 adds `variants: [{ message, imageUrl, width, height, layers, inputHash }]`. A submission records `frameVariant: { index, message, imageUrl }` only when the event is opted in (checked on the server: the image must be one of this project's `frames/generated/` PNGs) and keeps `frameId: null`; otherwise no generated variant is applied or recorded. (The first draft of this plan had a synthetic `frameId`; the submission route looks every `frameId` up in `frames` and answers 404 for an unknown one, so a generated frame is recorded in its own field instead, camera#236.)
 - **Camera-native events** (no messmass link): context falls back to the camera partner's name and logo, no teams, and the system default style, so the event name becomes the teams text.
 
 ### messmass endpoint (new, in the messmass repo)
@@ -200,8 +202,7 @@ What the real data shows, for decisions in later packages:
 The generated frame draws each message on its own layout. A message can instead **choose a frame of the event's library** that carries messages (a text-free frame with a message area,
 docs/LIBRARIES.md): the message is then written on that frame, in the event's font, in the same box, colour and territories the frame says, and the generated layout is not used for
 that message. For each message the order is **the frame it chose, else the event's older base picture (docs/FRAME_BASE.md), else the generated layout**. A message with no frame keeps the
-image key it had, so no event is redrawn by this. A frame that carries messages is not a frame the user picks; an event whose only active frames carry messages has no frame of its own, so
-the generated frames apply, in the capture page, the rollout and the backfill alike.
+image key it had, so no event is redrawn by this. A frame that carries messages is not a complete frame the user picks; an event whose only active frames carry messages has no complete frame of its own. The generated default is still applied only after explicit event opt-in; capture, rollout and backfill all enforce this flag.
 
 ## The user can choose the message (issue 329, 2026-10-09)
 

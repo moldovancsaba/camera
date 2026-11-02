@@ -90,8 +90,7 @@ is the same as before (checked on the real data: 14 of 14 events).
 - **Drawing** (`lib/frame/variants.ts`): for each message: the chosen frame (written with the event's font, `renderBaseFrame`), else the older base picture, else the generated
   layout. The image key covers the frame's picture and message area, so only the messages of a changed frame are drawn again; a message with no frame keeps the key it had.
   A chosen frame that is no longer usable falls back quietly (the panel says so); a picture that cannot be fetched fails the run and leaves the images as they were.
-- **Users:** an event whose only active frames carry messages has **no frame of its own**, so the generated frames apply (`captureFrameOf`, the capture page, the rollout in
-  `lib/frame/backfill.ts`); the event data tells the capture page which assigned frames carry messages (`hasMessageArea`).
+- **Users:** an event whose only active frames carry messages has **no complete frame of its own**. Its generated default applies only if the event manager explicitly enabled it; otherwise the capture flow has no generated default frame. The event data tells the capture page which assigned frames carry messages (`hasMessageArea`).
 
 ## Logos (LIB-4, camera#367)
 

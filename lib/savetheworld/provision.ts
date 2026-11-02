@@ -106,6 +106,8 @@ export async function provisionEvent(input: { savetheworldEventId: string; partn
     slots: {},
     // Photo vetting (camera#263): the default of the rollout.
     photoVetting: defaultPhotoVetting(),
+    // Generated default frames are event-level opt-in; provisioning never renders one.
+    generatedFrameEnabled: false,
     savetheworldEventId: input.savetheworldEventId,
     source: 'savetheworld',
     createdAt: now,

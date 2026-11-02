@@ -23,30 +23,30 @@ const CARRIERS = [
 ];
 
 test('the layouts of the MTK event are its two designs (situation C); a message on both designs counts for both', () => {
-  const layouts = layoutOptionsOf({ ownFrames: [], carriers: CARRIERS, design: MTK_DESIGN });
+  const layouts = layoutOptionsOf({ ownFrames: [], carriers: CARRIERS, design: MTK_DESIGN, generatedEnabled: true });
   assert.deepEqual(layouts, CARRIERS);
   assert.equal(situationOf(layouts), 'C');
-  const mixed = layoutOptionsOf({ ownFrames: [], carriers: CARRIERS, design: { messages: ['A', 'B'], messageFrames: { A: ['blue', 'pink'] } } });
+  const mixed = layoutOptionsOf({ ownFrames: [], carriers: CARRIERS, design: { messages: ['A', 'B'], messageFrames: { A: ['blue', 'pink'] } }, generatedEnabled: true });
   assert.deepEqual(mixed.map((layout) => layout.id), ['blue', 'pink', GENERATED_LAYOUT], 'B is on no design, so it is on the generated layout');
 });
 
 test('a message that is not written on a design is on the generated layout; with no design at all the generated layout is the only one (situation A)', () => {
-  const some = layoutOptionsOf({ ownFrames: [], carriers: CARRIERS, design: { messages: ['A', 'B'], messageFrames: { A: 'blue' } } });
+  const some = layoutOptionsOf({ ownFrames: [], carriers: CARRIERS, design: { messages: ['A', 'B'], messageFrames: { A: 'blue' } }, generatedEnabled: true });
   assert.deepEqual(some.map((layout) => layout.id), ['blue', GENERATED_LAYOUT]);
-  const none = layoutOptionsOf({ ownFrames: [], carriers: [], design: null });
+  const none = layoutOptionsOf({ ownFrames: [], carriers: [], design: null, generatedEnabled: true });
   assert.deepEqual(none.map((layout) => layout.id), [GENERATED_LAYOUT]);
   assert.equal(situationOf(none), 'A');
-  assert.equal(layoutOptionsOf({ ownFrames: [], carriers: CARRIERS, design: { messages: [] } }).at(-1)?.id, GENERATED_LAYOUT, 'no message: the one image is the generated layout');
+  assert.equal(layoutOptionsOf({ ownFrames: [], carriers: CARRIERS, design: { messages: [] }, generatedEnabled: true }).at(-1)?.id, GENERATED_LAYOUT, 'no message: the one image is the generated layout');
 });
 
 test('a design that is switched off or gone does not count, and the message on it falls back to the generated layout', () => {
-  const layouts = layoutOptionsOf({ ownFrames: [], carriers: [CARRIERS[0]], design: MTK_DESIGN });
+  const layouts = layoutOptionsOf({ ownFrames: [], carriers: [CARRIERS[0]], design: MTK_DESIGN, generatedEnabled: true });
   assert.deepEqual(layouts.map((layout) => layout.id), ['blue', GENERATED_LAYOUT]);
 });
 
 test('the event’s own complete frames are its layouts and the generated frame is not used (situation B for one, C for more)', () => {
   const own = [{ id: 'f1', name: 'Home' }];
-  assert.deepEqual(layoutOptionsOf({ ownFrames: own, carriers: CARRIERS, design: MTK_DESIGN }), own);
+  assert.deepEqual(layoutOptionsOf({ ownFrames: own, carriers: CARRIERS, design: MTK_DESIGN, generatedEnabled: false }), own);
   assert.equal(situationOf(own), 'B');
   assert.equal(situationOf([...own, { id: 'f2', name: 'Away' }]), 'C');
 });
@@ -116,7 +116,7 @@ const row = (frameId: string, isActive = true) => ({ frameId, isActive, addedAt:
 
 test('the options are read from the event and the library: the two MTK designs and four messages are situation C', async () => {
   const { db } = fakeDb({ frames: [frame('blue', { messageArea: area }), frame('pink', { messageArea: area })] });
-  const event = { frames: [row('blue'), row('pink')], frameDesign: MTK_DESIGN };
+  const event = { frames: [row('blue'), row('pink')], generatedFrameEnabled: true, frameDesign: MTK_DESIGN };
   const context = await loadSelectionContext(db, event);
   assert.deepEqual(context.layouts.map((layout) => layout.id), ['blue', 'pink']);
   assert.equal(context.messages.length, 4);
@@ -129,11 +129,19 @@ test('the options are read from the event and the library: the two MTK designs a
 
 test('an event with complete frames of its own offers them as layouts, and today users choose between them', async () => {
   const { db } = fakeDb({ frames: [frame('home'), frame('away'), frame('off', { isActive: false }), frame('blue', { messageArea: area })] });
-  const event = { frames: [row('home'), row('away'), row('off'), row('blue'), row('home', false)], frameDesign: MTK_DESIGN };
+  const event = { frames: [row('home'), row('away'), row('off'), row('blue'), row('home', false)], generatedFrameEnabled: true, frameDesign: MTK_DESIGN };
   const context = await loadSelectionContext(db, event);
   assert.deepEqual(context.layouts.map((layout) => layout.id), ['home', 'away']);
   assert.equal(context.messages.length, 0, 'a complete frame carries no message');
   assert.equal(context.today.layout.mode, 'user');
+});
+
+test('an event without explicit opt-in does not offer generated layouts or messages from saved variants', async () => {
+  const { db } = fakeDb({ frames: [frame('blue', { messageArea: area })] });
+  const context = await loadSelectionContext(db, { frames: [row('blue')], frameDesign: MTK_DESIGN });
+  assert.deepEqual(context.layouts, []);
+  assert.deepEqual(context.messages, []);
+  assert.equal(context.situation, 'A');
 });
 
 test('the previews are the images already drawn: a design with its first message, a message on its first design, a complete frame as it is (segment S4)', () => {

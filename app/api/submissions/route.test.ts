@@ -282,12 +282,27 @@ test('the generated frame variant a photo used is stored with the submission', a
   const restore = withStoreToken();
   const quiet = silence();
   try {
-    const h = mockDeps(t, goodHead);
+    const h = mockDeps(t, goodHead, { event: { generatedFrameEnabled: true } });
     const { POST } = await importRouteModule('variant');
     const response = await POST(submissionRequest({ frameVariant: { index: 2, message: 'Together for Victory!', imageUrl: GENERATED } }));
     assert.equal(response.status, 201);
     assert.deepEqual(h.inserted[0].frameVariant, { index: 2, message: 'Together for Victory!', imageUrl: GENERATED });
     assert.equal(h.inserted[0].frameId, null, 'a generated frame is not a stored frame');
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('a generated frame claim is dropped while the event default is off', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead, { event: { generatedFrameEnabled: false } });
+    const { POST } = await importRouteModule('variant-disabled');
+    const response = await POST(submissionRequest({ frameVariant: { index: 2, message: 'Together for Victory!', imageUrl: GENERATED } }));
+    assert.equal(response.status, 201);
+    assert.equal('frameVariant' in h.inserted[0], false);
   } finally {
     quiet();
     restore();

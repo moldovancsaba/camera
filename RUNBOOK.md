@@ -235,18 +235,19 @@ code), so the wording below is for the owner to paste where it fits; nothing her
 
 ## Generated default frame (camera#231)
 
-An event without a frame of its own gets a generated frame (plan: `docs/DEFAULT_FRAME_PLAN.md`). This section covers
+Generated default frames are optional and off by default (plan: `docs/DEFAULT_FRAME_PLAN.md`). An event uses one only after a manager generates it from Event → Frames and only while no active complete event frame supersedes it. This section covers
 what is built so far, the data (`events.frameDesign`, camera#234); the renderer, the capture flow, the editor
 panel and the backfill follow (camera#235 to #238).
 
-- **Snapshot:** taken from messmass `GET /api/integrations/camera/events/[id]/frame-context` when messmass provisions
-  the event, and when an admin calls `POST /api/admin/events/[id]/frame-design/refresh` (the editor panel gets a
-  button, camera#237). There is no automatic follow of messmass changes.
+- **Snapshot:** taken from messmass `GET /api/integrations/camera/events/[id]/frame-context` only when a manager clicks
+  **Generate default frame** on `/admin/events/[id]/frames` (which calls
+  `POST /api/admin/events/[id]/frame-design/refresh`). Provisioning from Camera, Messmass or SaveTheWorld does not
+  snapshot or draw a generated frame. There is no automatic follow of messmass changes.
 - **Failure behaviour:** a slow, failing or unconfigured messmass never blocks provisioning. A refresh that gets no
   usable answer keeps the previous snapshot and answers `messmassUnavailable: true`; an event with no snapshot yet
   gets the fallback built from camera's own name and partner logo, no teams, and the system theme (Inter, light
-  colours), `source: camera`. A later refresh replaces the fallback with the messmass data. Look for
-  `frame design snapshot failed for a provisioned event` in the logs.
+  colours), `source: camera`. A later refresh replaces the fallback with the messmass data. A refresh/generation
+  failure leaves `generatedFrameEnabled` off, so partial data cannot activate a frame.
 - **`changed`:** a refresh reports `changed: true` only when something drawn differs (names, partner logo, font,
   colours); fetching the same data again is not a change.
 - **Messages:** `GET` and `PUT /api/admin/events/[id]/frame-design`. At most 10, 80 characters each, placeholders
@@ -257,8 +258,8 @@ panel and the backfill follow (camera#235 to #238).
 - **Images (camera#235):** one transparent 1920x1080 PNG per usable message, drawn on the server
   (`lib/frame/render.ts`, `@napi-rs/canvas`) and stored in Vercel Blob under `frames/generated/<eventId>/<key>.png`;
   `frameDesign.variants[]` keeps each image's URL, message, layer boxes (for the live-view territories), font and logo
-  state. They are generated after a refresh, after the message list is saved (a `502` means the snapshot or the list
-  is saved but the images are not: repeat the request, it is safe), and after provisioning (after the response).
+  state. They are generated after the explicit Generate default frame action and after the message list is saved
+  (a `502` means the snapshot or the list is saved but the images are not: repeat the request, it is safe).
   A message whose `{partner1}` / `{partner2}` cannot be filled is skipped; with no usable message there is one image
   without a message layer.
 - **Reuse:** an image is redrawn only when something that decides it changed (what is drawn, the message, the font
@@ -267,12 +268,12 @@ panel and the backfill follow (camera#235 to #238).
 - **The event emoji as the logo (camera#274):** a partner with no logo gets the first emoji of the event title in the logo spot (see the
   plan, decision 17). Images drawn with an older drawing code are drawn again by "Redraw the older images" on `/admin/frames/generated`
   (dry run first; it only touches images, never the snapshot).
-- **Rolling the frame out to existing events (camera#238):** `/admin/frames/generated` (Blocks, "Generated Frames",
-  global admin only), API `POST /api/admin/frame-backfill`. It covers every event with no active frame of its own and no
-  generated images; events with an own active frame are never touched, events with images are skipped, so it can be
-  repeated and continued. Order:
-  1. **First check on Vercel** (above), on one event, from the Frames page of that event.
-  2. **Dry run**, with the messmass check on. It writes and draws nothing; the messmass check asks messmass once per linked
+- **Maintenance of explicitly enabled events (camera#238):** `/admin/frames/generated` (Settings → Service,
+  global admin only), API `POST /api/admin/frame-backfill`. The tool never enables events. It skips every event without
+  `generatedFrameEnabled: true`, including legacy records, and only checks enabled events that have no active frame of
+  their own. It can be repeated and continued. Order:
+  1. On one event, open Event → Frames and click **Generate default frame**. Confirm the variants and capture behavior.
+  2. **Dry run**, with the messmass check on. It writes and draws nothing; it reports opted-out events separately. The messmass check asks messmass once per linked
      event (read-only, up to 40 s). Read the counts: events with an own frame, with images, to do (linked, native,
      inactive, with a snapshot but no images), native events without a partner logo, and from messmass how many will
      have a logo, real teams, a pairing in the name or the event name only, which theme they get and how many use a
@@ -287,21 +288,21 @@ panel and the backfill follow (camera#235 to #238).
      no logo) on a phone: territories in the live view, a different message on each shutter press, the real composition on
      the preview; save and open the share page; Logs to watch: `Frame backfill: event <id> failed`, `frame images could not be generated`,
      `submissions.frame_variant_dropped`.
-  5. **Rollback**: per event, assign or activate a frame of its own (the generated one stops applying at once). For all
+  5. **Rollback**: per event, assign or activate a complete frame of its own (the generated one stops applying at once). The ordinary event Frames page currently has no disable action after generation; do not unset the flag directly in production without a reviewed operational change. For all
      events, revert the capture change (camera#246) or, with the owner's approval, remove the images from the events
      (`frameDesign.variants`); the stored images stay in Blob and a later run draws them again (identical inputs reuse
      the same files).
   Timing: about 3 events per request; 219 events are about 75 requests.
-- **Editing (camera#237):** the panel at the top of `/admin/events/[id]/frames` shows the images, the snapshot and the
-  message list, and has Save messages, Reset to the default list and Refresh from messmass (the first real way to take
-  a snapshot and draw the images of one event; use it for the "First check on Vercel" above). A save or refresh takes
+- **Editing (camera#237):** while generatedFrameEnabled is off, `/admin/events/[id]/frames` shows only the
+  **Generate default frame** action for this feature. After a successful action, the panel shows the images, snapshot
+  and message list, with Save messages, Reset to the default list and Refresh from messmass. A save or refresh takes
   a few seconds because the images are drawn then; a red notice with "Try again" means the data is saved but the images
   are not, and repeating is safe. "Messages saved" with `N images: X drawn, Y reused` is the normal answer.
-- **Capture (camera#236):** while an event has no active frame of its own and `frameDesign.variants` has images, the
+- **Capture (camera#236):** only while `generatedFrameEnabled: true`, the event has no active complete frame of its own,
+  and `frameDesign.variants` has images, the
   guest page skips the frame picker, shows the layer boxes as 50% black territories in the live view and the reframe
   step, picks a variant at every shutter press and composes it on the preview step. The submission stores
-  `frameVariant { index, message, imageUrl }` and `frameId: null`. To switch an event off, assign it an active frame of
-  its own (the generated frame is derived, so this takes effect at once) and to switch it back, deactivate that frame.
+  `frameVariant { index, message, imageUrl }` and `frameId: null`. An active complete event frame takes precedence while it is active; deactivating that frame makes the opted-in generated default apply again. This precedence does not turn the generated-frame opt-in off.
   A `submissions.frame_variant_dropped` warning means a client sent an image that is not one of ours; the photo was saved
   without the record. The public event response carries `generatedFrame`, not `frameDesign`.
 - **Event names that are a pairing:** when there is no home and visitor team, a name like "A - B", "A x B" or "A vs B"

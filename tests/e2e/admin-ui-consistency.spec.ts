@@ -176,6 +176,91 @@ test('admin route inventory renders without crashes and keeps controls bounded a
   }
 });
 
+test('event generated default frame stays off until explicitly generated, at desktop and mobile widths', async ({ page, request }) => {
+  const bootstrapResponse = await request.post('/api/e2e/bootstrap');
+  expect(bootstrapResponse.ok()).toBeTruthy();
+  const fixtures = await bootstrapResponse.json() as BootstrapPayload;
+  const runId = fixtures.e2eRunId?.trim();
+  const eventId = fixtures.eventMongoId?.trim();
+  expect(runId).toBeTruthy();
+  expect(eventId).toBeTruthy();
+
+  const frameColor = (red: number, green: number, blue: number) =>
+    `#${[red, green, blue, 255].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+  const context = {
+    source: 'camera',
+    fetchedAt: '2026-11-02T12:00:00.000Z',
+    inputHash: 'e2e-frame-hash',
+    event: { name: 'E2E Frame Event', date: null, homeTeam: null, visitorTeam: null },
+    partner: null,
+    template: null,
+    style: {
+      name: 'Default', resolvedFrom: 'system-default', fontFamily: 'Inter', fontSource: 'system', fontFile: null,
+      headingColor: frameColor(31, 41, 55), heroBackground: frameColor(248, 250, 252),
+    },
+  };
+  await page.route(`**/api/admin/events/${eventId}/frame-design/refresh`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        data: {
+          frameDesign: {
+            context,
+            messages: ['E2E frame'],
+            messagesOverridden: false,
+            updatedAt: context.fetchedAt,
+            variants: [{
+              index: 0,
+              message: 'E2E frame',
+              imageUrl: `http://localhost:${process.env.PLAYWRIGHT_PORT || '3100'}/e2e-frame.png`,
+              width: 1920,
+              height: 1080,
+              layers: [],
+              key: 'e2e-frame-key',
+              font: { family: 'Inter', used: 'bundled', note: null, retry: false },
+              logo: 'none',
+            }],
+          },
+          generatedFrameEnabled: true,
+          changed: true,
+          messmassUnavailable: false,
+          variants: { total: 1, generated: 1, reused: 0 },
+        },
+      }),
+    });
+  });
+  await page.route('**/e2e-frame.png', (route) => route.fulfill({
+    status: 200,
+    contentType: 'image/png',
+    body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p7sAAAAASUVORK5CYII=', 'base64'),
+  }));
+
+  try {
+    await loginAsGlobalAdmin(page);
+    await page.keyboard.press('Escape');
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`/admin/events/${eventId}/frames`);
+      await expect(page.getByRole('heading', { name: 'Generated default frame' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Generate default frame' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Refresh from messmass' })).toHaveCount(0);
+      await assertNoVisibleAdminControlsWithoutBorders(page, `/admin/events/${eventId}/frames (generated frame off, ${width}px)`);
+      expect(await page.evaluate(() => document.body.scrollWidth), `event frames page overflow at ${width}px`).toBeLessThanOrEqual(width);
+    }
+
+    await page.getByRole('button', { name: 'Generate default frame' }).click();
+    await expect(page.getByRole('button', { name: 'Refresh from messmass' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Generate default frame' })).toHaveCount(0);
+  } finally {
+    if (runId) {
+      const cleanup = await request.post('/api/e2e/cleanup', { data: { e2eRunId: runId } });
+      expect(cleanup.ok(), 'E2E fixture cleanup').toBeTruthy();
+    }
+  }
+});
+
 test('account preferences expose a translated loading and retryable error state', async ({ page }) => {
   let releasePreferencesResponse: (() => void) | undefined;
   const preferencesResponseReleased = new Promise<void>((resolveResponse) => {

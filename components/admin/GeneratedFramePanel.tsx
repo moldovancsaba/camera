@@ -3,8 +3,8 @@
 /**
  * The generated default frame of one event, in the event editor (camera#237, plan docs/DEFAULT_FRAME_PLAN.md):
  * the images that exist, the messmass snapshot they are built from, the editable message list, and the actions
- * Save, Reset to the default list and Refresh from messmass. The generated frame applies only while the event has no
- * active frame of its own; assigning one (on the same page) replaces it at once.
+ * Save, Reset to the default list and Refresh from messmass. An event must explicitly generate this optional frame;
+ * after that it applies only while the event has no active frame of its own. Assigning one replaces it at once.
  *
  * Talks to GET/PUT /api/admin/events/[id]/frame-design and POST .../refresh. Saving and refreshing also generate the
  * images, which takes a few seconds, so the actions show that they are busy.
@@ -39,6 +39,7 @@ interface CarrierFrame {
 
 interface Loaded {
   frameDesign: FrameDesign | null;
+  generatedFrameEnabled: boolean;
   defaultMessages: string[];
   limits: Limits;
   availableFrames?: CarrierFrame[];
@@ -178,12 +179,14 @@ function MessageDesignTable({
 export default function GeneratedFramePanel({
   eventId,
   hasOwnActiveFrame,
+  onEnabledChanged,
   onLibraryChanged,
   onDesignChanged,
   initialNotice = null,
 }: {
   eventId: string;
   hasOwnActiveFrame: boolean;
+  onEnabledChanged?: (enabled: boolean) => void;
   /** Called after the panel changed the frames of the event (the base picture moved into the library, or removed) with the notice it shows; the page reloads its lists. */
   onLibraryChanged?: (notice: Notice) => void | Promise<void>;
   /** Called after the messages or their frames were saved, reset or refreshed, so the selection setting below (which lists them) reads them again. */
@@ -203,18 +206,19 @@ export default function GeneratedFramePanel({
 
   const endpoint = `/api/admin/events/${eventId}/frame-design`;
 
-  const adopt = useCallback((frameDesign: FrameDesign | null, from?: Loaded) => {
+  const adopt = useCallback((frameDesign: FrameDesign | null, from?: Loaded, generatedFrameEnabled?: boolean) => {
     setLoaded((current) => {
       const base = from ?? current;
-      return base ? { ...base, frameDesign } : base;
+      return base ? { ...base, frameDesign, ...(generatedFrameEnabled === undefined ? {} : { generatedFrameEnabled }) } : base;
     });
+    if (generatedFrameEnabled !== undefined) onEnabledChanged?.(generatedFrameEnabled);
     if (frameDesign) {
       setDraft(frameDesign.messages);
       setDraftFrames(framesOf(frameDesign, frameDesign.messages));
       setDraftDarkArea(frameDesign.darkArea ?? 'frame');
     }
     onDesignChanged?.();
-  }, [onDesignChanged]);
+  }, [onDesignChanged, onEnabledChanged]);
 
   /** Reads the design again (after the frames of the event changed under the panel). */
   const reloadDesign = async () => {
@@ -325,12 +329,12 @@ export default function GeneratedFramePanel({
   const refresh = () =>
     run('refresh', async () => {
       const before = design?.context ?? null;
-      const result = await call<{ frameDesign: FrameDesign; changed: boolean; messmassUnavailable: boolean; variants: ImageCounts }>(
+      const result = await call<{ frameDesign: FrameDesign; generatedFrameEnabled: boolean; changed: boolean; messmassUnavailable: boolean; variants: ImageCounts }>(
         `${endpoint}/refresh`,
         { method: 'POST' },
         'Could not refresh from messmass'
       );
-      adopt(result.frameDesign);
+      adopt(result.frameDesign, undefined, result.generatedFrameEnabled);
       const changes = describeSnapshotChanges(before, result.frameDesign.context);
       if (result.messmassUnavailable) {
         return {
@@ -349,6 +353,25 @@ export default function GeneratedFramePanel({
 
   const context = design?.context ?? null;
   const variants = design?.variants ?? [];
+  if (!loaded.generatedFrameEnabled) {
+    return (
+      <section aria-labelledby="generated-frame-title" style={section}>
+        <div style={sectionHead}>
+          <h3 id="generated-frame-title" style={{ margin: 0 }}>Generated default frame</h3>
+          <p style={{ ...muted, margin: '0.5rem 0 0' }}>
+            Off by default. Generate it only if this event should add its logo, teams, theme and message to photos that have no active frame of their own.
+          </p>
+        </div>
+        <div style={sectionBody}>
+          {notice ? <div role="status"><InlineAlert title={notice.title} message={notice.lines.join(' ')} severity={notice.severity} /></div> : null}
+          <Button type="button" loading={busy === 'refresh'} disabled={busy !== null} onClick={() => void refresh()}>
+            Generate default frame
+          </Button>
+          {hasOwnActiveFrame ? <p style={{ ...muted, margin: 0 }}>An active event frame is already in use. Generating this default will keep it as a fallback if that frame is later switched off.</p> : null}
+        </div>
+      </section>
+    );
+  }
   const move = (from: number, to: number) => {
     if (to < 0 || to >= draft.length) return;
     const swap = <T,>(list: T[]): T[] => {

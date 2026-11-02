@@ -39,6 +39,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   await checkRateLimit(request, RATE_LIMITS.ADMIN);
   const { id } = await context!.params!;
   const { db, event } = await loadEvent(id, session);
+  if (event.generatedFrameEnabled !== true) throw apiError('Generate the default frame before editing its slots.', 409);
 
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object') throw apiBadRequest('A JSON body is required');

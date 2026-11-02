@@ -20,11 +20,11 @@ const design = {
 };
 const slots = { text: { 'top-left': { source: 'custom', text: 'Hello' } }, picture: {} };
 
-function setup(t: import('node:test').TestContext, options: { deny?: boolean; imagesFail?: boolean } = {}) {
+function setup(t: import('node:test').TestContext, options: { deny?: boolean; imagesFail?: boolean; enabled?: boolean } = {}) {
   const generated: unknown[] = [];
   const access: Array<{ id: string; role: unknown }> = [];
   const updates: unknown[] = [];
-  const event = { _id: new ObjectId(id), name: 'E', partnerId: 'p', frameDesign: design };
+  const event = { _id: new ObjectId(id), name: 'E', partnerId: 'p', frameDesign: design, generatedFrameEnabled: options.enabled ?? true };
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => session, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({ collection: () => ({ findOne: async () => event, updateOne: async (_f: unknown, u: unknown) => (updates.push(u), { matchedCount: 1 }) }) }) } });
   t.mock.module('@/lib/partners/authorization', {
@@ -85,6 +85,15 @@ test('PUT is refused for a caller without access, and nothing is written', async
   const { updates, generated } = setup(t, { deny: true });
   const { PUT } = await importRoute('denied');
   assert.equal((await PUT(req({ slots }), ctx())).status, 403);
+  assert.equal(updates.length + generated.length, 0);
+});
+
+test('PUT refuses to save or generate slots until the event explicitly enables its generated frame', async (t) => {
+  const { updates, generated } = setup(t, { enabled: false });
+  const { PUT } = await importRoute('disabled');
+  const res = await PUT(req({ slots }), ctx());
+  assert.equal(res.status, 409);
+  assert.match(JSON.stringify(await res.json()), /Generate the default frame/);
   assert.equal(updates.length + generated.length, 0);
 });
 

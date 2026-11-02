@@ -23,7 +23,7 @@ function setup(t: import('node:test').TestContext, options: { event?: Record<str
   const generated: unknown[] = [];
   const access: Array<{ id: string; role: unknown }> = [];
   const updates: unknown[] = [];
-  const event = options.event === undefined ? { _id: new ObjectId(id), name: 'E', partnerId: 'p', frameDesign: design } : options.event;
+  const event = options.event === undefined ? { _id: new ObjectId(id), name: 'E', partnerId: 'p', frameDesign: design, generatedFrameEnabled: true } : options.event;
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => session, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
     exports: {
@@ -65,6 +65,7 @@ test('GET returns the snapshot, the default list and the limits to a viewer', as
   assert.equal(res.status, 200);
   assert.deepEqual(access, [{ id, role: 'viewer' }]);
   assert.equal(body.data.frameDesign.messagesOverridden, false);
+  assert.equal(body.data.generatedFrameEnabled, true);
   assert.deepEqual(body.data.defaultMessages, [...DEFAULT_FRAME_MESSAGES]);
   assert.deepEqual(body.data.limits, { maxMessages: 10, maxLength: 80, maxImages: 40 });
 });
@@ -72,7 +73,9 @@ test('GET returns the snapshot, the default list and the limits to a viewer', as
 test('GET for an event without a snapshot returns null, not an error', async (t) => {
   setup(t, { event: { _id: new ObjectId(id), name: 'E' } });
   const { GET } = await importRoute('get-empty');
-  assert.equal((await (await GET(req('GET'), ctx())).json()).data.frameDesign, null);
+  const body = await (await GET(req('GET'), ctx())).json();
+  assert.equal(body.data.frameDesign, null);
+  assert.equal(body.data.generatedFrameEnabled, false);
 });
 
 test('without access the answer is 403, and an unknown event is 404 only after access is granted', async (t) => {
@@ -119,7 +122,7 @@ test('PUT answers 502 when the images cannot be generated', async (t) => {
 });
 
 test('PUT with { reset: true } restores the default list', async (t) => {
-  setup(t, { event: { _id: new ObjectId(id), name: 'E', frameDesign: { ...design, messages: ['x'], messagesOverridden: true } } });
+  setup(t, { event: { _id: new ObjectId(id), name: 'E', generatedFrameEnabled: true, frameDesign: { ...design, messages: ['x'], messagesOverridden: true } } });
   const { PUT } = await importRoute('put-reset');
   const body = await (await PUT(req('PUT', { reset: true }), ctx())).json();
   assert.deepEqual(body.data.frameDesign.messages, [...DEFAULT_FRAME_MESSAGES]);
@@ -140,4 +143,14 @@ test('PUT without access is 403 and writes nothing', async (t) => {
   const { PUT } = await importRoute('put-denied');
   assert.equal((await PUT(req('PUT', { reset: true }), ctx())).status, 403);
   assert.equal(updates.length, 0);
+});
+
+test('PUT refuses to edit or generate a default frame before the manager opts in', async (t) => {
+  const { updates, generated } = setup(t, { event: { _id: new ObjectId(id), name: 'E', frameDesign: design } });
+  const { PUT } = await importRoute('put-disabled');
+  const response = await PUT(req('PUT', { messages: ['Go!'] }), ctx());
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /Generate the default frame/);
+  assert.deepEqual(updates, []);
+  assert.deepEqual(generated, []);
 });

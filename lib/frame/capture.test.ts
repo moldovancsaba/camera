@@ -27,30 +27,36 @@ function variant(index: number | null, message: string | null, extra: Partial<Fr
 }
 
 const variants = [variant(0, 'Go! Go! Go!'), variant(1, 'We are the Best!'), variant(2, 'Together for Victory!')];
+const captureEnabled = (event: Parameters<typeof captureFrameOf>[0]) => captureFrameOf({ ...event, generatedFrameEnabled: true });
 
 test('the generated frame applies only while the event has no active frame of its own', () => {
-  assert.equal(captureFrameOf({ frames: [], frameDesign: { variants } })?.variants.length, 3);
-  assert.equal(captureFrameOf({ frameDesign: { variants } })?.variants.length, 3);
-  assert.equal(captureFrameOf({ frames: [{ isActive: false }], frameDesign: { variants } })?.variants.length, 3, 'an inactive assignment is no frame');
-  assert.equal(captureFrameOf({ frames: [{ isActive: true }], frameDesign: { variants } }), null);
+  assert.equal(captureEnabled({ frames: [], frameDesign: { variants } })?.variants.length, 3);
+  assert.equal(captureEnabled({ frameDesign: { variants } })?.variants.length, 3);
+  assert.equal(captureEnabled({ frames: [{ isActive: false }], frameDesign: { variants } })?.variants.length, 3, 'an inactive assignment is no frame');
+  assert.equal(captureEnabled({ frames: [{ isActive: true }], frameDesign: { variants } }), null);
+});
+
+test('the generated frame is off unless the event explicitly enabled it', () => {
+  assert.equal(captureFrameOf({ frameDesign: { variants } }), null);
+  assert.equal(captureFrameOf({ generatedFrameEnabled: false, frameDesign: { variants } }), null);
 });
 
 test('no variants, or none with an image, means no generated frame', () => {
-  assert.equal(captureFrameOf({}), null);
-  assert.equal(captureFrameOf({ frameDesign: { variants: [] } }), null);
-  assert.equal(captureFrameOf({ frameDesign: null }), null);
-  assert.equal(captureFrameOf({ frameDesign: { variants: [variant(0, 'x', { imageUrl: '' })] } }), null);
+  assert.equal(captureEnabled({}), null);
+  assert.equal(captureEnabled({ frameDesign: { variants: [] } }), null);
+  assert.equal(captureEnabled({ frameDesign: null }), null);
+  assert.equal(captureEnabled({ frameDesign: { variants: [variant(0, 'x', { imageUrl: '' })] } }), null);
 });
 
 test('the capture view carries only what the page draws with, not the render internals', () => {
-  const frame = captureFrameOf({ frameDesign: { variants } })!;
+  const frame = captureEnabled({ frameDesign: { variants } })!;
   assert.deepEqual(Object.keys(frame.variants[0]).sort(), ['frameId', 'height', 'imageUrl', 'index', 'layers', 'message', 'width']);
   assert.equal(frame.width, 1920);
   assert.equal(frame.height, 1080);
 });
 
 test('a shutter press never gets the variant of the press before when another exists', () => {
-  const frame = captureFrameOf({ frameDesign: { variants } })!;
+  const frame = captureEnabled({ frameDesign: { variants } })!;
   for (const previous of [0, 1, 2]) {
     for (const random of [0, 0.34, 0.67, 0.999]) {
       assert.notEqual(pickVariant(frame, previous, () => random)?.index, previous);
@@ -60,12 +66,12 @@ test('a shutter press never gets the variant of the press before when another ex
 });
 
 test('every variant can come up, and one variant repeats because it has to', () => {
-  const frame = captureFrameOf({ frameDesign: { variants } })!;
+  const frame = captureEnabled({ frameDesign: { variants } })!;
   const seen = new Set<number | null | undefined>();
   for (const random of [0, 0.4, 0.9]) seen.add(pickVariant(frame, null, () => random)?.index);
   assert.deepEqual([...seen].sort(), [0, 1, 2]);
 
-  const single = captureFrameOf({ frameDesign: { variants: [variant(null, null)] } })!;
+  const single = captureEnabled({ frameDesign: { variants: [variant(null, null)] } })!;
   assert.equal(pickVariant(single, null)?.index, null);
   assert.equal(pickVariant(single, null)?.message, null, 'the image without a message layer is still picked');
 });
@@ -107,33 +113,33 @@ test('a claim that is not ours is dropped so the photo still saves without it', 
 test('a text-free frame with a message area carries the messages of the event: it is not a frame of its own, so the generated frame still applies', () => {
   const carrier = { isActive: true, frameDetails: { hasMessageArea: true } };
   const complete = { isActive: true, frameDetails: { hasMessageArea: false } };
-  assert.equal(captureFrameOf({ frames: [carrier], frameDesign: { variants } })?.variants.length, 3);
-  assert.equal(captureFrameOf({ frames: [carrier, complete], frameDesign: { variants } }), null, 'a complete frame next to it is a frame of its own');
-  assert.equal(captureFrameOf({ frames: [{ isActive: true, frameDetails: null }], frameDesign: { variants } }), null, 'an assignment whose frame is unknown counts as before');
-  assert.equal(captureFrameOf({ frames: [{ isActive: false, frameDetails: { hasMessageArea: false } }], frameDesign: { variants } })?.variants.length, 3);
+  assert.equal(captureEnabled({ frames: [carrier], frameDesign: { variants } })?.variants.length, 3);
+  assert.equal(captureEnabled({ frames: [carrier, complete], frameDesign: { variants } }), null, 'a complete frame next to it is a frame of its own');
+  assert.equal(captureEnabled({ frames: [{ isActive: true, frameDetails: null }], frameDesign: { variants } }), null, 'an assignment whose frame is unknown counts as before');
+  assert.equal(captureEnabled({ frames: [{ isActive: false, frameDetails: { hasMessageArea: false } }], frameDesign: { variants } })?.variants.length, 3);
 });
 
 test('the editor’s setting reaches the page with a picked message as its position in the list; without a setting, or with a broken one, there is none', () => {
   const messages = ['Go! Go! Go!', 'We are the Best!', 'Together for Victory!'];
-  const frame = captureFrameOf({
+  const frame = captureEnabled({
     frameDesign: { variants, messages },
     frameSelection: { layout: { mode: 'editor', pick: 'blue' }, message: { mode: 'editor', pick: 'We are the Best!' } },
   })!;
   assert.deepEqual(frame.selection, { layout: { mode: 'editor', pick: 'blue' }, message: { mode: 'editor', pick: 1 } });
-  const gone = captureFrameOf({ frameDesign: { variants, messages }, frameSelection: { layout: { mode: 'user', pick: null }, message: { mode: 'editor', pick: 'Deleted message' } } })!;
+  const gone = captureEnabled({ frameDesign: { variants, messages }, frameSelection: { layout: { mode: 'user', pick: null }, message: { mode: 'editor', pick: 'Deleted message' } } })!;
   assert.deepEqual(gone.selection?.message, { mode: 'editor', pick: null }, 'a pick that left the list is no pick');
-  assert.equal(captureFrameOf({ frameDesign: { variants, messages } })!.selection, null, 'an event that never set it');
-  assert.equal(captureFrameOf({ frameDesign: { variants, messages }, frameSelection: { layout: { mode: 'sometimes' } } })!.selection, null);
+  assert.equal(captureEnabled({ frameDesign: { variants, messages } })!.selection, null, 'an event that never set it');
+  assert.equal(captureEnabled({ frameDesign: { variants, messages }, frameSelection: { layout: { mode: 'sometimes' } } })!.selection, null);
 });
 
 test('the capture variants carry the design they are written on, null for the generated layout', () => {
-  const frame = captureFrameOf({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') }), variant(1, 'B')] } })!;
+  const frame = captureEnabled({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') }), variant(1, 'B')] } })!;
   assert.deepEqual(frame.variants.map((v) => [v.index, v.frameId]), [[0, 'blue'], [0, 'pink'], [1, null]]);
 });
 
 test('a message on several designs has several images with one position: the pick still works, and one message on two designs is still picked', () => {
-  const frame = captureFrameOf({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') }), variant(1, 'B', { frameId: 'blue', imageUrl: url('q') })] } })!;
+  const frame = captureEnabled({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') }), variant(1, 'B', { frameId: 'blue', imageUrl: url('q') })] } })!;
   for (const random of [0, 0.5, 0.99]) assert.equal(pickVariant(frame, 0, () => random)?.index, 1, 'not the message of the last photo while another exists');
-  const only = captureFrameOf({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') })] } })!;
+  const only = captureEnabled({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') })] } })!;
   for (const random of [0, 0.5, 0.99]) assert.ok(pickVariant(only, 0, () => random), 'one message on two designs: an image is still picked');
 });

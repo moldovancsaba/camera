@@ -10,12 +10,13 @@ const IMAGE = 'https://teststoreid.public.blob.vercel-storage.com/frames/generat
 
 const events: Document[] = [
   { _id: 'e1', name: 'Own frame', frames: [{ isActive: true }], messmassEventId: 'm1', partnerId: 'p1' },
-  { _id: 'e2', name: 'Has images', frames: [], messmassEventId: 'm2', partnerId: 'p1', frameDesign: { context: {}, variants: [{ imageUrl: IMAGE }] } },
-  { _id: 'e3', name: 'Casademont Zaragoza - Basket Landes', messmassEventId: 'm3', partnerId: 'p1' },
-  { _id: 'e4', name: 'Inactive own frame', frames: [{ isActive: false }], isActive: false, messmassEventId: 'm4', partnerId: 'p1' },
-  { _id: 'e5', name: 'Native with logo', partnerId: 'p2' },
-  { _id: 'e6', name: 'Native without logo', partnerId: 'p3', frameDesign: { context: { source: 'camera' } } },
-  { _id: 'e7', name: 'Fan Day', messmassEventId: 'm7', partnerId: 'p1' },
+  { _id: 'e2', name: 'Has images', frames: [], messmassEventId: 'm2', partnerId: 'p1', generatedFrameEnabled: true, frameDesign: { context: {}, variants: [{ imageUrl: IMAGE }] } },
+  { _id: 'e3', name: 'Casademont Zaragoza - Basket Landes', messmassEventId: 'm3', partnerId: 'p1', generatedFrameEnabled: true },
+  { _id: 'e4', name: 'Inactive own frame', frames: [{ isActive: false }], isActive: false, messmassEventId: 'm4', partnerId: 'p1', generatedFrameEnabled: true },
+  { _id: 'e5', name: 'Native with logo', partnerId: 'p2', generatedFrameEnabled: true },
+  { _id: 'e6', name: 'Native without logo', partnerId: 'p3', generatedFrameEnabled: true, frameDesign: { context: { source: 'camera' } } },
+  { _id: 'e7', name: 'Fan Day', messmassEventId: 'm7', partnerId: 'p1', generatedFrameEnabled: true },
+  { _id: 'e8', name: 'Generated frame off', partnerId: 'p1' },
 ];
 const partners: Document[] = [{ partnerId: 'p1', logoUrl: 'https://i.ibb.co/x.png' }, { partnerId: 'p2', logoUrl: 'https://i.ibb.co/y.png' }, { partnerId: 'p3', logoUrl: '' }];
 
@@ -60,7 +61,7 @@ function deps(over: Partial<BackfillDeps> = {}): BackfillDeps & { refreshed: str
   };
 }
 
-test('an event with an active frame of its own is never touched, one with images is skipped, the rest is to do', () => {
+test('an event with its own frame or generated frame off is left alone, and only enabled events are rollout candidates', () => {
   assert.deepEqual(classifyEvent(events[0]), { kind: 'own-frame' });
   assert.deepEqual(classifyEvent(events[1]), { kind: 'done', stale: true }, 'images made before the drawing version was kept are stale');
   assert.deepEqual(classifyEvent(events[2]), { kind: 'todo', linked: true, hasSnapshot: false, inactive: false });
@@ -68,16 +69,17 @@ test('an event with an active frame of its own is never touched, one with images
   assert.deepEqual(classifyEvent(events[4]), { kind: 'todo', linked: false, hasSnapshot: false, inactive: false });
   assert.deepEqual(classifyEvent(events[5]), { kind: 'todo', linked: false, hasSnapshot: true, inactive: false });
   assert.deepEqual(classifyEvent({ _id: 'x', frames: [{ isActive: true }], frameDesign: { variants: [{ imageUrl: IMAGE }] } }), { kind: 'own-frame' }, 'an own frame wins');
-  assert.deepEqual(classifyEvent({ _id: 'x', frameDesign: { variants: [{ imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION }] } }), { kind: 'done', stale: false });
-  assert.deepEqual(classifyEvent({ _id: 'x', frameDesign: { variants: [{ imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION }, { imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION - 1 }] } }), { kind: 'done', stale: true }, 'one old image is enough');
-  assert.equal(classifyEvent({ _id: 'x', frameDesign: { context: {}, variants: [{ imageUrl: '' }] } }).kind, 'todo', 'a variant without an image is no image');
+  assert.deepEqual(classifyEvent({ _id: 'x', generatedFrameEnabled: true, frameDesign: { variants: [{ imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION }] } }), { kind: 'done', stale: false });
+  assert.deepEqual(classifyEvent({ _id: 'x', generatedFrameEnabled: true, frameDesign: { variants: [{ imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION }, { imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION - 1 }] } }), { kind: 'done', stale: true }, 'one old image is enough');
+  assert.deepEqual(classifyEvent({ _id: 'x', generatedFrameEnabled: true, frameDesign: { context: {}, variants: [{ imageUrl: '' }] } }), { kind: 'todo', linked: false, hasSnapshot: true, inactive: false }, 'a variant without an image is no image');
+  assert.deepEqual(classifyEvent({ _id: 'x', frameDesign: { variants: [{ imageUrl: IMAGE }] } }), { kind: 'opted-out' }, 'stored frame images do not override the explicit setting');
 });
 
 test('the dry run counts every outcome and writes and draws nothing', async () => {
   const d = deps();
   const report = await dryRun(fakeDb(), {}, d);
   assert.deepEqual(report, {
-    total: 7, ownFrame: 1, done: 1, doneStale: 1, todo: 5, todoLinked: 3, todoNative: 2, todoInactive: 1, todoWithSnapshot: 1, nativeWithoutPartnerLogo: 1, messmassConfigured: true,
+    total: 8, ownFrame: 1, done: 1, optedOut: 1, doneStale: 1, todo: 5, todoLinked: 3, todoNative: 2, todoInactive: 1, todoWithSnapshot: 1, nativeWithoutPartnerLogo: 1, messmassConfigured: true,
   });
   assert.deepEqual([d.refreshed, d.generated], [[], []]);
 });
@@ -196,7 +198,7 @@ test('with nothing to do a batch is done at once', async () => {
 
 test('a redraw run draws again only the events whose images are stale, never takes a snapshot, and reports like any batch', async () => {
   const docs: Document[] = [
-    { _id: 'a', name: 'Old', frameDesign: { context: {}, variants: [{ imageUrl: IMAGE }] } },
+    { _id: 'a', name: 'Old', generatedFrameEnabled: true, frameDesign: { context: {}, variants: [{ imageUrl: IMAGE }] } },
     { _id: 'b', name: 'Current', frameDesign: { context: {}, variants: [{ imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION }] } },
     { _id: 'c', name: 'No images', messmassEventId: 'm' },
     { _id: 'd', name: 'Own frame', frames: [{ isActive: true }], frameDesign: { context: {}, variants: [{ imageUrl: IMAGE }] } },
@@ -214,7 +216,7 @@ test('an event that only has text-free frames that carry messages still gets the
     frames: [{ frameId: 'carrier', messageArea: { messageBox: { x: 1, y: 1, width: 10, height: 10 } } }, { frameId: 'complete' }],
     partners: [{ partnerId: 'p1', logoUrl: 'https://i.ibb.co/x.png' }],
     events: [
-      { _id: 'only-carrier', name: 'A', messmassEventId: 'm1', partnerId: 'p1', frames: [{ frameId: 'carrier', isActive: true }] },
+      { _id: 'only-carrier', name: 'A', messmassEventId: 'm1', partnerId: 'p1', generatedFrameEnabled: true, frames: [{ frameId: 'carrier', isActive: true }] },
       { _id: 'complete-frame', name: 'B', messmassEventId: 'm2', partnerId: 'p1', frames: [{ frameId: 'complete', isActive: true }] },
       { _id: 'both', name: 'C', messmassEventId: 'm3', partnerId: 'p1', frames: [{ frameId: 'carrier', isActive: true }, { frameId: 'complete', isActive: true }] },
     ],

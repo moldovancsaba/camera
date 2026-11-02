@@ -573,9 +573,11 @@ export interface Event {
   welcomeScreen?: { url: string; key: string; generatedAt: string; renderVersion: number };
   slotSnapshots?: Record<string, Array<{ id: string; name: string; imageUrl: string | null; thumbnailUrl: string | null; mimeType: string | null; width: number | null; height: number | null; source?: string; scope: string; takenAt: string }>>;
   
-  // Generated default frame (docs/DEFAULT_FRAME_PLAN.md): the messmass snapshot it is built from and the editable message list.
-  // Applies only while the event has no active frame of its own; see lib/frame/.
+  // Generated default frame (docs/DEFAULT_FRAME_PLAN.md): generated images and design data; served/applied only when generatedFrameEnabled is exactly true.
+  // Optional event-level frame; only an explicit action enables it, then it applies only without an active own frame.
   frameDesign?: FrameDesign;
+  /** An editor explicitly generated and enabled the event's optional default frame. Missing is off. */
+  generatedFrameEnabled?: boolean;
 
   // Statistics
   submissionCount?: number;          // Cached count of submissions for this event
