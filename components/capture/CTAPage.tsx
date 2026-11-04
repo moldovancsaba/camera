@@ -86,6 +86,8 @@ export default function CTAPage({
   const { t, own, language } = useT();
   const texts = useUiTexts();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const title = own('approval.title', config.title);
+  const buttonText = own('flow.next', config.buttonText);
   const hasButton = config.hasButton !== false;
   // No address, no link: without this a page with no address but a photo id would link to "?submissionId=…".
   const urlToVisit = !config.checkboxText
@@ -160,7 +162,7 @@ export default function CTAPage({
                 data-cta-picture-link
                 onClick={handlePictureTap}
                 disabled={isRedirecting}
-                aria-label={visitButtonText || config.title}
+                aria-label={visitButtonText || title}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}
               />
             ) : null}
@@ -169,7 +171,7 @@ export default function CTAPage({
             data-cta-picture-copy
             style={{ gridRow: 2, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', padding: layout.showTexts ? '0.75rem 1rem' : 0, textAlign: 'center', color: `var(--event-heading, ${CAMERA_STAGE_WHITE})`, overflowY: 'auto' }}
           >
-            <h1 style={layout.showTexts ? { margin: 0, maxWidth: '100%', fontSize: 'clamp(1.25rem, 4vw, 3rem)', fontWeight: 800, lineHeight: 1.05, textTransform: 'uppercase' } : VISUALLY_HIDDEN}>{config.title}</h1>
+            <h1 style={layout.showTexts ? { margin: 0, maxWidth: '100%', fontSize: 'clamp(1.25rem, 4vw, 3rem)', fontWeight: 800, lineHeight: 1.05, textTransform: 'uppercase' } : VISUALLY_HIDDEN}>{title}</h1>
             {layout.showTexts && config.description ? <p style={{ margin: 0, maxWidth: '48rem', fontSize: 'clamp(1rem, 2vw, 1.5rem)', fontStyle: 'italic', lineHeight: 1.25 }}>{config.description}</p> : null}
           </div>
           {(layout.showVisitButton || layout.showContinueButton) ? (
@@ -182,8 +184,8 @@ export default function CTAPage({
                 </PillButton>
               ) : null}
               {layout.showContinueButton ? (
-                <PillButton variant={urlToVisit ? 'outline' : 'solid'} onClick={handleContinue} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={config.buttonText} style={pictureActionButtonStyle}>
-                  {config.buttonText}
+                <PillButton variant={urlToVisit ? 'outline' : 'solid'} onClick={handleContinue} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={buttonText} style={pictureActionButtonStyle}>
+                  {buttonText}
                 </PillButton>
               ) : null}
             </div>
@@ -195,7 +197,7 @@ export default function CTAPage({
 
   return (
     <CaptureStageShell
-      title={config.title}
+      title={title}
       description={config.description}
       logoUrl={logoUrl}
     >
@@ -230,9 +232,9 @@ export default function CTAPage({
             onClick={handleContinue}
             color={brandColor}
             size={buttonSize}
-            aria-label={config.buttonText}
+            aria-label={buttonText}
           >
-            {config.buttonText}
+            {buttonText}
           </Button>
         ) : null}
       </Group>

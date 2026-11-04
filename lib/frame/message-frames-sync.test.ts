@@ -58,8 +58,9 @@ test('a message edited in place keeps its frame only when the editor sends the c
 test('resetting the messages clears the frames of the messages too', async () => {
   const { db, data, event } = setup({ messageFrames: { HAJRÁ: 'f-blue' } });
   const design = await saveFrameMessages(db, event, { reset: true }, deps);
-  assert.equal(design.messageFrames, undefined);
-  assert.equal(stored(data).messageFrames, undefined);
+  assert.deepEqual(design.messageFrames, {}, 'the explicit empty map prevents old variants from restoring cleared assignments');
+  assert.deepEqual(stored(data).messageFrames, {});
+  assert.equal(design.messageFramesOverridden, true);
 });
 
 test('a new snapshot keeps the frames of the messages', async () => {

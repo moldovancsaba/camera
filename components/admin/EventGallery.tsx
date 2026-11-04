@@ -71,6 +71,8 @@ interface EventGalleryProps {
   canManage?: boolean;
   /** The event has a frame to put on photos (camera#488). */
   hasFrame?: boolean;
+  /** Assigned message-frame graphics exist, but have no ready compositions yet. */
+  frameSetupNeeded?: boolean;
   /** The exact frames currently available to the event, used by the per-photo frame picker. */
   frameOptions?: GalleryFrameOption[];
   /** Photos of the event that are left out because their picture is gone (never shown as an error, lib/media/broken.ts). */
@@ -142,6 +144,7 @@ export default function EventGallery({
   slideshows,
   canManage = true,
   hasFrame = false,
+  frameSetupNeeded = false,
   frameOptions = [],
   hiddenBroken = 0,
   unframedUploadIds = [],
@@ -454,6 +457,7 @@ export default function EventGallery({
             eventMongoId={eventId}
             onUploaded={handleUploaded}
             frameAvailable={hasFrame}
+            frameSetupNeeded={frameSetupNeeded}
           />
         ) : null}
         {hiddenBroken > 0 ? (
@@ -484,6 +488,7 @@ export default function EventGallery({
           eventMongoId={eventId}
           onUploaded={handleUploaded}
           frameAvailable={hasFrame}
+          frameSetupNeeded={frameSetupNeeded}
         />
       ) : null}
       {hiddenBroken > 0 ? (

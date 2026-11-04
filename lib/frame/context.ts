@@ -97,10 +97,11 @@ export interface FrameDesign {
   base?: FrameBase;
   /**
    * Which library frames each message is written on (camera#366, issue 449): the text of a message, as it stands in `messages`, to the id of a frame of the event that has a
-   * message area, or a list of ids when the message goes on several designs (one image per message and design). A message that is not listed uses the older base picture or the
-   * generated layout, as before.
+   * message area, or a list of ids when the message goes on several designs (one image per message and design). An unassigned message uses the older base picture first, then the generated layout, only when the event has explicitly enabled the optional fallback; otherwise it has no composition.
    */
   messageFrames?: Record<string, string | string[]>;
+  /** True after an editor explicitly saved the mapping, including an intentionally empty mapping; prevents legacy inference from restoring cleared choices. */
+  messageFramesOverridden?: boolean;
   /**
    * Where the dark area of a design that carries messages comes from (owner, answer 194/195, 2026-10-09): `frame` (default, what a missing value means) is the layers its designer put in
    * the frame's message area (header and footer bars); `generated` is the mask of the auto generated default frame (logo, teams, bar and message boxes), whatever the design.

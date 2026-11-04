@@ -4,10 +4,10 @@
  * checked record of the variant a submission used. Which layout and message a user gets under the setting is `choose.ts`. Pure and client-safe (no server imports).
  */
 
-import type { FrameVariant } from './context';
+import type { FrameContext, FrameVariant } from './context';
 import type { LayerId } from './layout';
 import { MAX_FRAME_MESSAGES, pickMessage } from './messages';
-import { storedFrameSelection, type SelectMode } from './selection';
+import { effectiveMessageFrames, framesOfMessage, storedFrameSelection, type SelectMode } from './selection';
 
 /** One generated image of the frame, as the capture page needs it. */
 export interface CaptureVariant {
@@ -92,14 +92,15 @@ export interface RecordedFrameVariant {
 /** One assignment of a frame to an event, as the event data carries it; `frameDetails` is the library item behind it. */
 interface FrameAssignmentRow {
   isActive?: boolean;
-  frameDetails?: { hasMessageArea?: boolean } | null;
+  frameId?: string;
+  frameDetails?: { hasMessageArea?: boolean; isActive?: boolean } | null;
 }
 
 interface EventWithFrames {
   frames?: FrameAssignmentRow[] | null;
-  /** Explicit event-level opt-in. Old records and new events without this flag do not use the generated default frame. */
+  /** Explicit event-level opt-in for the generated fallback layout; assigned message-frame designs are independent. */
   generatedFrameEnabled?: boolean;
-  frameDesign?: { variants?: FrameVariant[] | null; messages?: string[] | null } | null;
+  frameDesign?: { variants?: FrameVariant[] | null; messages?: string[] | null; messageFrames?: Record<string, string | string[]> | null; messageFramesOverridden?: boolean; context?: FrameContext } | null;
   /** How users get the layout and the message (`Event.frameSelection`). */
   frameSelection?: unknown;
 }
@@ -117,18 +118,37 @@ function captureSelectionOf(stored: unknown, messages: readonly string[]): Captu
  * messages of the event (camera#366); it is an ingredient of the generated frame, not a frame of its own.
  */
 export function isOwnActiveFrame(row: FrameAssignmentRow): boolean {
-  return Boolean(row.isActive) && row.frameDetails?.hasMessageArea !== true;
+  return Boolean(row.isActive) && row.frameDetails?.isActive !== false && row.frameDetails?.hasMessageArea !== true;
 }
 
 /**
- * The generated frame of an event, or null: an explicit event-level opt-in and at least one image are required, and
- * it applies only while the event has no active frame of its own. Assigning or removing an own frame switches it at once.
+ * The composed message-frame images of an event, or null. Assigned, active message-carrier designs work independently;
+ * the generated default layout is included only after event-level opt-in. A complete event frame takes precedence.
  */
 export function captureFrameOf(event: EventWithFrames): CaptureFrame | null {
-  if (event.generatedFrameEnabled !== true) return null;
   if (event.frames?.some(isOwnActiveFrame)) return null;
+  const activeCarriers = new Set(
+    (event.frames ?? [])
+      .filter((row) => row.isActive === true && row.frameDetails?.isActive !== false && row.frameDetails?.hasMessageArea === true)
+      .map((row) => row.frameId)
+      .filter((id): id is string => typeof id === 'string' && id !== ''),
+  );
+  const messageFrames = event.frameDesign?.messages
+    ? effectiveMessageFrames({
+        messages: event.frameDesign.messages,
+        messageFrames: event.frameDesign.messageFrames ?? undefined,
+        messageFramesOverridden: event.frameDesign.messageFramesOverridden,
+        variants: event.frameDesign.variants ?? undefined,
+        context: event.frameDesign.context,
+      })
+    : {};
   const variants = (event.frameDesign?.variants ?? [])
     .filter((variant) => variant.imageUrl && variant.width > 0 && variant.height > 0)
+    .filter((variant) => {
+      if (!variant.frameId) return event.generatedFrameEnabled === true;
+      const message = typeof variant.index === 'number' ? event.frameDesign?.messages?.[variant.index] : undefined;
+      return activeCarriers.has(variant.frameId) && typeof message === 'string' && framesOfMessage(messageFrames, message).includes(variant.frameId);
+    })
     .map(({ index, message, imageUrl, width, height, layers, frameId }) => ({ index, message, imageUrl, width, height, layers, frameId: frameId ?? null }));
   if (variants.length === 0) return null;
   return { width: variants[0].width, height: variants[0].height, variants, selection: captureSelectionOf(event.frameSelection, event.frameDesign?.messages ?? []) };

@@ -12,6 +12,7 @@ import LedScreen3D from '@/components/capture/LedScreen3D';
 import PillButton, { safeColour } from '@/components/capture/PillButton';
 import WelcomeCompositionCanvas from '@/components/capture/WelcomeCompositionCanvas';
 import type { WelcomeElement } from '@/lib/events/welcome-composition';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 
 export interface WelcomePageConfig {
   /** Read by screen readers, not shown. */
@@ -52,15 +53,20 @@ export const WELCOME_LAYER_CSS = `
 `;
 
 export default function WelcomePage({ config, onNext }: WelcomePageProps) {
+  const { own } = useT();
+  const title = own('welcome.title', config.title);
+  const buttonText = own('welcome.button', config.buttonText);
+  const screenImageAlt = own('welcome.screenAlt', config.screenImageAlt);
+
   return (
     <FullScreenPage marker={{ 'data-welcome-step': '' }}>
-      <h1 className="sr-only">{config.title}</h1>
+      <h1 className="sr-only">{title}</h1>
       <style>{WELCOME_LAYER_CSS}</style>
 
       {config.welcomeElements !== undefined ? (
         <WelcomeCompositionCanvas
           elements={config.welcomeElements}
-          buttonText={config.buttonText}
+          buttonText={buttonText}
           backgroundImageUrl={config.backgroundImageUrl}
           eventWelcomeScreenUrl={config.eventWelcomeScreenUrl}
           buttonColors={{ fill: config.buttonColor, label: config.buttonTextColor, ring: config.buttonBorderColor }}
@@ -80,7 +86,7 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
         data-welcome-group
         style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 'var(--gds-safe-area-inset-top, 0px)', pointerEvents: 'none' }}
       >
-        {config.screenImageUrl ? <LedScreen3D imageUrl={config.screenImageUrl} alt={config.screenImageAlt || ''} /> : null}
+        {config.screenImageUrl ? <LedScreen3D imageUrl={config.screenImageUrl} alt={screenImageAlt} /> : null}
         <PillButton
           onClick={onNext}
           fill={config.buttonColor}
@@ -88,7 +94,7 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
           ring={config.buttonBorderColor}
           style={{ flex: 'none', pointerEvents: 'auto' }}
         >
-          {config.buttonText}
+          {buttonText}
         </PillButton>
       </div> : null}
     </FullScreenPage>

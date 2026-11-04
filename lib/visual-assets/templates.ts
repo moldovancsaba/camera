@@ -11,6 +11,7 @@ import { resolveAssetVisibility } from './resolve';
  * and event-specific operational state never enter a template. */
 export const TEMPLATE_CONFIG_FIELDS = [
   'customPages',
+  'defaultPageOrders',
   'visualSettings',
   'sharePage',
   'frameSelection',
@@ -185,6 +186,102 @@ export function experienceConfigFromEvent(event: Record<string, unknown>): Exper
   return parsed.ok ? parsed.config : {};
 }
 
+/** A global journey carries the reusable flow, not a source client's artwork,
+ * links, or brand palette. Child partner/event assets and styles are resolved
+ * at their own levels. */
+export function makeGlobalJourneyConfig(input: ExperienceTemplateConfig): ExperienceTemplateConfig {
+  const parsed = parseExperienceTemplateConfig(input);
+  if (!parsed.ok) throw new Error(parsed.reason);
+  const config = structuredClone(parsed.config) as Record<string, unknown>;
+  // The global layer defines the flow. Each partner/event supplies its own
+  // welcome artwork, brand colors, frames and message selections. The accepted
+  // journey hides frame choices but keeps the user's message choice, so that
+  // behavior is part of the flow and must inherit too.
+  for (const field of ['visualSettings', 'sharePage', 'frameSelection', 'frameSelectionTiles', 'welcomeScreenComposition']) {
+    delete config[field];
+  }
+  config.frameMessageSelectionDisplay = 'messages-only';
+
+  const stripClientArtwork = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(stripClientArtwork);
+    if (!isRecord(value)) return value;
+    const clean: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value)) {
+      if (/image|logo|frame|picture|background|thumbnail|asset|url|color/i.test(key)) continue;
+      if (typeof child === 'string' && /^https?:\/\//i.test(child)) continue;
+      clean[key] = stripClientArtwork(child);
+    }
+    return clean;
+  };
+
+  if (Array.isArray(config.customPages)) {
+    const safePages = stripClientArtwork(config.customPages) as unknown[];
+    config.customPages = safePages.flatMap((page) => {
+      if (!isRecord(page) || !isRecord(page.config)) return [];
+      // Consent and identity are generated from each event's own consent,
+      // vetting and language settings; never copy the source client's values.
+      if (page.pageType === 'accept' || page.pageType === 'who-are-you') return [];
+
+      const pageConfig = { ...page.config };
+      for (const key of ['title', 'description', 'buttonText']) {
+        if (key in pageConfig) pageConfig[key] = '';
+      }
+
+      if (page.pageType === 'welcome') {
+        // The artwork is deliberately resolved from the destination event's
+        // own welcome screen at runtime.
+        delete pageConfig.welcomeElements;
+        pageConfig.title = '';
+        pageConfig.buttonText = '';
+        pageConfig.screenImageAlt = '';
+      } else if (page.pageType === 'take-photo') {
+        // Keep behavioral switches, but use translated product copy instead
+        // of text authored for the source event.
+        for (const key of [
+          'captureButtonText', 'retryButtonText', 'shareNextButtonText', 'shareScreenTitle',
+          'shareCopyLinkButtonText', 'shareViewPhotoButtonText', 'shareSuggestedMessageLabel',
+          'shareSocialCaptionTemplate', 'successMessage', 'skipShareMessage', 'cameraPromptTitle',
+          'cameraPromptDescription', 'errorFrameMessage', 'errorSaveMessage', 'linkCopiedMessage',
+          'copyErrorMessage', 'saveFirstMessage', 'pendingTitle', 'pendingSavedMessage',
+          'pendingPreviewNotice', 'pendingWaitingMessage',
+        ]) {
+          if (key in pageConfig) pageConfig[key] = '';
+        }
+      } else if (page.pageType === 'cta') {
+        // CTA URLs and source copy are client-specific. Keep a generic,
+        // translated completion step without the source webshop action.
+        pageConfig.title = '';
+        pageConfig.description = '';
+        pageConfig.buttonText = '';
+        pageConfig.checkboxText = '';
+        pageConfig.visitButtonText = '';
+        pageConfig.redirectingText = '';
+        pageConfig.hasButton = true;
+        pageConfig.hideButtons = false;
+        pageConfig.hideVisitButton = true;
+        pageConfig.pictureLink = false;
+      } else if (page.pageType === 'restart') {
+        pageConfig.title = '';
+        pageConfig.description = '';
+        pageConfig.buttonText = '';
+        pageConfig.restartButtonText = '';
+      }
+
+      return [{ ...page, config: pageConfig }];
+    });
+  }
+
+  // Only the product's stable generated-page order keys are meaningful at
+  // global scope. Source event page IDs and local drag ordering stay local.
+  if (isRecord(config.defaultPageOrders)) {
+    const allowed = new Set(['default-welcome', 'default-consent', 'default-identity', 'default-frame-message-selection']);
+    config.defaultPageOrders = Object.fromEntries(Object.entries(config.defaultPageOrders).filter(([key, value]) =>
+      allowed.has(key) && typeof value === 'number' && Number.isFinite(value),
+    ));
+  }
+  return config as ExperienceTemplateConfig;
+}
+
 /** Preserve edits made at an event level as field overrides when that event
  * already participates in template inheritance. Legacy events are deliberately
  * left untouched until an editor explicitly opts them in. */
@@ -246,7 +343,11 @@ export async function resolveEventExperienceConfig(
 ): Promise<{ config: ExperienceTemplateConfig; templateId: string | null } | null> {
   const eventId = typeof event.eventId === 'string' ? event.eventId : '';
   const partnerId = typeof partner?.partnerId === 'string' ? partner.partnerId : '';
-  const selection = event.experienceTemplate as ExperienceTemplateSelection | null | undefined;
+  const storedSelection = event.experienceTemplate as ExperienceTemplateSelection | null | undefined;
+  // Legacy events with no custom journey can adopt the global default. A
+  // stored custom page remains an existing local journey until its owner opts in.
+  const hasLegacyJourney = Array.isArray(event.customPages) && event.customPages.length > 0;
+  const selection = storedSelection ?? (hasLegacyJourney ? undefined : { mode: 'inherit' as const });
   // Existing events stay on their pre-template configuration until an editor
   // explicitly opts them into the parent default. New and provisioned events
   // store `{ mode: 'inherit' }` at creation.
@@ -293,10 +394,28 @@ export function applyExperienceConfig<T extends Record<string, unknown>>(
   resolved: { config: ExperienceTemplateConfig; templateId: string | null } | null,
 ): T & { effectiveExperienceTemplateId?: string | null } {
   if (!resolved) return event;
-  // Once a template resolves, the stored event copy is not a fallback: values
-  // that the template does not define should use the normal product defaults.
-  // Event edits that should remain local are carried in `overrides`.
+  // A journey template replaces reusable page flow. Child-owned appearance
+  // and media settings that the parent deliberately omits remain local.
   const result = { ...event };
+  const mutableResult = result as Record<string, unknown>;
   for (const field of TEMPLATE_CONFIG_FIELDS) delete result[field];
-  return { ...result, ...resolved.config, effectiveExperienceTemplateId: resolved.templateId };
+  for (const field of ['defaultPageOrders', 'visualSettings', 'sharePage', 'frameSelection', 'frameSelectionTiles', 'welcomeScreenComposition', 'frameMessageSelectionDisplay'] as const) {
+    const parentValue = resolved.config[field];
+    const childValue = event[field];
+    if (childValue === undefined) {
+      if (parentValue !== undefined) mutableResult[field] = parentValue;
+      continue;
+    }
+    if (isRecord(parentValue) && isRecord(childValue)) {
+      mutableResult[field] = resolveTemplateConfig([{ value: parentValue }, { value: childValue }]);
+    } else {
+      // Child arrays/media selections are complete local replacements.
+      mutableResult[field] = childValue;
+    }
+  }
+  // The resolved template supplies the inherited flow; `result` contains
+  // child-level values already merged above. Spread the parent first so a
+  // template does not overwrite the child values it is supposed to inherit
+  // alongside.
+  return { ...resolved.config, ...result, effectiveExperienceTemplateId: resolved.templateId };
 }

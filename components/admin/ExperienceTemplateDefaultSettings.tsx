@@ -11,7 +11,8 @@ import type { ExperienceTemplate } from '@/lib/visual-assets/contracts';
 
 type Level = 'global' | 'partner';
 type StoredChoice = string | null | 'inherit';
-interface Data { templateId: StoredChoice; templates: ExperienceTemplate[] }
+interface SourceEvent { _id: string; eventId?: string; name?: string; partnerName?: string; eventDate?: string }
+interface Data { templateId: StoredChoice; templates: ExperienceTemplate[]; sourceEvents?: SourceEvent[] }
 interface Props {
   level: Level;
   /** Partner's Mongo id, used only in the scoped API URL. */
@@ -35,7 +36,10 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
   const endpoint = level === 'global' ? '/api/visual-assets/templates/default' : `/api/partners/${encodeURIComponent(resourceId ?? '')}/experience-template`;
   const [data, setData] = useState<Data | null>(null);
   const [choice, setChoice] = useState('');
-  const [templateName, setTemplateName] = useState('');
+  const [templateName, setTemplateName] = useState(level === 'global' ? 'Global default journey' : 'Partner default journey');
+  const [sourceEventChoice, setSourceEventChoice] = useState('');
+  const [renameValue, setRenameValue] = useState('');
+  const [renaming, setRenaming] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -48,7 +52,10 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
     if (!response.ok) throw new Error((payload as { error?: string } | null)?.error || `Request failed (${response.status})`);
     const next = apiData<Data>(payload);
     setData(next);
-    setChoice(next.templateId === 'inherit' ? 'inherit' : next.templateId === null ? (level === 'partner' ? 'disabled' : '') : next.templateId);
+    const nextChoice = next.templateId === 'inherit' ? 'inherit' : next.templateId === null ? (level === 'partner' ? 'disabled' : '') : next.templateId;
+    setChoice(nextChoice);
+    setRenameValue(next.templates.find((template) => template.templateId === nextChoice)?.name ?? '');
+    if (level === 'global' && next.sourceEvents?.length) setSourceEventChoice((current) => current || next.sourceEvents?.find((event) => event.name === 'MTK Budapest x Vasas FC')?._id || next.sourceEvents?.[0]?._id || '');
   };
 
   useEffect(() => {
@@ -91,6 +98,7 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
       const result = apiData<{ templateId: StoredChoice }>(payload);
       setData((current) => current ? { ...current, templateId: result.templateId } : current);
       setChoice(result.templateId === 'inherit' ? 'inherit' : result.templateId === null ? (level === 'partner' ? 'disabled' : '') : result.templateId);
+      setRenameValue(data?.templates.find((template) => template.templateId === result.templateId)?.name ?? '');
       setSaved(true);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not save the experience choice.');
@@ -100,7 +108,8 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
   };
 
   const create = async () => {
-    if (!sourceEventId || !templateName.trim()) return;
+    const selectedSourceEventId = level === 'global' ? sourceEventChoice : sourceEventId;
+    if (!selectedSourceEventId || !templateName.trim()) return;
     setCreating(true);
     setError(null);
     setSaved(false);
@@ -108,18 +117,44 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
       const response = await fetch('/api/visual-assets/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ level, name: templateName.trim(), sourceEventId }),
+        body: JSON.stringify({ level, name: templateName.trim(), sourceEventId: selectedSourceEventId, makeDefault: true }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error((payload as { error?: string } | null)?.error || `Request failed (${response.status})`);
       const result = apiData<{ template: ExperienceTemplate }>(payload);
-      setData((current) => current ? { ...current, templates: [result.template, ...current.templates] } : { templateId: level === 'partner' ? 'inherit' : null, templates: [result.template] });
+      setData((current) => current ? { ...current, templateId: result.template.templateId, templates: [result.template, ...current.templates.filter((template) => template.templateId !== result.template.templateId)] } : { templateId: result.template.templateId, templates: [result.template] });
       setChoice(result.template.templateId);
+      setRenameValue(result.template.name);
       setTemplateName('');
+      setSaved(true);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not create the template.');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const rename = async () => {
+    const selected = data?.templates.find((template) => template.templateId === choice);
+    if (!selected || !renameValue.trim() || renameValue.trim() === selected.name) return;
+    setRenaming(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const response = await fetch(`/api/visual-assets/templates/${encodeURIComponent(selected.templateId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: renameValue.trim() }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error((payload as { error?: string } | null)?.error || `Request failed (${response.status})`);
+      const result = apiData<{ template: ExperienceTemplate }>(payload);
+      setData((current) => current ? { ...current, templates: current.templates.map((template) => template.templateId === result.template.templateId ? result.template : template) } : current);
+      setSaved(true);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Could not rename the journey.');
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -135,7 +170,12 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
             name={`${level}-experience-template`}
             label={ui('Experience defaults')}
             value={choice}
-            onChange={(value) => { setChoice(value ?? ''); setSaved(false); }}
+            onChange={(value) => {
+              const selected = value ?? '';
+              setChoice(selected);
+              setRenameValue(data?.templates.find((template) => template.templateId === selected)?.name ?? '');
+              setSaved(false);
+            }}
             data={options}
             allowDeselect={false}
             disabled={!data || saving || creating}
@@ -144,16 +184,25 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
             {ui('Save choice')}
           </SemanticButton>
         </GdsInline>
+        {canManage && choice && choice !== 'inherit' && choice !== 'disabled' && data?.templates.some((template) => template.templateId === choice) ? (
+          <GdsInline gap="md" align="end">
+            <AdminTextInput name={`${level}-journey-version-name`} label={ui('Journey version name')} value={renameValue} onChange={(value) => { setRenameValue(value); setSaved(false); }} maxLength={120} />
+            <SemanticButton action={`experience-template:${level}-rename`} loading={renaming} disabled={renaming || saving || creating || !renameValue.trim() || renameValue.trim() === data.templates.find((template) => template.templateId === choice)?.name} onClick={() => void rename()}>
+              {ui('Rename journey')}
+            </SemanticButton>
+          </GdsInline>
+        ) : null}
         {level === 'partner' && choice === 'inherit' ? <p>{ui('This level follows its parent.')}</p> : null}
         {level === 'partner' && choice === 'disabled' ? <p>{ui('This level has no inherited experience.')}</p> : null}
         {data?.templates.length === 0 ? <MetadataText>{ui('No templates yet')}</MetadataText> : null}
-        {canManage && sourceEventId ? (
+        {canManage && (level === 'global' ? Boolean(data?.sourceEvents?.length) : Boolean(sourceEventId)) ? (
           <GdsStack gap="sm">
-            <MetadataText>{ui('Save the current setup as a reusable template.')}</MetadataText>
+            <MetadataText>{level === 'global' ? ui('Create the global default from an accepted event journey. Artwork, event links and brand colours stay at the child level.') : ui('Create a partner-owned journey version from an event, then edit its name here.')}</MetadataText>
             <GdsInline gap="md" align="end">
-              <AdminTextInput name={`${level}-template-name`} label={ui('Template name')} value={templateName} onChange={setTemplateName} maxLength={120} />
-              <SemanticButton action={`experience-template:${level}-create`} loading={creating} disabled={creating || saving || !templateName.trim()} onClick={() => void create()}>
-                {ui('Create template from this event')}
+              {level === 'global' ? <AdminSelect name="global-journey-source-event" label={ui('Source event')} value={sourceEventChoice} onChange={(value) => setSourceEventChoice(value ?? '')} data={(data?.sourceEvents ?? []).map((event) => ({ value: event._id, label: [event.name || event.eventId || event._id, event.partnerName, event.eventDate].filter(Boolean).join(' · ') }))} allowDeselect={false} disabled={saving || creating} /> : null}
+              <AdminTextInput name={`${level}-template-name`} label={ui('Journey name')} value={templateName} onChange={setTemplateName} maxLength={120} />
+              <SemanticButton action={`experience-template:${level}-create`} loading={creating} disabled={creating || saving || !templateName.trim() || (level === 'global' && !sourceEventChoice)} onClick={() => void create()}>
+                {level === 'global' ? ui('Set as global default journey') : ui('Set as partner default journey')}
               </SemanticButton>
             </GdsInline>
           </GdsStack>

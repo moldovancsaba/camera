@@ -25,6 +25,8 @@ import { DEFAULT_FRAME_MESSAGES } from '@/lib/frame/messages';
 import { refreshFrameDesign } from '@/lib/frame/sync';
 import { generateFrameVariants } from '@/lib/frame/variants';
 import { associateUploadedFrameMessage, prepareUploadMessage } from '@/lib/frame/upload-message';
+import type { FrameDesign } from '@/lib/frame/context';
+import { effectiveMessageFrames } from '@/lib/frame/selection';
 
 export const maxDuration = 60;
 
@@ -62,12 +64,13 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
       const refreshed = await refreshFrameDesign(db, event);
       event = { ...event, frameDesign: refreshed.design };
     }
-    const design = event.frameDesign as { messages?: string[]; messageFrames?: Record<string, string | string[]> } | undefined;
+    const design = event.frameDesign as FrameDesign | undefined;
     preparedMessage = prepareUploadMessage(
       messageMode,
       messageValue,
       design?.messages ?? [...DEFAULT_FRAME_MESSAGES],
-      design?.messageFrames,
+      design ? effectiveMessageFrames(design) : undefined,
+      event.generatedFrameEnabled === true,
     );
   }
 
@@ -110,16 +113,28 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
       const currentEvent = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(eventId) });
       if (!currentEvent) throw apiNotFound('Event');
       const design = await associateUploadedFrameMessage(db, currentEvent, String(result.item.frameId), preparedMessage);
-      if (currentEvent.generatedFrameEnabled === true) {
+      if (currentEvent.generatedFrameEnabled !== true) {
+        messageSetup = {
+          message: preparedMessage.message,
+          status: 'needs-generation',
+          detail: 'The message is saved and linked. Generate message-frame images from the frame settings when you are ready; the generated default frame remains off.',
+        };
+      } else {
         try {
-          const generated = await generateFrameVariants(db, { ...currentEvent, frameDesign: design });
-          messageSetup = { message: preparedMessage.message, status: 'ready', detail: `${generated.design.variants?.length ?? 0} event frame image(s) are ready.` };
+          const generated = await generateFrameVariants(
+            db,
+            { ...currentEvent, frameDesign: design },
+            undefined,
+            { includeGeneratedFallback: true },
+          );
+          const compositions = (generated.design.variants ?? []).filter((variant) => variant.frameId === String(result.item.frameId)).length;
+          messageSetup = compositions > 0
+            ? { message: preparedMessage.message, status: 'ready', detail: `${compositions} message-frame composition(s) are ready.` }
+            : { message: preparedMessage.message, status: 'needs-generation', detail: 'The message is saved and linked, but no image was composed. Review the message and assigned frame, then generate its composition from the frame settings.' };
         } catch (generationError) {
           console.error(`Event ${eventId}: frame message image generation failed after upload`, generationError);
-          messageSetup = { message: preparedMessage.message, status: 'generation-failed', detail: 'The message was saved and linked. Use Generate default frame to retry drawing its images.' };
+          messageSetup = { message: preparedMessage.message, status: 'generation-failed', detail: 'The message is saved and linked. Use Generate message-frame images in the frame settings to retry; the generated default frame stays off.' };
         }
-      } else {
-        messageSetup = { message: preparedMessage.message, status: 'needs-generation', detail: 'The message was saved and linked. Generate the default frame when you are ready to use it in the guest journey.' };
       }
     } catch (messageError) {
       const detail = messageError instanceof Error ? messageError.message : 'The frame could not be linked to the message.';
