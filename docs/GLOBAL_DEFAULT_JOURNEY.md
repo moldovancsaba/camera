@@ -13,6 +13,7 @@ The snapshot keeps the reusable page flow and ordering, including the messages-o
 - New partners without their own default follow the global journey. New events are created in inherit mode and follow Global → Partner → Event.
 - A partner can keep following the global default, disable it, or choose a partner-owned default template. A partner-owned version is stable when the global template changes.
 - An event can follow its current parent default, choose one of its event-owned versions, or use its own saved pages. Creating an additional version does not activate it; the editor must select and save it.
+- The Event User Journey page creates Event-owned versions only. Global and Partner versions are created in their respective editors; event-level access never renders duplicate Global/Partner template-creation panels.
 - The selection is managed at the top of **Event User Journey**. It controls the journey returned to the capture page, so the event capture URL, short link and QR codes continue to work and serve the selected flow without changing their addresses.
 - Saving a page or journey setting on an inheriting event forks an event-owned template before saving, so the parent is not changed. The event selector refreshes after that fork and lets the editor switch between the inherited flow and the new event-owned version.
 - An inherited child’s untouched settings continue to update from the parent. Child-owned settings such as visual style, frame/message selections, welcome composition, and local ordering remain local.

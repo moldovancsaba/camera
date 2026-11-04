@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — show one Event journey template creator
+
+- **Fixed:** Event User Journey no longer renders Global and Partner template creators alongside the Event creator. The event endpoint exposes a single Event-level creation capability, and the event editor shows one reusable-template panel.
+- **Fixed:** removed the duplicate helper sentence inside the template-creation panel; the section description now appears once.
+- **Verification:** focused mobile Chromium Playwright coverage passed for one creator, one helper sentence, Event-scoped creation, and hiding the creator when permission is false. `npm run inventory:check` passed (721 links, no broken references); `npm run release:check` passed (GDS checks, TypeScript, lint, unit tests, production guards, production build). The browser check used the local Webpack dev server with mocked APIs because the default Turbopack startup fails while parsing the installed GDS stylesheet.
+
 ## v12.3.44 — select the guest journey served by event links
 
 - **Added:** Global, Partner and Event User Journey settings support multiple named journey versions. Creating a version only adds it to the available list; an explicit selection and save controls the active default at that level.

@@ -46,9 +46,9 @@ export const GET = withErrorHandler(async (request: NextRequest, context: Contex
   const managerAccess = isGlobalAdminSession(session)
     ? { allowed: true }
     : await getPartnerScopedAccessForEvent(db, String(event._id), session, 'manager');
-  const canCreateTemplateLevels = managerAccess.allowed
-    ? isGlobalAdminSession(session) ? ['global', 'partner', 'event'] : ['partner', 'event']
-    : [];
+  // This route configures an Event, so expose only the capability needed by
+  // its editor. Global and Partner versions are created in their own editors.
+  const canCreateEventTemplate = managerAccess.allowed;
   const captureUrl = `${defaultCameraOrigin()}/capture/${encodeURIComponent(String(event._id))}`;
   const slug = typeof event.shortUrlSlug === 'string' ? event.shortUrlSlug.trim() : '';
   const shortUrl = slug ? `${defaultGoShortOrigin()}/${slug}` : null;
@@ -58,7 +58,7 @@ export const GET = withErrorHandler(async (request: NextRequest, context: Contex
     inheritedJourney: inherited?.templateId ? { templateId: inherited.templateId, name: typeof inheritedTemplate?.name === 'string' ? inheritedTemplate.name : null, level: inheritedTemplate?.level ?? null } : null,
     publicLinks: { captureUrl, shortUrl },
     templates,
-    canCreateTemplateLevels,
+    canCreateEventTemplate,
   });
 });
 

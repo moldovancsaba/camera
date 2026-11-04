@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AdminTextInput } from '@sovereignsquad/gds-admin/client';
-import { GdsInline, GdsStack, InlineAlert, MetadataText, SectionPanel } from '@sovereignsquad/gds-core/client';
+import { GdsInline, GdsStack, InlineAlert, SectionPanel } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminOperationText } from '@/lib/i18n/admin-operations';
@@ -48,7 +48,6 @@ export default function ExperienceTemplateCreator({ level, sourceEventId, onCrea
       <GdsStack gap="md">
         {error ? <InlineAlert title={ui('Experience defaults')} message={error} severity="error" /> : null}
         {created ? <InlineAlert title={ui('Journey version created')} message={`${created.name}. ${ui('Select this version and save to make it the default at this level.')}`} severity="info" /> : null}
-        <MetadataText>{ui('Save the current setup as a reusable template.')}</MetadataText>
         <GdsInline gap="md" align="end">
           <AdminTextInput name={`${level}-experience-template-name`} label={ui('Template name')} value={name} onChange={setName} maxLength={120} />
           <SemanticButton action={`experience-template:${level}-create`} loading={busy} disabled={busy || !name.trim()} onClick={() => void create()}>
