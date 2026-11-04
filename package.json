@@ -26,6 +26,7 @@
     "email:test": "tsx scripts/send-test-email.ts",
     "camera:diagnostics-report": "tsx scripts/camera-diagnostics-report.ts",
     "privacy:restore-replay": "tsx scripts/privacy-restore-replay.ts",
+    "visual-assets:legacy-inventory": "tsx scripts/visual-assets-legacy-inventory.ts --dry-run",
     "blob:orphans": "tsx scripts/blob-orphans.ts",
     "postinstall": "node scripts/patch-baseline-browser-mapping.mjs",
     "vercel:link": "npx vercel@latest link",
