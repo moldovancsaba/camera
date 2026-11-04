@@ -6,6 +6,7 @@ import { apiBadRequest, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, re
 import { assertGlobalAdminOrPartnerEventAccess, getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { parseExperienceTemplateSelection, resolveEventExperienceConfig } from '@/lib/visual-assets/templates';
+import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 
 type Context = { params: Promise<{ eventId: string }> };
 
@@ -31,13 +32,34 @@ export const GET = withErrorHandler(async (request: NextRequest, context: Contex
     .limit(200)
     .toArray();
   const effective = await resolveEventExperienceConfig(db, event, partner);
+  // Read the parent's current default separately from the event's selected
+  // version so the selector can explain what “inherit” will make public.
+  const inherited = await resolveEventExperienceConfig(db, { ...event, experienceTemplate: { mode: 'inherit' } }, partner);
+  const [effectiveTemplate, inheritedTemplate] = await Promise.all([
+    effective?.templateId
+      ? db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({ templateId: effective.templateId }, { projection: { name: 1, level: 1 } })
+      : Promise.resolve(null),
+    inherited?.templateId
+      ? db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({ templateId: inherited.templateId }, { projection: { name: 1, level: 1 } })
+      : Promise.resolve(null),
+  ]);
   const managerAccess = isGlobalAdminSession(session)
     ? { allowed: true }
     : await getPartnerScopedAccessForEvent(db, String(event._id), session, 'manager');
   const canCreateTemplateLevels = managerAccess.allowed
     ? isGlobalAdminSession(session) ? ['global', 'partner', 'event'] : ['partner', 'event']
     : [];
-  return apiSuccess({ selection: event.experienceTemplate ?? null, effectiveTemplateId: effective?.templateId ?? null, templates, canCreateTemplateLevels });
+  const captureUrl = `${defaultCameraOrigin()}/capture/${encodeURIComponent(String(event._id))}`;
+  const slug = typeof event.shortUrlSlug === 'string' ? event.shortUrlSlug.trim() : '';
+  const shortUrl = slug ? `${defaultGoShortOrigin()}/${slug}` : null;
+  return apiSuccess({
+    selection: event.experienceTemplate ?? null,
+    effectiveJourney: effective?.templateId ? { templateId: effective.templateId, name: typeof effectiveTemplate?.name === 'string' ? effectiveTemplate.name : null, level: effectiveTemplate?.level ?? null } : null,
+    inheritedJourney: inherited?.templateId ? { templateId: inherited.templateId, name: typeof inheritedTemplate?.name === 'string' ? inheritedTemplate.name : null, level: inheritedTemplate?.level ?? null } : null,
+    publicLinks: { captureUrl, shortUrl },
+    templates,
+    canCreateTemplateLevels,
+  });
 });
 
 export const PATCH = withErrorHandler(async (request: NextRequest, context: Context) => {

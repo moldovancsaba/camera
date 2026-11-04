@@ -1,8 +1,8 @@
 # Handover
 
-## Current change — accepted Global default guest journey
+## Current change — choose the journey served by event public links
 
-Global admins can snapshot the accepted MTK guest journey into an identity-free **Global default journey** and set it as the service default in the same action. The reusable flow/order is retained; MTK copy, webshop links, consent/identity details, colors and artwork are removed. Blank generic copy uses the destination event language. The selector carries `messages-only`, so guests can choose a message without seeing frame choices. New/provisioned partners and events inherit Global → Partner → Event at read time; child media remains child-owned, and child edits fork/record local overrides. Existing event journeys remain as saved until explicitly opted in. The code does not change the production database: after deployment a global admin must open Global User Journey, confirm the MTK source event, and press **Set as global default journey**. Verified: template and localized-copy unit tests, mocked mobile admin flow, inventory check, and full release check passed. GitHub Verify remains the merge gate. Details: `docs/GLOBAL_DEFAULT_JOURNEY.md` and `docs/VISUAL_ASSET_HIERARCHY.md`.
+Global, Partner and Event User Journey editors can retain multiple named journey versions. Creating a version only adds it to that level's list; selecting and saving is the separate action that changes its active default. Event User Journey shows the inherited effective version, event-owned versions, and the event's own pages. Its selection determines the flow returned to the event capture URL and therefore also serves existing short links and QR codes without changing their addresses. New event versions appear immediately in the selector. Parent defaults continue to apply only to inheriting children; child-owned versions stay independent. Existing legacy event pages are not changed until explicitly opted into inheritance. No production settings or records were changed. The focused mobile browser check passed; `npm run inventory:check` and `npm run release:check` passed (386/386 unit-test files, production guards, and production build). GitHub Verify is the merge gate. Details: `docs/GLOBAL_DEFAULT_JOURNEY.md` and `docs/VISUAL_ASSET_HIERARCHY.md`.
 
 ## Current change — event visibility eye button
 
@@ -99,8 +99,8 @@ The resolver fails closed until operations configures `CAMERA_PRIVACY_RESOLVER_S
 
 Added a source-verified cross-product inventory and `privacy.erasure.inventory.v1` snapshot in `docs/privacy/ERASURE_DATA_INVENTORY.md` and `.v1.json`. The inventory, SSO case ledger, verified SSO subject proof, and Camera subject resolver have now merged. This remains a source-code baseline; it does not assert production row counts, database parity, completed provider deletion, or backup coverage. The most material blocker is still Camera issue #509: independent image backup and complete provider inventory are not verified.
 
-**Version**: 12.3.43
-**Last Updated**: 2026-10-15
+**Version**: 12.3.44
+**Last Updated**: 2026-11-04
 
 ## Current change
 

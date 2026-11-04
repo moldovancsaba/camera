@@ -1,11 +1,20 @@
 # RELEASE_NOTES.md
 
+## v12.3.44 — select the guest journey served by event links
+
+- **Added:** Global, Partner and Event User Journey settings support multiple named journey versions. Creating a version only adds it to the available list; an explicit selection and save controls the active default at that level.
+- **Added:** Event User Journey now shows the effective inherited journey, event-owned versions, and the event's own pages. Selecting one sets the flow used by the event capture URL, short link and QR codes; those public addresses stay stable.
+- **Changed:** new event templates appear in the selector immediately. The event journey choice is managed in Event User Journey instead of the general Event Edit page.
+- **Preserved:** parent defaults continue down the Global → Partner → Event chain only while a child inherits. A child-owned selection remains independent of later parent changes. Existing legacy event journeys remain in place until explicitly opted in.
+- **Operations:** deployment does not write a global selection to production. A global admin creates or chooses a version in Global User Journey and separately saves the intended default. See `docs/GLOBAL_DEFAULT_JOURNEY.md` and `docs/VISUAL_ASSET_HIERARCHY.md`.
+- **Verification:** template inheritance, version creation/selection, and 23-locale journey-control unit coverage; focused mobile browser check for event selection and stable links; `npm run inventory:check` passed; `npm run release:check` passed (GDS checks, TypeScript, lint, 386/386 unit-test files, production guards, and production build). GitHub Verify remains the merge gate.
+
 ## Unreleased — accepted Global default guest journey
 
-- **Added:** Global User Journey can snapshot an accepted event flow as **Global default journey** and set it as the service default in the same action. The MTK source event is preselected when it is available.
+- **Added:** Global User Journey can snapshot an accepted event flow as **Global default journey**. The MTK source event is preselected when it is available; creation adds a version without activating it.
 - **Behavior:** the global template preserves reusable page flow/order, forces the built-in frame/message step to messages-only, strips source-event wording, consent/identity content, event links, artwork and brand styling, and resolves blank generic copy in each destination event's language. Child-owned media and styling remain local.
 - **Inheritance:** new/provisioned partners and events inherit Global → Partner → Event at read time. Existing event journeys stay intact until explicitly opted in. Editing at a child records a child-owned template/override so later parent edits do not replace that work.
-- **Operations:** deployment does not write the global setting to production. After deployment, a global admin must review the source in Global User Journey and press **Set as global default journey**. See `docs/GLOBAL_DEFAULT_JOURNEY.md`.
+- **Operations:** deployment does not write the global setting to production. A global admin reviews the source in Global User Journey, creates the version, then selects and saves it as the active default. See `docs/GLOBAL_DEFAULT_JOURNEY.md`.
 - **Verification:** template inheritance and sanitization unit tests pass; localized Welcome and CTA fallbacks pass; the global admin create/rename flow passed a mocked mobile browser test; `npm run inventory:check` and `npm run release:check` passed (GDS checks, type-check, lint, 385/385 unit test files, production guards, and production build). GitHub Verify remains the merge gate.
 
 ## Unreleased — toggle event visibility from the eye control

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { Anchor, Breadcrumbs, Button, Stack, Text } from '@/components/gds/PublicPrimitives';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
+import EventExperienceTemplateSettings from '@/components/admin/EventExperienceTemplateSettings';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { notifyAdminSuccess } from '@/components/admin/notify';
@@ -173,6 +174,11 @@ export default function EventJourneyPagesPage({ params }: { params: Promise<{ id
       )}
     >
       {error ? <InlineAlert title="Error" message={error} severity="error" /> : null}
+      <EventExperienceTemplateSettings
+        key={`${event.effectiveExperienceTemplateId ?? 'none'}:${event.experienceTemplate?.mode ?? 'legacy'}`}
+        eventMongoId={eventId}
+        sourceEventId={eventId}
+      />
       <SectionPanel title="Journey version" description="Inherited journeys follow global and partner defaults. The first event-level edit creates an independent version that later parent changes will not overwrite.">
         {event.experienceTemplate?.mode === 'template' && event.effectiveExperienceTemplateId ? (
           <GdsInline gap="md" align="end">

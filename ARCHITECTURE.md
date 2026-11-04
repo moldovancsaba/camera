@@ -1,6 +1,6 @@
 # Architecture
 
-**Version**: 12.3.43
+**Version**: 12.3.44
 **Last Updated**: 2026-10-30
 
 This document describes the current production architecture of Camera as implemented in the repository today.
@@ -57,7 +57,7 @@ Event visibility is managed from the shared event inventory and event workspaces
 
 - auth and session management in `lib/auth/*`
 - MongoDB access and schema helpers in `lib/db/*`
-- visual-asset ownership/visibility in `lib/visual-assets/resolve.ts` and `lib/library/db.ts`; reusable experience templates resolve in `lib/visual-assets/templates.ts` without copying parent config into child records. The global journey is an identity-free flow snapshot: event-language copy and child-owned media remain local, the built-in selector is messages-only, and legacy event journeys remain local until explicitly opted in. Child edits fork/record overrides rather than changing parent templates.
+- visual-asset ownership/visibility in `lib/visual-assets/resolve.ts` and `lib/library/db.ts`; reusable experience templates resolve in `lib/visual-assets/templates.ts` without copying parent config into child records. The global journey is an identity-free flow snapshot: event-language copy and child-owned media remain local, the built-in selector is messages-only, and legacy event journeys remain local until explicitly opted in. Creating a version never changes the active default; global/partner defaults and the event's public journey are separate explicit selections. Event User Journey displays the effective selection and stable capture/short links; the event API resolves the choice used by the capture route and its QR codes. Child edits fork/record overrides rather than changing parent templates.
 - visual-asset deletion dependency discovery in `lib/library/usages.ts`; delete APIs fail with a structured 409 until the caller resolves partner/event assignments and stored picture-field references, while the authenticated usage endpoint returns scoped, paginated destination links
 - slideshow generation in `lib/slideshow/*`
 - partner-scoped access helpers in `lib/partners/*`
@@ -80,7 +80,7 @@ Event visibility is managed from the shared event inventory and event workspaces
 
 Frames, logos and images use explicit source ownership and a Global → Partner → Event visibility chain (`lib/visual-assets/`). Source-level `isActive` and `shareToChildren` govern availability; partner/event `visualAssetPolicy` records local hides and forwarding blocks. Existing partner records remain on the legacy catalog path until an administrator opts them into policy version 2, which first records hides for anything the existing partner catalog did not contain. Newly created partners use version 2; new events inherit their partner's policy.
 
-Reusable guest configuration is stored in `experience_templates`, with a unique `templateId` index. The single global selection is in `admin_settings`; a partner can follow it, select a partner template overlay or disable it; an event can inherit, select a local event template or preserve its locally stored legacy configuration. Runtime resolution is global → partner → event overrides and is applied to public event data only after the allow-list and library visibility checks. Admin selection metadata is stripped from guest responses. Template config does not contain identity, consent receipts, submission records, analytics or photo data. See `docs/VISUAL_ASSET_HIERARCHY.md` for contracts, APIs, safe opt-in, rollback and release gates.
+Reusable guest configuration is stored in `experience_templates`, with a unique `templateId` index. The single global selection is in `admin_settings`; a partner can follow it, select a partner template overlay or disable it; an event can inherit the parent default, select an event-owned template or explicitly use its saved event pages. Template creation only adds a reusable version; the level selection endpoints change active defaults. Runtime resolution is global → partner → event overrides and is applied to public event data only after the allow-list and library visibility checks. Therefore every existing event capture URL, short link and QR code serves the event's currently selected/effective journey without changing the address. Admin selection metadata is stripped from guest responses. Template config does not contain identity, consent receipts, submission records, analytics or photo data. See `docs/VISUAL_ASSET_HIERARCHY.md` for contracts, APIs, safe opt-in, rollback and release gates.
 
 Partner landing-page and slideshow defaults are stored in `partners.contentDefaults` with a revision. Events materialize their own slideshow and landing-page records, preserving tracked event QR links, capture URLs, and public-page identity. Inherited records refresh from the partner revision until an event manager edits or selects an event-level override. `/landing/event/<event Mongo id>` is the stable event landing URL and resolves the event default before its partner default. See `docs/PARTNER_CONTENT_DEFAULTS.md` for API contracts, access control, failure behavior, and operations.
 
