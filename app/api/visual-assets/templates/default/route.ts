@@ -3,15 +3,21 @@ import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiBadRequest, apiNotFound, apiSuccess, requireAdmin, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
+import { ObjectId } from 'mongodb';
 
 export const GET = withErrorHandler(async () => {
   await requireAdmin();
   const db = await connectToDatabase();
-  const [setting, templates] = await Promise.all([
+  const [setting, templates, sourceEvents] = await Promise.all([
     db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'default-experience-template' }),
     db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).find({ level: 'global', ownerId: null }).sort({ updatedAt: -1 }).limit(200).toArray(),
+    db.collection(COLLECTIONS.EVENTS).find({}, { projection: { _id: 1, name: 1, eventId: 1, partnerName: 1, eventDate: 1 } }).sort({ updatedAt: -1 }).limit(200).toArray(),
   ]);
-  return apiSuccess({ templateId: typeof setting?.templateId === 'string' ? setting.templateId : null, templates });
+  return apiSuccess({
+    templateId: typeof setting?.templateId === 'string' ? setting.templateId : null,
+    templates,
+    sourceEvents: sourceEvents.filter((event) => event._id instanceof ObjectId).map((event) => ({ _id: String(event._id), eventId: event.eventId, name: event.name, partnerName: event.partnerName, eventDate: event.eventDate })),
+  });
 });
 
 export const PATCH = withErrorHandler(async (request: NextRequest) => {

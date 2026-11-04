@@ -7,8 +7,10 @@ import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { Anchor, Breadcrumbs, Button, Stack, Text } from '@/components/gds/PublicPrimitives';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { notifyAdminSuccess } from '@/components/admin/notify';
-import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import { GdsInline, InlineAlert, MetadataText, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
+import { AdminTextInput } from '@sovereignsquad/gds-admin/client';
 import type { CustomPage, FrameMessageSelectionDisplay } from '@/lib/db/schemas';
 import type { JourneyContext } from '@/lib/events/journey';
 import type { EffectiveCheckboxes, StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
@@ -26,6 +28,9 @@ interface EventRecord {
   consentSettings?: StoredCheckboxSettings | null;
   partnerCheckboxes?: EffectiveCheckboxes;
   frameMessageSelectionDisplay?: FrameMessageSelectionDisplay;
+  experienceTemplate?: { mode: 'inherit' | 'template'; templateId?: string | null } | null;
+  effectiveExperienceTemplateId?: string | null;
+  effectiveExperienceTemplateName?: string;
 }
 
 interface EventResponse {
@@ -55,6 +60,12 @@ export default function EventJourneyPagesPage({ params }: { params: Promise<{ id
   const [event, setEvent] = useState<EventRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [journeyVersionName, setJourneyVersionName] = useState('');
+  const [renaming, setRenaming] = useState(false);
+
+  useEffect(() => {
+    setJourneyVersionName(event?.effectiveExperienceTemplateName ?? '');
+  }, [event?.effectiveExperienceTemplateId, event?.effectiveExperienceTemplateName]);
 
   useEffect(() => {
     let active = true;
@@ -113,6 +124,27 @@ export default function EventJourneyPagesPage({ params }: { params: Promise<{ id
     router.refresh();
   };
 
+  const renameJourney = async () => {
+    if (!event?.effectiveExperienceTemplateId || !journeyVersionName.trim()) return;
+    setRenaming(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/visual-assets/templates/${encodeURIComponent(event.effectiveExperienceTemplateId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: journeyVersionName.trim() }),
+      });
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || `Rename failed (HTTP ${response.status})`);
+      setEvent((current) => current ? { ...current, effectiveExperienceTemplateName: journeyVersionName.trim() } : current);
+      notifyAdminSuccess({ title: 'Journey renamed', message: 'The event journey is now an independent version.' });
+    } catch (failure) {
+      setError(errorMessage(failure));
+    } finally {
+      setRenaming(false);
+    }
+  };
+
   if (loading) return <StateBlock variant="loading" title="Loading event pages…" />;
   if (error || !event) {
     return (
@@ -141,6 +173,18 @@ export default function EventJourneyPagesPage({ params }: { params: Promise<{ id
       )}
     >
       {error ? <InlineAlert title="Error" message={error} severity="error" /> : null}
+      <SectionPanel title="Journey version" description="Inherited journeys follow global and partner defaults. The first event-level edit creates an independent version that later parent changes will not overwrite.">
+        {event.experienceTemplate?.mode === 'template' && event.effectiveExperienceTemplateId ? (
+          <GdsInline gap="md" align="end">
+            <AdminTextInput name="event-journey-version-name" label="Event journey name" value={journeyVersionName} onChange={setJourneyVersionName} maxLength={120} />
+            <SemanticButton action="event-journey:rename-version" loading={renaming} disabled={renaming || !journeyVersionName.trim() || journeyVersionName.trim() === event.effectiveExperienceTemplateName} onClick={() => void renameJourney()}>
+              Rename journey
+            </SemanticButton>
+          </GdsInline>
+        ) : (
+          <MetadataText>This event follows its inherited journey. Saving a change here will create a separate, named event version.</MetadataText>
+        )}
+      </SectionPanel>
       <CustomPagesManager
         key={event.customPages?.length ?? 0}
         eventId={eventId}

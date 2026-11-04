@@ -7,13 +7,18 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import type { FrameDesign } from './context';
-import { frameIdsOf } from './selection';
+import { effectiveMessageFrames, frameIdsOf } from './selection';
 import { generateFrameVariants } from './variants';
 
 /** The events whose messages chose this frame. */
 export async function eventsUsingFrame(db: Db, frameId: string): Promise<Document[]> {
-  const candidates = await db.collection(COLLECTIONS.EVENTS).find({ 'frameDesign.messageFrames': { $exists: true } }).toArray();
-  return candidates.filter((event) => frameIdsOf((event.frameDesign as FrameDesign | undefined)?.messageFrames).includes(frameId));
+  const candidates = await db.collection(COLLECTIONS.EVENTS).find({
+    $or: [
+      { 'frameDesign.messageFrames': { $exists: true } },
+      { 'frameDesign.variants.frameId': frameId },
+    ],
+  }).toArray();
+  return candidates.filter((event) => frameIdsOf(effectiveMessageFrames(event.frameDesign as FrameDesign | undefined)).includes(frameId));
 }
 
 export interface RegenerateResult {
@@ -26,7 +31,7 @@ export async function regenerateEventsUsingFrame(db: Db, frameId: string, genera
   const failed: RegenerateResult['failed'] = [];
   for (const event of events) {
     try {
-      await generate(db, event);
+      await generate(db, event, undefined, { includeGeneratedFallback: event.generatedFrameEnabled === true });
     } catch (error) {
       failed.push({ eventId: String(event.eventId ?? event._id), error: error instanceof Error ? error.message : String(error) });
     }

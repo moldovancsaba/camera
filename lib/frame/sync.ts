@@ -12,6 +12,7 @@ import { apiBadRequest } from '@/lib/api';
 import { nativeFrameContext, parseFrameContext, type FrameContext, type FrameDesign } from './context';
 import { DEFAULT_FRAME_MESSAGES, validateMessages } from './messages';
 import { validateMessageFrames } from './message-frames';
+import { effectiveMessageFrames } from './selection';
 
 export interface RefreshDeps {
   fetchContext: (messmassEventId: string) => Promise<unknown | null>;
@@ -75,6 +76,7 @@ export async function refreshFrameDesign(db: Db, event: Document, deps: RefreshD
     ...(existing?.base ? { base: existing.base } : {}),
     // The frames the messages chose belong to the event too (camera#366).
     ...(existing?.messageFrames ? { messageFrames: existing.messageFrames } : {}),
+    ...(existing?.messageFramesOverridden !== undefined ? { messageFramesOverridden: existing.messageFramesOverridden } : {}),
     ...(existing?.darkArea ? { darkArea: existing.darkArea } : {}),
     // The slots belong to the event too (issue 502).
     ...(existing?.slots ? { slots: existing.slots } : {}),
@@ -88,8 +90,9 @@ export async function refreshFrameDesign(db: Db, event: Document, deps: RefreshD
 /**
  * Save the event's message list, or reset it to the default list. Throws a 400 for a list the editor may not save
  * (more than 10, empty, too long, unknown placeholder). The list counts as edited only when it differs from the default.
- * `messageFrames` (camera#366) replaces the frame each message is written on; without it the choices stay for the messages that are still in the list,
- * and a reset clears them. Throws a 400 for a frame that is not assigned to the event, switched off or without a message area.
+ * `messageFrames` (camera#366) replaces the frame graphics each message is written on; without it the choices stay for messages that remain in the list,
+ * and a reset clears them. When no graphic is selected, a generated layout is used only if the event has explicitly enabled that fallback. Throws a 400 for a frame that is not assigned,
+ * switched off or without a message area.
  */
 export async function saveFrameMessages(
   db: Db,
@@ -106,9 +109,9 @@ export async function saveFrameMessages(
     if (!checked.ok) throw apiBadRequest(checked.error);
     messages = checked.messages;
   }
-  let chosen: Record<string, string | string[]> = input.reset === true ? {} : { ...(current.messageFrames ?? {}) };
+  let chosen: Record<string, string | string[]> = input.reset === true ? {} : { ...effectiveMessageFrames(current) };
   if (input.reset !== true && input.messageFrames !== undefined) {
-    const checked = await validateMessageFrames(db, event, messages, input.messageFrames);
+    const checked = await validateMessageFrames(db, event, messages, input.messageFrames, event.generatedFrameEnabled === true);
     if (!checked.ok) throw apiBadRequest(checked.error);
     chosen = checked.messageFrames;
   }
@@ -121,6 +124,8 @@ export async function saveFrameMessages(
   // A choice belongs to a message text: it goes with the message when the message goes.
   chosen = Object.fromEntries(Object.entries(chosen).filter(([message]) => messages.includes(message)));
   const hasChoices = Object.keys(chosen).length > 0;
+  const mappingsWereExplicitlySaved = input.messageFrames !== undefined || input.reset === true;
+  const keepEmptyMapping = mappingsWereExplicitlySaved || current.messageFramesOverridden === true;
 
   const { messageFrames: _previous, darkArea: _darkArea, ...rest } = current;
   void _previous;
@@ -130,14 +135,16 @@ export async function saveFrameMessages(
     messages,
     messagesOverridden: !sameList(messages, DEFAULT_FRAME_MESSAGES),
     updatedAt: deps.now(),
-    ...(hasChoices ? { messageFrames: chosen } : {}),
+    ...(hasChoices || keepEmptyMapping ? { messageFrames: chosen } : {}),
+    ...(mappingsWereExplicitlySaved || current.messageFramesOverridden !== undefined ? { messageFramesOverridden: mappingsWereExplicitlySaved || current.messageFramesOverridden === true } : {}),
     ...(darkArea ? { darkArea } : {}),
   };
   const set: Record<string, unknown> = { 'frameDesign.messages': design.messages, 'frameDesign.messagesOverridden': design.messagesOverridden, 'frameDesign.updatedAt': design.updatedAt, updatedAt: design.updatedAt };
-  if (hasChoices) set['frameDesign.messageFrames'] = chosen;
+  if (hasChoices || keepEmptyMapping) set['frameDesign.messageFrames'] = chosen;
+  if (design.messageFramesOverridden !== undefined) set['frameDesign.messageFramesOverridden'] = design.messageFramesOverridden;
   if (darkArea) set['frameDesign.darkArea'] = darkArea;
   const unset: Record<string, ''> = {};
-  if (!hasChoices) unset['frameDesign.messageFrames'] = '';
+  if (!hasChoices && !keepEmptyMapping) unset['frameDesign.messageFrames'] = '';
   if (!darkArea) unset['frameDesign.darkArea'] = '';
   await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, Object.keys(unset).length > 0 ? { $set: set, $unset: unset } : { $set: set });
   return design;

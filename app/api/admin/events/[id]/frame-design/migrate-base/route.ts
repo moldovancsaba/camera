@@ -41,7 +41,8 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
   const moved = await migrateBaseToLibrary(db, event, session.user.id, now);
   if (!moved.ok) throw apiBadRequest(moved.reason);
   const fresh = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) });
-  const images = await generateFrameVariants(db, fresh ?? event).catch((error: unknown) => {
+  const currentEvent = fresh ?? event;
+  const images = await generateFrameVariants(db, currentEvent, undefined, { includeGeneratedFallback: currentEvent.generatedFrameEnabled === true }).catch((error: unknown) => {
     console.error(`Event ${id}: frame images could not be generated after the move`, error);
     throw apiError('The frames were created and chosen, but the frame images could not be drawn. Try again: nothing is lost.', 502);
   });

@@ -96,14 +96,13 @@ is the same as before (checked on the real data: 14 of 14 events).
   the user picks; a frame without one is a complete frame, as before. It is edited on the card of a frame the level owns (the Message area button of a partner or event
   upload) and on the global frame's edit page, with a preview of the boxes on the picture; saving redraws the events whose messages are written on that frame.
 - **The frames of each message** (`frameDesign.messageFrames`: the text of a message to a frame id, or to a list of frame ids when the message goes on several designs, issue 449): chosen in
-  the table **Which message goes on which design** in the generated frame panel of the event (one image for each message and design, at most 40), among
+  the table **Which message goes on which design** in the event's frame message designer (one image for each selected message/design pair, at most 40), independently of the optional generated default, among
   the event's frames that are assigned, switched on, switched on in the library, and have a message area. The choice goes by the text of the message, so it stays with the
   message when messages are moved; it is checked on save (400 with a plain message) and dropped when its message goes or the list is reset. A snapshot refresh keeps it.
 - **Upload-time association:** on Event → Frames, choosing an existing message or adding one during upload sets the new frame's message area, persists the event-owned message and adds the frame ID to that message's `messageFrames` entry. Existing design choices are preserved. The server validates message limits and current event state before linking; concurrent message-list changes are retried three times and then return a visible link-failed notice without discarding the uploaded frame.
-- **Drawing** (`lib/frame/variants.ts`): for each message: the chosen frame (written with the event's font, `renderBaseFrame`), else the older base picture, else the generated
-  layout. The image key covers the frame's picture and message area, so only the messages of a changed frame are drawn again; a message with no frame keeps the key it had.
+- **Drawing** (`lib/frame/variants.ts`): each selected message/frame pair is composed. A message with no selected frame uses the older base picture first, then the generated layout, only when `generatedFrameEnabled` is true; with that fallback off, it has no composition. The image key covers the frame's picture and message area, so only changed compositions are drawn again.
   A chosen frame that is no longer usable falls back quietly (the panel says so); a picture that cannot be fetched fails the run and leaves the images as they were.
-- **Users:** an event whose only active frames carry messages has **no complete frame of its own**. Its generated default applies only if the event manager explicitly enabled it; otherwise the capture flow has no generated default frame. The event data tells the capture page which assigned frames carry messages (`hasMessageArea`).
+- **Users and gallery uploads:** an event whose active assignments carry messages has no complete frame of its own. Its assigned message/frame compositions remain available even when the generated default is off; unmapped messages get no composition until assigned or until the generated fallback is enabled. Both capture and gallery frame selection use the same active assignments and saved compositions.
 
 ## Logos (LIB-4, camera#367)
 

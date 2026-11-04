@@ -190,7 +190,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         hasOwnActiveFrame={hasOwnActiveFrame}
       />
 
-      {generatedFrameEnabled || hasOwnActiveFrame ? <FrameSelectionPanel
+      {generatedFrameEnabled || hasOwnActiveFrame || library.assigned.some((entry) => entry.assignment.isActive === true) ? <FrameSelectionPanel
         key={`${designVersion}:${library.assigned.map((entry) => `${entry.id}:${entry.assignment.isActive === true ? 1 : 0}:${entry.messageArea ? 1 : 0}`).join(',')}`}
         eventId={eventId}
       /> : null}
@@ -220,8 +220,8 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
 
       <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-          <h3 style={{ margin: 0 }}>Assigned Frames ({library.assigned.length})</h3>
-          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>The frames this event uses. An event with its own list is no longer changed by the defaults of its partner.</p>
+          <h3 style={{ margin: 0 }}>Assigned frame graphics ({library.assigned.length})</h3>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>These are the source graphics assigned to this event. A message editor can combine each graphic with one or more messages, so the number of ready compositions can be larger than this count. An event with its own list is no longer changed by the defaults of its partner.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           {library.assigned.length === 0 ? (

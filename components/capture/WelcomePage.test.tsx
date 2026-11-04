@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
+import UiLanguageProvider from '@/components/i18n/UiLanguageProvider';
 
 type WelcomeModule = typeof import('./WelcomePage');
 
@@ -52,6 +53,17 @@ test('a page without pictures still shows the button, and the button colours com
   assert.ok(html.includes(`background:${hex('123456')}`));
   assert.ok(html.includes(`color:${hex('fedcba')}`));
   assert.ok(html.includes(`border:4px solid ${hex('0a0b0c')}`));
+});
+
+test('blank global journey copy uses the event language', async (t) => {
+  const { default: WelcomePage } = await load(t, 'translated-global-copy');
+  const html = renderToStaticMarkup(
+    <UiLanguageProvider language="hu" syncDocumentLanguage={false}>
+      <WelcomePage config={{ title: '', buttonText: '', screenImageAlt: '' }} onNext={() => undefined} />
+    </UiLanguageProvider>,
+  );
+  assert.match(html, /<h1 class="sr-only">Üdvözöljük<\/h1>/);
+  assert.match(html, /<button[^>]*>Indítás<\/button>/);
 });
 
 test('a colour that is not a hex colour is not used', async (t) => {

@@ -21,6 +21,9 @@ import { runAfterResponse } from '@/lib/api/run-after-response';
 import { deviceMetadataOf } from '@/lib/device/coarse';
 import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import { sanitizeFrameVariant, type RecordedFrameVariant } from '@/lib/frame/capture';
+import type { FrameDesign } from '@/lib/frame/context';
+import { parseMessageArea } from '@/lib/frame/message-area';
+import { chosenFrameIds } from '@/lib/frame/message-frames';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { effectiveGalleryConsent, galleryChoice } from '@/lib/events/gallery-consent';
 import { effectiveCheckboxes } from '@/lib/events/checkbox-settings';
@@ -149,7 +152,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const vettingEvent =
     typeof eventId === 'string' && eventId.trim()
       ? ((await db.collection(COLLECTIONS.EVENTS).findOne(buildEventLookupFilterByIdentifier(eventId), {
-          projection: { eventId: 1, messmassEventId: 1, photoVetting: 1, galleryConsent: 1, partnerId: 1, consentSettings: 1, acceptanceOnWhoAreYou: 1, customPages: 1, journeyDefaults: 1, defaultPageOrders: 1, shortUrlSlug: 1, generatedFrameEnabled: 1 },
+          projection: { eventId: 1, messmassEventId: 1, photoVetting: 1, galleryConsent: 1, partnerId: 1, consentSettings: 1, acceptanceOnWhoAreYou: 1, customPages: 1, journeyDefaults: 1, defaultPageOrders: 1, shortUrlSlug: 1, generatedFrameEnabled: 1, frames: 1, frameDesign: 1 },
         })) as (GuardEvent & { _id: unknown; galleryConsent?: unknown; partnerId?: unknown; journeyDefaults?: unknown }) | null)
       : null;
   const vetted = photoVettingRequired(vettingEvent);
@@ -258,15 +261,49 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
     }
 
-    // The generated default frame applies only when the event explicitly opted in and the photo has no frame of its own.
-    // A claim while disabled, or one that is not a project-generated image, is dropped; the photo still saves.
+    // The generated default layout is opt-in, but assigned message-frame compositions are usable independently.
+    // Store only an image that is still part of this event's current frame design and assignment.
     let frameVariant: RecordedFrameVariant | null = null;
     if (!frame && claimedFrameVariant !== undefined && claimedFrameVariant !== null) {
-      frameVariant = vettingEvent && (vettingEvent as { generatedFrameEnabled?: unknown }).generatedFrameEnabled === true
-        ? sanitizeFrameVariant(claimedFrameVariant, blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN))
-        : null;
+      const claim = sanitizeFrameVariant(claimedFrameVariant, blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN));
+      const frameEvent = vettingEvent as (typeof vettingEvent & {
+        generatedFrameEnabled?: unknown;
+        frames?: Array<{ frameId?: unknown; isActive?: unknown }>;
+        frameDesign?: {
+          messages?: string[];
+          messageFrames?: Record<string, string | string[]>;
+          variants?: Array<{ index?: number | null; message?: string | null; imageUrl?: string; frameId?: string }>;
+        };
+      }) | null;
+      if (claim && frameEvent) {
+        const design = frameEvent.frameDesign;
+        const stored = design?.variants?.find((variant) =>
+          variant.imageUrl === claim.imageUrl && variant.index === claim.index && variant.message === claim.message,
+        );
+        if (stored) {
+          const activeAssignments = (frameEvent.frames ?? []).filter((assignment) => assignment.isActive === true && typeof assignment.frameId === 'string');
+          const assignedIds = [...new Set(activeAssignments.map((candidate) => String(candidate.frameId)))];
+          const frameDocs = assignedIds.length > 0
+            ? await db.collection(COLLECTIONS.FRAMES).find({ frameId: { $in: assignedIds } }).toArray()
+            : [];
+          const frameById = new Map(frameDocs.map((document) => [String(document.frameId), document]));
+          const hasActiveCompleteFrame = activeAssignments.some((candidate) => {
+            const candidateDoc = frameById.get(String(candidate.frameId));
+            return !candidateDoc || (candidateDoc.isActive !== false && parseMessageArea(candidateDoc.messageArea) === null);
+          });
+          if (stored.frameId) {
+            const assignment = activeAssignments.find((candidate) => candidate.frameId === stored.frameId);
+            const frameDoc = frameById.get(String(stored.frameId));
+            const activeCarrier = assignment && frameDoc && frameDoc.isActive !== false && typeof frameDoc.imageUrl === 'string' && Boolean(frameDoc.imageUrl) && parseMessageArea(frameDoc.messageArea) !== null;
+            const isMapped = Boolean(design) && chosenFrameIds(design as FrameDesign, claim.index).includes(stored.frameId);
+            if (activeCarrier && !hasActiveCompleteFrame && isMapped) frameVariant = claim;
+          } else if (frameEvent.generatedFrameEnabled === true && !hasActiveCompleteFrame) {
+            frameVariant = claim;
+          }
+        }
+      }
       if (!frameVariant) {
-        logWarn('submissions.frame_variant_dropped', 'The claimed generated frame variant is not valid; saving without it', {
+        logWarn('submissions.frame_variant_dropped', 'The claimed frame composition is not current or enabled; saving without it', {
           eventId: typeof eventId === 'string' ? eventId : null,
         });
       }

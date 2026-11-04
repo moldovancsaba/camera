@@ -28,6 +28,7 @@ function variant(index: number | null, message: string | null, extra: Partial<Fr
 
 const variants = [variant(0, 'Go! Go! Go!'), variant(1, 'We are the Best!'), variant(2, 'Together for Victory!')];
 const captureEnabled = (event: Parameters<typeof captureFrameOf>[0]) => captureFrameOf({ ...event, generatedFrameEnabled: true });
+const carrierRows = (...frameIds: string[]) => frameIds.map((frameId) => ({ frameId, isActive: true, frameDetails: { isActive: true, hasMessageArea: true } }));
 
 test('the generated frame applies only while the event has no active frame of its own', () => {
   assert.equal(captureEnabled({ frames: [], frameDesign: { variants } })?.variants.length, 3);
@@ -133,13 +134,34 @@ test('the editor’s setting reaches the page with a picked message as its posit
 });
 
 test('the capture variants carry the design they are written on, null for the generated layout', () => {
-  const frame = captureEnabled({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') }), variant(1, 'B')] } })!;
+  const frame = captureEnabled({
+    frames: carrierRows('blue', 'pink'),
+    frameDesign: {
+      messages: ['A', 'B'],
+      messageFrames: { A: ['blue', 'pink'] },
+      variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') }), variant(1, 'B')],
+    },
+  })!;
   assert.deepEqual(frame.variants.map((v) => [v.index, v.frameId]), [[0, 'blue'], [0, 'pink'], [1, null]]);
 });
 
 test('a message on several designs has several images with one position: the pick still works, and one message on two designs is still picked', () => {
-  const frame = captureEnabled({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') }), variant(1, 'B', { frameId: 'blue', imageUrl: url('q') })] } })!;
+  const frame = captureEnabled({
+    frames: carrierRows('blue', 'pink'),
+    frameDesign: {
+      messages: ['A', 'B'],
+      messageFrames: { A: ['blue', 'pink'], B: 'blue' },
+      variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') }), variant(1, 'B', { frameId: 'blue', imageUrl: url('q') })],
+    },
+  })!;
   for (const random of [0, 0.5, 0.99]) assert.equal(pickVariant(frame, 0, () => random)?.index, 1, 'not the message of the last photo while another exists');
-  const only = captureEnabled({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') })] } })!;
+  const only = captureEnabled({
+    frames: carrierRows('blue', 'pink'),
+    frameDesign: {
+      messages: ['A'],
+      messageFrames: { A: ['blue', 'pink'] },
+      variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') })],
+    },
+  })!;
   for (const random of [0, 0.5, 0.99]) assert.ok(pickVariant(only, 0, () => random), 'one message on two designs: an image is still picked');
 });

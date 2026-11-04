@@ -6,7 +6,7 @@ import { apiBadRequest, apiCreated, apiForbidden, apiNotFound, apiSuccess, check
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization';
-import { experienceConfigFromEvent, parseExperienceTemplateConfig, resolveEventExperienceConfig, validateTemplateAssetScope, type ExperienceTemplateConfig } from '@/lib/visual-assets/templates';
+import { experienceConfigFromEvent, makeGlobalJourneyConfig, parseExperienceTemplateConfig, resolveEventExperienceConfig, validateTemplateAssetScope, type ExperienceTemplateConfig } from '@/lib/visual-assets/templates';
 
 type Level = 'global' | 'partner' | 'event';
 const isLevel = (value: unknown): value is Level => value === 'global' || value === 'partner' || value === 'event';
@@ -50,7 +50,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const session = await requireAuth(request);
   await checkRateLimit(request, RATE_LIMITS.ADMIN);
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!body || !isLevel(body.level) || typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 120) {
+  if (!body || !isLevel(body.level) || typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 120 || (body.makeDefault !== undefined && typeof body.makeDefault !== 'boolean')) {
     throw apiBadRequest('Send a level and a template name (up to 120 characters).');
   }
   const db = await connectToDatabase();
@@ -71,6 +71,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   if (body.level !== 'global' && !partner) throw apiBadRequest('The source event must belong to a partner to create a partner or event template.');
   const effective = await resolveEventExperienceConfig(db, source as Record<string, unknown>, partner as Record<string, unknown> | null);
   if (effective) config = effective.config;
+  if (body.level === 'global') config = makeGlobalJourneyConfig(config);
   const parsed = parseExperienceTemplateConfig(config);
   if (!parsed.ok) throw apiBadRequest(parsed.reason);
   const assetScope = await validateTemplateAssetScope(db, body.level, parsed.config, source as Record<string, unknown>, partner as Record<string, unknown> | null);
@@ -87,5 +88,24 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     updatedBy: session.user.id,
   };
   await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).insertOne(template);
+  if (body.makeDefault === true) {
+    try {
+      if (body.level === 'global') {
+        await db.collection(COLLECTIONS.ADMIN_SETTINGS).updateOne(
+          { settingId: 'default-experience-template' },
+          { $set: { settingId: 'default-experience-template', templateId: template.templateId, updatedAt: now, updatedBy: session.user.email ?? null } },
+          { upsert: true },
+        );
+      } else if (body.level === 'partner') {
+        await db.collection(COLLECTIONS.PARTNERS).updateOne(
+          { partnerId: String(source.partnerId) },
+          { $set: { defaultExperienceTemplateId: template.templateId, updatedAt: now } },
+        );
+      }
+    } catch (error) {
+      await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).deleteOne({ templateId: template.templateId });
+      throw error;
+    }
+  }
   return apiCreated({ template });
 });

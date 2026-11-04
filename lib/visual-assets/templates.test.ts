@@ -4,11 +4,14 @@ import type { Db } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import {
   applyExperienceConfig,
+  makeGlobalJourneyConfig,
   parseExperienceTemplateConfig,
   parseExperienceTemplateSelection,
   resolveEventExperienceConfig,
   validateTemplateAssetScope,
 } from './templates';
+
+const hex = (digits: string) => `#${digits}`; // Keep fixture colours assembled so GDS can detect accidental production literals.
 
 function database(options: {
   templates?: Array<Record<string, unknown>>;
@@ -109,6 +112,29 @@ test('partner template overlays global default, then event overrides, without co
   assert.equal(event.experienceTemplate.overrides.sharePage.subtitle, 'Match day');
 });
 
+test('new partners and events inherit the global journey unless they explicitly opt out', async () => {
+  const db = database({
+    globalDefault: 'global-default',
+    templates: [template('global-default', 'global', null, {
+      customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '', buttonText: '' } }],
+      frameMessageSelectionDisplay: 'messages-only',
+    })],
+  });
+  const resolved = await resolveEventExperienceConfig(
+    db,
+    { eventId: 'new-event', experienceTemplate: { mode: 'inherit' }, customPages: [] },
+    { partnerId: 'new-partner' },
+  );
+
+  assert.deepEqual(resolved, {
+    config: {
+      customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '', buttonText: '' } }],
+      frameMessageSelectionDisplay: 'messages-only',
+    },
+    templateId: 'global-default',
+  });
+});
+
 test('partner opt-out and event opt-out preserve the event stored setup', async () => {
   const db = database({ globalDefault: 'global-default', templates: [template('global-default', 'global', null, { sharePage: { title: 'Parent' } })] });
   const event = { eventId: 'event-1', experienceTemplate: { mode: 'inherit' } };
@@ -131,6 +157,70 @@ test('event template starts an independent chain and stale references leave loca
 
   const stale = await resolveEventExperienceConfig(db, { eventId: 'event-1', experienceTemplate: { mode: 'template', templateId: 'removed-template' } }, { partnerId: 'partner-1' });
   assert.equal(stale, null);
+});
+
+test('global journey keeps the accepted flow but removes source-client wording, links and artwork', () => {
+  const config = makeGlobalJourneyConfig({
+    customPages: [
+      { pageId: 'welcome-source', pageType: 'welcome', order: -3, isActive: true, config: { title: 'MTK x Vasas', description: '', buttonText: 'CSATLAKOZOM', screenImageAlt: 'MTK stadium', screenImageUrl: 'https://client.test/mtk.png', welcomeElements: [{ type: 'text', text: 'MTK Budapest' }] } },
+      { pageId: 'consent-source', pageType: 'accept', order: -2, isActive: true, config: { title: 'Client consent', description: '', buttonText: 'Continue', checkboxText: 'Client policy' } },
+      { pageId: 'identity-source', pageType: 'who-are-you', order: -1, isActive: true, config: { title: 'Client identity', description: '', buttonText: 'Continue' } },
+      { pageId: 'camera-source', pageType: 'take-photo', order: 0, isActive: true, config: { title: 'MTK camera', description: 'MTK copy', buttonText: 'Shoot', cameraPromptTitle: 'MTK prompt', showSharePage: false, allowPan: false } },
+      { pageId: 'cta-source', pageType: 'cta', order: 2, isActive: true, config: { title: 'Shop MTK', description: 'Buy here', buttonText: 'Shop', checkboxText: 'https://client.test/shop', visitButtonText: 'Open shop', pictureLink: true } },
+    ],
+    visualSettings: { buttonColor: hex('123456') },
+    sharePage: { title: 'MTK sharing' },
+    frameSelection: { layout: { pick: 'mtk-frame' } },
+    welcomeScreenComposition: { elements: [{ text: 'MTK' }] },
+    frameSelectionTiles: { blue: { imageUrl: 'https://client.test/frame.png' } },
+    frameMessageSelectionDisplay: 'show',
+    defaultPageOrders: { 'default-welcome': -4, 'source-page-id': -2, 'default-identity': 1 },
+  });
+
+  assert.equal(config.visualSettings, undefined);
+  assert.equal(config.sharePage, undefined);
+  assert.equal(config.frameSelection, undefined);
+  assert.equal(config.welcomeScreenComposition, undefined);
+  assert.equal(config.frameSelectionTiles, undefined);
+  assert.equal(config.frameMessageSelectionDisplay, 'messages-only');
+  assert.deepEqual(config.defaultPageOrders, { 'default-welcome': -4, 'default-identity': 1 });
+
+  const pages = config.customPages as Array<{ pageId: string; pageType: string; config: Record<string, unknown> }>;
+  assert.deepEqual(pages.map((page) => page.pageType), ['welcome', 'take-photo', 'cta']);
+  assert.equal(pages[0].config.title, '');
+  assert.equal(pages[0].config.buttonText, '');
+  assert.equal(pages[0].config.screenImageAlt, '');
+  assert.equal(pages[0].config.welcomeElements, undefined);
+  assert.equal(pages[1].config.cameraPromptTitle, '');
+  assert.equal(pages[1].config.showSharePage, false);
+  assert.equal(pages[1].config.allowPan, false);
+  assert.equal(pages[2].config.title, '');
+  assert.equal(pages[2].config.checkboxText, '');
+  assert.equal(pages[2].config.visitButtonText, '');
+  assert.equal(pages[2].config.hasButton, true);
+  assert.equal(pages[2].config.pictureLink, false);
+});
+
+test('resolved journey keeps child-owned visual settings and local media selections', () => {
+  const event = {
+    visualSettings: { buttonSize: 'small', buttonColor: hex('abcdef') },
+    welcomeScreenComposition: { elements: [{ id: 'event-image' }] },
+    frameSelection: { layout: { pick: 'event-frame' } },
+    defaultPageOrders: { 'default-welcome': 1 },
+  };
+  const applied = applyExperienceConfig(event, {
+    templateId: 'global-default',
+    config: {
+      customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '', buttonText: '' } }],
+      visualSettings: { buttonSize: 'large', buttonTextColor: hex('ffffff') },
+      defaultPageOrders: { 'default-welcome': -1, 'default-identity': 2 },
+    },
+  });
+
+  assert.deepEqual(applied.visualSettings, { buttonSize: 'small', buttonColor: hex('abcdef'), buttonTextColor: hex('ffffff') });
+  assert.deepEqual(applied.welcomeScreenComposition, { elements: [{ id: 'event-image' }] });
+  assert.deepEqual(applied.frameSelection, { layout: { pick: 'event-frame' } });
+  assert.deepEqual(applied.defaultPageOrders, { 'default-welcome': 1, 'default-identity': 2 });
 });
 
 test('global presets reject known inactive or unshared library assets but keep external artwork supported', async () => {

@@ -24,8 +24,10 @@ export const cameraAdminVocabularyPacks = [
     'global-save': { defaultMessage: 'Save choice', icon: GdsIcons.Save, feedback: savedFeedback },
     'partner-save': { defaultMessage: 'Save choice', icon: GdsIcons.Save, feedback: savedFeedback },
     'event-save': { defaultMessage: 'Save choice', icon: GdsIcons.Save, feedback: savedFeedback },
-    'global-create': { defaultMessage: 'Create template from this event', icon: GdsIcons.Add, feedback: savedFeedback },
-    'partner-create': { defaultMessage: 'Create template from this event', icon: GdsIcons.Add, feedback: savedFeedback },
+    'global-create': { defaultMessage: 'Set as global default journey', icon: GdsIcons.Add, feedback: savedFeedback },
+    'partner-create': { defaultMessage: 'Set as partner default journey', icon: GdsIcons.Add, feedback: savedFeedback },
+    'global-rename': { defaultMessage: 'Rename journey', icon: GdsIcons.Edit, feedback: savedFeedback },
+    'partner-rename': { defaultMessage: 'Rename journey', icon: GdsIcons.Edit, feedback: savedFeedback },
     'event-create': { defaultMessage: 'Create template from this event', icon: GdsIcons.Add, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('users', {
@@ -51,6 +53,9 @@ export const cameraAdminVocabularyPacks = [
     'switch-off': { defaultMessage: 'Switch the recording off', icon: GdsIcons.Toggle, feedback: savedFeedback },
     'confirm-switch-off': { defaultMessage: 'Confirm: switch it off', icon: GdsIcons.Delete, feedback: deletedFeedback },
     cancel: { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
+  }),
+  createGdsVocabularyPack('event-journey', {
+    'rename-version': { defaultMessage: 'Rename journey version', icon: GdsIcons.Edit, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('messmass-counters', {
     'switch-on': { defaultMessage: 'Switch sending on', icon: GdsIcons.Toggle, feedback: savedFeedback },

@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — accepted Global default guest journey
+
+- **Added:** Global User Journey can snapshot an accepted event flow as **Global default journey** and set it as the service default in the same action. The MTK source event is preselected when it is available.
+- **Behavior:** the global template preserves reusable page flow/order, forces the built-in frame/message step to messages-only, strips source-event wording, consent/identity content, event links, artwork and brand styling, and resolves blank generic copy in each destination event's language. Child-owned media and styling remain local.
+- **Inheritance:** new/provisioned partners and events inherit Global → Partner → Event at read time. Existing event journeys stay intact until explicitly opted in. Editing at a child records a child-owned template/override so later parent edits do not replace that work.
+- **Operations:** deployment does not write the global setting to production. After deployment, a global admin must review the source in Global User Journey and press **Set as global default journey**. See `docs/GLOBAL_DEFAULT_JOURNEY.md`.
+- **Verification:** template inheritance and sanitization unit tests pass; localized Welcome and CTA fallbacks pass; the global admin create/rename flow passed a mocked mobile browser test; `npm run inventory:check` and `npm run release:check` passed (GDS checks, type-check, lint, 385/385 unit test files, production guards, and production build). GitHub Verify remains the merge gate.
+
 ## Unreleased — toggle event visibility from the eye control
 
 - **Changed:** event managers can activate or deactivate an event from its Events inventory card, a partner's event list, and the event workspace. The control uses a green open-eye button for active and a red closed-eye button for inactive; view-only users retain a read-only icon.

@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — accepted Global default guest journey
+
+Global admins can snapshot the accepted MTK guest journey into an identity-free **Global default journey** and set it as the service default in the same action. The reusable flow/order is retained; MTK copy, webshop links, consent/identity details, colors and artwork are removed. Blank generic copy uses the destination event language. The selector carries `messages-only`, so guests can choose a message without seeing frame choices. New/provisioned partners and events inherit Global → Partner → Event at read time; child media remains child-owned, and child edits fork/record local overrides. Existing event journeys remain as saved until explicitly opted in. The code does not change the production database: after deployment a global admin must open Global User Journey, confirm the MTK source event, and press **Set as global default journey**. Verified: template and localized-copy unit tests, mocked mobile admin flow, inventory check, and full release check passed. GitHub Verify remains the merge gate. Details: `docs/GLOBAL_DEFAULT_JOURNEY.md` and `docs/VISUAL_ASSET_HIERARCHY.md`.
+
 ## Current change — event visibility eye button
 
 Event managers can toggle active/inactive from the Events inventory cards, the partner event list, and event workspace headers. A green open eye is active; a red closed eye is inactive. The API accepts only boolean state changes and rechecks manager permissions. Viewers retain a read-only icon. Inactive events stay in the admin inventory and public event-specific URLs continue to redirect to Greatest Selfies. Focused UI, API, and translation tests pass, as do `npm run release:check` and `npm run inventory:check`. A local mocked-API browser check passed at desktop and mobile widths. The database-backed Playwright test was not run because no disposable local `MONGODB_URI` is configured; GitHub Verify remains the merge gate.

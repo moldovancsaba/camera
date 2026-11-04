@@ -1,6 +1,6 @@
 # Visual assets and experience defaults
 
-Status: implementation in progress on `feature/visual-assets-inheritance`. This describes the code in this branch; it is not a claim that production has been migrated or deployed.
+Status: implementation in progress on `fix/event-frame-management`. This describes the code in this branch; it is not a claim that production has been migrated or deployed.
 
 ## Product model
 
@@ -36,6 +36,10 @@ The runtime order is:
 3. Event overrides saved on that event.
 
 An event can instead select its own event template, which starts an independent chain, or explicitly keep its local setup by opting out. A partner can follow the global default, select its own template, or disable the inherited global default. Missing selections on pre-existing events preserve their current stored configuration; new and provisioned events start in inherit mode. Inherited configuration is resolved at read time rather than copied into child records.
+
+The global journey snapshot is created from an accepted source event, but is not a copy of that client's presentation. Camera retains the page flow and stable page-order rules, removes client text, consent/identity page content, CTA destinations and artwork, and forces the built-in frame/message selector to `messages-only`. Blank generic copy resolves through the guest's event language. Logos, frame assets, welcome artwork, event colors and other media continue to resolve from the destination partner/event. Creating the global snapshot can set it as the service default in the same request. This does not update the production database as part of deployment; a global admin must perform the action in **Global User Journey** after deployment.
+
+Default propagation is prospective and opt-in for legacy configurations: new/provisioned partners and events start in inherit mode, while existing event pages remain unchanged until their owner selects **Follow the parent default**. An edit to an inherited event is saved as an event-owned template/override; it does not mutate the parent. A partner-owned template similarly becomes independent of later global changes.
 
 | API | Purpose |
 | --- | --- |

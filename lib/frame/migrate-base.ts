@@ -82,7 +82,7 @@ export async function migrateBaseToLibrary(db: Db, event: Document, by: string, 
     if (frameId) messageFrames[message] = frameId;
   }
 
-  const set: Document = { 'frameDesign.messageFrames': messageFrames, framesOverridden: true, updatedAt: now };
+  const set: Document = { 'frameDesign.messageFrames': messageFrames, 'frameDesign.messageFramesOverridden': true, framesOverridden: true, updatedAt: now };
   await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, newRows.length ? { $set: set, $push: { frames: { $each: newRows } } as Document } : { $set: set });
   return { ok: true, frames: summary, messageFrames };
 }

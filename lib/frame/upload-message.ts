@@ -10,7 +10,7 @@ import { apiBadRequest, apiError } from '@/lib/api';
 import { DEFAULT_FRAME_MESSAGES, validateMessages } from './messages';
 import { loadMessageFrames, parseMessageFrames } from './message-frames';
 import type { FrameDesign } from './context';
-import { framesOfMessage } from './selection';
+import { effectiveMessageFrames, framesOfMessage } from './selection';
 
 export type UploadMessageMode = 'none' | 'existing' | 'new';
 
@@ -27,6 +27,7 @@ export function prepareUploadMessage(
   value: unknown,
   currentMessages: readonly string[],
   currentChoices: FrameDesign['messageFrames'] | undefined,
+  includeGeneratedFallback = true,
 ): PreparedUploadMessage | null {
   if (mode === 'none' || mode === undefined || mode === null || mode === '') return null;
   if (mode !== 'existing' && mode !== 'new') throw apiBadRequest('Choose an existing event message, add a new one, or leave the frame without a message.');
@@ -47,7 +48,7 @@ export function prepareUploadMessage(
   // lets us reject the 40-image limit before the file reaches media storage.
   const choices = Object.fromEntries(Object.entries(currentChoices ?? {}).filter(([key]) => messages.includes(key)));
   const selectedIds = framesOfMessage(choices, message);
-  const parsed = parseMessageFrames({ ...choices, [message]: [...selectedIds, '__uploading_frame__'] }, validated.messages);
+  const parsed = parseMessageFrames({ ...choices, [message]: [...selectedIds, '__uploading_frame__'] }, validated.messages, includeGeneratedFallback);
   if (!parsed.ok) throw apiBadRequest(parsed.error);
   return { mode, messages: validated.messages, messageFrames: parsed.messageFrames, message };
 }
@@ -81,9 +82,9 @@ export async function associateUploadedFrameMessage(
       : [...current.messages, prepared.message];
     const validated = validateMessages(messages);
     if (!validated.ok) throw apiBadRequest(validated.error);
-    const choices = Object.fromEntries(Object.entries(current.messageFrames ?? {}).filter(([key]) => validated.messages.includes(key)));
+    const choices = Object.fromEntries(Object.entries(effectiveMessageFrames(current)).filter(([key]) => validated.messages.includes(key)));
     const selectedIds = framesOfMessage(choices, prepared.message);
-    const parsed = parseMessageFrames({ ...choices, [prepared.message]: [...selectedIds, frameId] }, validated.messages);
+    const parsed = parseMessageFrames({ ...choices, [prepared.message]: [...selectedIds, frameId] }, validated.messages, latest.generatedFrameEnabled === true);
     if (!parsed.ok) throw apiBadRequest(parsed.error);
 
     const now = generateTimestamp();
@@ -92,6 +93,7 @@ export async function associateUploadedFrameMessage(
       messages: validated.messages,
       messagesOverridden: validated.messages.length !== DEFAULT_FRAME_MESSAGES.length || validated.messages.some((message, index) => message !== DEFAULT_FRAME_MESSAGES[index]),
       messageFrames: parsed.messageFrames,
+      messageFramesOverridden: true,
       updatedAt: now,
     };
     const versionFilter = current.updatedAt
@@ -102,6 +104,7 @@ export async function associateUploadedFrameMessage(
         'frameDesign.messages': design.messages,
         'frameDesign.messagesOverridden': design.messagesOverridden,
         'frameDesign.messageFrames': design.messageFrames,
+        'frameDesign.messageFramesOverridden': true,
         'frameDesign.updatedAt': design.updatedAt,
         updatedAt: now,
       },

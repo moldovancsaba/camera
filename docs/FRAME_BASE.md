@@ -29,7 +29,7 @@ While the event has a frame of its own (a picture assigned in the frame library)
 **The way to set it up now is the library (camera#366, docs/LIBRARIES.md):** upload the designers' text-free frames at the event level (or the partner level), give each a
 **message area** (where the message is written: the same box, colour and territories as the fields above, edited on the frame's card), and choose a **frame for each
 message** in the generated frame panel of the event. The `base` below is the older way (data on the event; the MTK x Vasas event was set this way until 2026-10-08, see the end of this page) and keeps working:
-for each message the order is **the frame the message chose, else the base picture, else the generated layout**, and a design with neither keeps the keys it had, so
+for each message the order is **the frame the message chose, else the base picture, else the generated layout when the generated default is enabled**; with that fallback off an unassigned message has no composition. A design with neither keeps the keys it had, so
 nothing is redrawn. The font follows the messmass report style of the event: change it there, and the next refresh redraws the messages.
 
 ## Moving the base into the library (camera#369)
