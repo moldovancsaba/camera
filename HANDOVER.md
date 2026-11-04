@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — one Event journey template creator
+
+Event User Journey now exposes only Event-scoped reusable-template creation. Global and Partner templates remain created in their own editors, so event users see one creator rather than repeated panels for scopes they are not editing. The panel's helper copy is also shown once. Focused mobile Chromium Playwright coverage passed for the single panel, helper copy, Event-level POST payload, and hidden creator when permission is false. `npm run release:check` and `npm run inventory:check` passed. The browser check used local Webpack dev with mocked APIs because default Turbopack startup fails while parsing the installed GDS stylesheet. No production records or journey defaults changed; GitHub Verify remains the delivery gate.
+
 ## Current change — choose the journey served by event public links
 
 Global, Partner and Event User Journey editors can retain multiple named journey versions. Creating a version only adds it to that level's list; selecting and saving is the separate action that changes its active default. Event User Journey shows the inherited effective version, event-owned versions, and the event's own pages. Its selection determines the flow returned to the event capture URL and therefore also serves existing short links and QR codes without changing their addresses. New event versions appear immediately in the selector. Parent defaults continue to apply only to inheriting children; child-owned versions stay independent. Existing legacy event pages are not changed until explicitly opted into inheritance. No production settings or records were changed. The focused mobile browser check passed; `npm run inventory:check` and `npm run release:check` passed (386/386 unit-test files, production guards, and production build). GitHub Verify is the merge gate. Details: `docs/GLOBAL_DEFAULT_JOURNEY.md` and `docs/VISUAL_ASSET_HIERARCHY.md`.

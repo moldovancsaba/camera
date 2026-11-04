@@ -70,6 +70,8 @@ test('event manager selects the journey used by the event capture and short URLs
   const captureUrl = `https://camera.messmass.com/capture/${eventId}`;
   const shortUrl = 'https://go.messmass.com/abc234';
   let savedSelection: unknown = null;
+  let createdTemplatePayload: Record<string, unknown> | null = null;
+  let canCreateEventTemplate = true;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.route('**/api/**', async (route) => {
     const request = route.request();
@@ -100,8 +102,20 @@ test('event manager selects the journey used by the event capture and short URLs
           templateId: 'event-summer', level: 'event', ownerId: eventId, name: 'Event summer journey', config: { customPages: [] },
           createdAt: '2026-11-04T10:00:00.000Z', updatedAt: '2026-11-04T10:00:00.000Z',
         }],
-        canCreateTemplateLevels: ['event'],
+        canCreateEventTemplate,
       } } });
+      return;
+    }
+    if (url.pathname === '/api/visual-assets/templates' && request.method() === 'POST') {
+      createdTemplatePayload = request.postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 201,
+        json: { data: { template: {
+          templateId: 'event-created', level: 'event', ownerId: eventId,
+          name: 'Event-only version', config: { customPages: [] },
+          createdAt: '2026-11-04T10:00:00.000Z', updatedAt: '2026-11-04T10:00:00.000Z',
+        } } },
+      });
       return;
     }
     if (url.pathname === `/api/events/${eventId}/experience-template` && request.method() === 'PATCH') {
@@ -114,6 +128,13 @@ test('event manager selects the journey used by the event capture and short URLs
 
   await page.goto(`/api/auth/dev-login?role=admin&access=true&email=journey-event@camera.local&name=Journey%20Editor&userId=journey-event-e2e&redirectTo=%2Fadmin%2Fevents%2F${eventId}%2Fpages`);
   await expect(page.getByRole('heading', { name: /Journey selection test.*Event User Journey/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Experience defaults', level: 3 })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Create journey version' })).toHaveCount(1);
+  await expect(page.getByText('Save the current setup as a reusable template.')).toHaveCount(1);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.getByRole('heading', { name: 'Experience defaults', level: 3 })).toHaveCount(1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll');
   await expect(page.getByText('Currently live: Global matchday journey')).toBeVisible();
   await expect(page.getByRole('link', { name: new RegExp(captureUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toHaveAttribute('href', captureUrl);
   await expect(page.getByRole('link', { name: new RegExp(shortUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toHaveAttribute('href', shortUrl);
@@ -125,6 +146,11 @@ test('event manager selects the journey used by the event capture and short URLs
   await expect(page.getByText('Currently live: Event summer journey')).toBeVisible();
   expect(savedSelection).toEqual({ mode: 'template', templateId: 'event-summer' });
 
+  await page.getByRole('textbox', { name: 'Template name' }).fill('Event-only version');
+  await page.getByRole('button', { name: 'Create journey version' }).click();
+  await expect(page.getByText('Journey version created')).toBeVisible();
+  expect(createdTemplatePayload).toEqual({ level: 'event', name: 'Event-only version', sourceEventId: eventId });
+
   await selector.click();
   await page.getByRole('option', { name: 'Use this event’s own pages' }).click();
   await page.getByRole('button', { name: 'Save choice' }).click();
@@ -132,4 +158,9 @@ test('event manager selects the journey used by the event capture and short URLs
   expect(savedSelection).toEqual({ mode: 'template', templateId: null });
   await expect(page.getByRole('link', { name: new RegExp(captureUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toHaveAttribute('href', captureUrl);
   await expect(page.getByRole('link', { name: new RegExp(shortUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toHaveAttribute('href', shortUrl);
+
+  canCreateEventTemplate = false;
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Experience defaults', level: 3 })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Create journey version' })).toHaveCount(0);
 });

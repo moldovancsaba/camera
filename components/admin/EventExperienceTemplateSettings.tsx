@@ -22,7 +22,7 @@ interface State {
   inheritedJourney: JourneyRef | null;
   publicLinks: { captureUrl: string; shortUrl: string | null };
   templates: ExperienceTemplate[];
-  canCreateTemplateLevels: Array<'global' | 'partner' | 'event'>;
+  canCreateEventTemplate: boolean;
 }
 
 function apiData<T>(payload: unknown): T {
@@ -144,10 +144,10 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
           </GdsStack>
         </GdsStack>
       </SectionPanel>
-      {state?.canCreateTemplateLevels.map((level) => (
+      {state?.canCreateEventTemplate ? (
         <ExperienceTemplateCreator
-          key={level}
-          level={level}
+          key="event"
+          level="event"
           sourceEventId={sourceEventId}
           onCreated={(template) => {
             if (template.level !== 'event') return;
@@ -157,7 +157,7 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
             } : current);
           }}
         />
-      ))}
+      ) : null}
     </GdsStack>
   );
 }
