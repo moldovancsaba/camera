@@ -26,7 +26,6 @@ import {
   TextInput,
 } from '@/components/gds/PublicPrimitives';
 import ImagePicker from '@/components/admin/library/ImagePicker';
-import EventExperienceTemplateSettings from '@/components/admin/EventExperienceTemplateSettings';
 import { EMAIL_PICTURE_TYPES, EMAIL_PICTURE_WORDS } from '@/lib/library/image-files';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { FormSection } from '@sovereignsquad/gds-admin/client';
@@ -589,8 +588,6 @@ export default function EditEventPage({
           </Group>
         </Stack>
       </form>
-
-      {event ? <EventExperienceTemplateSettings eventMongoId={mongoId} sourceEventId={mongoId} /> : null}
 
     </EditorScaffold>
   );

@@ -5,6 +5,7 @@ import { adminVisualAssetText } from './admin-visual-assets';
 import { adminExperienceTemplateText } from './admin-experience-templates';
 import { adminFrameUploadText } from './admin-frame-upload';
 import { adminWelcomeImageText } from './admin-welcome-image';
+import { adminJourneyPublicationText } from './admin-journey-publication';
 
 /**
  * Shared wording for the photo-review and Fanmass operations screens.
@@ -95,6 +96,8 @@ export function adminOperationText(source: string, language: UiLanguage): string
   if (visualAssetText !== null) return visualAssetText;
   const experienceTemplateText = adminExperienceTemplateText(source, language);
   if (experienceTemplateText !== null) return experienceTemplateText;
+  const journeyPublicationText = adminJourneyPublicationText(source, language);
+  if (journeyPublicationText !== null) return journeyPublicationText;
   const common = adminCommonText(source, language);
   if (common !== null) return common;
   const extraIndex = EXTRA_INDEX.get(source);
@@ -111,7 +114,7 @@ export function adminOperationText(source: string, language: UiLanguage): string
 }
 
 export function hasAdminOperationTranslation(source: string): boolean {
-  return INDEX.has(source) || adminWelcomeImageText(source, 'en') !== null;
+  return INDEX.has(source) || adminWelcomeImageText(source, 'en') !== null || adminJourneyPublicationText(source, 'en') !== null;
 }
 
 // Guard catalog ordering during application startup without turning missing phrases into crashes.

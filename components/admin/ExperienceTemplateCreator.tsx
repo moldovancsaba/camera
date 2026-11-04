@@ -10,7 +10,7 @@ import type { ExperienceTemplate } from '@/lib/visual-assets/contracts';
 
 type Level = 'global' | 'partner' | 'event';
 
-export default function ExperienceTemplateCreator({ level, sourceEventId }: { level: Level; sourceEventId: string }) {
+export default function ExperienceTemplateCreator({ level, sourceEventId, onCreated }: { level: Level; sourceEventId: string; onCreated?: (template: ExperienceTemplate) => void }) {
   const language = useUiLanguage();
   const ui = (text: string) => adminOperationText(text, language);
   const [name, setName] = useState('');
@@ -34,6 +34,7 @@ export default function ExperienceTemplateCreator({ level, sourceEventId }: { le
       const data = (payload as { data?: { template?: ExperienceTemplate } } | null)?.data;
       if (!data?.template) throw new Error('The server did not return the new template.');
       setCreated(data.template);
+      onCreated?.(data.template);
       setName('');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not create the template.');
@@ -46,12 +47,12 @@ export default function ExperienceTemplateCreator({ level, sourceEventId }: { le
     <SectionPanel title={ui('Experience defaults')} description={ui('Save the current setup as a reusable template.')}>
       <GdsStack gap="md">
         {error ? <InlineAlert title={ui('Experience defaults')} message={error} severity="error" /> : null}
-        {created ? <InlineAlert title={ui('Saved.')} message={created.name} severity="info" /> : null}
+        {created ? <InlineAlert title={ui('Journey version created')} message={`${created.name}. ${ui('Select this version and save to make it the default at this level.')}`} severity="info" /> : null}
         <MetadataText>{ui('Save the current setup as a reusable template.')}</MetadataText>
         <GdsInline gap="md" align="end">
           <AdminTextInput name={`${level}-experience-template-name`} label={ui('Template name')} value={name} onChange={setName} maxLength={120} />
           <SemanticButton action={`experience-template:${level}-create`} loading={busy} disabled={busy || !name.trim()} onClick={() => void create()}>
-            {ui('Create template from this event')}
+            {ui('Create journey version')}
           </SemanticButton>
         </GdsInline>
       </GdsStack>

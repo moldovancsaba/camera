@@ -3,14 +3,24 @@
 import { useEffect, useState } from 'react';
 import { AdminSelect } from '@sovereignsquad/gds-admin/client';
 import { GdsInline, GdsStack, InlineAlert, MetadataText, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
+import { Anchor } from '@/components/gds/PublicPrimitives';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import ExperienceTemplateCreator from '@/components/admin/ExperienceTemplateCreator';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminOperationText } from '@/lib/i18n/admin-operations';
 import type { ExperienceTemplate, ExperienceTemplateSelection } from '@/lib/visual-assets/contracts';
 
+interface JourneyRef {
+  templateId: string;
+  name: string | null;
+  level: 'global' | 'partner' | 'event' | null;
+}
+
 interface State {
   selection: ExperienceTemplateSelection | null;
+  effectiveJourney: JourneyRef | null;
+  inheritedJourney: JourneyRef | null;
+  publicLinks: { captureUrl: string; shortUrl: string | null };
   templates: ExperienceTemplate[];
   canCreateTemplateLevels: Array<'global' | 'partner' | 'event'>;
 }
@@ -22,14 +32,13 @@ function apiData<T>(payload: unknown): T {
   return data;
 }
 
-function optionOf(selection: ExperienceTemplateSelection | null): string {
-  if (!selection) return 'legacy';
+function optionOf(selection: ExperienceTemplateSelection | null, effectiveTemplateId: string | null): string {
+  if (!selection) return effectiveTemplateId ? 'inherit' : 'disabled';
   if (selection.mode === 'inherit') return 'inherit';
   return selection.templateId ?? 'disabled';
 }
 
-function selectionOf(option: string): ExperienceTemplateSelection | null {
-  if (option === 'legacy') return null;
+function selectionOf(option: string): ExperienceTemplateSelection {
   if (option === 'inherit') return { mode: 'inherit' };
   if (option === 'disabled') return { mode: 'template', templateId: null };
   return { mode: 'template', templateId: option };
@@ -40,7 +49,7 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
   const ui = (text: string) => adminOperationText(text, language);
   const endpoint = `/api/events/${encodeURIComponent(eventMongoId)}/experience-template`;
   const [state, setState] = useState<State | null>(null);
-  const [choice, setChoice] = useState('legacy');
+  const [choice, setChoice] = useState('disabled');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,19 +63,24 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
         if (!response.ok) throw new Error((payload as { error?: string } | null)?.error || `Request failed (${response.status})`);
         return apiData<State>(payload);
       })
-      .then((next) => { setState(next); setChoice(optionOf(next.selection)); })
+      .then((next) => { setState(next); setChoice(optionOf(next.selection, next.effectiveJourney?.templateId ?? null)); })
       .catch((failure: unknown) => { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'Could not load experience settings.'); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [endpoint]);
 
   const options = [
-    { value: 'legacy', label: ui("Keep this event's current setup") },
-    { value: 'inherit', label: ui('Follow the parent default') },
-    { value: 'disabled', label: ui('Disable inherited experience') },
+    {
+      value: 'inherit',
+      label: state?.inheritedJourney?.name
+        ? `${ui('Follow the parent default')} — ${state.inheritedJourney.name}`
+        : ui('Follow the parent default'),
+    },
+    { value: 'disabled', label: ui('Use this event’s own pages') },
     ...(state?.templates ?? []).map((template) => ({ value: template.templateId, label: template.name })),
   ];
-  const dirty = Boolean(state && choice !== optionOf(state.selection));
+  const currentChoice = state ? optionOf(state.selection, state.effectiveJourney?.templateId ?? null) : 'disabled';
+  const dirty = Boolean(state && choice !== currentChoice);
 
   const save = async () => {
     if (!state) return;
@@ -78,9 +92,15 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
       const response = await fetch(endpoint, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ selection }) });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error((payload as { error?: string } | null)?.error || `Request failed (${response.status})`);
-      const result = apiData<{ selection: ExperienceTemplateSelection | null }>(payload);
-      setState((current) => current ? { ...current, selection: result.selection } : current);
-      setChoice(optionOf(result.selection));
+      const result = apiData<{ selection: ExperienceTemplateSelection }>(payload);
+      const selectedTemplate = state.templates.find((template) => template.templateId === choice);
+      const effectiveJourney = choice === 'inherit'
+        ? state.inheritedJourney
+        : selectedTemplate
+          ? { templateId: selectedTemplate.templateId, name: selectedTemplate.name, level: selectedTemplate.level }
+          : null;
+      setState((current) => current ? { ...current, selection: result.selection, effectiveJourney } : current);
+      setChoice(optionOf(result.selection, effectiveJourney?.templateId ?? null));
       setSaved(true);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not save the experience choice.');
@@ -93,22 +113,50 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
 
   return (
     <GdsStack gap="lg">
-      <SectionPanel title={ui('Experience defaults')} description={ui('Choose the reusable guest experience at this level. Child levels follow it until they choose their own.')}>
+      <SectionPanel
+        title={ui('Journey shown to event guests')}
+        description={ui('This choice controls the journey opened by this event’s capture URL, short link and QR codes.')}
+      >
         <GdsStack gap="md">
           {error ? <InlineAlert title={ui('Experience defaults')} message={error} severity="error" /> : null}
-          {saved && !dirty ? <InlineAlert title={ui('Saved.')} severity="info" /> : null}
+          {saved ? <InlineAlert title={ui('Saved.')} message={ui('The public event links now use this journey.')} severity="info" /> : null}
+          <MetadataText>
+            {ui('Currently live')}: {state?.effectiveJourney?.name ?? ui('This event’s own pages')}
+          </MetadataText>
           <GdsInline gap="md" align="end">
-            <AdminSelect name="event-experience-template" label={ui('Experience defaults')} value={choice} onChange={(value) => { setChoice(value ?? 'legacy'); setSaved(false); }} data={options} allowDeselect={false} disabled={!state || saving} />
+            <AdminSelect
+              name="event-public-experience-template"
+              label={ui('Journey shown to event guests')}
+              value={choice}
+              onChange={(value) => { setChoice(value ?? 'disabled'); setSaved(false); }}
+              data={options}
+              allowDeselect={false}
+              disabled={!state || saving}
+            />
             <SemanticButton action="experience-template:event-save" loading={saving} disabled={!state || saving || !dirty} onClick={() => void save()}>
               {ui('Save choice')}
             </SemanticButton>
           </GdsInline>
-          <MetadataText>{choice === 'legacy' ? ui("Keep this event's current setup") : choice === 'inherit' ? ui('This level follows its parent.') : choice === 'disabled' ? ui('This level has no inherited experience.') : ''}</MetadataText>
-          {state?.templates.length === 0 ? <MetadataText>{ui('No templates yet')}</MetadataText> : null}
+          <GdsStack gap="xs">
+            <MetadataText>{ui('Public event links')}</MetadataText>
+            {state?.publicLinks.captureUrl ? <Anchor href={state.publicLinks.captureUrl} target="_blank" rel="noreferrer">{ui('Open capture journey')} · {state.publicLinks.captureUrl}</Anchor> : null}
+            {state?.publicLinks.shortUrl ? <Anchor href={state.publicLinks.shortUrl} target="_blank" rel="noreferrer">{ui('Short link')} · {state.publicLinks.shortUrl}</Anchor> : null}
+          </GdsStack>
         </GdsStack>
       </SectionPanel>
       {state?.canCreateTemplateLevels.map((level) => (
-        <ExperienceTemplateCreator key={level} level={level} sourceEventId={sourceEventId} />
+        <ExperienceTemplateCreator
+          key={level}
+          level={level}
+          sourceEventId={sourceEventId}
+          onCreated={(template) => {
+            if (template.level !== 'event') return;
+            setState((current) => current ? {
+              ...current,
+              templates: [template, ...current.templates.filter((item) => item.templateId !== template.templateId)],
+            } : current);
+          }}
+        />
       ))}
     </GdsStack>
   );

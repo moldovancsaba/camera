@@ -45,6 +45,7 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [createdJourneyName, setCreatedJourneyName] = useState<string | null>(null);
 
   const load = async (signal?: AbortSignal) => {
     const response = await fetch(endpoint, { signal });
@@ -84,6 +85,7 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
     setSaving(true);
     setError(null);
     setSaved(false);
+    setCreatedJourneyName(null);
     try {
       const templateId = level === 'global'
         ? (choice || null)
@@ -117,16 +119,16 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
       const response = await fetch('/api/visual-assets/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ level, name: templateName.trim(), sourceEventId: selectedSourceEventId, makeDefault: true }),
+        // Creating a reusable version must not change what children currently see.
+        // Activation is a separate, explicit action through the selector above.
+        body: JSON.stringify({ level, name: templateName.trim(), sourceEventId: selectedSourceEventId }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error((payload as { error?: string } | null)?.error || `Request failed (${response.status})`);
       const result = apiData<{ template: ExperienceTemplate }>(payload);
-      setData((current) => current ? { ...current, templateId: result.template.templateId, templates: [result.template, ...current.templates.filter((template) => template.templateId !== result.template.templateId)] } : { templateId: result.template.templateId, templates: [result.template] });
-      setChoice(result.template.templateId);
-      setRenameValue(result.template.name);
+      setData((current) => current ? { ...current, templates: [result.template, ...current.templates.filter((template) => template.templateId !== result.template.templateId)] } : { templateId: null, templates: [result.template] });
+      setCreatedJourneyName(result.template.name);
       setTemplateName('');
-      setSaved(true);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not create the template.');
     } finally {
@@ -164,6 +166,7 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
     <SectionPanel title={sectionTitle ? adminShellText(sectionTitle, language) : ui('Experience defaults')} description={ui('Choose the reusable guest experience at this level. Child levels follow it until they choose their own.')}>
       <GdsStack gap="md">
         {error ? <InlineAlert title={ui('Experience defaults')} message={error} severity="error" /> : null}
+        {createdJourneyName ? <InlineAlert title={ui('Journey version created')} message={`${createdJourneyName}. ${ui('Select this version and save to make it the default at this level.')}`} severity="info" /> : null}
         {saved && !dirty ? <InlineAlert title={ui('Saved.')} severity="info" /> : null}
         <GdsInline gap="md" align="end">
           <AdminSelect
@@ -197,12 +200,12 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
         {data?.templates.length === 0 ? <MetadataText>{ui('No templates yet')}</MetadataText> : null}
         {canManage && (level === 'global' ? Boolean(data?.sourceEvents?.length) : Boolean(sourceEventId)) ? (
           <GdsStack gap="sm">
-            <MetadataText>{level === 'global' ? ui('Create the global default from an accepted event journey. Artwork, event links and brand colours stay at the child level.') : ui('Create a partner-owned journey version from an event, then edit its name here.')}</MetadataText>
+            <MetadataText>{ui('Save the current setup as a reusable template.')} {ui('Select this version and save to make it the default at this level.')}</MetadataText>
             <GdsInline gap="md" align="end">
               {level === 'global' ? <AdminSelect name="global-journey-source-event" label={ui('Source event')} value={sourceEventChoice} onChange={(value) => setSourceEventChoice(value ?? '')} data={(data?.sourceEvents ?? []).map((event) => ({ value: event._id, label: [event.name || event.eventId || event._id, event.partnerName, event.eventDate].filter(Boolean).join(' · ') }))} allowDeselect={false} disabled={saving || creating} /> : null}
               <AdminTextInput name={`${level}-template-name`} label={ui('Journey name')} value={templateName} onChange={setTemplateName} maxLength={120} />
               <SemanticButton action={`experience-template:${level}-create`} loading={creating} disabled={creating || saving || !templateName.trim() || (level === 'global' && !sourceEventChoice)} onClick={() => void create()}>
-                {level === 'global' ? ui('Set as global default journey') : ui('Set as partner default journey')}
+                {ui('Create journey version')}
               </SemanticButton>
             </GdsInline>
           </GdsStack>

@@ -50,9 +50,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const session = await requireAuth(request);
   await checkRateLimit(request, RATE_LIMITS.ADMIN);
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!body || !isLevel(body.level) || typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 120 || (body.makeDefault !== undefined && typeof body.makeDefault !== 'boolean')) {
+  if (!body || !isLevel(body.level) || typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 120) {
     throw apiBadRequest('Send a level and a template name (up to 120 characters).');
   }
+  if (Object.hasOwn(body, 'makeDefault')) throw apiBadRequest('Creating a journey version never changes the active journey. Select it in the level settings to make it the default.');
   const db = await connectToDatabase();
   const source = await eventForSource(db, body.sourceEventId);
   let ownerId: string | null = null;
@@ -87,25 +88,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     updatedAt: now,
     updatedBy: session.user.id,
   };
+  // Creation only adds an available version. The explicit level-selection APIs
+  // control which version descendants inherit and which event links serve.
   await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).insertOne(template);
-  if (body.makeDefault === true) {
-    try {
-      if (body.level === 'global') {
-        await db.collection(COLLECTIONS.ADMIN_SETTINGS).updateOne(
-          { settingId: 'default-experience-template' },
-          { $set: { settingId: 'default-experience-template', templateId: template.templateId, updatedAt: now, updatedBy: session.user.email ?? null } },
-          { upsert: true },
-        );
-      } else if (body.level === 'partner') {
-        await db.collection(COLLECTIONS.PARTNERS).updateOne(
-          { partnerId: String(source.partnerId) },
-          { $set: { defaultExperienceTemplateId: template.templateId, updatedAt: now } },
-        );
-      }
-    } catch (error) {
-      await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).deleteOne({ templateId: template.templateId });
-      throw error;
-    }
-  }
   return apiCreated({ template });
 });

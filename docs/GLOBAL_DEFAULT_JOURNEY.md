@@ -4,7 +4,7 @@ Camera stores reusable guest journey templates in `experience_templates` and the
 
 ## Creating the accepted global default
 
-After this code is deployed, a global admin opens **Global User Journey** and uses the source-event control (preselected to **MTK Budapest x Vasas FC** when that event is available). Set the name to **Global default journey**, then select **Set as global default journey**. This stores the sanitized journey snapshot and points the global default setting at it. The code change does not write to the production database, so the global setting is not active until that admin action succeeds.
+In **Global User Journey**, choose an accepted source event (the control is preselected to **MTK Budapest x Vasas FC** when available), enter a name, and create a journey version. Creation only adds it to the list; it does not change the journey that guests see. To activate it, select the version under **Experience defaults** and save the choice. This sets the global default for partners and events that inherit it. The code change does not write to the production database, so the global setting changes only after an admin saves the selection.
 
 The snapshot keeps the reusable page flow and ordering, including the messages-only selection step. It removes the source event's name-specific wording, consent and identity content, image/frame URLs, event styling, and CTA destination. Welcome, consent, identity and completion text use the destination event's language. The welcome screen and all visual assets continue to come from the destination's event/partner defaults.
 
@@ -12,7 +12,9 @@ The snapshot keeps the reusable page flow and ordering, including the messages-o
 
 - New partners without their own default follow the global journey. New events are created in inherit mode and follow Global → Partner → Event.
 - A partner can keep following the global default, disable it, or choose a partner-owned default template. A partner-owned version is stable when the global template changes.
-- An event can keep inheriting, choose an event-owned template, or opt out. Saving a page or journey setting on an inheriting event forks an event-owned template before saving, so the parent is not changed.
+- An event can follow its current parent default, choose one of its event-owned versions, or use its own saved pages. Creating an additional version does not activate it; the editor must select and save it.
+- The selection is managed at the top of **Event User Journey**. It controls the journey returned to the capture page, so the event capture URL, short link and QR codes continue to work and serve the selected flow without changing their addresses.
+- Saving a page or journey setting on an inheriting event forks an event-owned template before saving, so the parent is not changed. The event selector refreshes after that fork and lets the editor switch between the inherited flow and the new event-owned version.
 - An inherited child’s untouched settings continue to update from the parent. Child-owned settings such as visual style, frame/message selections, welcome composition, and local ordering remain local.
 - Existing legacy events with stored custom pages are preserved; they do not silently switch to this default. Their owner must explicitly select **Follow the parent default** in Event Experience Defaults.
 
