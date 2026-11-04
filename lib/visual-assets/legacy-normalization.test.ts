@@ -21,7 +21,7 @@ test('plans only explicit fields whose values match legacy runtime defaults', ()
   assert.deepEqual(report.changes, [{
     kind: 'frames',
     id: 'legacy-frame',
-    from: { scope: null, isActive: null, shareToChildren: null },
+    from: { scope: '[missing]', isActive: '[missing]', shareToChildren: '[missing]' },
     to: { scope: 'global', isActive: true, shareToChildren: true },
   }]);
   assert.equal(report.summary.changes, 1);
