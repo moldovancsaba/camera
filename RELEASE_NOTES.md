@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — read-only visual asset legacy inventory (issue #753)
+
+- **Added:** `npm run visual-assets:legacy-inventory` builds a PII-minimized inventory of legacy frames, logos, images, partner/event assignments and policies, picture references, and experience templates from one serial MongoDB snapshot.
+- **Safety:** it requires explicit read-only migration variables, does not load the app's standard database variables, caps the scan at 50,000 documents / 64 MiB, emits only business IDs and hashed media addresses, and has no write/apply mode. Proposed missing asset fields preserve current runtime defaults; inheritance policies and event/template output are untouched.
+- **Limit:** this is not a production data report, an applied migration, a backup, or a rendered before/after event comparison. Production inventory and every write remain gated on an operator-reviewed report, backup, representative output diff, and a separately reviewed bounded apply/rollback plan.
+- **Verification:** type-check, full lint, GDS checks, documentation inventory/link checks, and production build passed. Unit tests were not rerun after the final inventory edits; GitHub Verify remains the full test gate. Build reports the existing Google Fonts `@import` ordering warning.
+
 ## Unreleased — toggle event visibility from the eye control
 
 - **Changed:** event managers can activate or deactivate an event from its Events inventory card, a partner's event list, and the event workspace. The control uses a green open-eye button for active and a red closed-eye button for inactive; view-only users retain a read-only icon.

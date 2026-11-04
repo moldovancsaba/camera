@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — legacy visual asset inventory, issue #753
+
+Added a read-only, single-snapshot inventory planner and CLI for legacy frames, logos, images, partner/event catalogs, picture fields, and experience templates. The command uses explicit read-only connection variables, does not load app `.env` or normal Mongo variables, caps projected reads at 50,000 documents / 64 MiB, writes no data, and avoids raw media URLs and participant/contact fields in its report. The planner proposes only asset field defaults matching existing runtime behavior; unresolved ownership/references block the contract-equivalence status. It explicitly reports that rendered event output comparison was not run. TypeScript, full lint, GDS checks, documentation inventory/link checks, and production build passed. Unit tests were not rerun after final edits; GitHub Verify is the full test gate. No database was connected; no production records were read or changed. Apply, rollback, backup proof, actual inventory counts and rendered output parity remain open gates; issue #753 is not complete.
+
 ## Current change — event visibility eye button
 
 Event managers can toggle active/inactive from the Events inventory cards, the partner event list, and event workspace headers. A green open eye is active; a red closed eye is inactive. The API accepts only boolean state changes and rechecks manager permissions. Viewers retain a read-only icon. Inactive events stay in the admin inventory and public event-specific URLs continue to redirect to Greatest Selfies. Focused UI, API, and translation tests pass, as do `npm run release:check` and `npm run inventory:check`. A local mocked-API browser check passed at desktop and mobile widths. The database-backed Playwright test was not run because no disposable local `MONGODB_URI` is configured; GitHub Verify remains the merge gate.
