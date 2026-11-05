@@ -499,7 +499,7 @@ export default async function PartnerDetailPage({
                 level="partner"
                 resourceId={id}
                 sourceEventId={events[0]?._id.toString()}
-                canManage={Boolean(events[0])}
+                canManage={canManageEvents}
                 sectionTitle="Partner User Journey"
               />
             </div>

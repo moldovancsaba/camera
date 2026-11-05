@@ -49,7 +49,7 @@ import { journeyRecordingEnabled } from '@/lib/journey/setting';
 import { colourInputsOf, scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
 import { validateWelcomeElements } from '@/lib/events/welcome-composition';
 import { filterUnavailableVisualAssetUrls, visualAssetVisibleToEvent } from '@/lib/visual-assets/filter';
-import { applyExperienceConfig, experienceConfigFromEvent, parseExperienceTemplateConfig, parseExperienceTemplateSelection, resolveEventExperienceConfig, validateTemplateAssetScope, type ExperienceTemplateConfig } from '@/lib/visual-assets/templates';
+import { applyExperienceConfig, experienceConfigFromEvent, hasLegacyLocalJourney, JOURNEY_FLOW_FIELDS, journeyConfigFromStoredTemplate, parseExperienceTemplateConfig, parseExperienceTemplateSelection, resolveEventExperienceConfig, validateTemplateAssetScope, type ExperienceTemplateConfig } from '@/lib/visual-assets/templates';
 import { resolveTemplateConfig } from '@/lib/visual-assets/resolve';
 
 interface EventFrameDetails {
@@ -504,6 +504,9 @@ export const PATCH = withErrorHandler(async (
   if (experienceTemplate !== undefined) {
     const parsed = parseExperienceTemplateSelection(experienceTemplate);
     if (!parsed.ok) throw apiBadRequest(parsed.reason);
+    if (parsed.value.mode === 'inherit' && hasLegacyLocalJourney(event as Record<string, unknown>)) {
+      throw apiBadRequest('Create a named Event Journey from the existing event pages before switching this event to its parent default.');
+    }
     if (parsed.value.mode === 'template' && typeof parsed.value.templateId === 'string') {
       const template = await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({
         templateId: parsed.value.templateId,
@@ -511,6 +514,7 @@ export const PATCH = withErrorHandler(async (
         ownerId: String(event.eventId),
       });
       if (!template) throw apiBadRequest('Choose a template owned by this event.');
+      if (!journeyConfigFromStoredTemplate(template.config)) throw apiBadRequest('This Event Journey has invalid saved page data and cannot be selected.');
     }
     updateFields.experienceTemplate = parsed.value;
   }
@@ -588,18 +592,29 @@ export const PATCH = withErrorHandler(async (
   }
 
   // A first local edit of an inherited journey forks an event-owned version.
-  // Later global/partner changes then cannot alter this event. Existing legacy
-  // events with stored pages remain local until an editor explicitly opts in.
+  // Later parent changes then cannot alter this event. Legacy event pages stay
+  // local until the editor explicitly converts them or chooses inheritance.
   const storedSelection = (updateFields.experienceTemplate ?? event.experienceTemplate) as import('@/lib/visual-assets/contracts').ExperienceTemplateSelection | null | undefined;
-  const hasLegacyJourney = Array.isArray(event.customPages) && event.customPages.length > 0;
-  const inheritsJourney = storedSelection?.mode === 'inherit' || (!storedSelection && !hasLegacyJourney);
+  const legacyJourney = updateFields.experienceTemplate === undefined && hasLegacyLocalJourney(event as Record<string, unknown>);
+  const selectedTemplateId = storedSelection?.mode === 'template' && typeof storedSelection.templateId === 'string'
+    ? storedSelection.templateId
+    : null;
+  const selectedEventTemplate = selectedTemplateId
+    ? await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({ templateId: selectedTemplateId, level: 'event', ownerId: String(event.eventId) })
+    : null;
+  const inheritsJourney = !legacyJourney && (
+    storedSelection?.mode === 'inherit'
+    || !storedSelection
+    || (storedSelection.mode === 'template' && !selectedEventTemplate)
+  );
   const changedConfig = experienceConfigFromEvent(updateFields);
   let createdTemplateId: string | null = null;
-  if (Object.keys(changedConfig).length && storedSelection?.mode === 'template' && typeof storedSelection.templateId === 'string') {
-    const existingTemplate = await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({ templateId: storedSelection.templateId, level: 'event', ownerId: String(event.eventId) });
-    if (!existingTemplate) throw apiBadRequest('The event journey version no longer exists. Reload the editor and try again.');
+  if (Object.keys(changedConfig).length && selectedEventTemplate && selectedTemplateId) {
+    const existingTemplate = selectedEventTemplate;
+    const existingConfig = journeyConfigFromStoredTemplate(existingTemplate.config);
+    if (!existingConfig) throw apiBadRequest('The selected Event Journey has invalid saved page data. Create a new version before editing it.');
     const merged = resolveTemplateConfig<ExperienceTemplateConfig>([
-      { value: existingTemplate.config as ExperienceTemplateConfig },
+      { value: existingConfig },
       { mode: 'inherit', overrides: changedConfig },
     ]);
     const parsed = parseExperienceTemplateConfig(merged);
@@ -607,11 +622,12 @@ export const PATCH = withErrorHandler(async (
     const partner = typeof event.partnerId === 'string' ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null;
     const allowed = await validateTemplateAssetScope(db, 'event', parsed.config, event as Record<string, unknown>, partner as Record<string, unknown> | null);
     if (!allowed.ok) throw apiBadRequest(allowed.reason);
-    await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).updateOne({ templateId: storedSelection.templateId }, { $set: { config: parsed.config, updatedAt: generateTimestamp(), updatedBy: session.user.id } });
-    for (const field of ['customPages', 'defaultPageOrders', 'visualSettings', 'sharePage', 'frameSelection', 'frameSelectionTiles', 'welcomeScreenComposition', 'frameMessageSelectionDisplay']) delete updateFields[field];
+    await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).updateOne({ templateId: selectedTemplateId }, { $set: { config: parsed.config, updatedAt: generateTimestamp(), updatedBy: session.user.id } });
+    for (const field of JOURNEY_FLOW_FIELDS) delete updateFields[field];
   } else if (Object.keys(changedConfig).length && inheritsJourney) {
     const partner = typeof event.partnerId === 'string' ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null;
-    const inherited = await resolveEventExperienceConfig(db, event as Record<string, unknown>, partner as Record<string, unknown> | null);
+    const resolutionEvent = { ...event, ...(storedSelection ? { experienceTemplate: storedSelection } : {}) } as Record<string, unknown>;
+    const inherited = await resolveEventExperienceConfig(db, resolutionEvent, partner as Record<string, unknown> | null);
     if (inherited) {
       const merged = resolveTemplateConfig<ExperienceTemplateConfig>([
         { value: inherited.config },
@@ -631,7 +647,7 @@ export const PATCH = withErrorHandler(async (
       await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).insertOne(template);
       createdTemplateId = template.templateId;
       updateFields.experienceTemplate = { mode: 'template', templateId: template.templateId };
-      for (const field of ['customPages', 'defaultPageOrders', 'visualSettings', 'sharePage', 'frameSelection', 'frameSelectionTiles', 'welcomeScreenComposition', 'frameMessageSelectionDisplay']) delete updateFields[field];
+      for (const field of JOURNEY_FLOW_FIELDS) delete updateFields[field];
     }
   }
 

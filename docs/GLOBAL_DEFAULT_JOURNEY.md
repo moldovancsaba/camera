@@ -1,26 +1,39 @@
-# Global default guest journey
+# Global, Partner and Event User Journeys
 
-Camera stores reusable guest journey templates in `experience_templates` and the selected global default in the `admin_settings` row `default-experience-template`. Resolution happens when an event is read: Global → Partner → Event. Inheriting children see parent edits on their next request; a partner or event that saves a local edit gets its own template and stops being changed by the parent.
+Camera stores named journey versions in `experience_templates`. A version contains reusable guest page flow and page configuration; it does not contain guest identity, consent receipts, submissions, analytics, or photo data. The global selected version is stored in `admin_settings` as `default-experience-template`; a partner's selected version is `partners.defaultExperienceTemplateId`; an event's selection is `events.experienceTemplate`.
 
-## Creating the accepted global default
+## The selection rule
 
-In **Global User Journey**, choose an accepted source event (the control is preselected to **MTK Budapest x Vasas FC** when available), enter a name, and create a journey version. Creation only adds it to the list; it does not change the journey that guests see. To activate it, select the version under **Experience defaults** and save the choice. This sets the global default for partners and events that inherit it. The code change does not write to the production database, so the global setting changes only after an admin saves the selection.
+Each level can keep multiple named versions, but only one journey is effective for an event at a time:
 
-The snapshot keeps the reusable page flow and ordering, including the messages-only selection step. It removes the source event's name-specific wording, consent and identity content, image/frame URLs, event styling, and CTA destination. Welcome, consent, identity and completion text use the destination event's language. The welcome screen and all visual assets continue to come from the destination's event/partner defaults.
+1. A selected Event User Journey (EUJ) is effective for that event.
+2. Otherwise, the event follows its partner's selected Partner User Journey (PUJ).
+3. If the partner follows Global, the Global User Journey (GUJ) is effective.
 
-## Inheritance behavior
+The selected version replaces the parent journey. Parent versions are never overlaid or stacked. A partner can select one PUJ or follow the global default. An event can select one EUJ or follow the partner's current selection. There is no disable/opt-out choice. A child-owned selection is independent from later parent changes; children that still inherit see changes to the selected parent default on their next request.
 
-- New partners without their own default follow the global journey. New events are created in inherit mode and follow Global → Partner → Event.
-- A partner can keep following the global default, disable it, or choose a partner-owned default template. A partner-owned version is stable when the global template changes.
-- An event can follow its current parent default, choose one of its event-owned versions, or use its own saved pages. Creating an additional version does not activate it; the editor must select and save it.
-- The Event User Journey page creates Event-owned versions only. Global and Partner versions are created in their respective editors; event-level access never renders duplicate Global/Partner template-creation panels.
-- The selection is managed at the top of **Event User Journey**. It controls the journey returned to the capture page, so the event capture URL, short link and QR codes continue to work and serve the selected flow without changing their addresses.
-- Saving a page or journey setting on an inheriting event forks an event-owned template before saving, so the parent is not changed. The event selector refreshes after that fork and lets the editor switch between the inherited flow and the new event-owned version.
-- An inherited child’s untouched settings continue to update from the parent. Child-owned settings such as visual style, frame/message selections, welcome composition, and local ordering remain local.
-- Existing legacy events with stored custom pages are preserved; they do not silently switch to this default. Their owner must explicitly select **Follow the parent default** in Event Experience Defaults.
+## Managing versions
+
+- **Global User Journey:** create, rename, edit, and delete unselected GUJs; select exactly one GUJ as the service default. The first GUJ created becomes the default only when no valid global default exists, so the system always has a default once a GUJ is available.
+- **Partner User Journey:** create, rename, edit, and delete unselected PUJs; select exactly one PUJ as that partner's default or choose **Follow the global default**.
+- **Event User Journey:** create, rename, edit, and delete unselected EUJs; select exactly one EUJ for the event or choose **Use parent default**. Creating a version does not activate it.
+- Editing the selected Global or Partner default changes the journey content served to descendants that currently inherit it. Editing an unselected version has no public effect until it is selected. Event-owned edits affect only that event.
+- A child edit to an inherited flow creates a child-owned journey version before saving. It never writes into a parent template.
+
+The selected event journey is resolved for the stable event capture URL, short link, and QR codes. Changing a selection does not change those addresses. The admin selection metadata is removed from public event responses.
+
+## Creating a generic global default
+
+In **Global User Journey**, choose an accepted source event, enter a name, and create a GUJ version. The snapshot preserves reusable flow/order and the messages-only selector while stripping source-specific copy, consent/identity content, event links, artwork, and branding. Destination event language and local visual assets remain in effect. Creating a version does not change a currently valid selection. Select the intended version to set the global default; do not change production data directly.
+
+## Existing events with legacy pages
+
+Pre-template events can have `customPages` but no named journey selection. These pages are preserved as the event's current legacy journey; they are not silently replaced by a global default. In **Event User Journey**, create a named EUJ from the event's existing setup and select that snapshot first. Afterward, the event can switch to **Use parent default** while the named snapshot remains available. Both the dedicated journey selector and generic event update API refuse to switch a legacy event directly to inheritance before the snapshot is selected. New events start in inherit mode.
+
+If a saved journey ID no longer resolves to an owned version, runtime falls back to the nearest valid parent default, and the editor marks the selection for repair. Select an available journey and save it. Do not restore the former null/disable sentinel values.
 
 ## Safety and verification
 
-Global snapshots are identity-free and must not include consent receipts, participant data, event-specific URLs, source-client art, or brand colors. Child-owned media is resolved at the child level and is not copied by the template. If a child saves an edit, the stored version is owned at that child level; renaming it does not affect its parent.
+Known library assets are validated for ownership, visibility, and active state when a template is saved. Child-owned appearance, consent, identity, and other non-flow settings remain at the child level. Selected templates cannot be deleted; first select a different version at every referencing level. A failed create/update leaves the prior selection in effect; retry after correcting the reported error.
 
-The resolver and global-snapshot tests are in `lib/visual-assets/templates.test.ts`; blank global welcome copy is checked against a Hungarian locale in `components/capture/WelcomePage.test.tsx`. Before merge, run `npm run inventory:check` and `npm run release:check`. A production admin must set the default using the control above after deployment; do not substitute a direct production database write.
+Focused resolution and sanitization tests are in `lib/visual-assets/templates.test.ts`. Run `npm run inventory:check` and `npm run release:check` before merge. The application does not migrate production records or change the selected global default during deployment; an admin chooses the desired default in the UI after deployment.

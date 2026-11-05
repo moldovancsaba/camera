@@ -1,7 +1,6 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import type { ExperienceTemplate, ExperienceTemplateSelection, ShareableVisualAsset, VisualAssetLevelPolicy } from './contracts';
-import { resolveTemplateConfig } from './resolve';
 import { LIBRARY_KINDS, KIND_META, type LibraryKind } from '@/lib/library/kinds';
 import { partnerLibraryIds, loadEventLibrary } from '@/lib/library/db';
 import { resolveAssetVisibility } from './resolve';
@@ -12,15 +11,19 @@ import { resolveAssetVisibility } from './resolve';
 export const TEMPLATE_CONFIG_FIELDS = [
   'customPages',
   'defaultPageOrders',
-  'visualSettings',
   'sharePage',
-  'frameSelection',
-  'frameSelectionTiles',
-  'welcomeScreenComposition',
   'frameMessageSelectionDisplay',
 ] as const;
 
-export type ExperienceTemplateConfig = Partial<Record<(typeof TEMPLATE_CONFIG_FIELDS)[number], unknown>>;
+/** Fields that define a reusable journey. Branding and media stay event-owned. */
+export const JOURNEY_FLOW_FIELDS = [
+  'customPages',
+  'defaultPageOrders',
+  'sharePage',
+  'frameMessageSelectionDisplay',
+] as const;
+
+export type ExperienceTemplateConfig = Partial<Record<(typeof JOURNEY_FLOW_FIELDS)[number], unknown>>;
 
 const MAX_CONFIG_BYTES = 512 * 1024;
 const MAX_DEPTH = 24;
@@ -178,8 +181,56 @@ export function parseExperienceTemplateConfig(input: unknown): TemplateConfigRes
   }
 }
 
+/**
+ * Stored templates from the first rollout may contain presentation fields.
+ * Project them onto the current flow-only contract at every read boundary so
+ * they remain usable without letting legacy branding leak into event output.
+ */
+export function journeyConfigFromStoredTemplate(input: unknown): ExperienceTemplateConfig | null {
+  if (!isRecord(input)) return null;
+  const fields = Object.fromEntries(JOURNEY_FLOW_FIELDS
+    .filter((field) => input[field] !== undefined)
+    .map((field) => [field, input[field]]));
+  const parsed = parseExperienceTemplateConfig(fields);
+  return parsed.ok ? parsed.config : null;
+}
+
+/**
+ * Consent and identity collection belong to the destination event. A Partner
+ * Journey can define the surrounding flow, but must not carry another event's
+ * consent wording, identity fields, or placement into its descendants.
+ */
+export function makePartnerJourneyConfig(input: ExperienceTemplateConfig): ExperienceTemplateConfig {
+  const parsed = parseExperienceTemplateConfig(input);
+  if (!parsed.ok) throw new Error(parsed.reason);
+  const config = structuredClone(parsed.config) as Record<string, unknown>;
+  if (Array.isArray(config.customPages)) {
+    config.customPages = config.customPages.filter((page) =>
+      !isRecord(page) || (page.pageType !== 'accept' && page.pageType !== 'who-are-you'),
+    );
+  }
+  return config as ExperienceTemplateConfig;
+}
+
+/** Return an admin-safe template view, applying level-specific privacy rules. */
+export function journeyTemplateForAdmin<T extends Record<string, unknown>>(template: T): (Omit<T, 'config'> & { config: ExperienceTemplateConfig }) | null {
+  const storedConfig = journeyConfigFromStoredTemplate(template.config);
+  if (!storedConfig) return null;
+  let config: ExperienceTemplateConfig;
+  try {
+    config = template.level === 'global'
+      ? makeGlobalJourneyConfig(storedConfig)
+      : template.level === 'partner'
+        ? makePartnerJourneyConfig(storedConfig)
+        : storedConfig;
+  } catch {
+    return null;
+  }
+  return config ? { ...template, config } : null;
+}
+
 export function experienceConfigFromEvent(event: Record<string, unknown>): ExperienceTemplateConfig {
-  const fields = Object.fromEntries(TEMPLATE_CONFIG_FIELDS
+  const fields = Object.fromEntries(JOURNEY_FLOW_FIELDS
     .filter((field) => event[field] !== undefined)
     .map((field) => [field, event[field]]));
   const parsed = parseExperienceTemplateConfig(fields);
@@ -282,38 +333,35 @@ export function makeGlobalJourneyConfig(input: ExperienceTemplateConfig): Experi
   return config as ExperienceTemplateConfig;
 }
 
-/** Preserve edits made at an event level as field overrides when that event
- * already participates in template inheritance. Legacy events are deliberately
- * left untouched until an editor explicitly opts them in. */
-export function selectionWithExperienceOverrides(
-  selection: ExperienceTemplateSelection | null | undefined,
-  changedFields: Record<string, unknown>,
-): ExperienceTemplateSelection | undefined {
-  if (!selection) return undefined;
-  const changed = experienceConfigFromEvent(changedFields);
-  if (!Object.keys(changed).length) return selection;
-  const parsed = parseExperienceTemplateConfig({ ...(selection.overrides ?? {}), ...changed });
-  if (!parsed.ok) throw new Error(parsed.reason);
-  return { ...selection, ...(Object.keys(parsed.config).length ? { overrides: parsed.config } : { overrides: undefined }) };
+/** Old events with stored pages and no valid template choice keep those pages
+ * until an editor explicitly selects inheritance or converts them to a named
+ * Event Journey. A malformed legacy selection is treated as no valid choice. */
+export function hasLegacyLocalJourney(event: Record<string, unknown>): boolean {
+  if (!Array.isArray(event.customPages) || event.customPages.length === 0) return false;
+  const selection = event.experienceTemplate;
+  if (selection === undefined || selection === null) return true;
+  if (!isRecord(selection)) return true;
+  if (selection.mode === 'inherit') return false;
+  return selection.mode !== 'template' || typeof selection.templateId !== 'string' || selection.templateId.length === 0;
 }
 
 export function parseExperienceTemplateSelection(input: unknown): { ok: true; value: ExperienceTemplateSelection } | { ok: false; reason: string } {
   if (!isRecord(input) || (input.mode !== 'inherit' && input.mode !== 'template')) {
     return { ok: false, reason: 'Experience selection mode must be inherit or template.' };
   }
+  if (Object.keys(input).some((key) => key !== 'mode' && key !== 'templateId')) {
+    return { ok: false, reason: 'A journey selection can contain only one mode and one selected template. Field overrides are not supported.' };
+  }
   if (input.mode === 'inherit') {
     if (input.templateId !== undefined && input.templateId !== null) return { ok: false, reason: 'An inherited selection cannot name a template.' };
-  } else if (input.templateId !== null && (typeof input.templateId !== 'string' || input.templateId.length < 1 || input.templateId.length > 100)) {
-    return { ok: false, reason: 'A template selection needs a valid template id or null to disable inherited experience.' };
+  } else if (typeof input.templateId !== 'string' || input.templateId.length < 1 || input.templateId.length > 100) {
+    return { ok: false, reason: 'A template selection needs a valid template id. Use inherit to follow the parent journey.' };
   }
-  const overrides = input.overrides === undefined ? undefined : parseExperienceTemplateConfig(input.overrides);
-  if (overrides && !overrides.ok) return overrides;
   return {
     ok: true,
     value: {
       mode: input.mode,
-      ...(input.mode === 'template' ? { templateId: input.templateId as string | null } : {}),
-      ...(overrides?.ok && Object.keys(overrides.config).length ? { overrides: overrides.config } : {}),
+      ...(input.mode === 'template' ? { templateId: input.templateId as string } : {}),
     },
   };
 }
@@ -323,8 +371,8 @@ type TemplateDocument = ExperienceTemplate & Document;
 async function findTemplate(db: Db, templateId: string, level: ExperienceTemplate['level'], ownerId: string | null): Promise<TemplateDocument | null> {
   const template = await db.collection<TemplateDocument>(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({ templateId, level, ownerId }) as TemplateDocument | null;
   if (!template) return null;
-  const parsed = parseExperienceTemplateConfig(template.config);
-  return parsed.ok ? { ...template, config: parsed.config } : null;
+  const safe = journeyTemplateForAdmin(template as Record<string, unknown>);
+  return safe ? { ...template, config: safe.config } : null;
 }
 
 async function globalDefaultId(db: Db): Promise<string | null> {
@@ -332,10 +380,9 @@ async function globalDefaultId(db: Db): Promise<string | null> {
   return typeof setting?.templateId === 'string' ? setting.templateId : null;
 }
 
-/** Resolve global → partner → event defaults without copying parent state into
- * child documents. A partner template overlays the global starter; a partner
- * `null` opts out. An event can inherit that chain, select an independent event
- * template, or keep its locally stored setup by opting out. */
+/** Resolve exactly one selected journey without copying parent state into child
+ * documents. An event selection wins; otherwise the partner selection wins;
+ * otherwise the global default wins. Parent journeys never stack. */
 export async function resolveEventExperienceConfig(
   db: Db,
   event: Record<string, unknown>,
@@ -344,49 +391,32 @@ export async function resolveEventExperienceConfig(
   const eventId = typeof event.eventId === 'string' ? event.eventId : '';
   const partnerId = typeof partner?.partnerId === 'string' ? partner.partnerId : '';
   const storedSelection = event.experienceTemplate as ExperienceTemplateSelection | null | undefined;
-  // Legacy events with no custom journey can adopt the global default. A
-  // stored custom page remains an existing local journey until its owner opts in.
-  const hasLegacyJourney = Array.isArray(event.customPages) && event.customPages.length > 0;
-  const selection = storedSelection ?? (hasLegacyJourney ? undefined : { mode: 'inherit' as const });
-  // Existing events stay on their pre-template configuration until an editor
-  // explicitly opts them into the parent default. New and provisioned events
-  // store `{ mode: 'inherit' }` at creation.
-  if (!selection) return null;
+  const legacyJourney = hasLegacyLocalJourney(event);
+  // Preserve pre-template event content until an editor converts it to a
+  // named Event Journey or explicitly selects inheritance. New events already
+  // store inherit mode and immediately follow the selected parent version.
+  if (legacyJourney) return null;
 
-  const chain: TemplateDocument[] = [];
-
+  const selection = storedSelection ?? { mode: 'inherit' as const };
+  let selected: TemplateDocument | null = null;
   if (selection.mode === 'template') {
-    if (typeof selection.templateId !== 'string') return null;
-    const own = await findTemplate(db, selection.templateId, 'event', eventId);
-    if (!own) return null;
-    chain.push(own);
-  } else {
+    if (typeof selection.templateId === 'string') selected = await findTemplate(db, selection.templateId, 'event', eventId);
+  }
+  // If a stale selection cannot resolve to an owned template, fail safely to
+  // the nearest valid parent default instead of blanking the public journey.
+  if (!selected && typeof partner?.defaultExperienceTemplateId === 'string') {
+    selected = await findTemplate(db, partner.defaultExperienceTemplateId, 'partner', partnerId);
+  }
+  if (!selected) {
     const defaultId = await globalDefaultId(db);
-    if (defaultId) {
-      const global = await findTemplate(db, defaultId, 'global', null);
-      if (global) chain.push(global);
-    }
-    if (partner && Object.prototype.hasOwnProperty.call(partner, 'defaultExperienceTemplateId')) {
-      const partnerTemplateId = partner.defaultExperienceTemplateId;
-      if (partnerTemplateId === null) {
-        // A partner opt-out disables the parent chain. Keep the event's own
-        // stored configuration in use; do not erase it with an empty template.
-        return null;
-      } else if (typeof partnerTemplateId === 'string') {
-        const partnerTemplate = await findTemplate(db, partnerTemplateId, 'partner', partnerId);
-        if (partnerTemplate) chain.push(partnerTemplate);
-      }
-    }
+    if (defaultId) selected = await findTemplate(db, defaultId, 'global', null);
   }
 
-  // No valid template means the legacy event configuration remains effective.
-  // In particular, a disabled parent must not blank out a child's own setup.
-  if (chain.length === 0) return null;
-  const resolved = resolveTemplateConfig<ExperienceTemplateConfig>([
-    ...chain.map((template) => ({ value: template.config })),
-    { mode: 'inherit', overrides: selection?.overrides },
-  ]);
-  return { config: resolved, templateId: chain.at(-1)?.templateId ?? null };
+  if (!selected) return null;
+  const config = Object.fromEntries(JOURNEY_FLOW_FIELDS
+    .filter((field) => selected.config[field] !== undefined)
+    .map((field) => [field, selected.config[field]])) as ExperienceTemplateConfig;
+  return { config, templateId: selected.templateId };
 }
 
 export function applyExperienceConfig<T extends Record<string, unknown>>(
@@ -394,28 +424,12 @@ export function applyExperienceConfig<T extends Record<string, unknown>>(
   resolved: { config: ExperienceTemplateConfig; templateId: string | null } | null,
 ): T & { effectiveExperienceTemplateId?: string | null } {
   if (!resolved) return event;
-  // A journey template replaces reusable page flow. Child-owned appearance
-  // and media settings that the parent deliberately omits remain local.
+  // A selected journey is the single source for the guest flow. Branding,
+  // frame selection and welcome artwork remain event-owned settings.
   const result = { ...event };
-  const mutableResult = result as Record<string, unknown>;
-  for (const field of TEMPLATE_CONFIG_FIELDS) delete result[field];
-  for (const field of ['defaultPageOrders', 'visualSettings', 'sharePage', 'frameSelection', 'frameSelectionTiles', 'welcomeScreenComposition', 'frameMessageSelectionDisplay'] as const) {
-    const parentValue = resolved.config[field];
-    const childValue = event[field];
-    if (childValue === undefined) {
-      if (parentValue !== undefined) mutableResult[field] = parentValue;
-      continue;
-    }
-    if (isRecord(parentValue) && isRecord(childValue)) {
-      mutableResult[field] = resolveTemplateConfig([{ value: parentValue }, { value: childValue }]);
-    } else {
-      // Child arrays/media selections are complete local replacements.
-      mutableResult[field] = childValue;
-    }
-  }
-  // The resolved template supplies the inherited flow; `result` contains
-  // child-level values already merged above. Spread the parent first so a
-  // template does not overwrite the child values it is supposed to inherit
-  // alongside.
-  return { ...resolved.config, ...result, effectiveExperienceTemplateId: resolved.templateId };
+  for (const field of JOURNEY_FLOW_FIELDS) delete result[field];
+  const journey = Object.fromEntries(JOURNEY_FLOW_FIELDS
+    .filter((field) => resolved.config[field] !== undefined)
+    .map((field) => [field, resolved.config[field]]));
+  return { ...result, ...journey, effectiveExperienceTemplateId: resolved.templateId };
 }

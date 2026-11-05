@@ -1,4 +1,5 @@
 import type { UiLanguage } from '@/lib/i18n';
+import JOURNEY_UI_TRANSLATIONS from './admin-experience-template-translations.json';
 
 const SOURCES = [
   'Experience defaults',
@@ -17,6 +18,43 @@ const SOURCES = [
   'Save the current setup as a reusable template.',
   'Saved.',
 ] as const;
+
+const LIVE_JOURNEY_COPY: Record<string, Partial<Record<UiLanguage, string>>> = {
+  'Live guest flow': {
+    en: 'Live guest flow', hu: 'Élő vendégfolyamat', de: 'Aktiver Gästeablauf', it: 'Flusso ospiti attivo',
+    'pt-BR': 'Fluxo ativo dos visitantes', 'pt-PT': 'Fluxo ativo dos visitantes', es: 'Flujo activo para los invitados',
+    fr: 'Parcours invité actif', ru: 'Текущий путь гостей', 'zh-Hans': '当前访客流程', 'zh-Hant': '目前訪客流程',
+    ro: 'Fluxul activ al oaspeților', pl: 'Bieżący przebieg dla gości', sk: 'Aktívny priebeh pre hostí',
+    hr: 'Aktivni tijek za goste', sl: 'Trenutna izkušnja gostov', bg: 'Активен поток за гостите',
+    tr: 'Etkin misafir akışı', ar: 'مسار الضيوف النشط', hi: 'सक्रिय अतिथि प्रवाह', ka: 'სტუმრის მიმდინარე პროცესი',
+    'sr-Cyrl': 'Активни ток за госте', 'sr-Latn': 'Aktivni tok za goste',
+  },
+  'Saving edits to this selected journey updates the live guest flow, including children that still follow it.': {
+    en: 'Saving edits to this selected journey updates the live guest flow, including children that still follow it.',
+    hu: 'A kiválasztott útvonal módosításainak mentése frissíti az élő vendégfolyamatot, beleértve az ezt követő alárendelt szinteket.',
+    de: 'Das Speichern von Änderungen an dieser ausgewählten Journey aktualisiert den aktiven Gästeablauf, auch für untergeordnete Ebenen, die ihr weiterhin folgen.',
+    it: 'Salvare le modifiche a questo percorso selezionato aggiorna il flusso ospiti attivo, inclusi i livelli figli che lo seguono.',
+    'pt-BR': 'Salvar alterações nesta jornada selecionada atualiza o fluxo ativo dos visitantes, inclusive nos níveis filhos que ainda a seguem.',
+    'pt-PT': 'Guardar alterações nesta jornada selecionada atualiza o fluxo ativo dos visitantes, incluindo os níveis subordinados que ainda a seguem.',
+    es: 'Guardar los cambios de este recorrido seleccionado actualiza el flujo activo para los invitados, incluidos los niveles secundarios que aún lo siguen.',
+    fr: 'Enregistrer les modifications de ce parcours sélectionné met à jour le parcours invité actif, y compris pour les niveaux enfants qui le suivent encore.',
+    ru: 'Сохранение изменений выбранного маршрута обновит текущий путь гостей, включая дочерние уровни, которые продолжают ему следовать.',
+    'zh-Hans': '保存对此旅程的修改会更新当前访客流程，也会更新仍沿用它的下级。',
+    'zh-Hant': '儲存對此旅程的修改會更新目前訪客流程，也會更新仍沿用它的下級。',
+    ro: 'Salvarea modificărilor acestui parcurs selectat actualizează fluxul activ al oaspeților, inclusiv nivelurile copil care îl urmează încă.',
+    pl: 'Zapisanie zmian w tej wybranej ścieżce aktualizuje bieżący przebieg dla gości, także na poziomach podrzędnych, które nadal z niej korzystają.',
+    sk: 'Uložením zmien tejto vybratej cesty sa aktualizuje aktívny priebeh pre hostí vrátane podriadených úrovní, ktoré ju stále používajú.',
+    hr: 'Spremanje izmjena ovog odabranog tijeka ažurira aktivni tijek za goste, uključujući podređene razine koje ga još slijede.',
+    sl: 'Shranjevanje sprememb izbrane poti posodobi trenutno izkušnjo gostov, tudi za podrejene ravni, ki ji še sledijo.',
+    bg: 'Запазването на промените в този избран маршрут обновява активния поток за гостите, включително подчинените нива, които все още го следват.',
+    tr: 'Bu seçili yolculuktaki değişikliklerin kaydedilmesi, onu izlemeye devam eden alt düzeyler dâhil etkin misafir akışını günceller.',
+    ar: 'يؤدي حفظ التعديلات على هذه الرحلة المحددة إلى تحديث مسار الضيوف النشط، بما في ذلك المستويات التابعة التي ما زالت تتبعها.',
+    hi: 'इस चुनी हुई यात्रा में बदलाव सहेजने से सक्रिय अतिथि प्रवाह अपडेट होगा, इसमें वे अधीनस्थ स्तर भी शामिल हैं जो अभी इसका अनुसरण करते हैं।',
+    ka: 'არჩეულ გზაში ცვლილებების შენახვა სტუმრის მიმდინარე პროცესს განაახლებს, მათ შორის იმ ქვედა დონეებზეც, რომლებიც მას კვლავ მიჰყვება.',
+    'sr-Cyrl': 'Чување измена ове изабране путање ажурира активни ток за госте, укључујући подређене нивое који је и даље прате.',
+    'sr-Latn': 'Čuvanje izmena ove izabrane putanje ažurira aktivni tok za goste, uključujući podređene nivoe koji je i dalje prate.',
+  },
+};
 
 const VALUES: Record<UiLanguage, readonly string[]> = {
   en: SOURCES,
@@ -47,6 +85,10 @@ const VALUES: Record<UiLanguage, readonly string[]> = {
 const INDEX = new Map<string, number>(SOURCES.map((source, index) => [source, index]));
 
 export function adminExperienceTemplateText(source: string, language: UiLanguage): string | null {
+  const journeyUiCopy = JOURNEY_UI_TRANSLATIONS[source as keyof typeof JOURNEY_UI_TRANSLATIONS];
+  if (journeyUiCopy) return journeyUiCopy[language] ?? null;
+  const liveJourneyCopy = LIVE_JOURNEY_COPY[source];
+  if (liveJourneyCopy) return liveJourneyCopy[language] ?? liveJourneyCopy.en ?? null;
   const index = INDEX.get(source);
   return index === undefined ? null : VALUES[language][index] ?? VALUES.en[index];
 }

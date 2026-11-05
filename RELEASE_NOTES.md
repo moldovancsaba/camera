@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## v12.3.45 — make Global → Partner → Event journey selection consistent
+
+- **Fixed:** journey runtime uses one selected version at a time: Event replaces Partner; otherwise the event follows the selected Partner; otherwise it follows the Global default. Parent flows never stack or become field-level overlays.
+- **Fixed:** invalid/stale selections safely fall back to the nearest valid parent journey. A legacy event with local pages keeps those pages until an editor snapshots and selects a named Event Journey; only then can it switch to inherited flow. The generic event-update API enforces the same protection as the dedicated selector API.
+- **Improved:** selected journey editors warn that saving changes the live guest flow, including children that still follow the selected parent. The global source-event list no longer silently omits events older than the latest 200.
+- **Fixed:** journey fields are limited to page flow/order, share-page configuration and message-selector display. Legacy stored templates are projected onto that contract on reads and scrubbed when saved; invalid templates are not offered as usable defaults. Branding, colors, frames, welcome artwork and other presentation remain partner/event owned. Frame and welcome presentation APIs no longer mutate journey flow.
+- **Documentation:** reconciled architecture, runbook, handover and journey/visual-asset contracts; removed obsolete overlay/opt-out wording.
+- **Verification:** `npm run release:check` passed (GDS compliance, TypeScript, lint, 389/389 unit-test files, production guards and production build); `npm run inventory:check` passed (723 links, no broken references); focused Playwright coverage passed (3/3). GitHub `Verify` remains the merge gate.
+
 ## Unreleased — show one Event journey template creator
 
 - **Fixed:** Event User Journey no longer renders Global and Partner template creators alongside the Event creator. The event endpoint exposes a single Event-level creation capability, and the event editor shows one reusable-template panel.
@@ -11,7 +20,7 @@
 - **Added:** Global, Partner and Event User Journey settings support multiple named journey versions. Creating a version only adds it to the available list; an explicit selection and save controls the active default at that level.
 - **Added:** Event User Journey now shows the effective inherited journey, event-owned versions, and the event's own pages. Selecting one sets the flow used by the event capture URL, short link and QR codes; those public addresses stay stable.
 - **Changed:** new event templates appear in the selector immediately. The event journey choice is managed in Event User Journey instead of the general Event Edit page.
-- **Preserved:** parent defaults continue down the Global → Partner → Event chain only while a child inherits. A child-owned selection remains independent of later parent changes. Existing legacy event journeys remain in place until explicitly opted in.
+- **Preserved:** parent defaults continue down the Global → Partner → Event chain only while a child inherits. A child-owned selection remains independent of later parent changes. Existing legacy event journeys remain in place until saved as a named EUJ and selected; the saved snapshot remains available if the event later inherits.
 - **Operations:** deployment does not write a global selection to production. A global admin creates or chooses a version in Global User Journey and separately saves the intended default. See `docs/GLOBAL_DEFAULT_JOURNEY.md` and `docs/VISUAL_ASSET_HIERARCHY.md`.
 - **Verification:** template inheritance, version creation/selection, and 23-locale journey-control unit coverage; focused mobile browser check for event selection and stable links; `npm run inventory:check` passed; `npm run release:check` passed (GDS checks, TypeScript, lint, 386/386 unit-test files, production guards, and production build). GitHub Verify remains the merge gate.
 
@@ -19,7 +28,7 @@
 
 - **Added:** Global User Journey can snapshot an accepted event flow as **Global default journey**. The MTK source event is preselected when it is available; creation adds a version without activating it.
 - **Behavior:** the global template preserves reusable page flow/order, forces the built-in frame/message step to messages-only, strips source-event wording, consent/identity content, event links, artwork and brand styling, and resolves blank generic copy in each destination event's language. Child-owned media and styling remain local.
-- **Inheritance:** new/provisioned partners and events inherit Global → Partner → Event at read time. Existing event journeys stay intact until explicitly opted in. Editing at a child records a child-owned template/override so later parent edits do not replace that work.
+- **Inheritance:** new/provisioned partners and events inherit Global → Partner → Event at read time. Existing event journeys stay intact until saved as a named EUJ and selected. Editing at a child creates or updates a child-owned journey version so later parent edits do not replace that work.
 - **Operations:** deployment does not write the global setting to production. A global admin reviews the source in Global User Journey, creates the version, then selects and saves it as the active default. See `docs/GLOBAL_DEFAULT_JOURNEY.md`.
 - **Verification:** template inheritance and sanitization unit tests pass; localized Welcome and CTA fallbacks pass; the global admin create/rename flow passed a mocked mobile browser test; `npm run inventory:check` and `npm run release:check` passed (GDS checks, type-check, lint, 385/385 unit test files, production guards, and production build). GitHub Verify remains the merge gate.
 
@@ -161,7 +170,7 @@
 - **Added:** a versioned visibility policy for logos, frames and images. A source owner can share an asset down one level; partners and events can hide inherited assets locally, and partners can stop forwarding global assets to events. Inactive or unshared assets cannot be newly selected or returned to guests.
 - **Fixed:** source sharing is now usable across both Global → Partner and Partner → Event for legacy as well as inherited catalogs. Partner-owned frames, logos, images and tagged pictures expose event sharing; inherited global assets expose partner visibility and event-forwarding controls. Event hide actions on legacy catalogs preserve their current catalog during the compatibility transition.
 - **Fixed:** logo edit failures now validate the `data.logo` response and show a retryable load error separately from a true missing logo. The Global Logos inventory uses one accessible sharing action instead of duplicate generic Edit actions.
-- **Added:** reusable guest-experience templates with a global default, optional partner overlay/opt-out and event-level inheritance, independent template or local opt-out. Resolution happens at read time; new partners/events begin on the new default path while existing partner/event data keeps its prior behavior until an explicit opt-in.
+- **Superseded:** the original implementation allowed partner overlays, opt-outs and event-local opt-out behavior. Current behavior is replacement-only with one selected flow, as documented in `docs/GLOBAL_DEFAULT_JOURNEY.md`.
 - **Safety:** enabling an existing partner computes local hides from its prior library before turning on inheritance. Template config is allow-listed and excludes identity, consent, submissions, analytics and photo data. Known library assets are checked for ownership, sharing and active state before a reusable preset can be saved. Admin template metadata is removed from the public event response.
 - **UX:** global, partner and event selectors use Camera GDS controls and semantic button actions, with localized labels, save/error states and confirmation for changes that stop child sharing.
 - **Documentation:** added `docs/VISUAL_ASSET_HIERARCHY.md`; aligned the library reference, architecture, runbook and handover with the staged migration and rollback behavior.

@@ -4,11 +4,16 @@ import type { Db } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import {
   applyExperienceConfig,
+  hasLegacyLocalJourney,
+  journeyConfigFromStoredTemplate,
+  journeyTemplateForAdmin,
+  makePartnerJourneyConfig,
   makeGlobalJourneyConfig,
   parseExperienceTemplateConfig,
   parseExperienceTemplateSelection,
   resolveEventExperienceConfig,
   validateTemplateAssetScope,
+  type ExperienceTemplateConfig,
 } from './templates';
 
 const hex = (digits: string) => `#${digits}`; // Keep fixture colours assembled so GDS can detect accidental production literals.
@@ -82,37 +87,63 @@ const template = (templateId: string, level: 'global' | 'partner' | 'event', own
 });
 
 test('template config accepts only known fields and rejects identity or consent data', () => {
-  assert.equal(parseExperienceTemplateConfig({ visualSettings: { buttonSize: 'large' } }).ok, true);
+  assert.equal(parseExperienceTemplateConfig({ customPages: [] }).ok, true);
+  assert.equal(parseExperienceTemplateConfig({ visualSettings: { buttonSize: 'large' } }).ok, false);
+  assert.equal(parseExperienceTemplateConfig({ frameSelection: { frameId: 'frame' } }).ok, false);
   assert.equal(parseExperienceTemplateConfig({ submissions: [] }).ok, false);
   assert.equal(parseExperienceTemplateConfig({ customPages: [{ userEmail: 'private@example.test' }] }).ok, false);
-  assert.equal(parseExperienceTemplateConfig({ visualSettings: { consentReceipt: { accepted: true } } }).ok, false);
+  assert.equal(parseExperienceTemplateConfig({ customPages: [{ config: { consentReceipt: { accepted: true } } }] }).ok, false);
 });
 
-test('template selection distinguishes inheritance, a local template, and explicit opt-out', () => {
+test('legacy templates are projected to the flow-only contract instead of breaking inheritance', () => {
+  const projected = journeyConfigFromStoredTemplate({
+    customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '' } }],
+    sharePage: { title: 'Share' },
+    visualSettings: { buttonColor: hex('123456') },
+    frameSelection: { frameId: 'legacy-frame' },
+  });
+  assert.deepEqual(projected, {
+    customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '' } }],
+    sharePage: { title: 'Share' },
+  });
+  assert.equal(journeyConfigFromStoredTemplate({ customPages: [{ userEmail: 'private@example.test' }] }), null);
+});
+
+test('template selection allows inheritance or one named local journey only', () => {
   assert.deepEqual(parseExperienceTemplateSelection({ mode: 'inherit' }), { ok: true, value: { mode: 'inherit' } });
-  assert.deepEqual(parseExperienceTemplateSelection({ mode: 'template', templateId: null }), { ok: true, value: { mode: 'template', templateId: null } });
+  assert.deepEqual(parseExperienceTemplateSelection({ mode: 'template', templateId: 'event-journey' }), { ok: true, value: { mode: 'template', templateId: 'event-journey' } });
+  assert.equal(parseExperienceTemplateSelection({ mode: 'template', templateId: null }).ok, false);
   assert.equal(parseExperienceTemplateSelection({ mode: 'inherit', templateId: 'unexpected' }).ok, false);
+  assert.equal(parseExperienceTemplateSelection({ mode: 'inherit', overrides: { sharePage: { title: 'Overlay' } } }).ok, false);
 });
 
-test('partner template overlays global default, then event overrides, without copying parent state', async () => {
+test('exactly one selected partner journey replaces the global journey and preserves event-owned presentation', async () => {
+  const partnerFlow = [{ pageId: 'partner-welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: 'Partner' } }];
   const db = database({
     globalDefault: 'global-default',
     templates: [
-      template('global-default', 'global', null, { visualSettings: { buttonSize: 'large', buttonColor: 'brand-primary' }, sharePage: { title: 'Welcome', subtitle: 'Start' } }),
-      template('partner-default', 'partner', 'partner-1', { visualSettings: { buttonSize: 'small' }, sharePage: { title: 'Club welcome' } }),
+      template('global-default', 'global', null, { visualSettings: { buttonSize: 'large' }, customPages: [{ pageId: 'global-welcome' }], sharePage: { title: 'Global' } }),
+      template('partner-default', 'partner', 'partner-1', { visualSettings: { buttonSize: 'small' }, customPages: partnerFlow, sharePage: { title: 'Partner' } }),
     ],
   });
-  const event = { eventId: 'event-1', experienceTemplate: { mode: 'inherit' as const, overrides: { sharePage: { subtitle: 'Match day' } } } };
+  const event = {
+    eventId: 'event-1',
+    experienceTemplate: { mode: 'inherit' as const },
+    customPages: [{ pageId: 'stale-event-copy' }],
+    visualSettings: { buttonSize: 'event-owned' },
+    frameSelection: { frameId: 'event-frame' },
+  };
   const resolved = await resolveEventExperienceConfig(db, event, { partnerId: 'partner-1', defaultExperienceTemplateId: 'partner-default' });
-
-  assert.deepEqual(resolved, {
-    config: { visualSettings: { buttonSize: 'small', buttonColor: 'brand-primary' }, sharePage: { title: 'Club welcome', subtitle: 'Match day' } },
-    templateId: 'partner-default',
-  });
-  assert.equal(event.experienceTemplate.overrides.sharePage.subtitle, 'Match day');
+  assert.deepEqual(resolved, { config: { customPages: partnerFlow, sharePage: { title: 'Partner' } }, templateId: 'partner-default' });
+  const applied = applyExperienceConfig(event, resolved);
+  assert.deepEqual(applied.customPages, partnerFlow);
+  assert.deepEqual((applied as Record<string, unknown>).sharePage, { title: 'Partner' });
+  assert.deepEqual(applied.visualSettings, { buttonSize: 'event-owned' });
+  assert.deepEqual(applied.frameSelection, { frameId: 'event-frame' });
+  assert.equal(applied.effectiveExperienceTemplateId, 'partner-default');
 });
 
-test('new partners and events inherit the global journey unless they explicitly opt out', async () => {
+test('new partners and events inherit the required global journey by default', async () => {
   const db = database({
     globalDefault: 'global-default',
     templates: [template('global-default', 'global', null, {
@@ -128,20 +159,28 @@ test('new partners and events inherit the global journey unless they explicitly 
 
   assert.deepEqual(resolved, {
     config: {
-      customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '', buttonText: '' } }],
+      customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '', buttonText: '', screenImageAlt: '' } }],
       frameMessageSelectionDisplay: 'messages-only',
     },
     templateId: 'global-default',
   });
 });
 
-test('partner opt-out and event opt-out preserve the event stored setup', async () => {
+test('a partner without its own selection inherits global, and event inherit follows that single parent selection', async () => {
   const db = database({ globalDefault: 'global-default', templates: [template('global-default', 'global', null, { sharePage: { title: 'Parent' } })] });
   const event = { eventId: 'event-1', experienceTemplate: { mode: 'inherit' } };
-  assert.equal(await resolveEventExperienceConfig(db, event, { partnerId: 'partner-1', defaultExperienceTemplateId: null }), null);
-  assert.equal(await resolveEventExperienceConfig(db, { ...event, experienceTemplate: { mode: 'template', templateId: null } }, { partnerId: 'partner-1' }), null);
+  assert.deepEqual(await resolveEventExperienceConfig(db, event, { partnerId: 'partner-1', defaultExperienceTemplateId: null }), { config: { frameMessageSelectionDisplay: 'messages-only' }, templateId: 'global-default' });
   const local = applyExperienceConfig({ sharePage: { title: 'Locally stored' } }, null);
   assert.deepEqual(local.sharePage, { title: 'Locally stored' });
+});
+
+test('legacy event pages stay local until inheritance is explicitly selected or converted', async () => {
+  const legacyPages = [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: 'Legacy' } }];
+  const db = database({ globalDefault: 'global-default', templates: [template('global-default', 'global', null, { sharePage: { title: 'Parent' } })] });
+  assert.equal(hasLegacyLocalJourney({ customPages: legacyPages }), true);
+  assert.equal(hasLegacyLocalJourney({ customPages: legacyPages, experienceTemplate: { mode: 'inherit' } }), false);
+  assert.equal(await resolveEventExperienceConfig(db, { eventId: 'event-1', customPages: legacyPages }, null), null);
+  assert.deepEqual(await resolveEventExperienceConfig(db, { eventId: 'event-1', customPages: legacyPages, experienceTemplate: { mode: 'inherit' } }, null), { config: { frameMessageSelectionDisplay: 'messages-only' }, templateId: 'global-default' });
 });
 
 test('event template starts an independent chain and stale references leave local configuration intact', async () => {
@@ -156,7 +195,7 @@ test('event template starts an independent chain and stale references leave loca
   assert.deepEqual(localTemplate, { config: { sharePage: { title: 'Event' } }, templateId: 'event-template' });
 
   const stale = await resolveEventExperienceConfig(db, { eventId: 'event-1', experienceTemplate: { mode: 'template', templateId: 'removed-template' } }, { partnerId: 'partner-1' });
-  assert.equal(stale, null);
+  assert.deepEqual(stale, { config: { frameMessageSelectionDisplay: 'messages-only' }, templateId: 'global-default' });
 });
 
 test('global journey keeps the accepted flow but removes source-client wording, links and artwork', () => {
@@ -168,20 +207,15 @@ test('global journey keeps the accepted flow but removes source-client wording, 
       { pageId: 'camera-source', pageType: 'take-photo', order: 0, isActive: true, config: { title: 'MTK camera', description: 'MTK copy', buttonText: 'Shoot', cameraPromptTitle: 'MTK prompt', showSharePage: false, allowPan: false } },
       { pageId: 'cta-source', pageType: 'cta', order: 2, isActive: true, config: { title: 'Shop MTK', description: 'Buy here', buttonText: 'Shop', checkboxText: 'https://client.test/shop', visitButtonText: 'Open shop', pictureLink: true } },
     ],
-    visualSettings: { buttonColor: hex('123456') },
     sharePage: { title: 'MTK sharing' },
-    frameSelection: { layout: { pick: 'mtk-frame' } },
-    welcomeScreenComposition: { elements: [{ text: 'MTK' }] },
-    frameSelectionTiles: { blue: { imageUrl: 'https://client.test/frame.png' } },
     frameMessageSelectionDisplay: 'show',
     defaultPageOrders: { 'default-welcome': -4, 'source-page-id': -2, 'default-identity': 1 },
   });
 
-  assert.equal(config.visualSettings, undefined);
-  assert.equal(config.sharePage, undefined);
-  assert.equal(config.frameSelection, undefined);
-  assert.equal(config.welcomeScreenComposition, undefined);
-  assert.equal(config.frameSelectionTiles, undefined);
+  for (const presentationField of ['visualSettings', 'frameSelection', 'welcomeScreenComposition', 'frameSelectionTiles']) {
+    assert.equal(presentationField in config, false);
+  }
+  assert.equal('sharePage' in config, false);
   assert.equal(config.frameMessageSelectionDisplay, 'messages-only');
   assert.deepEqual(config.defaultPageOrders, { 'default-welcome': -4, 'default-identity': 1 });
 
@@ -201,26 +235,51 @@ test('global journey keeps the accepted flow but removes source-client wording, 
   assert.equal(pages[2].config.pictureLink, false);
 });
 
-test('resolved journey keeps child-owned visual settings and local media selections', () => {
+test('a Partner Journey keeps the reusable flow but leaves consent and identity to each destination event', () => {
+  const source = {
+    customPages: [
+      { pageId: 'welcome', pageType: 'welcome', order: -2, isActive: true, config: { title: 'Welcome' } },
+      { pageId: 'identity', pageType: 'who-are-you', order: -1, isActive: true, config: { title: 'Source identity form' } },
+      { pageId: 'consent', pageType: 'accept', order: -1, isActive: true, config: { title: 'Source consent wording' } },
+      { pageId: 'capture', pageType: 'take-photo', order: 0, isActive: true, config: { title: 'Capture' } },
+    ],
+    defaultPageOrders: { 'default-welcome': -2, 'default-consent': -1, 'default-identity': -1 },
+  };
+  const config = makePartnerJourneyConfig(source);
+  assert.deepEqual((config.customPages as Array<{ pageType: string }>).map((page) => page.pageType), ['welcome', 'take-photo']);
+  assert.deepEqual(config.defaultPageOrders, source.defaultPageOrders);
+
+  const legacyPartnerTemplate = journeyTemplateForAdmin({ level: 'partner', config: source });
+  assert.deepEqual((legacyPartnerTemplate?.config.customPages as Array<{ pageType: string }>).map((page) => page.pageType), ['welcome', 'take-photo']);
+  const globalTemplate = journeyTemplateForAdmin({ level: 'global', config: source });
+  assert.deepEqual((globalTemplate?.config.customPages as Array<{ pageType: string }>).map((page) => page.pageType), ['welcome', 'take-photo']);
+  const eventTemplate = journeyTemplateForAdmin({ level: 'event', config: source });
+  assert.deepEqual((eventTemplate?.config.customPages as Array<{ pageType: string }>).map((page) => page.pageType), ['welcome', 'who-are-you', 'accept', 'take-photo']);
+});
+
+test('applying a journey ignores presentation fields and replaces only the selected flow', () => {
   const event = {
     visualSettings: { buttonSize: 'small', buttonColor: hex('abcdef') },
     welcomeScreenComposition: { elements: [{ id: 'event-image' }] },
     frameSelection: { layout: { pick: 'event-frame' } },
     defaultPageOrders: { 'default-welcome': 1 },
   };
+  const legacyConfig = {
+    customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '', buttonText: '' } }],
+    visualSettings: { buttonSize: 'large', buttonTextColor: hex('ffffff') },
+    sharePage: { title: 'Selected journey' },
+    defaultPageOrders: { 'default-welcome': -1, 'default-identity': 2 },
+  };
   const applied = applyExperienceConfig(event, {
     templateId: 'global-default',
-    config: {
-      customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '', buttonText: '' } }],
-      visualSettings: { buttonSize: 'large', buttonTextColor: hex('ffffff') },
-      defaultPageOrders: { 'default-welcome': -1, 'default-identity': 2 },
-    },
+    config: legacyConfig as ExperienceTemplateConfig,
   });
 
-  assert.deepEqual(applied.visualSettings, { buttonSize: 'small', buttonColor: hex('abcdef'), buttonTextColor: hex('ffffff') });
+  assert.deepEqual(applied.visualSettings, { buttonSize: 'small', buttonColor: hex('abcdef') });
   assert.deepEqual(applied.welcomeScreenComposition, { elements: [{ id: 'event-image' }] });
   assert.deepEqual(applied.frameSelection, { layout: { pick: 'event-frame' } });
-  assert.deepEqual(applied.defaultPageOrders, { 'default-welcome': 1, 'default-identity': 2 });
+  assert.deepEqual(applied.defaultPageOrders, { 'default-welcome': -1, 'default-identity': 2 });
+  assert.deepEqual((applied as Record<string, unknown>).sharePage, { title: 'Selected journey' });
 });
 
 test('global presets reject known inactive or unshared library assets but keep external artwork supported', async () => {
@@ -246,9 +305,10 @@ test('global presets reject known inactive or unshared library assets but keep e
   } as unknown as Db;
   const event = { eventId: 'event-1' };
 
-  assert.deepEqual(await validateTemplateAssetScope(db, 'global', { visualSettings: { welcomeImageUrl: 'https://cdn.example.test/shared.png' } }, event, null), { ok: true });
-  assert.equal((await validateTemplateAssetScope(db, 'global', { visualSettings: { welcomeImageUrl: 'https://cdn.example.test/private.png' } }, event, null)).ok, false);
-  assert.deepEqual(await validateTemplateAssetScope(db, 'global', { visualSettings: { welcomeImageUrl: 'https://external.example.test/art.png' } }, event, null), { ok: true });
+  const assetConfig = (url: string): ExperienceTemplateConfig => ({ customPages: [{ pageId: 'welcome', config: { screenImageUrl: url } }] });
+  assert.deepEqual(await validateTemplateAssetScope(db, 'global', assetConfig('https://cdn.example.test/shared.png'), event, null), { ok: true });
+  assert.equal((await validateTemplateAssetScope(db, 'global', assetConfig('https://cdn.example.test/private.png'), event, null)).ok, false);
+  assert.deepEqual(await validateTemplateAssetScope(db, 'global', assetConfig('https://external.example.test/art.png'), event, null), { ok: true });
 });
 
 test('partner and event presets cannot save assets blocked from their descendants', async () => {
@@ -258,7 +318,7 @@ test('partner and event presets cannot save assets blocked from their descendant
     visualAssetPolicy: { inheritanceVersion: 2, hidden: [], blockedForChildren: [{ kind: 'frames', id: 'shared-frame' }] },
   };
   const db = scopedDatabase({ assets: { [COLLECTIONS.FRAMES]: [image] }, partner });
-  const config = { visualSettings: { welcomeImageUrl: image.imageUrl } };
+  const config: ExperienceTemplateConfig = { customPages: [{ pageId: 'welcome', config: { screenImageUrl: image.imageUrl } }] };
   const event = {
     eventId: 'event-1',
     partnerId: 'partner-1',
