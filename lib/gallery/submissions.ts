@@ -11,7 +11,6 @@ import { processingContactMongoFilter } from '@/lib/submissions/guest-contact';
 import { notWaitingOrRejectedClause, plainPhotoClause } from '@/lib/submissions/visibility';
 
 export { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
-import { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
 
 export async function galleryFilter(eventUuid: string): Promise<Document> {
   const inactiveEmails = await getInactiveUserEmails();
@@ -76,9 +75,13 @@ export async function galleryFilter(eventUuid: string): Promise<Document> {
   };
 }
 
-export async function loadGallerySubmissions(db: Db, eventUuid: string, limit: number = GALLERY_PAGE_SIZE): Promise<{ submissions: Document[]; total: number }> {
+export async function loadGallerySubmissions(db: Db, eventUuid: string, limit?: number): Promise<{ submissions: Document[]; total: number }> {
   const filter = await galleryFilter(eventUuid);
-  const submissions = await db.collection(COLLECTIONS.SUBMISSIONS).find(filter).sort({ createdAt: -1 }).limit(limit).toArray();
+  let cursor = db.collection(COLLECTIONS.SUBMISSIONS).find(filter).sort({ createdAt: -1 });
+  if (typeof limit === 'number' && limit > 0) {
+    cursor = cursor.limit(limit);
+  }
+  const submissions = await cursor.toArray();
   const total = await db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(filter);
   return { submissions, total };
 }

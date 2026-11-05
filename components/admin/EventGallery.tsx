@@ -22,7 +22,6 @@ import EventGalleryUpload from './EventGalleryUpload';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminOperationText } from '@/lib/i18n/admin-operations';
 import { imageExportText } from '@/lib/i18n/image-exports';
-import { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
 import { DRAG_THRESHOLD_PX, boxBetween, dragSelection, extendSelection, idsInBox, toggleId, type Box } from '@/lib/gallery/selection';
 
 interface SlideshowPlayInfo {
@@ -195,7 +194,7 @@ export default function EventGallery({
       galleryFrame: metadata.galleryFrame === true,
       galleryUpload: metadata.adminGalleryUpload === true,
     } as unknown as SubmissionRecord;
-    setSubmissions((prev) => [normalized, ...prev].slice(0, GALLERY_PAGE_SIZE));
+    setSubmissions((prev) => [normalized, ...prev]);
   };
 
   /** A click on a checkbox or, with a modifier or in Select mode, on a picture: Shift extends from the last clicked photo, anything else toggles this one. */
@@ -847,12 +846,6 @@ export default function EventGallery({
           }}
         />
       ) : null}
-
-      {submissions.length >= GALLERY_PAGE_SIZE && (
-        <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>
-          Showing the {GALLERY_PAGE_SIZE} most recent submissions
-        </p>
-      )}
     </div>
   );
 }

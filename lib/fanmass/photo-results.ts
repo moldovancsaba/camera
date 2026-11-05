@@ -358,19 +358,43 @@ function blobPhotoUrl(value: unknown): string | null {
  * Return only a first-party image address for the Camera UI. ImgBB is a backup
  * provider: its URLs remain in imageCopies for backup and erasure operations,
  * but must never be sent to a browser as an image source.
+ *
+ * Prefers the unframed photo analyzed by Fanmass. If no dedicated unframed blob copy
+ * is preserved (e.g. temporary upload removed), falls back to the submission's first-party
+ * photo URLs (originalImageUrl, finalImageUrl, imageUrl, previewImageUrl, or composed blob)
+ * so that the reviewer UI can display the photo instead of an unavailable placeholder.
  */
 export function fanmassAnalysisImageUrl(submission: Document): string | null {
   const reviewPhoto = blobPhotoUrl(record(submission.photoReview)?.photoUrl);
-  const copies = Array.isArray(submission.imageCopies) ? submission.imageCopies as Document[] : [];
+  if (reviewPhoto) return reviewPhoto;
+
+  const copies = Array.isArray(submission.imageCopies) ? (submission.imageCopies as Document[]) : [];
   const unframedBlob = copies.find((copy) => copy.role === 'unframed' && copy.store === 'blob' && copy.state === 'verified');
   const unframed = blobPhotoUrl(unframedBlob?.url);
-  if (reviewPhoto) return reviewPhoto;
   if (unframed) return unframed;
-  // Legacy originalImageUrl values can contain the framed composite. Camera's
-  // reframe record proves that the URL is a separate, unframed camera original.
-  // It is a fallback for old records whose ImgBB crop is the only recorded crop;
-  // never expose that ImgBB backup URL to the reviewer.
-  return record(submission.reframe) ? blobPhotoUrl(submission.originalImageUrl) : null;
+
+  if (record(submission.reframe)) {
+    const reframeOriginal = blobPhotoUrl(submission.originalImageUrl);
+    if (reframeOriginal) return reframeOriginal;
+  }
+
+  const originalImageUrl = blobPhotoUrl(submission.originalImageUrl);
+  if (originalImageUrl) return originalImageUrl;
+
+  const finalImageUrl = blobPhotoUrl(submission.finalImageUrl);
+  if (finalImageUrl) return finalImageUrl;
+
+  const imageUrl = blobPhotoUrl(submission.imageUrl);
+  if (imageUrl) return imageUrl;
+
+  const previewImageUrl = blobPhotoUrl(submission.previewImageUrl);
+  if (previewImageUrl) return previewImageUrl;
+
+  const composedBlob = copies.find((copy) => copy.role === 'composed' && copy.store === 'blob' && copy.state === 'verified');
+  const composed = blobPhotoUrl(composedBlob?.url);
+  if (composed) return composed;
+
+  return null;
 }
 
 function isConfirmed(review: unknown, result: FanmassPhotoResultView | null): boolean {
@@ -482,8 +506,8 @@ export async function loadFanmassEventAnalysisPage(
     submissions.find(eligibleFilter, { projection: { _id: 1 } }).toArray(),
     submissions.find(eligibleFilter, {
       projection: {
-        _id: 1, submissionId: 1, originalImageUrl: 1, photoReview: 1, imageCopies: 1, reframe: 1,
-        createdAt: 1, fanmassAnalysisReview: 1,
+        _id: 1, submissionId: 1, originalImageUrl: 1, imageUrl: 1, finalImageUrl: 1, previewImageUrl: 1,
+        photoReview: 1, imageCopies: 1, reframe: 1, createdAt: 1, fanmassAnalysisReview: 1,
       },
       sort: { createdAt: -1, _id: -1 },
       skip: offset,

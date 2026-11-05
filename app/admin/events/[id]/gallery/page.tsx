@@ -14,7 +14,7 @@ import EventGallery from '@/components/admin/EventGallery';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { loadGallerySubmissions, GALLERY_PAGE_SIZE } from '@/lib/gallery/submissions';
+import { loadGallerySubmissions } from '@/lib/gallery/submissions';
 import { galleryFrameKey, loadGalleryFrames } from '@/lib/gallery/frame';
 import { loadMessageFrames } from '@/lib/frame/message-frames';
 import { countBroken } from '@/lib/media/broken';
@@ -35,7 +35,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) });
   if (!event) notFound();
 
-  const { submissions } = await loadGallerySubmissions(db, String(event.eventId), GALLERY_PAGE_SIZE);
+  const { submissions } = await loadGallerySubmissions(db, String(event.eventId));
   const galleryFrames = await loadGalleryFrames(db, event);
   const hasFrame = galleryFrames.length > 0;
   const frameSetupNeeded = !hasFrame && (await loadMessageFrames(db, event)).size > 0;
