@@ -44,6 +44,7 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
   const [data, setData] = useState<Data | null>(null);
   const [choice, setChoice] = useState<StoredChoice>(level === 'partner' ? 'inherit' : null);
   const [templateName, setTemplateName] = useState(level === 'global' ? 'Global default journey' : 'Partner default journey');
+  const [inheritedName, setInheritedName] = useState('Partner journey');
   const [sourceChoice, setSourceChoice] = useState('');
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -129,12 +130,12 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
     }
   };
 
-  const create = async () => {
-    if (!sourceChoice || !templateName.trim()) return;
-    const selectedSourceTemplateId = sourceChoice.startsWith('template:') ? sourceChoice.slice('template:'.length) : undefined;
+  const create = async ({ source = sourceChoice, name = templateName, makeDefault = false, openEditor = false }: { source?: string; name?: string; makeDefault?: boolean; openEditor?: boolean } = {}) => {
+    if (!source || !name.trim()) return;
+    const selectedSourceTemplateId = source.startsWith('template:') ? source.slice('template:'.length) : undefined;
     const selectedSourceEventId = level === 'global'
-      ? (selectedSourceTemplateId ? undefined : sourceChoice)
-      : sourceChoice.startsWith('event:') ? sourceChoice.slice('event:'.length) : undefined;
+      ? (selectedSourceTemplateId ? undefined : source)
+      : source.startsWith('event:') ? source.slice('event:'.length) : undefined;
     if (!selectedSourceTemplateId && !selectedSourceEventId) return;
     setCreating(true); setError(null); setNotice(null);
     try {
@@ -142,7 +143,8 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           level,
-          name: templateName.trim(),
+          name: name.trim(),
+          ...(makeDefault ? { makeDefault: true } : {}),
           ...(selectedSourceTemplateId ? { sourceTemplateId: selectedSourceTemplateId } : { sourceEventId: selectedSourceEventId }),
           ...(level === 'partner' ? { partnerMongoId: resourceId } : {}),
         }),
@@ -150,12 +152,16 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error((payload as { error?: string } | null)?.error || `Request failed (${response.status})`);
       const result = apiData<{ template: ExperienceTemplate }>(payload);
-      const makeDefault = level === 'global' && !data?.templateId;
-      setData((current) => current ? { ...current, templates: [result.template, ...current.templates], ...(makeDefault ? { templateId: result.template.templateId, selectionNeedsRepair: false } : {}) } : { templateId: makeDefault ? result.template.templateId : null, templates: [result.template] });
-      if (makeDefault) setChoice(result.template.templateId);
+      const becomesGlobalDefault = level === 'global' && !data?.templateId;
+      const selected = makeDefault || becomesGlobalDefault;
+      setData((current) => current ? { ...current, templates: [result.template, ...current.templates], ...(selected ? { templateId: result.template.templateId, selectionNeedsRepair: false } : {}) } : { templateId: selected ? result.template.templateId : null, templates: [result.template] });
+      if (selected) setChoice(result.template.templateId);
       if (level === 'global') await load();
-      setTemplateName('');
-      setNotice(ui('Journey version created.'));
+      if (makeDefault && level === 'partner') await load();
+      if (openEditor) setEditingId(result.template.templateId);
+      if (openEditor) setInheritedName('');
+      else setTemplateName('');
+      setNotice(openEditor ? ui('Inherited journey customized. This partner now owns the selected copy.') : selected ? ui('Journey version created and selected as this level’s default.') : ui('Journey version created.'));
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not create the journey version.');
     } finally {
@@ -227,6 +233,12 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
         <SectionPanel title={ui('Journey versions')} description={ui('Each level has one selected default. Child levels follow that version until they select their own.') }>
           <GdsStack gap="md">
             {level === 'partner' && choice === 'inherit' ? <InlineAlert title={ui('Inherited global journey')} message={ui('This partner has no separate default. Its events follow the global journey unless an event selects its own.') } severity="info" /> : null}
+            {level === 'partner' && choice === 'inherit' && canManage ? <GdsStack gap="sm">
+              {data?.globalTemplateId ? <>
+                <AdminTextInput name="partner-inherited-journey-name" label={ui('Name for this partner journey')} value={inheritedName} onChange={setInheritedName} maxLength={120} />
+                <SemanticButton action="experience-template:customize-inherited-global" loading={creating} disabled={creating || !inheritedName.trim()} onClick={() => void create({ source: `template:${data.globalTemplateId}`, name: inheritedName, makeDefault: true, openEditor: true })}>{ui('Customize inherited journey')}</SemanticButton>
+              </> : <InlineAlert title={ui('No inherited journey available')} message={ui('Select a Global default journey before creating a partner copy.') } severity="warning" />}
+            </GdsStack> : null}
             {data?.templates.map((template) => {
               const isDefault = activeId === template.templateId;
               const isRenaming = renameId === template.templateId;
@@ -257,7 +269,11 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
                       <SemanticButton action="experience-template:cancel-delete" disabled={busy} onClick={() => setDeleteId(null)}>{ui('Cancel')}</SemanticButton>
                     </GdsInline> : null}
                     {editingId === template.templateId && isDefault ? <InlineAlert title={ui('Live guest flow')} message={ui('Saving edits to this selected journey updates the live guest flow, including children that still follow it.')} severity="warning" /> : null}
-                    {editingId === template.templateId ? <ExperienceTemplatePageEditor template={template} onSaved={saveContent} /> : null}
+                    {editingId === template.templateId ? <ExperienceTemplatePageEditor
+                      template={template}
+                      pickerLevel={level === 'global' ? { scope: 'global' } : { scope: 'partner', partnerId: resourceId ?? '' }}
+                      onSaved={saveContent}
+                    /> : null}
                   </GdsStack>
                 </SectionPanel>
               );

@@ -28,6 +28,7 @@ export const cameraAdminVocabularyPacks = [
     'partner-create': { defaultMessage: 'Create journey', icon: GdsIcons.Add, feedback: savedFeedback },
     'event-create': { defaultMessage: 'Create journey', icon: GdsIcons.Add, feedback: savedFeedback },
     'partner-inherit': { defaultMessage: 'Follow the global default', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    'customize-inherited-global': { defaultMessage: 'Customize inherited journey', icon: GdsIcons.Edit, feedback: savedFeedback },
     'event-inherit': { defaultMessage: 'Use parent default', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'select-default': { defaultMessage: 'Set as default', icon: GdsIcons.Check, feedback: savedFeedback },
     edit: { defaultMessage: 'Edit journey', icon: GdsIcons.Edit, feedback: savedFeedback },
@@ -41,6 +42,7 @@ export const cameraAdminVocabularyPacks = [
   }),
   createGdsVocabularyPack('event-journey', {
     select: { defaultMessage: 'Use for this event', icon: GdsIcons.Check, feedback: savedFeedback },
+    'customize-inherited': { defaultMessage: 'Customize inherited journey', icon: GdsIcons.Edit, feedback: savedFeedback },
     rename: { defaultMessage: 'Rename', icon: GdsIcons.Edit, feedback: savedFeedback },
     delete: { defaultMessage: 'Delete', icon: GdsIcons.Delete, feedback: deletedFeedback },
     edit: { defaultMessage: 'Edit journey', icon: GdsIcons.Edit, feedback: savedFeedback },

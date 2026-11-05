@@ -45,7 +45,7 @@ test('global admin manages named journeys and explicitly changes the one global 
   await expect(page.getByRole('button', { name: 'Create journey' })).toHaveCount(1);
 
   await page.getByRole('button', { name: 'Create journey' }).click();
-  await expect(page.getByText('Journey version created.')).toBeVisible();
+  await expect(page.getByText('Journey version created and selected as this level’s default.')).toBeVisible();
   expect(createdPayload).toEqual({ level: 'global', name: 'Global default journey', sourceEventId: SOURCE_ID });
   await expect(page.getByText('Selected default', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Set as default' })).toHaveCount(0);
@@ -180,7 +180,7 @@ test('legacy event pages stay live until a named Event Journey is created and se
   await expect(page.getByRole('button', { name: 'Use parent default' })).toBeDisabled();
   await page.getByLabel('Journey name').fill('Preserved legacy flow');
   await page.getByRole('button', { name: 'Create journey' }).click();
-  await expect(page.getByText('Journey version created. Select it below to make it live.')).toBeVisible();
+  await expect(page.getByText('Inherited journey customized. This event now owns the selected copy.')).toBeVisible();
   expect(legacyJourney).toBe(true);
   await page.getByRole('button', { name: 'Use for this event' }).click();
   await expect(page.getByText('Currently live: Preserved legacy flow')).toBeVisible();

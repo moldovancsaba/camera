@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { Anchor, Breadcrumbs, Button, Stack, Text } from '@/components/gds/PublicPrimitives';
-import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import EventExperienceTemplateSettings from '@/components/admin/EventExperienceTemplateSettings';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { notifyAdminSuccess } from '@/components/admin/notify';
-import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import { StateBlock } from '@sovereignsquad/gds-core/client';
 import type { CustomPage, FrameMessageSelectionDisplay } from '@/lib/db/schemas';
 import type { JourneyContext } from '@/lib/events/journey';
 import type { EffectiveCheckboxes, StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
@@ -52,7 +49,6 @@ async function readEvent(eventId: string): Promise<EventRecord> {
 }
 
 export default function EventJourneyPagesPage({ params }: { params: Promise<{ id: string }> }) {
-  const router = useRouter();
   const language = useUiLanguage();
   const journeyTitle = adminShellText('Event User Journey', language);
   const [eventId, setEventId] = useState('');
@@ -77,45 +73,6 @@ export default function EventJourneyPagesPage({ params }: { params: Promise<{ id
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [eventId]);
-
-  const savePages = async (pages: CustomPage[], options: {
-    acceptanceOnWhoAreYou: boolean | null;
-    galleryConsent: boolean | null;
-    consentSettings: StoredCheckboxSettings | null;
-    frameMessageSelectionDisplay: FrameMessageSelectionDisplay;
-    defaultPageOrders?: Record<string, number>;
-  }) => {
-    const response = await fetch(`/api/events/${eventId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customPages: pages,
-        acceptanceOnWhoAreYou: options.acceptanceOnWhoAreYou,
-        galleryConsent: options.galleryConsent,
-        consentSettings: options.consentSettings,
-        frameMessageSelectionDisplay: options.frameMessageSelectionDisplay,
-        ...(options.defaultPageOrders ? { defaultPageOrders: options.defaultPageOrders } : {}),
-      }),
-    });
-    if (!response.ok) {
-      let message = 'Failed to save pages';
-      try {
-        const result = await response.json();
-        message = result.error || message;
-      } catch {
-        message = `Save failed (HTTP ${response.status})`;
-      }
-      throw new Error(message);
-    }
-
-    try {
-      setEvent(await readEvent(eventId));
-    } catch {
-      // The update succeeded; a failed refresh should not report the save itself as failed.
-    }
-    notifyAdminSuccess({ title: 'Pages saved', message: 'Custom page flow updated successfully.' });
-    router.refresh();
-  };
 
   const refreshEvent = async () => {
     try {
@@ -144,6 +101,7 @@ export default function EventJourneyPagesPage({ params }: { params: Promise<{ id
       eyebrow="Events"
       title={`${event.name} — ${journeyTitle}`}
       description="Choose, edit and order the pages guests see for this event."
+      maxWidth="100%"
       breadcrumbs={(
         <Breadcrumbs>
           <Anchor component={Link} href="/admin/events" size="sm">Events</Anchor>
@@ -152,26 +110,18 @@ export default function EventJourneyPagesPage({ params }: { params: Promise<{ id
         </Breadcrumbs>
       )}
     >
-      {error ? <InlineAlert title="Error" message={error} severity="error" /> : null}
       <EventExperienceTemplateSettings
         key={`${event.effectiveExperienceTemplateId ?? 'none'}:${event.experienceTemplate?.mode ?? 'legacy'}`}
         eventMongoId={eventId}
         sourceEventId={eventId}
-        onSelectionChanged={refreshEvent}
-      />
-      <CustomPagesManager
-        key={`${event.effectiveExperienceTemplateId ?? 'none'}:${event.experienceTemplate?.mode ?? 'legacy'}:${event.customPages?.map((page) => page.pageId).join(',') ?? 'empty'}`}
-        eventId={eventId}
         eventWelcomeScreenUrl={event.welcomeScreen?.url}
         eventTheme={event.theme}
-        initialPages={event.customPages || []}
         journeyContext={event.journeyContext}
         acceptanceOnWhoAreYou={typeof event.acceptanceOnWhoAreYou === 'boolean' ? event.acceptanceOnWhoAreYou : null}
         galleryConsent={typeof event.galleryConsent === 'boolean' ? event.galleryConsent : null}
         consentSettings={event.consentSettings ?? null}
         partnerCheckboxes={event.partnerCheckboxes}
-        frameMessageSelectionDisplay={event.frameMessageSelectionDisplay}
-        onSave={savePages}
+        onSelectionChanged={refreshEvent}
       />
     </EditorScaffold>
   );
