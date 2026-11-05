@@ -30,3 +30,10 @@ test('every semantic action used in the code is registered in the admin vocabula
   const missing = [...used].filter(([action]) => !registered.has(action)).map(([action, file]) => `${action} (${file})`);
   assert.deepEqual(missing, [], 'unregistered semantic actions: register them in lib/gds/camera-admin-vocabulary.ts');
 });
+
+test('the dynamic page visibility actions are registered in the admin vocabulary', () => {
+  const pack = cameraAdminVocabularyPacks.find((candidate) => candidate.namespace === 'custom-pages');
+  assert.ok(pack);
+  assert.ok(pack.actions['custom-pages:hide']);
+  assert.ok(pack.actions['custom-pages:show']);
+});

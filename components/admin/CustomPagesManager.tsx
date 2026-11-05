@@ -19,7 +19,7 @@ import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, type FrameMessageSelectionDisplay, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
-import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
+import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, journeyRowIndexByPageId, moveJourneyRow, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
 import { DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID, dedupeActiveRolePages } from '@/lib/events/default-pages';
 import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type CheckboxMode, type EffectiveCheckboxes, type StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 import CheckboxSettingsFields, { type CheckboxModes } from '@/components/admin/CheckboxSettingsFields';
@@ -250,7 +250,7 @@ export default function CustomPagesManager({ eventId, pickerLevel, journeyTitle:
   const consentSettingsPage = consentSettingsRow && consentSettingsRow.kind !== 'step' ? consentSettingsRow.page : undefined;
   // Built-in follow-up behavior is configured in its own settings sections; the journey list is for pages guests can visit and editors can arrange.
   // Keep the full rows above for ordering rules, but render only actual pages.
-  const pageRows = rows.flatMap((row, rowIndex) => row.kind === 'step' ? [] : [{ row, rowIndex }]);
+  const pageRows = rows.flatMap((row) => row.kind === 'step' ? [] : [{ row }]);
 
   /** Customise a default page in place. If an own page of that type already exists, promote it to the default's position instead of creating a duplicate. */
   const handleCustomise = (page: CustomPage) => {
@@ -398,7 +398,9 @@ export default function CustomPagesManager({ eventId, pickerLevel, journeyTitle:
    * Move a row (an own page or a default page) one place up or down. With the journey known, every page row is numbered together (own pages and default pages), a default page keeps being
    * a default and only its place is saved (issue 535); moving the take-photo page above a default automatically separates the later save step.
    */
-  const handleMove = (rowIndex: number, direction: -1 | 1) => {
+  const handleMove = (pageId: string, direction: -1 | 1) => {
+    const rowIndex = journeyRowIndexByPageId(rows, pageId);
+    if (rowIndex < 0) return;
     if (journeyContext) {
       const moved = moveJourneyRow(rows, rowIndex, direction);
       if (!moved) return;
@@ -406,8 +408,7 @@ export default function CustomPagesManager({ eventId, pickerLevel, journeyTitle:
       setDefaultOrders(moved.defaultOrders);
       return;
     }
-    const row = rows[rowIndex];
-    const index = sortedPages.findIndex((p) => row.kind === 'own' && p.pageId === row.page.pageId);
+    const index = sortedPages.findIndex((page) => page.pageId === pageId);
     const other = index + direction;
     if (index < 0 || other < 0 || other >= sortedPages.length) return;
     const newPages = [...sortedPages];
@@ -416,10 +417,11 @@ export default function CustomPagesManager({ eventId, pickerLevel, journeyTitle:
   };
 
   /** Whether the row can move one place up or down: the journey says (a default page stays before the photo), without it the own pages only. */
-  const canMove = (rowIndex: number, direction: -1 | 1): boolean => {
+  const canMove = (pageId: string, direction: -1 | 1): boolean => {
+    const rowIndex = journeyRowIndexByPageId(rows, pageId);
+    if (rowIndex < 0) return false;
     if (journeyContext) return canMoveJourneyRow(rows, rowIndex, direction);
-    const row = rows[rowIndex];
-    const index = sortedPages.findIndex((p) => row.kind === 'own' && p.pageId === row.page.pageId);
+    const index = sortedPages.findIndex((page) => page.pageId === pageId);
     return index >= 0 && index + direction >= 0 && index + direction < sortedPages.length;
   };
 
@@ -503,13 +505,13 @@ export default function CustomPagesManager({ eventId, pickerLevel, journeyTitle:
 
       {/* Page List */}
         <div style={{ display: 'grid', gap: '0.75rem' }}>
-        {pageRows.map(({ row, rowIndex }, index) => {
+        {pageRows.map(({ row }, index) => {
           if (row.kind === 'default') {
             if (row.page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID) {
               return (
                 <article key={row.page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }} data-frame-message-selection-settings>
                   <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
-                    <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
+                    <MoveButtons canUp={canMove(row.page.pageId, -1)} canDown={canMove(row.page.pageId, 1)} onUp={() => handleMove(row.page.pageId, -1)} onDown={() => handleMove(row.page.pageId, 1)} />
                     <div style={{ display: 'grid', flex: '1 1 16rem', gap: '0.25rem', minWidth: 0 }}>
                       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
@@ -537,7 +539,7 @@ export default function CustomPagesManager({ eventId, pickerLevel, journeyTitle:
             return (
               <article key={row.page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                 <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
-                  <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
+                  <MoveButtons canUp={canMove(row.page.pageId, -1)} canDown={canMove(row.page.pageId, 1)} onUp={() => handleMove(row.page.pageId, -1)} onDown={() => handleMove(row.page.pageId, 1)} />
                   {/* The text keeps at least 12rem; on a narrow screen the Customise button wraps under it instead of squeezing the text to one word a line. */}
                   <div style={{ display: 'grid', flex: '1 1 12rem', gap: '0.25rem', minWidth: 0 }}>
                     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -562,7 +564,7 @@ export default function CustomPagesManager({ eventId, pickerLevel, journeyTitle:
             return (
               <article key={page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                 <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                  <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
+                  <MoveButtons canUp={canMove(page.pageId, -1)} canDown={canMove(page.pageId, 1)} onUp={() => handleMove(page.pageId, -1)} onDown={() => handleMove(page.pageId, 1)} />
                   <div style={{ display: 'grid', flex: '1 1 12rem', gap: '0.25rem', minWidth: 0 }}>
                     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
@@ -582,7 +584,7 @@ export default function CustomPagesManager({ eventId, pickerLevel, journeyTitle:
             >
               {/* Order indicators */}
                 <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
-                  <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
+                  <MoveButtons canUp={canMove(page.pageId, -1)} canDown={canMove(page.pageId, 1)} onUp={() => handleMove(page.pageId, -1)} onDown={() => handleMove(page.pageId, 1)} />
 
               {/* Page info */}
                   <div style={{ display: 'grid', flex: 1, gap: '0.25rem' }}>

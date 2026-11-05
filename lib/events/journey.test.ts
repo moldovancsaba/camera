@@ -4,7 +4,7 @@ import type { CustomPage } from '@/lib/db/schemas';
 import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, sanitizeDefaultPageOrders, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
 import { documentSettings, effectiveCheckboxes } from './checkbox-settings';
-import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, moveTarget, setSubmitSeparate, type JourneyContext, type JourneyRow } from './journey';
+import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, journeyRowIndexByPageId, moveJourneyRow, moveTarget, setSubmitSeparate, type JourneyContext, type JourneyRow } from './journey';
 
 const page = (pageType: string, order: number, isActive = true, pageId = `${pageType}-${order}`): CustomPage =>
   ({ pageId, pageType, order, isActive, config: { title: pageType, description: '', buttonText: 'Next' }, createdAt: 'x', updatedAt: 'x' }) as unknown as CustomPage;
@@ -150,6 +150,28 @@ test('every journey page can move across the camera, while built-in follow-up st
   assert.equal(moveTarget(rows, at(rows, 'cta-1'), 1), null, 'nothing below the last page');
   assert.equal(moveTarget(rows, rows.findIndex((row) => row.kind === 'step'), 1), null, 'a built-in step has no place of its own');
   assert.equal(moveTarget(rows, at(rows, DEFAULT_CONSENT_PAGE_ID), -1), at(rows, 'welcome--1'), 'consent up: above the welcome page');
+});
+
+test('the editor resolves visible rows by stable page ID, not by their filtered-list position', () => {
+  const rows = rowsOf(START);
+  const visiblePages = rows.filter((row) => row.kind !== 'step');
+  const visibleLast = visiblePages.at(-1);
+  assert.ok(visibleLast);
+
+  const visibleIndex = visiblePages.indexOf(visibleLast);
+  const fullJourneyIndex = journeyRowIndexByPageId(rows, visibleLast.page.pageId);
+  assert.notEqual(visibleIndex, fullJourneyIndex, 'built-in steps make the visible list index differ from the full journey index');
+  const resolved = rows[fullJourneyIndex];
+  assert.ok(resolved && resolved.kind !== 'step');
+  assert.equal(resolved.page.pageId, visibleLast.page.pageId);
+  assert.equal(journeyRowIndexByPageId(rows, 'missing-page-id'), -1);
+
+  const moved = moveJourneyRow(rows, fullJourneyIndex, -1);
+  assert.ok(moved);
+  const callToAction = moved.pages.find((candidate) => candidate.pageId === visibleLast.page.pageId);
+  const takePhoto = moved.pages.find((candidate) => candidate.pageType === 'take-photo');
+  assert.ok(callToAction && takePhoto);
+  assert.ok(callToAction.order < takePhoto.order, 'the selected visible page moves before the adjacent page, not to the filtered-list index');
 });
 
 test('moving photo-taking before a required page inserts a later Submit step and keeps login before saving', () => {
