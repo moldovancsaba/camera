@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — keep journey page moves tied to page identity
+
+- **Fixed:** journey page move controls now resolve the selected page by its stable `pageId` against the full journey, so hidden built-in steps cannot shift the target row or corrupt the saved order.
+- **Fixed:** registered the page editor's hide/show semantic actions, which previously caused the editor to throw while rendering those controls.
+- **Verification:** the focused mobile browser regression moved a page across built-in steps, saved, reloaded and confirmed the persisted order; `npm run release:check`, `npm run inventory:check`, and `git diff --check` passed. The full journey-editor redesign remains separate work.
+
 ## v12.3.46 — use one full journey editor at every level
 
 - **Added:** Global, Partner, and Event journey lists now open the same full page editor for any journey owned at that level. Editors can create, rename, select, and edit multiple named versions without a second, reduced editor.

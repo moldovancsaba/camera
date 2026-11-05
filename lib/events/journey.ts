@@ -109,6 +109,11 @@ const isPageRow = (row: JourneyRow): row is PageRow => row.kind !== 'step';
 const isTakePhotoRow = (row: PageRow) => row.kind === 'own' && row.page.pageType === CustomPageType.TAKE_PHOTO;
 const isSubmitRow = (row: PageRow) => row.kind === 'own' && row.page.pageType === CustomPageType.SUBMIT;
 
+/** Resolve a visible journey page back to the full journey rows by its stable identity. */
+export function journeyRowIndexByPageId(rows: readonly JourneyRow[], pageId: string): number {
+  return rows.findIndex((row) => isPageRow(row) && row.page.pageId === pageId);
+}
+
 /**
  * The page row that the row at `index` swaps places with when it moves one place `up` (-1) or `down` (+1), or null when it cannot move. The built-in steps are not pages and stay where they are,
  * so the neighbour is the next page row in that direction. Every journey page can be reordered; Submit stays after Take Photo and is automatically placed after consent/login pages so saving

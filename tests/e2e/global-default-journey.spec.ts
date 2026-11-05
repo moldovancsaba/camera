@@ -4,7 +4,7 @@ const SOURCE_ID = '0123456789abcdef01234567';
 const STAMP = '2026-11-04T10:00:00.000Z';
 
 function template(templateId: string, level: 'global' | 'event', ownerId: string | null, name: string) {
-  return { templateId, level, ownerId, name, config: { customPages: [] }, createdAt: STAMP, updatedAt: STAMP };
+  return { templateId, level, ownerId, name, config: { customPages: [] as unknown[] }, createdAt: STAMP, updatedAt: STAMP };
 }
 
 test('global admin manages named journeys and explicitly changes the one global default', async ({ page }) => {
@@ -185,4 +185,80 @@ test('legacy event pages stay live until a named Event Journey is created and se
   await page.getByRole('button', { name: 'Use for this event' }).click();
   await expect(page.getByText('Currently live: Preserved legacy flow')).toBeVisible();
   expect(selection).toEqual({ mode: 'template', templateId: 'legacy-snapshot' });
+});
+
+test('event journey page moves keep their identity across hidden built-in rows, save, and reload', async ({ page }) => {
+  const eventId = 'abcdefabcdefabcdefabcdef';
+  const eventTemplate = template('event-reorder', 'event', eventId, 'Reorder test journey');
+  const journeyPages = [
+    { pageId: 'welcome-page', pageType: 'welcome', order: -1, isActive: true, config: { title: 'Welcome', description: '', buttonText: 'Start' } },
+    { pageId: 'take-photo-page', pageType: 'take-photo', order: 0, isActive: true, config: { title: 'Take Photo', description: '', buttonText: 'Continue' } },
+    { pageId: 'cta-page', pageType: 'cta', order: 1, isActive: true, config: { title: 'Visit club shop', description: '', buttonText: 'Open' } },
+  ];
+  eventTemplate.config.customPages = journeyPages;
+  const selection = { mode: 'template' as const, templateId: eventTemplate.templateId };
+  let savedTemplateConfig: Record<string, unknown> = structuredClone(eventTemplate.config);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname === '/api/auth/dev-login') return route.continue();
+    if (url.pathname === `/api/events/${eventId}` && request.method() === 'GET') {
+      return route.fulfill({ json: { data: { event: {
+        _id: eventId,
+        eventId,
+        name: 'Journey order test',
+        customPages: journeyPages,
+        journeyContext: { vettingRequired: false, consentDefault: false, language: 'en', hasWelcomeScreen: false },
+        experienceTemplate: selection,
+        effectiveExperienceTemplateId: eventTemplate.templateId,
+        effectiveExperienceTemplateName: eventTemplate.name,
+      } } } });
+    }
+    if (url.pathname === `/api/events/${eventId}/experience-template` && request.method() === 'GET') {
+      return route.fulfill({ json: { data: {
+        selection,
+        effectiveJourney: { templateId: eventTemplate.templateId, name: eventTemplate.name, level: 'event' },
+        inheritedJourney: { templateId: 'global-matchday', name: 'Global matchday journey', level: 'global' },
+        legacyJourney: false,
+        selectionNeedsRepair: false,
+        publicLinks: { captureUrl: `https://camera.messmass.com/capture/${eventId}`, shortUrl: null },
+        templates: [{ ...eventTemplate, config: savedTemplateConfig }],
+        canCreateEventTemplate: true,
+      } } });
+    }
+    if (url.pathname === `/api/visual-assets/templates/${eventTemplate.templateId}` && request.method() === 'PATCH') {
+      const body = request.postDataJSON() as { config: Record<string, unknown> };
+      savedTemplateConfig = structuredClone(body.config);
+      return route.fulfill({ json: { data: { template: { ...eventTemplate, config: savedTemplateConfig } } } });
+    }
+    return route.fulfill({ json: { data: {} } });
+  });
+
+  const journeyUrl = `/admin/events/${eventId}/pages`;
+  const loginUrl = `/api/auth/dev-login?role=admin&access=true&email=journey-order@camera.local&name=Journey%20Editor&userId=journey-order-e2e&redirectTo=${encodeURIComponent(journeyUrl)}`;
+  await page.goto(loginUrl);
+  await expect(page.getByRole('heading', { name: /Journey order test.*Event User Journey/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit journey' }).click();
+  const pageRows = page.locator('article');
+  const rowsInOrder = async () => (await pageRows.allTextContents()).map((text) => text.trim());
+  const pagePosition = (rows: string[], pageType: string) => rows.findIndex((text) => text.includes(pageType));
+  const before = await rowsInOrder();
+  const ctaIndex = pagePosition(before, 'ctaVisit club shop');
+  const takePhotoIndex = pagePosition(before, 'take-photoTake Photo');
+  expect(ctaIndex).toBeGreaterThan(takePhotoIndex);
+
+  await pageRows.filter({ hasText: 'Visit club shop' }).getByTitle('Move up').click();
+  const afterMove = await rowsInOrder();
+  expect(pagePosition(afterMove, 'ctaVisit club shop')).toBeLessThan(pagePosition(afterMove, 'take-photoTake Photo'));
+  await page.getByRole('button', { name: 'Save all' }).click();
+  await expect.poll(() => (savedTemplateConfig.customPages as typeof journeyPages).find((item) => item.pageId === 'cta-page')?.order)
+    .toBeLessThan((savedTemplateConfig.customPages as typeof journeyPages).find((item) => item.pageId === 'take-photo-page')!.order);
+
+  await page.goto(loginUrl);
+  await expect(page.getByRole('heading', { name: /Journey order test.*Event User Journey/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit journey' }).click();
+  const afterReload = await rowsInOrder();
+  expect(pagePosition(afterReload, 'ctaVisit club shop')).toBeLessThan(pagePosition(afterReload, 'take-photoTake Photo'));
+  await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll');
 });
