@@ -5,7 +5,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiBadRequest, apiCreated, apiForbidden, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, requireAuth, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { assertPartnerMongoWorkspaceAccess, getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
-import { experienceConfigFromEvent, journeyConfigFromStoredTemplate, journeyTemplateForAdmin, makeGlobalJourneyConfig, makePartnerJourneyConfig, parseExperienceTemplateConfig, resolveEventExperienceConfig, validateTemplateAssetScope, type ExperienceTemplateConfig } from '@/lib/visual-assets/templates';
+import { experienceConfigFromEvent, hasLegacyLocalJourney, journeyConfigFromStoredTemplate, journeyTemplateForAdmin, makeGenericGlobalJourneyConfig, makeGlobalJourneyConfig, makePartnerJourneyConfig, parseExperienceTemplateConfig, resolveEventExperienceConfig, validateTemplateAssetScope, type ExperienceTemplateConfig } from '@/lib/visual-assets/templates';
 
 type Level = 'global' | 'partner' | 'event';
 const isLevel = (value: unknown): value is Level => value === 'global' || value === 'partner' || value === 'event';
@@ -55,7 +55,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   if (!body || !isLevel(body.level) || typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 120) {
     throw apiBadRequest('Send a level and a template name (up to 120 characters).');
   }
-  if (Object.hasOwn(body, 'makeDefault')) throw apiBadRequest('Creating a journey version never changes the active journey. Select it in the level settings to make it the default.');
+  if (Object.hasOwn(body, 'makeDefault') && typeof body.makeDefault !== 'boolean') throw apiBadRequest('makeDefault must be a boolean.');
+  if (body.makeDefault === true && body.level === 'global') throw apiBadRequest('Create a Global Journey first, then select it as the global default.');
   const hasEventSource = typeof body.sourceEventId === 'string';
   const hasTemplateSource = typeof body.sourceTemplateId === 'string';
   if (hasEventSource === hasTemplateSource) throw apiBadRequest('Choose exactly one source event or source journey.');
@@ -80,7 +81,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       if (!safe) throw apiBadRequest('Choose a valid Global Journey as the source.');
       config = safe.config;
     }
-    config = makeGlobalJourneyConfig(config);
+    config = hasEventSource ? makeGenericGlobalJourneyConfig(config) : makeGlobalJourneyConfig(config);
   } else if (body.level === 'partner') {
     if (typeof body.partnerMongoId !== 'string') throw apiBadRequest('partnerMongoId is required to create a Partner Journey.');
     const access = await assertPartnerMongoWorkspaceAccess(db, session, body.partnerMongoId, 'manager');
@@ -115,8 +116,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: sourceEvent.partnerId }) as Record<string, unknown> | null
       : null;
     if (!partner) throw apiBadRequest('The source event must belong to a partner to create an Event Journey.');
-    const effective = await resolveEventExperienceConfig(db, sourceEvent, partner);
-    config = effective?.config ?? experienceConfigFromEvent(sourceEvent);
+    if (hasLegacyLocalJourney(sourceEvent)) {
+      config = experienceConfigFromEvent(sourceEvent);
+    } else {
+      const effective = await resolveEventExperienceConfig(db, sourceEvent, partner);
+      config = effective?.config ?? experienceConfigFromEvent(sourceEvent);
+    }
   }
 
   const parsed = parseExperienceTemplateConfig(config);
@@ -134,9 +139,33 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     updatedAt: now,
     updatedBy: session.user.id,
   };
-  // Creation only adds an available version. The explicit level-selection APIs
-  // control which version descendants inherit and which event links serve.
   await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).insertOne(template);
+  let selection: { mode: 'template'; templateId: string } | null = null;
+  if (body.makeDefault === true && body.level === 'partner') {
+    selection = { mode: 'template', templateId: template.templateId };
+    try {
+      const result = await db.collection(COLLECTIONS.PARTNERS).updateOne(
+        { partnerId: ownerId },
+        { $set: { defaultExperienceTemplateId: template.templateId, updatedAt: now, updatedBy: session.user.id } },
+      );
+      if (result.matchedCount !== 1) throw apiNotFound('Partner');
+    } catch (error) {
+      await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).deleteOne({ templateId: template.templateId });
+      throw error;
+    }
+  } else if (body.makeDefault === true && body.level === 'event' && sourceEvent) {
+    selection = { mode: 'template', templateId: template.templateId };
+    try {
+      const result = await db.collection(COLLECTIONS.EVENTS).updateOne(
+        { _id: new ObjectId(String(sourceEvent._id)) },
+        { $set: { experienceTemplate: selection, updatedAt: now, updatedBy: session.user.id } },
+      );
+      if (result.matchedCount !== 1) throw apiNotFound('Event');
+    } catch (error) {
+      await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).deleteOne({ templateId: template.templateId });
+      throw error;
+    }
+  }
   if (body.level === 'global') {
     const settings = db.collection(COLLECTIONS.ADMIN_SETTINGS);
     const current = await settings.findOne({ settingId: 'default-experience-template' });
@@ -153,5 +182,5 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       );
     }
   }
-  return apiCreated({ template });
+  return apiCreated({ template, ...(selection ? { selection } : {}) });
 });

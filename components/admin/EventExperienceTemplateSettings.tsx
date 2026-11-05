@@ -9,6 +9,8 @@ import ExperienceTemplatePageEditor from '@/components/admin/ExperienceTemplateP
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminOperationText } from '@/lib/i18n/admin-operations';
 import type { ExperienceTemplate, ExperienceTemplateSelection } from '@/lib/visual-assets/contracts';
+import type { JourneyContext } from '@/lib/events/journey';
+import type { EffectiveCheckboxes, StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 
 interface JourneyRef { templateId: string; name: string | null; level: 'global' | 'partner' | 'event' | null }
 interface State {
@@ -29,13 +31,25 @@ function apiData<T>(payload: unknown): T {
   return data;
 }
 
-export default function EventExperienceTemplateSettings({ eventMongoId, sourceEventId, onSelectionChanged }: { eventMongoId: string; sourceEventId: string; onSelectionChanged?: () => Promise<void> | void }) {
+export default function EventExperienceTemplateSettings({ eventMongoId, sourceEventId, eventWelcomeScreenUrl, eventTheme, journeyContext, acceptanceOnWhoAreYou, galleryConsent, consentSettings, partnerCheckboxes, onSelectionChanged }: {
+  eventMongoId: string;
+  sourceEventId: string;
+  eventWelcomeScreenUrl?: string;
+  eventTheme?: { background?: string; font?: { family?: string } };
+  journeyContext?: JourneyContext;
+  acceptanceOnWhoAreYou?: boolean | null;
+  galleryConsent?: boolean | null;
+  consentSettings?: StoredCheckboxSettings | null;
+  partnerCheckboxes?: EffectiveCheckboxes;
+  onSelectionChanged?: () => Promise<void> | void;
+}) {
   const language = useUiLanguage();
   const ui = (text: string) => adminOperationText(text, language);
   const endpoint = `/api/events/${encodeURIComponent(eventMongoId)}/experience-template`;
   const [state, setState] = useState<State | null>(null);
   const [choice, setChoice] = useState('legacy');
   const [name, setName] = useState('Event journey');
+  const [inheritedName, setInheritedName] = useState('Event journey');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -83,20 +97,23 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
     }
   };
 
-  const create = async () => {
-    if (!name.trim()) return;
+  const create = async ({ makeDefault = false, openEditor = false, journeyName = name }: { makeDefault?: boolean; openEditor?: boolean; journeyName?: string } = {}) => {
+    if (!journeyName.trim()) return;
     setCreating(true); setError(null); setNotice(null);
     try {
       const response = await fetch('/api/visual-assets/templates', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ level: 'event', name: name.trim(), sourceEventId }),
+        body: JSON.stringify({ level: 'event', name: journeyName.trim(), sourceEventId, ...(makeDefault ? { makeDefault: true } : {}) }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error((payload as { error?: string } | null)?.error || `Request failed (${response.status})`);
       const result = apiData<{ template: ExperienceTemplate }>(payload);
       setState((current) => current ? { ...current, templates: [result.template, ...current.templates] } : current);
-      setName('');
-      setNotice(ui('Journey version created. Select it below to make it live.'));
+      if (makeDefault) await fetchState();
+      if (openEditor) setEditingId(result.template.templateId);
+      if (openEditor) setInheritedName('');
+      else setName('');
+      setNotice(openEditor ? ui('Inherited journey customized. This event now owns the selected copy.') : ui('Journey version created. Select it below to make it live.'));
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not create this event journey.');
     } finally {
@@ -159,7 +176,11 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
               <MetadataText>{state?.inheritedJourney?.name ?? ui('No parent journey is currently available.')}</MetadataText>
               <SemanticButton action="experience-template:event-inherit" loading={saving} disabled={saving || state?.legacyJourney === true || (choice === 'inherit' && !state?.selectionNeedsRepair)} onClick={() => void selectJourney({ mode: 'inherit' })}>{ui('Use parent default')}</SemanticButton>
             </GdsInline>
-            {state?.legacyJourney ? <MetadataText>{ui('Create a named Event Journey first to preserve these existing pages before switching to the parent default.')}</MetadataText> : null}
+            {state?.legacyJourney ? <MetadataText>{ui('Save the existing event pages as an Event Journey before switching to the parent default.')}</MetadataText> : null}
+            {choice === 'inherit' && !state?.legacyJourney && state?.canCreateEventTemplate ? <GdsStack gap="sm">
+              <AdminTextInput name="event-inherited-journey-name" label={ui('Name for this event journey')} value={inheritedName} onChange={setInheritedName} maxLength={120} />
+              <SemanticButton action="event-journey:customize-inherited" loading={creating} disabled={creating || !inheritedName.trim()} onClick={() => void create({ makeDefault: true, openEditor: true, journeyName: inheritedName })}>{ui('Customize inherited journey')}</SemanticButton>
+            </GdsStack> : null}
           </SectionPanel>
           {state?.templates.map((template) => {
             const selected = choice === template.templateId && !state.legacyJourney;
@@ -185,8 +206,20 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
                     <SemanticButton action="event-journey:cancel-delete" disabled={busy} onClick={() => setDeleteId(null)}>{ui('Cancel')}</SemanticButton>
                   </GdsInline>
                 </> : null}
-                {editingId === template.templateId && selected ? <InlineAlert title={ui('Live guest flow')} message={ui('Saving edits to this selected journey updates the live guest flow, including children that still follow it.')} severity="warning" /> : null}
-                {editingId === template.templateId ? <ExperienceTemplatePageEditor template={template} onSaved={(updated) => setState((current) => current ? { ...current, templates: current.templates.map((item) => item.templateId === updated.templateId ? updated : item) } : current)} /> : null}
+                {editingId === template.templateId && selected ? <InlineAlert title={ui('Live guest flow')} message={ui('Saving edits to this selected journey updates the live guest flow for this event.')} severity="warning" /> : null}
+                {editingId === template.templateId ? <ExperienceTemplatePageEditor
+                  template={template}
+                  pickerLevel={{ scope: 'event', eventId: eventMongoId }}
+                  eventId={eventMongoId}
+                  eventWelcomeScreenUrl={eventWelcomeScreenUrl}
+                  eventTheme={eventTheme}
+                  journeyContext={journeyContext}
+                  acceptanceOnWhoAreYou={acceptanceOnWhoAreYou}
+                  galleryConsent={galleryConsent}
+                  consentSettings={consentSettings}
+                  partnerCheckboxes={partnerCheckboxes}
+                  onSaved={(updated) => setState((current) => current ? { ...current, templates: current.templates.map((item) => item.templateId === updated.templateId ? updated : item) } : current)}
+                /> : null}
               </GdsStack>
             </SectionPanel>;
           })}
@@ -194,10 +227,10 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
         </GdsStack>
       </SectionPanel>
 
-      {state?.canCreateEventTemplate ? <SectionPanel title={ui('Create Event Journey')} description={ui('Save the current event setup as a named journey. It becomes live only when selected above.') }>
+      {state?.canCreateEventTemplate ? <SectionPanel title={ui('Create Event Journey')} description={state.legacyJourney ? ui('Save this event’s existing pages as its own journey and open them in the shared editor.') : ui('Create another Event Journey version. It becomes live only when selected above.') }>
         <GdsInline gap="md" align="end">
           <AdminTextInput name="event-journey-new-name" label={ui('Journey name')} value={name} onChange={setName} maxLength={120} />
-          <SemanticButton action="experience-template:event-create" loading={creating} disabled={creating || !name.trim()} onClick={() => void create()}>{ui('Create journey')}</SemanticButton>
+          <SemanticButton action="experience-template:event-create" loading={creating} disabled={creating || !name.trim()} onClick={() => void create(state.legacyJourney ? { makeDefault: true, openEditor: true } : {})}>{state.legacyJourney ? ui('Save and edit journey') : ui('Create journey')}</SemanticButton>
         </GdsInline>
       </SectionPanel> : null}
     </GdsStack>

@@ -7,8 +7,8 @@ import {
   hasLegacyLocalJourney,
   journeyConfigFromStoredTemplate,
   journeyTemplateForAdmin,
+  makeGenericGlobalJourneyConfig,
   makePartnerJourneyConfig,
-  makeGlobalJourneyConfig,
   parseExperienceTemplateConfig,
   parseExperienceTemplateSelection,
   resolveEventExperienceConfig,
@@ -159,7 +159,7 @@ test('new partners and events inherit the required global journey by default', a
 
   assert.deepEqual(resolved, {
     config: {
-      customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '', buttonText: '', screenImageAlt: '' } }],
+      customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { title: '', buttonText: '' } }],
       frameMessageSelectionDisplay: 'messages-only',
     },
     templateId: 'global-default',
@@ -169,7 +169,7 @@ test('new partners and events inherit the required global journey by default', a
 test('a partner without its own selection inherits global, and event inherit follows that single parent selection', async () => {
   const db = database({ globalDefault: 'global-default', templates: [template('global-default', 'global', null, { sharePage: { title: 'Parent' } })] });
   const event = { eventId: 'event-1', experienceTemplate: { mode: 'inherit' } };
-  assert.deepEqual(await resolveEventExperienceConfig(db, event, { partnerId: 'partner-1', defaultExperienceTemplateId: null }), { config: { frameMessageSelectionDisplay: 'messages-only' }, templateId: 'global-default' });
+  assert.deepEqual(await resolveEventExperienceConfig(db, event, { partnerId: 'partner-1', defaultExperienceTemplateId: null }), { config: { sharePage: { title: 'Parent' } }, templateId: 'global-default' });
   const local = applyExperienceConfig({ sharePage: { title: 'Locally stored' } }, null);
   assert.deepEqual(local.sharePage, { title: 'Locally stored' });
 });
@@ -180,7 +180,7 @@ test('legacy event pages stay local until inheritance is explicitly selected or 
   assert.equal(hasLegacyLocalJourney({ customPages: legacyPages }), true);
   assert.equal(hasLegacyLocalJourney({ customPages: legacyPages, experienceTemplate: { mode: 'inherit' } }), false);
   assert.equal(await resolveEventExperienceConfig(db, { eventId: 'event-1', customPages: legacyPages }, null), null);
-  assert.deepEqual(await resolveEventExperienceConfig(db, { eventId: 'event-1', customPages: legacyPages, experienceTemplate: { mode: 'inherit' } }, null), { config: { frameMessageSelectionDisplay: 'messages-only' }, templateId: 'global-default' });
+  assert.deepEqual(await resolveEventExperienceConfig(db, { eventId: 'event-1', customPages: legacyPages, experienceTemplate: { mode: 'inherit' } }, null), { config: { sharePage: { title: 'Parent' } }, templateId: 'global-default' });
 });
 
 test('event template starts an independent chain and stale references leave local configuration intact', async () => {
@@ -195,11 +195,11 @@ test('event template starts an independent chain and stale references leave loca
   assert.deepEqual(localTemplate, { config: { sharePage: { title: 'Event' } }, templateId: 'event-template' });
 
   const stale = await resolveEventExperienceConfig(db, { eventId: 'event-1', experienceTemplate: { mode: 'template', templateId: 'removed-template' } }, { partnerId: 'partner-1' });
-  assert.deepEqual(stale, { config: { frameMessageSelectionDisplay: 'messages-only' }, templateId: 'global-default' });
+  assert.deepEqual(stale, { config: { sharePage: { title: 'Parent' } }, templateId: 'global-default' });
 });
 
 test('global journey keeps the accepted flow but removes source-client wording, links and artwork', () => {
-  const config = makeGlobalJourneyConfig({
+  const config = makeGenericGlobalJourneyConfig({
     customPages: [
       { pageId: 'welcome-source', pageType: 'welcome', order: -3, isActive: true, config: { title: 'MTK x Vasas', description: '', buttonText: 'CSATLAKOZOM', screenImageAlt: 'MTK stadium', screenImageUrl: 'https://client.test/mtk.png', welcomeElements: [{ type: 'text', text: 'MTK Budapest' }] } },
       { pageId: 'consent-source', pageType: 'accept', order: -2, isActive: true, config: { title: 'Client consent', description: '', buttonText: 'Continue', checkboxText: 'Client policy' } },

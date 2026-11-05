@@ -237,10 +237,23 @@ export function experienceConfigFromEvent(event: Record<string, unknown>): Exper
   return parsed.ok ? parsed.config : {};
 }
 
-/** A global journey carries the reusable flow, not a source client's artwork,
- * links, or brand palette. Child partner/event assets and styles are resolved
- * at their own levels. */
+/** Remove event-specific consent and identity steps from a parent journey. */
 export function makeGlobalJourneyConfig(input: ExperienceTemplateConfig): ExperienceTemplateConfig {
+  const parsed = parseExperienceTemplateConfig(input);
+  if (!parsed.ok) throw new Error(parsed.reason);
+  const config = structuredClone(parsed.config) as Record<string, unknown>;
+  if (Array.isArray(config.customPages)) {
+    config.customPages = config.customPages.filter((page) =>
+      !isRecord(page) || (page.pageType !== 'accept' && page.pageType !== 'who-are-you'),
+    );
+  }
+  return config as ExperienceTemplateConfig;
+}
+
+/** Convert an event setup into a generic global starting point. This runs only
+ * at creation time; subsequent global edits retain their selected global
+ * library artwork and copy rather than being scrubbed on every read. */
+export function makeGenericGlobalJourneyConfig(input: ExperienceTemplateConfig): ExperienceTemplateConfig {
   const parsed = parseExperienceTemplateConfig(input);
   if (!parsed.ok) throw new Error(parsed.reason);
   const config = structuredClone(parsed.config) as Record<string, unknown>;

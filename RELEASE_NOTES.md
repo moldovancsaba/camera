@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## v12.3.46 — use one full journey editor at every level
+
+- **Added:** Global, Partner, and Event journey lists now open the same full page editor for any journey owned at that level. Editors can create, rename, select, and edit multiple named versions without a second, reduced editor.
+- **Changed:** a Partner or Event that customizes an inherited journey creates and selects a child-owned version before editing. The editor uses the existing image, frame, logo, text, and message resources through the selected scope; it does not duplicate their editors or libraries.
+- **Preserved:** only one selected journey resolves for an event. Editing a selected parent journey updates only descendants that still inherit it; a child-selected journey remains independent. Event policy and identity settings remain event-owned.
+- **Verification:** `npm run inventory:check`, `npm run release:check`, and focused journey API/component tests passed. The focused Playwright journey checks passed against the local production build at desktop and mobile viewport sizes. GitHub `Verify` is the merge gate.
+
 ## v12.3.45 — make Global → Partner → Event journey selection consistent
 
 - **Fixed:** journey runtime uses one selected version at a time: Event replaces Partner; otherwise the event follows the selected Partner; otherwise it follows the Global default. Parent flows never stack or become field-level overlays.
