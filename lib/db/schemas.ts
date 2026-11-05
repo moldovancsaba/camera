@@ -214,7 +214,7 @@ export interface Partner {
   library?: { frames?: string[]; logos?: string[]; images?: string[] };
   /** Versioned parent→child asset visibility policy; missing remains on the legacy resolver until backfill. */
   visualAssetPolicy?: VisualAssetLevelPolicy & { inheritanceVersion?: 2 };
-  /** Partner-level starter experience; null explicitly disables the inherited global starter. */
+  /** Partner-owned default journey. Missing and legacy null values inherit the required global default. */
   defaultExperienceTemplateId?: string | null;
   /** Partner-owned landing-page and slideshow defaults. Events inherit each default until they save an event-level override. */
   contentDefaults?: PartnerContentDefaults;

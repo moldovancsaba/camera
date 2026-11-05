@@ -114,7 +114,10 @@ export function adminOperationText(source: string, language: UiLanguage): string
 }
 
 export function hasAdminOperationTranslation(source: string): boolean {
-  return INDEX.has(source) || adminWelcomeImageText(source, 'en') !== null || adminJourneyPublicationText(source, 'en') !== null;
+  return INDEX.has(source)
+    || adminWelcomeImageText(source, 'en') !== null
+    || adminExperienceTemplateText(source, 'en') !== null
+    || adminJourneyPublicationText(source, 'en') !== null;
 }
 
 // Guard catalog ordering during application startup without turning missing phrases into crashes.

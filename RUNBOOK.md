@@ -6,8 +6,9 @@
 
 Single long-lived branch `main` (production), plus short-lived per-task branches
 (`feature/*`, `fix/*`, `chore/*`, `dependabot/*`, …) merged in and then
-deleted; no `dev`/`preview` branch exists. Every push to `main` deploys. Policy
-and current practice (PRs recommended; most changes are pushed directly) in
+deleted; no `dev`/`preview` branch exists. Every merge to `main` deploys. Changes
+must go through a pull request and the required `Verify` check; direct pushes are
+blocked. See the policy in
 [docs/BRANCHING.md](docs/BRANCHING.md).
 
 ## Visual asset inheritance and experience defaults
@@ -20,7 +21,7 @@ Parent asset changes take effect immediately for descendants that still follow t
 
 Deleting an asset is a two-pass operation. A 409 means Camera found references and has not deleted the catalog row or media file. Use the conflict panel's links to open each named partner/event setting, remove the reference, select a replacement, or upload a saved copy at its new owner level. Return to the original asset page, refresh the usage list, and retry Delete. The server repeats the scan at deletion time; do not manually edit MongoDB references to bypass the guard. If the list says it has more than 500 uses, resolve all pages before retrying. If a known field is missing from the list, keep the asset and report the field/path so the scanner can be updated.
 
-Experience templates are managed from Global Settings → **Global User Journey**, Partner → **Partner User Journey**, and Event → **Event User Journey**. Creating a template only adds a reusable version. Select the intended version and save the choice to activate it as the default for descendants that inherit it. At the event level, the selector shows the current inherited journey, event-owned versions and the event's own pages; saving the selection controls the flow opened by the existing capture URL, short link and QR codes. Their addresses do not change. New partners/events inherit Global → Partner → Event. Existing events with saved custom pages stay on those pages until an editor opts them in. Partner and event edits are stored as child-owned versions, so later parent changes do not overwrite those edits. Template writes and selections are reversible through their settings pages. Selected templates cannot be deleted; remove their references first. There is no job queue or external service for template application.
+User journeys are managed from Global Settings → **Global User Journey**, Partner → **Partner User Journey**, and Event → **Event User Journey**. Each level can keep multiple named versions and selects exactly one active default; a child either uses its own selected version or follows the current parent default. Resolution replaces the whole flow and never overlays fields: EUJ → PUJ → GUJ. Creating a version only adds it to the list; selecting it is a separate action. Editing a selected parent version immediately changes the flow for descendants that still follow it; descendants with their own selection stay unchanged. Event selection controls the flow at the existing capture URL, short link and QR codes without changing their addresses. New partners and events inherit. Existing events with saved legacy pages keep them until an editor snapshots those pages into a named EUJ; the editor must do this before selecting inheritance. Event presentation, branding, frames and media remain event-owned. Selected versions cannot be deleted; change all references first. Journey resolution is read-time and has no job queue or external service. See [docs/GLOBAL_DEFAULT_JOURNEY.md](docs/GLOBAL_DEFAULT_JOURNEY.md).
 
 ### Uploading an event frame with its printed message
 

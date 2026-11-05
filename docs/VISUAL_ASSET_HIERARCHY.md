@@ -1,6 +1,6 @@
 # Visual assets and experience defaults
 
-Status: implementation in progress on `fix/event-frame-management`. This describes the code in this branch; it is not a claim that production has been migrated or deployed.
+Status: maintained architecture reference. Journey inheritance rules are detailed in [Global, Partner and Event User Journeys](GLOBAL_DEFAULT_JOURNEY.md).
 
 ## Product model
 
@@ -27,38 +27,37 @@ The library pages expose the same policy for logos, frames and images. Global as
 
 ## Experience-template resolution
 
-The allow-listed fields are `customPages`, `visualSettings`, `sharePage`, `frameSelection`, `frameSelectionTiles`, `welcomeScreenComposition` and `frameMessageSelectionDisplay`. Template creation rejects unsupported top-level fields, non-JSON values, excessive nesting, payloads over 512 KB, and forbidden identity/consent/photo-data keys. It also refuses a known Camera library image that is inactive, private, owned by a different child, or not present in the target level's catalog. External HTTPS artwork not registered in Camera's libraries remains supported.
+Journey flow is selected as one named version at a time. `customPages`, `defaultPageOrders`, `sharePage` and `frameMessageSelectionDisplay` are the journey fields. `visualSettings`, frame assignments, welcome artwork, logos, colors and other presentation/media configuration remain owned by the partner or event and are not merged from a journey template. Template parsing retains an allow-list for backwards compatibility, but the runtime projects stored templates to the journey fields so legacy presentation fields cannot leak into a guest response.
 
-The runtime order is:
+Runtime resolution is strictly replacement-based:
 
-1. Global default template, if configured.
-2. Partner default template, if the partner follows the global default or selects its own. A partner-specific template overlays the global template field by field.
-3. Event overrides saved on that event.
+1. A valid selected Event User Journey (EUJ) is used for that event.
+2. Otherwise, the event follows the partner's selected Partner User Journey (PUJ).
+3. If the partner has no selected PUJ, the event follows the one selected Global User Journey (GUJ).
 
-An event can instead select one of its own event templates, which starts an independent chain, or use its own saved pages. A partner can follow the global default, select one of its own templates, or disable the inherited global default. Missing selections on pre-existing events preserve their current stored configuration; new and provisioned events start in inherit mode. Inherited configuration is resolved at read time rather than copied into child records. Creating a template at any level only adds a version; selecting and saving it is a separate action that controls the default inherited by children.
+No parent/child journey fields are overlaid. Partners can select one PUJ or follow the global default; events can select one EUJ or follow the partner's current default. Child selections remain independent from future parent changes, while inheriting children see the currently selected parent version at read time. New partners/events start by inheriting. Pre-template events with saved `customPages` remain on their legacy journey until an editor snapshots that setup into a named EUJ; the selector API prevents switching directly to inheritance before that preservation step.
 
-The global journey snapshot is created from an accepted source event, but is not a copy of that client's presentation. Camera retains the page flow and stable page-order rules, removes client text, consent/identity page content, CTA destinations and artwork, and forces the built-in frame/message selector to `messages-only`. Blank generic copy resolves through the guest's event language. Logos, frame assets, welcome artwork, event colors and other media continue to resolve from the destination partner/event. Creating a snapshot adds an available version only. A global admin selects the intended version and saves it as the service default in **Global User Journey**; deployment does not update the production database.
+Template creation rejects unsupported top-level fields, non-JSON values, excessive nesting, payloads over 512 KB, and forbidden identity/consent/photo-data keys. A created version does not change the selected default (except the first valid GUJ is made default when the system has none). Global snapshots remove source-client copy, consent/identity page content, CTA destinations, artwork and branding; blank generic copy resolves in the destination event's language. Destination partner/event media and style remain local.
 
-Event journey selection lives in **Event User Journey**. Its selected or inherited journey is returned by the event API and is therefore the flow opened by the event capture URL, short link and QR codes. The links remain stable when the selection changes. The selector shows the current effective parent version and event-owned versions, and updates the list immediately when an event version is created.
-
-Default propagation is prospective and opt-in for legacy configurations: new/provisioned partners and events start in inherit mode, while existing event pages remain unchanged until their owner selects **Follow the parent default**. An edit to an inherited event is saved as an event-owned template/override; it does not mutate the parent. A partner-owned template similarly becomes independent of later global changes.
+The selected or inherited journey is returned by the event API and is the flow opened by the stable capture URL, short link and QR codes. Changing a selection leaves those addresses unchanged. Public event responses omit admin selection metadata. A first edit to inherited event flow creates a named EUJ before storing changes; editing a selected named journey changes only that named version. Partner and global editing is scoped to the named version at that level.
 
 | API | Purpose |
 | --- | --- |
 | `GET /api/visual-assets/templates?level=global` | List global templates; global admins only. |
 | `POST /api/visual-assets/templates` | Snapshot an authorized source event into an identity-free template at global, partner or event level. |
 | `PATCH/DELETE /api/visual-assets/templates/<templateId>` | Rename or delete an unreferenced template; selected templates cannot be deleted. |
-| `GET/PATCH /api/visual-assets/templates/default` | Read or set/clear the service-wide default; global admins only. |
-| `GET/PATCH /api/partners/<id>/experience-template` | Read or set a partner default, inherit the global default, or disable it. |
-| `GET/PATCH /api/events/<id>/experience-template` | Read or set event inheritance, an event-owned template, or the event's own saved pages. |
+| `GET/PATCH /api/visual-assets/templates/default` | Read or set the required service-wide GUJ default; global admins only. |
+| `GET/PATCH /api/partners/<id>/experience-template` | Read or set one PUJ default, or follow the required global default. |
+| `GET/PATCH /api/events/<id>/experience-template` | Read or set one EUJ, or inherit the partner's current default. |
 
 ## Runtime safety and operations
 
-- Admin templates are not included in public responses. `GET /api/events/<id>?audience=guest` resolves only the selected/inherited configuration, filters unavailable known library URLs, and removes selection metadata before returning the event. Existing capture, short-link and QR addresses therefore serve the event's current selection; changing the journey does not require regenerating those addresses.
-- Editing event configuration while inheritance is enabled records field-level overrides; switching the selected template intentionally resets overrides tied to the old selection.
-- Template writes are bounded by the normal admin rate limit, validate ownership and role, and return explicit 4xx errors for invalid or unavailable selections. Reads are bounded to 200 templates per owner. MongoDB uses a unique `templateId` index.
-- There is no background job, retry loop or external service in this feature. A failed request is safe to retry. Default changes are immediate for children still following that parent; locally selected templates and event overrides remain independent.
-- Rollback is level-specific: clear the global default; set a partner to `null` to disable global inheritance or remove its field to follow global; set an event to `{ mode: 'template', templateId: null }` to keep its local configuration, or remove the selection to restore the legacy read path. Unreferenced templates may be deleted. The asset version-2 policy can be reverted by clearing the partner's `visualAssetPolicy`; do not do this after child-specific policies have been added without first exporting those policies.
+- Admin selection metadata is not included in public responses. `GET /api/events/<id>?audience=guest` resolves one selected/inherited flow, keeps presentation/media from the event, filters unavailable known library URLs, and removes selection metadata. Existing capture, short-link and QR addresses continue to serve the selected flow.
+- Journey field edits never become field-level inheritance overlays. Editing an inherited event first forks its effective flow into a named EUJ. Presentation updates stay in their existing event-owned fields.
+- Template writes are rate-limited and validate ownership and role. Invalid or unavailable selections return explicit errors. MongoDB uses a unique `templateId` index; list APIs return all versions for the owner.
+- No background job, retry loop or external service is involved. A failed request can be retried. Parent default changes immediately affect only descendants still inheriting; child-selected templates remain independent.
+- Rollback is selection-based: partners can return to the GUJ by choosing **Follow the global default**; events can return to the current partner/GUJ chain by selecting **Use parent default**. There is no disabled global default and no null-template sentinel. To delete a version, change every reference first; deletion rechecks references and returns 409 while selected. Existing legacy event pages stay intact until a named EUJ is created and selected or the parent default is chosen.
+- The asset version-2 policy can be reverted by clearing the partner's `visualAssetPolicy`; do not do this after child-specific policies have been added without first exporting those policies.
 - No historical partner migration runs automatically. The partner UI opt-in preserves each partner's current visible set by writing local hides. Production enablement and a backfill require separate inventory, dry run, backup and operator review.
 
 ## Accessibility and verification
