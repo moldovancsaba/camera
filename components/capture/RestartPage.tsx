@@ -24,6 +24,7 @@ export interface RestartPageProps {
   brandColor?: string;
   brandBorderColor?: string;
   buttonSize?: EventButtonSize;
+  preview?: boolean;
 }
 
 export default function RestartPage({
@@ -34,6 +35,7 @@ export default function RestartPage({
   brandColor = CAMERA_DEFAULT_BRAND_COLOR,
   brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
+  preview = false,
 }: RestartPageProps) {
   const { t, own } = useT();
   void brandBorderColor;
@@ -45,6 +47,7 @@ export default function RestartPage({
       title={title}
       description={config.description}
       logoUrl={logoUrl}
+      preview={preview}
     >
       <Group grow>
         {onBack ? (

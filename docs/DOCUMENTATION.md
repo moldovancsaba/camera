@@ -47,7 +47,7 @@ stale `verified @ <sha>` stamps warn or fail):
 
 Feature references (describe what the code does and are kept current with it):
 
-- [docs/JOURNEY_DEFAULT_PAGES.md](JOURNEY_DEFAULT_PAGES.md) — the default pages of the user flow, the checkbox settings, the acceptance on the Who-are-you page
+- [docs/JOURNEY_DEFAULT_PAGES.md](JOURNEY_DEFAULT_PAGES.md), [docs/JOURNEY_EDITOR_PREVIEW.md](JOURNEY_EDITOR_PREVIEW.md) — the default guest pages, checkbox settings, and the shared responsive page editor with a safe live preview
 - [docs/WELCOME_STEP.md](WELCOME_STEP.md), [docs/SCREEN_DESIGN.md](SCREEN_DESIGN.md), [docs/JOURNEY_IMAGES.md](JOURNEY_IMAGES.md), [docs/CAPTURE_MESSAGES.md](CAPTURE_MESSAGES.md) — the welcome step, the giant-screen design, the journey pictures, the messages of the capture flow
 - [docs/LIBRARIES.md](LIBRARIES.md), [docs/FRAME_BASE.md](FRAME_BASE.md), [docs/LOGO_STORAGE.md](LOGO_STORAGE.md), [docs/SHORT_LINKS.md](SHORT_LINKS.md) — the three-level libraries, frames from the designers' picture, the logo store, tracked short links
 - [docs/TEXT_LEVELS.md](TEXT_LEVELS.md), [docs/UI_LANGUAGE.md](UI_LANGUAGE.md), [docs/EMAIL_TEMPLATES.md](EMAIL_TEMPLATES.md) — the Dictionary and the text levels, the language of an event, the e-mails

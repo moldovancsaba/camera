@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## v12.3.47 — live responsive preview in the shared journey editor
+
+- **Added:** the Global, Partner, and Event journey page editor now shows the guest page beside its settings on desktop. The preview uses the current unsaved draft and updates as fields change; a viewport selector switches between mobile, tablet, and desktop proportions.
+- **Changed:** the editor uses a two-column layout on desktop and stacks its settings and preview on narrower screens. Existing guest renderers are reused where available; camera and submission runtime steps are represented by read-only placeholders.
+- **Safety:** preview content is inert and preview-aware renderers suppress navigation and runtime side effects. A complete camera/submission test still requires the event capture URL.
+- **Verification:** `npm run release:check` and `npm run inventory:check` passed. Focused Playwright coverage passed for the wide two-column layout, live unsaved edits, and narrow stacked layout. GitHub `Verify` is the merge gate.
+
 ## Unreleased — list-first Global, Partner and Event journey workspaces
 
 - **Changed:** each level opens on a single journey list with one selected default, scoped Edit/Rename/Delete actions, and journey creation below the list. Inherited parent choices are explicit on Partner and Event screens.

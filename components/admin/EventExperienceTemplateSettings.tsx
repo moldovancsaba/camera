@@ -10,6 +10,7 @@ import ExperienceTemplatePageEditor from '@/components/admin/ExperienceTemplateP
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminOperationText } from '@/lib/i18n/admin-operations';
 import type { ExperienceTemplate, ExperienceTemplateSelection } from '@/lib/visual-assets/contracts';
+import type { EventThemePreview } from '@/lib/theme/event-theme';
 import type { JourneyContext } from '@/lib/events/journey';
 import type { EffectiveCheckboxes, StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 
@@ -36,7 +37,7 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
   eventMongoId: string;
   sourceEventId: string;
   eventWelcomeScreenUrl?: string;
-  eventTheme?: { background?: string; font?: { family?: string } };
+  eventTheme?: EventThemePreview;
   journeyContext?: JourneyContext;
   acceptanceOnWhoAreYou?: boolean | null;
   galleryConsent?: boolean | null;

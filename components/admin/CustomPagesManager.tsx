@@ -28,6 +28,9 @@ import { validateWelcomeElements, welcomeElementsFromLegacy, type WelcomeElement
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminShellText } from '@/lib/i18n/admin-shell';
 import type { PickerLevel } from '@/lib/library/picker';
+import JourneyPagePreview from '@/components/admin/JourneyPagePreview';
+import styles from '@/components/admin/CustomPagesManager.module.css';
+import type { EventThemePreview } from '@/lib/theme/event-theme';
 
 export interface CustomPagesManagerProps {
   eventId?: string;
@@ -44,7 +47,7 @@ export interface CustomPagesManagerProps {
   initialDefaultPageOrders?: Record<string, number>;
   /** Event-generated slideshow artwork used by the welcome screen. */
   eventWelcomeScreenUrl?: string;
-  eventTheme?: { background?: string; font?: { family?: string } };
+  eventTheme?: EventThemePreview;
   initialPages: CustomPage[];
   /** What decides which default pages the event gets (`GET /api/events/<id>`): with it the list is the journey as the user goes through it (camera#378). */
   journeyContext?: JourneyContext;
@@ -695,8 +698,8 @@ export default function CustomPagesManager({ eventId, pickerLevel, journeyTitle:
           aria-labelledby="custom-page-editor-title"
           style={{ background: 'var(--gds-overlay-scrim)', inset: 0, display: 'grid', placeItems: 'center', padding: '1rem', position: 'fixed', zIndex: 1000 }}
         >
-          <div style={{ background: 'var(--gds-overlay-surface)', border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', maxHeight: '90vh', maxWidth: 760, overflowY: 'auto', padding: '1.5rem', width: '100%' }}>
-          <h2 id="custom-page-editor-title" style={{ marginTop: 0 }}>{editingPage ? `Edit ${editingPage.pageType} Page` : 'Edit Page'}</h2>
+          <div className={styles.editorDialog}>
+          <h2 id="custom-page-editor-title" className={styles.dialogTitle}>{editingPage ? `Edit ${editingPage.pageType} Page` : 'Edit Page'}</h2>
           {editingPage ? (
             <PageEditModal
               key={editingPage.pageId}
@@ -748,7 +751,7 @@ function PageEditModal({
   eventId?: string;
   pickerLevel: PickerLevel;
   eventWelcomeScreenUrl?: string;
-  eventTheme?: { background?: string; font?: { family?: string } };
+  eventTheme?: EventThemePreview;
   modes: CheckboxModes;
   onModeChange: (kind: CheckboxKind, mode: CheckboxMode) => void;
   allowConsentSettings: boolean;
@@ -841,10 +844,8 @@ function PageEditModal({
   const [buttonBorderColor, setButtonBorderColor] = useState(page.config.buttonBorderColor || '');
   const welcomeElementsError = page.pageType === CustomPageType.WELCOME ? validateWelcomeElements(welcomeElements) : null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const updated: CustomPage = {
+  // Keep one draft builder for both Save and the live preview so the two cannot render different page settings.
+  const buildDraftPage = (): CustomPage => ({
       ...page,
       config: {
         title,
@@ -925,14 +926,18 @@ function PageEditModal({
           buttonBorderColor: buttonBorderColor.trim() || undefined,
         }),
       },
-    };
+    });
 
-    onSave(updated);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(buildDraftPage());
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ display: 'grid', gap: '1rem' }}>
+    <form className={styles.editorForm} onSubmit={handleSubmit}>
+      <div className={styles.editorColumns} data-journey-editor-columns>
+        <div className={styles.formFields}>
+        <div style={{ display: 'grid', gap: '1rem' }}>
         <Field
           label="Page Title"
           value={title}
@@ -1412,12 +1417,20 @@ function PageEditModal({
           />
         ) : null}
 
-        <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', paddingTop: '0.5rem' }}>
-          <SemanticButton action="custom-pages:save-page" type="submit" disabled={Boolean(welcomeElementsError)}>Save Page</SemanticButton>
-          <SemanticButton action="custom-pages:cancel-page" type="button" variant="secondary" onClick={onCancel}>
-            Cancel
-          </SemanticButton>
         </div>
+        </div>
+        <JourneyPagePreview
+          page={buildDraftPage()}
+          eventId={eventId}
+          eventWelcomeScreenUrl={eventWelcomeScreenUrl}
+          eventTheme={eventTheme}
+        />
+      </div>
+      <div className={styles.editorActions}>
+        <SemanticButton action="custom-pages:save-page" type="submit" disabled={Boolean(welcomeElementsError)}>Save Page</SemanticButton>
+        <SemanticButton action="custom-pages:cancel-page" type="button" variant="secondary" onClick={onCancel}>
+          Cancel
+        </SemanticButton>
       </div>
     </form>
   );
