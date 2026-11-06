@@ -48,13 +48,13 @@ test('global admin manages named journeys and explicitly changes the one global 
   await expect(page.getByText('Journey version created and selected as this level’s default.')).toBeVisible();
   expect(createdPayload).toEqual({ level: 'global', name: 'Global default journey', sourceEventId: SOURCE_ID });
   await expect(page.getByText('Selected default', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Set as default' })).toHaveCount(0);
+  await expect(page.getByRole('radio', { name: /Global default journey/ })).toBeChecked();
 
   await page.getByLabel('Journey name').fill('Alternate journey');
   await expect(page.getByLabel('Journey name')).toHaveCount(1);
   await page.getByRole('button', { name: 'Create journey' }).click();
-  await expect(page.getByRole('button', { name: 'Set as default' })).toHaveCount(1);
-  await page.getByRole('button', { name: 'Set as default' }).click();
+  await expect(page.getByRole('radio', { name: /Alternate journey/ })).not.toBeChecked();
+  await page.getByRole('radio', { name: /Alternate journey/ }).check();
   await expect(page.getByText('Journey default saved.')).toBeVisible();
   expect(globalDefault).toBe('global-2');
   await expect(page.getByText('Selected default', { exact: true })).toBeVisible();
@@ -113,7 +113,7 @@ test('event manager selects one Event Journey and stable event links stay unchan
   await expect(page.getByRole('link', { name: new RegExp(captureUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toHaveAttribute('href', captureUrl);
   await expect(page.getByRole('link', { name: new RegExp(shortUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toHaveAttribute('href', shortUrl);
 
-  await page.getByRole('button', { name: 'Use for this event' }).click();
+  await page.getByRole('radio', { name: /Event summer journey/ }).check();
   await expect(page.getByText('Currently live: Event summer journey')).toBeVisible();
   expect(selection).toEqual({ mode: 'template', templateId: 'event-summer' });
 
@@ -121,11 +121,11 @@ test('event manager selects one Event Journey and stable event links stay unchan
   await page.getByRole('button', { name: 'Create journey' }).click();
   await expect(page.getByText('Journey version created. Select it below to make it live.')).toBeVisible();
   expect(createdPayload).toEqual({ level: 'event', name: 'Event-only version', sourceEventId: eventId });
-  await expect(page.getByRole('button', { name: 'Use for this event' })).toHaveCount(1);
-  await page.getByRole('button', { name: 'Use for this event' }).click();
+  await expect(page.getByRole('radio', { name: /Event-only version/ })).toHaveCount(1);
+  await page.getByRole('radio', { name: /Event-only version/ }).check();
   await expect(page.getByText('Currently live: Event-only version')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Use parent default' }).click();
+  await page.getByRole('radio', { name: /Global matchday journey/ }).check();
   await expect(page.getByText('Currently live: Global matchday journey')).toBeVisible();
   expect(selection).toEqual({ mode: 'inherit' });
   await expect(page.getByRole('link', { name: new RegExp(captureUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toHaveAttribute('href', captureUrl);
@@ -154,16 +154,22 @@ test('legacy event pages stay live until a named Event Journey is created and se
     if (url.pathname === `/api/events/${eventId}/experience-template` && request.method() === 'GET') {
       return route.fulfill({ json: { data: {
         selection, legacyJourney, selectionNeedsRepair: false,
-        effectiveJourney: null,
+        effectiveJourney: selection?.mode === 'template'
+          ? { templateId: selection.templateId, name: templates.find((item) => item.templateId === selection?.templateId)?.name ?? null, level: 'event' }
+          : null,
         inheritedJourney: { templateId: 'global-matchday', name: 'Global matchday journey', level: 'global' },
         publicLinks: { captureUrl: `https://camera.messmass.com/capture/${eventId}`, shortUrl: null },
         templates, canCreateEventTemplate: true,
       } } });
     }
     if (url.pathname === '/api/visual-assets/templates' && request.method() === 'POST') {
-      const body = request.postDataJSON() as { name: string };
+      const body = request.postDataJSON() as { name: string; makeDefault?: boolean };
       const result = template('legacy-snapshot', 'event', eventId, body.name);
       templates.push(result);
+      if (body.makeDefault) {
+        selection = { mode: 'template', templateId: result.templateId };
+        legacyJourney = false;
+      }
       return route.fulfill({ status: 201, json: { data: { template: result } } });
     }
     if (url.pathname === `/api/events/${eventId}/experience-template` && request.method() === 'PATCH') {
@@ -177,12 +183,11 @@ test('legacy event pages stay live until a named Event Journey is created and se
   await page.goto(`/api/auth/dev-login?role=admin&access=true&email=legacy-journey@camera.local&name=Journey%20Editor&userId=legacy-journey-e2e&redirectTo=%2Fadmin%2Fevents%2F${eventId}%2Fpages`);
   await expect(page.getByText('Currently live: Existing event pages')).toBeVisible();
   await expect(page.getByText('They remain live until you select another journey. Create a named Event Journey from this setup, then select it below.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Use parent default' })).toBeDisabled();
   await page.getByLabel('Journey name').fill('Preserved legacy flow');
-  await page.getByRole('button', { name: 'Create journey' }).click();
-  await expect(page.getByText('Inherited journey customized. This event now owns the selected copy.')).toBeVisible();
-  expect(legacyJourney).toBe(true);
-  await page.getByRole('button', { name: 'Use for this event' }).click();
+  await page.getByRole('button', { name: 'Save and edit journey' }).click();
+  await expect(page.getByRole('button', { name: 'Close editor' })).toBeVisible();
+  expect(legacyJourney).toBe(false);
+  await page.getByRole('button', { name: 'Close editor' }).click();
   await expect(page.getByText('Currently live: Preserved legacy flow')).toBeVisible();
   expect(selection).toEqual({ mode: 'template', templateId: 'legacy-snapshot' });
 });

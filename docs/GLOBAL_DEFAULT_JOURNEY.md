@@ -14,6 +14,8 @@ The selected version replaces the parent journey. Parent versions are never over
 
 ## Managing versions
 
+- **List-first workflow:** each scope opens on one journey list. A radio choice marks the one version selected at that level; the list exposes Edit, Rename, and Delete for versions owned there. Create is below the list. The Partner and Event screens also show their inherited parent choice. View-only users can inspect the selection but cannot change it.
+- **Dedicated destinations:** Global User Journey is at `/admin/settings/experience`; Partner User Journey is at `/admin/partners/{partnerMongoId}/user-journey`; Event User Journey is at `/admin/events/{eventMongoId}/pages`. The partner overview links to its own journey list instead of embedding a second editor.
 - **Global User Journey:** create, rename, edit, and delete unselected GUJs; select exactly one GUJ as the service default. The first GUJ created becomes the default only when no valid global default exists, so the system always has a default once a GUJ is available.
 - **Partner User Journey:** create, rename, edit, and delete unselected PUJs; select exactly one PUJ as that partner's default or choose **Follow the global default**.
 - **Event User Journey:** create, rename, edit, and delete unselected EUJs; select exactly one EUJ for the event or choose **Use parent default**. Creating a version does not activate it.
@@ -22,7 +24,7 @@ The selected version replaces the parent journey. Parent versions are never over
 
 ## Editing a journey
 
-Global, Partner, and Event journeys use the same page editor (`CustomPagesManager`). The version list is the starting view at each level. Select **Edit journey** on any journey that level owns to change its page flow, editable copy, visibility, ordering, message-selection behavior, and welcome composition. The editor uses the shared Camera image/frame/logo/text resources available to that level; it does not create a separate library or editor implementation.
+Global, Partner, and Event journeys use the same full-width page editor (`ExperienceTemplatePageEditor` and its shared page-management components). The version list is the starting view at each level. Select **Edit journey** on any journey that level owns to change its page flow, editable copy, visibility, ordering, message-selection behavior, and welcome composition. The editor uses the shared Camera image/frame/logo/text resources available to that level; it does not create a separate library or editor implementation. Parent levels can edit their own journey. Child levels can edit only a journey they own; customizing an inherited choice first creates a child-owned version.
 
 An editor opened for a selected default warns that saving changes its live flow. Editing an unselected version only changes that saved version. Partner users cannot open or mutate a Global Journey as their own: **Customize inherited journey** creates and selects a Partner-owned copy. Event users use the same action to create and select an Event-owned copy from the effective parent journey. This is the only point where the journey configuration is copied; the reusable page editor and asset libraries remain shared.
 

@@ -11,7 +11,7 @@ export default function GlobalExperienceDefaultsView() {
   return (
     <GdsStack gap="lg">
       <WorkspaceHeader eyebrow={adminShellText('Content', language)} title={adminShellText('Global User Journey', language)} />
-      <ExperienceTemplateDefaultSettings level="global" canManage sectionTitle="Global User Journey" />
+      <ExperienceTemplateDefaultSettings level="global" canManage />
     </GdsStack>
   );
 }
