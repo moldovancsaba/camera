@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { AdminTextInput } from '@sovereignsquad/gds-admin/client';
-import { GdsInline, GdsStack, InlineAlert, MetadataText, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
+import { GdsInline, GdsStack, InlineAlert, MetadataText, StateBlock } from '@sovereignsquad/gds-core/client';
 import { Anchor } from '@/components/gds/PublicPrimitives';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
+import ExperienceJourneyList, { type ExperienceJourneyListRow } from '@/components/admin/ExperienceJourneyList';
 import ExperienceTemplatePageEditor from '@/components/admin/ExperienceTemplatePageEditor';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminOperationText } from '@/lib/i18n/admin-operations';
@@ -49,7 +50,6 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
   const [state, setState] = useState<State | null>(null);
   const [choice, setChoice] = useState('legacy');
   const [name, setName] = useState('Event journey');
-  const [inheritedName, setInheritedName] = useState('Event journey');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -90,11 +90,8 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
       await fetchState();
       await onSelectionChanged?.();
       setNotice(ui('Journey default saved.'));
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Could not select this event journey.');
-    } finally {
-      setSaving(false);
-    }
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not select this event journey.'); }
+    finally { setSaving(false); }
   };
 
   const create = async ({ makeDefault = false, openEditor = false, journeyName = name }: { makeDefault?: boolean; openEditor?: boolean; journeyName?: string } = {}) => {
@@ -111,14 +108,14 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
       setState((current) => current ? { ...current, templates: [result.template, ...current.templates] } : current);
       if (makeDefault) await fetchState();
       if (openEditor) setEditingId(result.template.templateId);
-      if (openEditor) setInheritedName('');
       else setName('');
-      setNotice(openEditor ? ui('Inherited journey customized. This event now owns the selected copy.') : ui('Journey version created. Select it below to make it live.'));
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Could not create this event journey.');
-    } finally {
-      setCreating(false);
-    }
+      setNotice(openEditor
+        ? ui(state?.legacyJourney
+          ? 'Journey version created and selected as this level’s default.'
+          : 'Inherited journey customized. This event now owns the selected copy.')
+        : ui('Journey version created. Select it below to make it live.'));
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not create this event journey.'); }
+    finally { setCreating(false); }
   };
 
   const rename = async (template: ExperienceTemplate) => {
@@ -131,9 +128,8 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
       const result = apiData<{ template: ExperienceTemplate }>(payload);
       setState((current) => current ? { ...current, templates: current.templates.map((item) => item.templateId === template.templateId ? result.template : item) } : current);
       setRenameId(null); setNotice(ui('Journey renamed.'));
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Could not rename this journey.');
-    } finally { setSavingId(null); }
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not rename this journey.'); }
+    finally { setSavingId(null); }
   };
 
   const remove = async (template: ExperienceTemplate) => {
@@ -143,96 +139,105 @@ export default function EventExperienceTemplateSettings({ eventMongoId, sourceEv
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error((payload as { error?: string } | null)?.error || `Request failed (${response.status})`);
       setState((current) => current ? { ...current, templates: current.templates.filter((item) => item.templateId !== template.templateId) } : current);
-      setDeleteId(null); setNotice(ui('Journey deleted.'));
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Could not delete this journey.');
-    } finally { setSavingId(null); }
+      setDeleteId(null); if (editingId === template.templateId) setEditingId(null); setNotice(ui('Journey deleted.'));
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not delete this journey.'); }
+    finally { setSavingId(null); }
   };
 
   if (loading) return <StateBlock variant="loading" title={ui('Loading experience settings')} />;
 
+  const rows: ExperienceJourneyListRow[] = [
+    ...(state?.legacyJourney ? [{ id: 'legacy', value: 'legacy', name: ui('Existing event setup'), detail: ui('Currently live'), selected: true, canSelect: false }] : []),
+    ...(!state?.legacyJourney ? [{
+      id: 'inherit', value: 'inherit', name: state?.inheritedJourney?.name || ui('Inherited parent journey'),
+      detail: ui('Use the partner default; if the partner has not selected one, use the global default.'),
+      selected: choice === 'inherit', canSelect: Boolean(state?.inheritedJourney) || choice === 'inherit',
+      canCustomize: Boolean(state?.canCreateEventTemplate && state?.inheritedJourney),
+    }] : []),
+    ...(state?.templates ?? []).map((template) => ({
+      id: template.templateId, value: template.templateId, name: template.name,
+      detail: ui('Event journey'), selected: choice === template.templateId && !state?.legacyJourney,
+      busy: savingId === template.templateId || creating,
+      canEdit: state?.canCreateEventTemplate, canRename: state?.canCreateEventTemplate,
+      canDelete: state?.canCreateEventTemplate && choice !== template.templateId,
+    })),
+  ];
+  const liveJourneyName = state?.legacyJourney ? ui('Existing event setup')
+    : choice === 'inherit' ? state?.inheritedJourney?.name ?? ui('No journey resolved')
+      : state?.templates.find((item) => item.templateId === choice)?.name ?? ui('No journey resolved');
+
+  if (editingId) {
+    const editingTemplate = state?.templates.find((template) => template.templateId === editingId);
+    if (editingTemplate) return (
+      <GdsStack gap="md" className="experience-journey-editor" style={{ width: '100%', maxWidth: 'none', minWidth: 0 }}>
+        <GdsInline justify="between" align="center">
+          <MetadataText>{ui('Event User Journey')} · {editingTemplate.name}</MetadataText>
+          <SemanticButton action="event-journey:close-editor" onClick={() => setEditingId(null)} />
+        </GdsInline>
+        {choice === editingTemplate.templateId ? <InlineAlert title={ui('Live guest flow')} message={ui('Saving edits to this selected journey updates the live guest flow for this event.')} severity="warning" /> : null}
+        <ExperienceTemplatePageEditor
+          template={editingTemplate}
+          pickerLevel={{ scope: 'event', eventId: eventMongoId }}
+          eventId={eventMongoId}
+          eventWelcomeScreenUrl={eventWelcomeScreenUrl}
+          eventTheme={eventTheme}
+          journeyContext={journeyContext}
+          acceptanceOnWhoAreYou={acceptanceOnWhoAreYou}
+          galleryConsent={galleryConsent}
+          consentSettings={consentSettings}
+          partnerCheckboxes={partnerCheckboxes}
+          onSaved={(updated) => setState((current) => current ? { ...current, templates: current.templates.map((item) => item.templateId === updated.templateId ? updated : item) } : current)}
+        />
+      </GdsStack>
+    );
+  }
+
   return (
-    <GdsStack gap="lg">
+    <GdsStack gap="md" className="experience-journey-manager" style={{ width: '100%', maxWidth: 'none', minWidth: 0 }}>
       {error ? <InlineAlert title={ui('Journey settings')} message={error} severity="error" /> : null}
       {notice ? <InlineAlert title={ui('Saved.')} message={notice} severity="info" /> : null}
-      <SectionPanel title={ui('Journey shown to event guests')} description={ui('The selected Event Journey controls this event’s capture URL, short link, and QR codes.') }>
-        <GdsStack gap="md">
-          <MetadataText>{ui('Currently live')}: {state?.legacyJourney ? ui('Existing event pages') : choice === 'inherit' ? state?.inheritedJourney?.name ?? ui('Inherited parent journey') : state?.templates.find((item) => item.templateId === choice)?.name ?? ui('No journey resolved')}</MetadataText>
-          {choice === 'inherit' && !state?.legacyJourney ? <InlineAlert title={ui('Inherited journey editing')} message={ui('Editing the event pages below creates and selects a separate Event Journey from this inherited flow. Later parent changes will not change that event journey.') } severity="info" /> : null}
-          {state?.legacyJourney ? <InlineAlert title={ui('Existing event setup')} message={ui('This event has saved pages from before named journeys. They remain live until you select another journey. Create a named Event Journey from this setup, then select it below.') } severity="warning" /> : null}
-      {state?.selectionNeedsRepair ? <InlineAlert title={ui('Journey selection repaired')} message={ui('The saved Event Journey no longer exists. The event is currently using its parent default; save that choice or select an available event journey.') } severity="warning" /> : null}
-          <GdsStack gap="xs">
-            <MetadataText>{ui('Public event links')}</MetadataText>
-            {state?.publicLinks.captureUrl ? <Anchor href={state.publicLinks.captureUrl} target="_blank" rel="noreferrer">{ui('Open capture journey')} · {state.publicLinks.captureUrl}</Anchor> : null}
-            {state?.publicLinks.shortUrl ? <Anchor href={state.publicLinks.shortUrl} target="_blank" rel="noreferrer">{ui('Short link')} · {state.publicLinks.shortUrl}</Anchor> : null}
-          </GdsStack>
-        </GdsStack>
-      </SectionPanel>
+      {state?.selectionNeedsRepair ? <InlineAlert title={ui('Journey selection repaired')} message={ui('The saved Event Journey no longer exists. The event is currently using its parent default; save that choice or select an available event journey.')} severity="warning" /> : null}
+      <GdsStack gap="sm">
+        <MetadataText>{ui('Currently live')}: {liveJourneyName}</MetadataText>
+        {state?.publicLinks.captureUrl || state?.publicLinks.shortUrl ? <GdsStack gap="xs">
+          <MetadataText>{ui('Public event links')}</MetadataText>
+          {state.publicLinks.captureUrl ? <Anchor href={state.publicLinks.captureUrl} target="_blank" rel="noreferrer">{ui('Open capture journey')} · {state.publicLinks.captureUrl}</Anchor> : null}
+          {state.publicLinks.shortUrl ? <Anchor href={state.publicLinks.shortUrl} target="_blank" rel="noreferrer">{ui('Short link')} · {state.publicLinks.shortUrl}</Anchor> : null}
+        </GdsStack> : null}
+      </GdsStack>
+      {state?.legacyJourney ? <InlineAlert title={ui('Existing event setup')} message={ui('These saved pages remain live until you save them as a named Event Journey or choose another journey.')} severity="warning" /> : null}
+      {!state?.legacyJourney && choice === 'inherit' ? <InlineAlert title={ui('Inherited journey editing')} message={ui('Editing an inherited journey creates and selects a separate Event Journey. Parent changes will not modify that event-owned journey.')} severity="info" /> : null}
 
-      <SectionPanel title={ui('Event journey versions')} description={ui('An event inherits exactly one partner default until an Event Journey is selected here.') }>
-        <GdsStack gap="md">
-          <SectionPanel title={ui('Inherited parent journey')} description={ui('Use the partner default; if the partner has not selected one, use the global default.') }>
-            <GdsInline gap="sm" align="center">
-              <MetadataText>{state?.inheritedJourney?.name ?? ui('No parent journey is currently available.')}</MetadataText>
-              <SemanticButton action="experience-template:event-inherit" loading={saving} disabled={saving || state?.legacyJourney === true || (choice === 'inherit' && !state?.selectionNeedsRepair)} onClick={() => void selectJourney({ mode: 'inherit' })}>{ui('Use parent default')}</SemanticButton>
-            </GdsInline>
-            {state?.legacyJourney ? <MetadataText>{ui('Save the existing event pages as an Event Journey before switching to the parent default.')}</MetadataText> : null}
-            {choice === 'inherit' && !state?.legacyJourney && state?.canCreateEventTemplate ? <GdsStack gap="sm">
-              <AdminTextInput name="event-inherited-journey-name" label={ui('Name for this event journey')} value={inheritedName} onChange={setInheritedName} maxLength={120} />
-              <SemanticButton action="event-journey:customize-inherited" loading={creating} disabled={creating || !inheritedName.trim()} onClick={() => void create({ makeDefault: true, openEditor: true, journeyName: inheritedName })}>{ui('Customize inherited journey')}</SemanticButton>
-            </GdsStack> : null}
-          </SectionPanel>
-          {state?.templates.map((template) => {
-            const selected = choice === template.templateId && !state.legacyJourney;
-            const busy = savingId === template.templateId || creating;
-            return <SectionPanel key={template.templateId} title={template.name} description={`${ui('Event journey')} · ${template.templateId}`}>
-              <GdsStack gap="sm">
-                <GdsInline gap="sm" align="center">
-                  <MetadataText>{selected ? ui('Selected for event guests') : ui('Available journey')}</MetadataText>
-                  {!selected ? <SemanticButton action="event-journey:select" loading={saving} disabled={saving || creating} onClick={() => void selectJourney({ mode: 'template', templateId: template.templateId })}>{ui('Use for this event')}</SemanticButton> : null}
-                  {state.canCreateEventTemplate && !renameId ? <SemanticButton action="event-journey:rename" disabled={busy} onClick={() => { setRenameId(template.templateId); setRenameValue(template.name); }}>{ui('Rename')}</SemanticButton> : null}
-                  {state.canCreateEventTemplate && deleteId !== template.templateId ? <SemanticButton action="event-journey:delete" disabled={busy || selected} onClick={() => setDeleteId(template.templateId)}>{ui('Delete')}</SemanticButton> : null}
-                  {state.canCreateEventTemplate ? <SemanticButton action={editingId === template.templateId ? 'event-journey:close-editor' : 'event-journey:edit'} disabled={busy} onClick={() => setEditingId(editingId === template.templateId ? null : template.templateId)}>{editingId === template.templateId ? ui('Close editor') : ui('Edit journey')}</SemanticButton> : null}
-                </GdsInline>
-                {renameId === template.templateId ? <GdsInline gap="sm" align="end">
-                  <AdminTextInput name={`event-journey-name-${template.templateId}`} label={ui('Journey name')} value={renameValue} onChange={setRenameValue} maxLength={120} />
-                  <SemanticButton action="event-journey:save-name" loading={busy} disabled={busy || !renameValue.trim()} onClick={() => void rename(template)}>{ui('Save name')}</SemanticButton>
-                  <SemanticButton action="event-journey:cancel-name" disabled={busy} onClick={() => setRenameId(null)}>{ui('Cancel')}</SemanticButton>
-                </GdsInline> : null}
-                {deleteId === template.templateId ? <>
-                  <InlineAlert title={ui('Confirm deletion')} message={ui('This journey can only be deleted after all events stop using it.')} severity="warning" />
-                  <GdsInline gap="sm">
-                    <SemanticButton action="event-journey:confirm-delete" loading={busy} disabled={busy} onClick={() => void remove(template)}>{ui('Confirm delete')}</SemanticButton>
-                    <SemanticButton action="event-journey:cancel-delete" disabled={busy} onClick={() => setDeleteId(null)}>{ui('Cancel')}</SemanticButton>
-                  </GdsInline>
-                </> : null}
-                {editingId === template.templateId && selected ? <InlineAlert title={ui('Live guest flow')} message={ui('Saving edits to this selected journey updates the live guest flow for this event.')} severity="warning" /> : null}
-                {editingId === template.templateId ? <ExperienceTemplatePageEditor
-                  template={template}
-                  pickerLevel={{ scope: 'event', eventId: eventMongoId }}
-                  eventId={eventMongoId}
-                  eventWelcomeScreenUrl={eventWelcomeScreenUrl}
-                  eventTheme={eventTheme}
-                  journeyContext={journeyContext}
-                  acceptanceOnWhoAreYou={acceptanceOnWhoAreYou}
-                  galleryConsent={galleryConsent}
-                  consentSettings={consentSettings}
-                  partnerCheckboxes={partnerCheckboxes}
-                  onSaved={(updated) => setState((current) => current ? { ...current, templates: current.templates.map((item) => item.templateId === updated.templateId ? updated : item) } : current)}
-                /> : null}
-              </GdsStack>
-            </SectionPanel>;
-          })}
-          {state?.templates.length === 0 ? <MetadataText>{ui('No event journeys yet.')}</MetadataText> : null}
-        </GdsStack>
-      </SectionPanel>
-
-      {state?.canCreateEventTemplate ? <SectionPanel title={ui('Create Event Journey')} description={state.legacyJourney ? ui('Save this event’s existing pages as its own journey and open them in the shared editor.') : ui('Create another Event Journey version. It becomes live only when selected above.') }>
-        <GdsInline gap="md" align="end">
-          <AdminTextInput name="event-journey-new-name" label={ui('Journey name')} value={name} onChange={setName} maxLength={120} />
-          <SemanticButton action="experience-template:event-create" loading={creating} disabled={creating || !name.trim()} onClick={() => void create(state.legacyJourney ? { makeDefault: true, openEditor: true } : {})}>{state.legacyJourney ? ui('Save and edit journey') : ui('Create journey')}</SemanticButton>
-        </GdsInline>
-      </SectionPanel> : null}
+      <ExperienceJourneyList
+        title={ui('Event User Journey')}
+        description={ui('Choose which single journey is used by this event’s capture URL, short link, and QR codes.')}
+        groupName="event-journey-default"
+        actionNamespace="event-journey"
+        rows={rows}
+        canManage={Boolean(state?.canCreateEventTemplate)}
+        saving={saving || creating || Boolean(savingId)}
+        renameId={renameId}
+        renameValue={renameValue}
+        deleteId={deleteId}
+        onSelect={(value) => { if (value === 'inherit') void selectJourney({ mode: 'inherit' }); else if (value !== 'legacy') void selectJourney({ mode: 'template', templateId: value }); }}
+        onEdit={setEditingId}
+        onRenameStart={(id, currentName) => { setRenameId(id); setRenameValue(currentName); }}
+        onRenameChange={setRenameValue}
+        onRenameSave={(id) => { const template = state?.templates.find((item) => item.templateId === id); if (template) void rename(template); }}
+        onRenameCancel={() => setRenameId(null)}
+        onDeleteStart={setDeleteId}
+        onDeleteConfirm={(id) => { const template = state?.templates.find((item) => item.templateId === id); if (template) void remove(template); }}
+        onDeleteCancel={() => setDeleteId(null)}
+        onCustomize={() => { if (name.trim()) void create({ makeDefault: true, openEditor: true }); }}
+        emptyMessage={ui('No event journeys yet.')}
+        createForm={state?.canCreateEventTemplate ? <GdsStack gap="sm">
+          <MetadataText>{ui('Create journey version')}</MetadataText>
+          <GdsInline gap="md" align="end">
+            <AdminTextInput name="event-journey-new-name" label={ui('Journey name')} value={name} onChange={setName} maxLength={120} />
+            <SemanticButton action="experience-template:event-create" loading={creating} disabled={creating || !name.trim()} onClick={() => void create(state.legacyJourney ? { makeDefault: true, openEditor: true } : {})}>{state.legacyJourney ? ui('Save and edit journey') : ui('Create journey')}</SemanticButton>
+          </GdsInline>
+        </GdsStack> : null}
+      />
     </GdsStack>
   );
 }

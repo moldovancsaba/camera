@@ -1,0 +1,150 @@
+.list {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.visuallyHidden {
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.row {
+  align-items: center;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  display: grid;
+  gap: 0.75rem 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.75rem 0;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.choice {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.choice input {
+  accent-color: var(--gds-brand-primary, var(--mantine-primary-color-filled));
+  flex: 0 0 auto;
+  height: 1.2rem;
+  margin: 0;
+  width: 1.2rem;
+}
+
+.choice input:disabled {
+  cursor: not-allowed;
+}
+
+.copy {
+  background: var(--gds-surface-subtle, var(--mantine-color-gray-0));
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 0.55rem;
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.65rem 0.8rem;
+  width: 100%;
+}
+
+.name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.detail {
+  color: var(--mantine-color-dimmed);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.selected {
+  color: var(--mantine-color-dimmed);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.inlineForm,
+.createForm {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  grid-column: 1 / -1;
+  padding: 0.25rem 0 0.75rem 2.1rem;
+}
+
+.inlineForm > * {
+  flex: 1 1 12rem;
+}
+
+.deleteForm {
+  display: grid;
+  gap: 0.75rem;
+  grid-column: 1 / -1;
+  padding: 0.25rem 0 0.75rem 2.1rem;
+}
+
+.create {
+  border-top: 1px solid var(--mantine-color-default-border);
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+}
+
+.createForm {
+  grid-column: auto;
+  padding: 0;
+}
+
+.createTitle {
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin: 0;
+}
+
+.createDescription {
+  color: var(--mantine-color-dimmed);
+  margin: 0;
+}
+
+@media (max-width: 48rem) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .actions {
+    justify-content: flex-start;
+    padding-left: 2.1rem;
+  }
+
+  .selected {
+    white-space: normal;
+  }
+
+  .inlineForm,
+  .deleteForm {
+    padding-left: 2.1rem;
+  }
+}

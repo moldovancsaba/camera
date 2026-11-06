@@ -1,10 +1,17 @@
 # RELEASE_NOTES.md
 
+## Unreleased — list-first Global, Partner and Event journey workspaces
+
+- **Changed:** each level opens on a single journey list with one selected default, scoped Edit/Rename/Delete actions, and journey creation below the list. Inherited parent choices are explicit on Partner and Event screens.
+- **Added:** Partner User Journey has a dedicated partner workspace route; the partner overview no longer embeds a second journey manager. All scopes reuse one full-width page editor and the same scope-aware media and message libraries.
+- **Fixed:** view-only users can no longer change the selected journey through list controls. Creating a named snapshot from legacy event pages selects it and opens that same editor.
+- **Verification:** `npm run release:check` passed (GDS checks, type-check, lint, 389 unit tests, production guards and production build); `npm run inventory:check` passed (723 links, no broken references). The focused browser check remains blocked because this worktree has no disposable `MONGODB_URI`; GitHub `Verify` is the merge gate.
+
 ## Unreleased — keep journey page moves tied to page identity
 
 - **Fixed:** journey page move controls now resolve the selected page by its stable `pageId` against the full journey, so hidden built-in steps cannot shift the target row or corrupt the saved order.
 - **Fixed:** registered the page editor's hide/show semantic actions, which previously caused the editor to throw while rendering those controls.
-- **Verification:** the focused mobile browser regression moved a page across built-in steps, saved, reloaded and confirmed the persisted order; `npm run release:check`, `npm run inventory:check`, and `git diff --check` passed. The full journey-editor redesign remains separate work.
+- **Verification:** the focused mobile browser regression moved a page across built-in steps, saved, reloaded and confirmed the persisted order; `npm run release:check`, `npm run inventory:check`, and `git diff --check` passed.
 
 ## v12.3.46 — use one full journey editor at every level
 
@@ -148,7 +155,7 @@
 
 ## Unreleased — scoped journey and email navigation
 
-- **Changed:** the global, partner, and event guest-flow destinations are labeled **Global User Journey**, **Partner User Journey**, and **Event User Journey**. The partner shortcut jumps to its inherited journey defaults on the partner overview; the event link opens the page-order editor.
+- **Changed:** the global, partner, and event guest-flow destinations are labeled **Global User Journey**, **Partner User Journey**, and **Event User Journey**. The partner link opens the dedicated partner journey workspace; the event link opens the journey list and page editor.
 - **Changed:** global, partner, and event email destinations are labeled by scope and grouped under **Blocks**. The underlying routes and email settings are unchanged.
 - **Changed:** partner and event block labels now name their scope, matching the global block names. Partner/event frame slots, sample selfies, and stadium backgrounds now have direct scoped pages; event menu links include scoped dictionary, gallery, landing-page, and slideshow names, and the partner gallery is directly reachable from the partner menu.
 - **Not available at partner scope:** landing-page and slideshow editors do not exist for partners. The Admin UI text editor is not present at any scope and remains omitted, as previously agreed. These are not shown as broken menu links.

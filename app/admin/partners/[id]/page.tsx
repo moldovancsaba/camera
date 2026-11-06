@@ -19,7 +19,6 @@ import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import DeletePartnerButton from '@/components/admin/DeletePartnerButton';
-import ExperienceTemplateDefaultSettings from '@/components/admin/ExperienceTemplateDefaultSettings';
 import { fetchPartnerStyleContext } from '@/lib/messmassClient';
 import { parseMessmassStylePalette, type MessmassStylePalette } from '@/lib/theme/messmass-style-palette';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -491,18 +490,6 @@ export default async function PartnerDetailPage({
             frames={partner.defaultFramesWithDetails || []}
             logos={partner.defaultLogosWithDetails || []}
           />
-
-          {canManageEvents ? (
-            <div id="partner-user-journey" style={{ scrollMarginTop: '1.5rem' }}>
-              <ExperienceTemplateDefaultSettings
-                level="partner"
-                resourceId={id}
-                sourceEventId={events[0]?._id.toString()}
-                canManage={canManageEvents}
-                sectionTitle="Partner User Journey"
-              />
-            </div>
-          ) : null}
 
           <Card p={0}>
             <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-default-border)', padding: '1.5rem' }}>
