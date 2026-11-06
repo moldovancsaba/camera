@@ -54,6 +54,7 @@
   {"file": "docs/IMAGE_DIRECT_INTEGRATION.md", "title": "Camera \u2194 image.direct rendering contract"},
   {"file": "docs/JOURNEY_DEFAULT_PAGES.md", "title": "Default pages of the user flow and the global switch"},
   {"file": "docs/JOURNEY_DESIGN_PLAN.md", "title": "Event design on the guest journey (plan)"},
+  {"file": "docs/JOURNEY_EDITOR_PREVIEW.md", "title": "Journey editor live preview"},
   {"file": "docs/JOURNEY_IMAGES.md", "title": "Pictures of the guest journey: the CTA page picture and the email footer"},
   {"file": "docs/JOURNEY_RECORDING.md", "title": "Journey recording (issue 521, phase 2)"},
   {"file": "docs/LIBRARIES.md", "title": "Libraries: Global -> Partner -> Event"},

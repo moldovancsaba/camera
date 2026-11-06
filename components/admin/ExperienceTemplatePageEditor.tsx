@@ -7,13 +7,14 @@ import type { JourneyContext } from '@/lib/events/journey';
 import type { EffectiveCheckboxes, StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 import type { PickerLevel } from '@/lib/library/picker';
 import type { ExperienceTemplate } from '@/lib/visual-assets/contracts';
+import type { EventThemePreview } from '@/lib/theme/event-theme';
 
 interface Props {
   template: ExperienceTemplate;
   pickerLevel: PickerLevel;
   eventId?: string;
   eventWelcomeScreenUrl?: string;
-  eventTheme?: { background?: string; font?: { family?: string } };
+  eventTheme?: EventThemePreview;
   journeyContext?: JourneyContext;
   acceptanceOnWhoAreYou?: boolean | null;
   galleryConsent?: boolean | null;

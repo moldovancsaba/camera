@@ -69,6 +69,7 @@ export interface CTAPageProps {
   brandBorderColor?: string;
   buttonSize?: EventButtonSize;
   submissionId?: string;
+  preview?: boolean;
 }
 
 /** A heading the page keeps for screen readers when its text is hidden. */
@@ -82,6 +83,7 @@ export default function CTAPage({
   brandColor = CAMERA_DEFAULT_CTA_BRAND_COLOR,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
   submissionId,
+  preview = false,
 }: CTAPageProps) {
   const { t, own, language } = useT();
   const texts = useUiTexts();
@@ -99,6 +101,7 @@ export default function CTAPage({
   const opening = redirectingText(config.redirectingText, language, texts);
 
   const handleRedirect = () => {
+    if (preview) return;
     if (urlToVisit) {
       if (hasButton) {
         journey.externalCtaOpened();
@@ -120,6 +123,7 @@ export default function CTAPage({
   };
 
   const handleContinue = () => {
+    if (preview) return;
     journey.once('cta.click');
     journey.once('cta.action', 'continue');
     onNext({
@@ -142,6 +146,7 @@ export default function CTAPage({
       lineHeight: 1.1,
     };
     const handlePictureTap = () => {
+      if (preview) return;
       if (layout.pictureTap === 'visit-and-continue') {
         journey.externalCtaOpened();
         window.open(urlToVisit, '_blank', 'noopener');
@@ -151,7 +156,7 @@ export default function CTAPage({
       }
     };
     return (
-      <FullScreenPage marker={{ 'data-cta-picture': '' }}>
+      <FullScreenPage marker={{ 'data-cta-picture': '' }} preview={preview}>
         <div data-cta-picture-layout style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto auto', flex: '1 1 0', minHeight: 0, width: '100%' }}>
           <div data-cta-picture-art style={{ position: 'relative', gridRow: 1, minHeight: 0, overflow: 'hidden' }}>
             {/* The grid reserves separate rows for copy and actions, so neither can overlap the fitted artwork. */}
@@ -161,7 +166,7 @@ export default function CTAPage({
                 type="button"
                 data-cta-picture-link
                 onClick={handlePictureTap}
-                disabled={isRedirecting}
+                disabled={preview || isRedirecting}
                 aria-label={visitButtonText || title}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}
               />
@@ -179,12 +184,12 @@ export default function CTAPage({
               data-cta-picture-actions
               style={{ gridRow: 3, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem max(1rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px))', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}>
               {layout.showVisitButton ? (
-                <PillButton onClick={handleRedirect} disabled={isRedirecting} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={t('cta.visitAria')} style={pictureActionButtonStyle}>
+                <PillButton onClick={handleRedirect} disabled={preview || isRedirecting} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={t('cta.visitAria')} style={pictureActionButtonStyle}>
                   {isRedirecting ? opening : visitButtonText}
                 </PillButton>
               ) : null}
               {layout.showContinueButton ? (
-                <PillButton variant={urlToVisit ? 'outline' : 'solid'} onClick={handleContinue} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={buttonText} style={pictureActionButtonStyle}>
+                <PillButton variant={urlToVisit ? 'outline' : 'solid'} onClick={handleContinue} disabled={preview} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={buttonText} style={pictureActionButtonStyle}>
                   {buttonText}
                 </PillButton>
               ) : null}
@@ -200,12 +205,13 @@ export default function CTAPage({
       title={title}
       description={config.description}
       logoUrl={logoUrl}
+      preview={preview}
     >
       {urlToVisit ? (
         <Stack gap="xs">
           <Button
             onClick={handleRedirect}
-            disabled={isRedirecting}
+            disabled={preview || isRedirecting}
             color={brandColor}
             size={buttonSize}
             fullWidth
@@ -230,6 +236,7 @@ export default function CTAPage({
         {hasButton ? (
           <Button
             onClick={handleContinue}
+            disabled={preview}
             color={brandColor}
             size={buttonSize}
             aria-label={buttonText}

@@ -36,6 +36,8 @@ export interface WelcomePageConfig {
 export interface WelcomePageProps {
   config: WelcomePageConfig;
   onNext: () => void;
+  /** Renders inside the admin preview without changing the document or navigating. */
+  preview?: boolean;
 }
 
 export { safeColour };
@@ -52,14 +54,14 @@ export const WELCOME_LAYER_CSS = `
 }
 `;
 
-export default function WelcomePage({ config, onNext }: WelcomePageProps) {
+export default function WelcomePage({ config, onNext, preview = false }: WelcomePageProps) {
   const { own } = useT();
   const title = own('welcome.title', config.title);
   const buttonText = own('welcome.button', config.buttonText);
   const screenImageAlt = own('welcome.screenAlt', config.screenImageAlt);
 
   return (
-    <FullScreenPage marker={{ 'data-welcome-step': '' }}>
+    <FullScreenPage marker={{ 'data-welcome-step': '' }} preview={preview}>
       <h1 className="sr-only">{title}</h1>
       <style>{WELCOME_LAYER_CSS}</style>
 
@@ -70,7 +72,8 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
           backgroundImageUrl={config.backgroundImageUrl}
           eventWelcomeScreenUrl={config.eventWelcomeScreenUrl}
           buttonColors={{ fill: config.buttonColor, label: config.buttonTextColor, ring: config.buttonBorderColor }}
-          onStart={onNext}
+          preview={preview}
+          onStart={preview ? undefined : onNext}
           style={{ inset: 0, position: 'absolute' }}
         />
       ) : null}
@@ -88,7 +91,8 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
       >
         {config.screenImageUrl ? <LedScreen3D imageUrl={config.screenImageUrl} alt={screenImageAlt} /> : null}
         <PillButton
-          onClick={onNext}
+          onClick={preview ? () => undefined : onNext}
+          disabled={preview}
           fill={config.buttonColor}
           label={config.buttonTextColor}
           ring={config.buttonBorderColor}

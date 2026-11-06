@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — responsive live preview for journey pages
+
+The shared Global, Partner, and Event journey page editor now places the editable page settings beside a live preview on desktop; narrower layouts stack the two. The preview renders from the current unsaved draft, reuses guest components where available, and offers Mobile, Tablet, and Desktop proportions. Camera/Submit/frame-message steps use placeholders. Preview content is inert, and preview-aware renderers do not navigate or run guest-flow side effects. Local regression and full release checks are recorded in the release notes after completion. See `docs/JOURNEY_EDITOR_PREVIEW.md`.
+
 ## Current change — one selected Global → Partner → Event journey
 
 Global, Partner and Event journey workspaces open on the version list: one radio-selected default, with owned-version Edit/Rename/Delete actions and creation below. The Partner list has its own route instead of being embedded into the partner overview. All three scopes open the same full-width page editor, backed by the same scope-aware image/frame/logo/text/message resources. Partners and events cannot edit a parent journey in place; customizing inheritance creates a child-owned journey. Only the selected parent journey flows down, and only to descendants still inheriting. Editing a selected version warns that saving changes the live guest flow. Legacy event pages stay active until snapshotted as a named EUJ and selected; afterward the event can switch to inheritance without losing the snapshot. Stable capture, short-link and QR addresses do not change. Journey templates store page flow/order and share-page settings only; event branding, frames and media remain at their owning level. Details: `docs/GLOBAL_DEFAULT_JOURNEY.md`, `docs/VISUAL_ASSET_HIERARCHY.md`, `ARCHITECTURE.md`, and `RUNBOOK.md`. Local checks and GitHub `Verify` status are recorded after this branch's verification.

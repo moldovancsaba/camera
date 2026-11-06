@@ -265,5 +265,23 @@ test('event journey page moves keep their identity across hidden built-in rows, 
   await page.getByRole('button', { name: 'Edit journey' }).click();
   const afterReload = await rowsInOrder();
   expect(pagePosition(afterReload, 'ctaVisit club shop')).toBeLessThan(pagePosition(afterReload, 'take-photoTake Photo'));
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const ctaRow = pageRows.filter({ hasText: 'Visit club shop' });
+  await ctaRow.getByRole('button', { name: 'Edit', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit cta Page' });
+  const columns = dialog.locator('[data-journey-editor-columns]');
+  const preview = dialog.locator('[data-journey-live-preview]');
+  await expect(preview).toBeVisible();
+  await expect(preview.getByRole('heading', { name: 'Visit club shop' })).toBeVisible();
+  await expect.poll(() => columns.evaluate((element) => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length))
+    .toBe(2);
+  await dialog.getByLabel('Page Title').fill('Live preview title');
+  await expect(preview.getByRole('heading', { name: 'Live preview title' })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => columns.evaluate((element) => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length))
+    .toBe(1);
+  await expect.poll(() => dialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll');
 });
