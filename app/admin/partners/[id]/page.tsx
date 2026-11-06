@@ -209,7 +209,6 @@ export default async function PartnerDetailPage({
         $or: [{ photoReview: { $exists: false } }, { reviewStatus: 'approved' }],
       })
       .sort({ createdAt: -1 })
-      .limit(50)
       .toArray()) as unknown as SubmissionDoc[];
 
     const participantRows = await db
@@ -644,11 +643,6 @@ export default async function PartnerDetailPage({
                 </Link>
               ))}
             </div>
-            {submissions.length >= 50 ? (
-              <Text ta="center" size="sm" c="dimmed" mt="lg">
-                Showing the 50 most recent submissions
-              </Text>
-            ) : null}
           </div>
         )}
       </Card>
