@@ -51,34 +51,53 @@ export async function findDefaultSlideshow(db: Db, eventUuid: string): Promise<D
   return db.collection(COLLECTIONS.SLIDESHOWS).findOne({ eventId: eventUuid, isDefault: true });
 }
 
-/** Refreshes the event's generated default from its current partner template, but never overwrites an editor's event-level override. */
+/** Applies the nearest active parent slideshow default, without overwriting an event-level override. */
 export async function applyPartnerSlideshowDefault(db: Db, event: Document, source: Document): Promise<Document> {
   const partnerId = typeof event.partnerId === 'string' ? event.partnerId : '';
   if (!partnerId || source.isDefault !== true || source.inheritanceMode === 'override') return source;
   const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId }, { projection: { contentDefaults: 1 } });
-  const defaults = partner?.contentDefaults as { revision?: number; slideshow?: Record<string, unknown> | null } | undefined;
-  const template = defaults?.slideshow;
-  const isAlreadyInherited = source.inheritedFromPartnerId === partnerId;
-  const isLegacyGeneratedDefault = !source.inheritedFromPartnerId && source.createdBy === 'system';
+  const partnerDefaults = partner?.contentDefaults as { revision?: number; slideshow?: Record<string, unknown> | null } | undefined;
+  const globalDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' }, { projection: { revision: 1, slideshow: 1 } });
+  const partnerTemplate = partnerDefaults?.slideshow;
+  const globalTemplate = globalDefaults?.slideshow as Record<string, unknown> | null | undefined;
+  const inheritedFromLevel = partnerTemplate && partnerTemplate.isActive !== false
+    ? 'partner'
+    : globalTemplate && globalTemplate.isActive !== false ? 'global' : null;
+  const template = inheritedFromLevel === 'partner' ? partnerTemplate : inheritedFromLevel === 'global' ? globalTemplate : null;
+  const revision = inheritedFromLevel === 'partner'
+    ? Math.max(0, Number(partnerDefaults?.revision) || 0)
+    : Math.max(0, Number(globalDefaults?.revision) || 0);
+  const isAlreadyInherited = source.inheritedFromLevel === 'partner' && source.inheritedFromPartnerId === partnerId
+    || source.inheritedFromLevel === 'global'
+    || (!source.inheritedFromLevel && source.inheritedFromPartnerId === partnerId);
+  const isLegacyGeneratedDefault = !source.inheritedFromLevel && !source.inheritedFromPartnerId && source.createdBy === 'system';
+  const sameInheritedSource = inheritedFromLevel === 'partner'
+    ? source.inheritedFromLevel === 'partner' && source.inheritedFromPartnerId === partnerId
+    : inheritedFromLevel === 'global' && source.inheritedFromLevel === 'global';
+  const currentRevision = inheritedFromLevel === 'partner' ? source.inheritedPartnerRevision : source.inheritedGlobalRevision;
   if (!template) {
     if (!isAlreadyInherited) return source;
+    const restoredAt = generateTimestamp();
     const baseline = source.inheritanceBaseline && typeof source.inheritanceBaseline === 'object'
       ? source.inheritanceBaseline as Record<string, unknown>
       : null;
-    const restored = baseline ? { ...baseline, updatedAt: generateTimestamp() } : {};
+    // A parent default can be removed while a screen is already open. Preserve
+    // the event's saved design, then send a reload token so the player adopts it.
+    const restored = { ...(baseline ?? {}), reloadRequestedAt: restoredAt, updatedAt: restoredAt };
     await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
-      { _id: source._id, inheritedFromPartnerId: partnerId },
-      { ...(baseline ? { $set: restored } : {}), $unset: { inheritedFromPartnerId: '', inheritedPartnerRevision: '', inheritanceBaseline: '' } },
+      { _id: source._id },
+      { $set: restored, $unset: { inheritedFromLevel: '', inheritedFromPartnerId: '', inheritedPartnerRevision: '', inheritedGlobalRevision: '', inheritanceBaseline: '' } },
     );
     const detached: Document = { ...source, ...restored };
+    delete detached.inheritedFromLevel;
     delete detached.inheritedFromPartnerId;
     delete detached.inheritedPartnerRevision;
+    delete detached.inheritedGlobalRevision;
     delete detached.inheritanceBaseline;
     return detached;
   }
   if (!isAlreadyInherited && !isLegacyGeneratedDefault) return source;
-  const revision = Math.max(0, Number(defaults?.revision) || 0);
-  if (isAlreadyInherited && Number(source.inheritedPartnerRevision) === revision) return source;
+  if (sameInheritedSource && Number(currentRevision) === revision) return source;
   const baseline = source.inheritanceBaseline && typeof source.inheritanceBaseline === 'object'
     ? source.inheritanceBaseline as Record<string, unknown>
     : {
@@ -107,6 +126,7 @@ export async function applyPartnerSlideshowDefault(db: Db, event: Document, sour
   const screenDesign = templateDesign
     ? { ...templateDesign, ...(templateQr && (sourceQr?.url || baselineQr?.url) ? { qr: { ...templateQr, url: sourceQr?.url || baselineQr?.url } } : {}) }
     : baseline.screenDesign ?? null;
+  const inheritedAt = generateTimestamp();
   const set: Record<string, unknown> = {
     name: template.name ?? baseline.name ?? source.name,
     isActive: template.isActive !== false,
@@ -122,13 +142,24 @@ export async function applyPartnerSlideshowDefault(db: Db, event: Document, sour
     backgroundImageUrl: template.backgroundImageUrl ?? null,
     viewportScale: template.viewportScale ?? 'fit',
     screenDesign,
-    inheritedFromPartnerId: partnerId,
-    inheritedPartnerRevision: revision,
+    inheritedFromLevel,
     inheritanceBaseline: baseline,
-    updatedAt: generateTimestamp(),
+    // Playlist responses expose this as `reloadToken`; full-screen players
+    // reload safely at the next slide boundary when inherited design changes.
+    reloadRequestedAt: inheritedAt,
+    updatedAt: inheritedAt,
   };
+  if (inheritedFromLevel === 'partner') {
+    set.inheritedFromPartnerId = partnerId;
+    set.inheritedPartnerRevision = revision;
+  } else {
+    set.inheritedGlobalRevision = revision;
+  }
   if (template.stageAspect === null || typeof template.stageAspect === 'number') set.stageAspect = template.stageAspect;
-  await db.collection(COLLECTIONS.SLIDESHOWS).updateOne({ _id: source._id }, { $set: set, $unset: { inheritanceMode: '' } });
+  const unset: Record<string, ''> = { inheritanceMode: '' };
+  if (inheritedFromLevel !== 'partner') { unset.inheritedFromPartnerId = ''; unset.inheritedPartnerRevision = ''; }
+  if (inheritedFromLevel !== 'global') unset.inheritedGlobalRevision = '';
+  await db.collection(COLLECTIONS.SLIDESHOWS).updateOne({ _id: source._id }, { $set: set, $unset: unset });
   return { ...source, ...set };
 }
 

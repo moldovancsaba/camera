@@ -12,12 +12,13 @@ import type { ExperienceTemplate } from '@/lib/visual-assets/contracts';
 
 type Level = 'global' | 'partner';
 type StoredChoice = string | 'inherit' | null;
-interface SourceEvent { _id: string; eventId?: string; name?: string; partnerName?: string; eventDate?: string }
+interface SourceEvent { _id: string; eventId?: string; name?: string; partnerName?: string; eventDate?: string; isActive?: boolean }
 interface Data {
   templateId: StoredChoice;
   templates: ExperienceTemplate[];
   globalTemplates?: ExperienceTemplate[];
   sourceEvents?: SourceEvent[];
+  testEvents?: SourceEvent[];
   globalTemplateId?: string | null;
   globalTemplateName?: string | null;
   selectionNeedsRepair?: boolean;
@@ -44,6 +45,7 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
   const [choice, setChoice] = useState<StoredChoice>(level === 'partner' ? 'inherit' : null);
   const [templateName, setTemplateName] = useState(level === 'global' ? 'Global journey' : 'Partner journey');
   const [sourceChoice, setSourceChoice] = useState('');
+  const [testEventId, setTestEventId] = useState('');
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -61,6 +63,8 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
     const next = apiData<Data>(payload);
     setData(next);
     setChoice(level === 'partner' && typeof next.templateId !== 'string' ? 'inherit' : next.templateId);
+    const testEvents = next.testEvents ?? [];
+    setTestEventId((current) => current && testEvents.some((event) => event._id === current) ? current : testEvents[0]?._id ?? '');
     const choices = level === 'global'
       ? [
         ...(next.templates ?? []).map((template) => `template:${template.templateId}`),
@@ -174,6 +178,14 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
 
   const saveContent = (updated: ExperienceTemplate) => setData((current) => current ? { ...current, templates: current.templates.map((item) => item.templateId === updated.templateId ? updated : item) } : current);
 
+  const testJourney = (templateId: string) => {
+    if (!testEventId) return;
+    // The signed grant pins this test to the selected parent journey and event.
+    // Opening the capture URL directly would otherwise show the event's live journey.
+    const url = `/api/experience-journey-test?eventId=${encodeURIComponent(testEventId)}&templateId=${encodeURIComponent(templateId)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   if (loading) return <StateBlock variant="loading" title={ui('Loading experience settings')} />;
 
   const rows: ExperienceJourneyListRow[] = [
@@ -181,12 +193,14 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
       id: 'inherit', value: 'inherit', name: data?.globalTemplateName || ui('Global default journey'),
       detail: ui('Following the global default'), selected: choice === 'inherit', canSelect: true,
       canCustomize: Boolean(canManage && data?.globalTemplateId),
+      testTemplateId: data?.globalTemplateId ?? undefined,
     }] : []),
     ...(data?.templates ?? []).map((template) => ({
       id: template.templateId, value: template.templateId, name: template.name,
       detail: ui(level === 'global' ? 'Global journey' : 'Partner journey'),
       selected: activeId === template.templateId, busy: savingId === template.templateId || creating,
       canEdit: canManage, canRename: canManage, canDelete: canManage && activeId !== template.templateId,
+      testTemplateId: template.templateId,
     })),
   ];
 
@@ -249,7 +263,27 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
           if (level === 'partner' && data?.globalTemplateId) void create({ source: `template:${data.globalTemplateId}`, name: templateName || 'Partner journey', makeDefault: true, openEditor: true });
         }}
         emptyMessage={level === 'global' ? ui('No journey versions yet.') : ui('No partner journeys yet. The partner currently follows the global default.')}
-        listNotice={level === 'partner' && choice === 'inherit' ? <InlineAlert title={ui('Inherited global journey')} message={ui('This partner has no separate default. Its events follow the global journey unless an event selects its own.')} severity="info" /> : null}
+        listNotice={(
+          <GdsStack gap="sm">
+            {level === 'partner' && choice === 'inherit' ? <InlineAlert title={ui('Inherited global journey')} message={ui('This partner has no separate default. Its events follow the global journey unless an event selects its own.')} severity="info" /> : null}
+            {canManage ? (
+              data?.testEvents?.length ? (
+                <GdsInline align="end">
+                  <AdminSelect
+                    name={`${level}-journey-test-event`}
+                    label={ui('Test in active event')}
+                    value={testEventId}
+                    onChange={(value) => setTestEventId(value ?? '')}
+                    data={(data.testEvents ?? []).map((event) => ({ value: event._id, label: [event.name || event.eventId || event._id, event.partnerName, event.eventDate].filter(Boolean).join(' · ') }))}
+                    allowDeselect={false}
+                  />
+                  <MetadataText>{ui('Testing uses the real capture flow. Submissions and emails behave as usual.')}</MetadataText>
+                </GdsInline>
+              ) : <InlineAlert title={ui('No active events to test')} message={ui('Activate an event to test this journey in its real capture flow.')} severity="info" />
+            ) : null}
+          </GdsStack>
+        )}
+        onTest={testJourney}
         createForm={canManage && createSources.length > 0 ? (
           <GdsStack gap="sm">
             <MetadataText>{ui('Create journey version')}</MetadataText>

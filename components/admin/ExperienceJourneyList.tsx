@@ -20,6 +20,7 @@ export interface ExperienceJourneyListRow {
   canRename?: boolean;
   canDelete?: boolean;
   canCustomize?: boolean;
+  testTemplateId?: string;
 }
 
 interface Props {
@@ -43,6 +44,7 @@ interface Props {
   onDeleteConfirm: (id: string) => void;
   onDeleteCancel: () => void;
   onCustomize?: () => void;
+  onTest?: (templateId: string) => void;
   emptyMessage: string;
   createForm?: ReactNode;
   listNotice?: ReactNode;
@@ -53,7 +55,7 @@ export default function ExperienceJourneyList({
   title, description, groupName, actionNamespace, rows, canManage, saving = false,
   renameId, renameValue = '', deleteId, onSelect, onEdit, onRenameStart,
   onRenameChange, onRenameSave, onRenameCancel, onDeleteStart,
-  onDeleteConfirm, onDeleteCancel, onCustomize, emptyMessage, createForm,
+  onDeleteConfirm, onDeleteCancel, onCustomize, onTest, emptyMessage, createForm,
   listNotice,
 }: Props) {
   const language = useUiLanguage();
@@ -93,6 +95,11 @@ export default function ExperienceJourneyList({
                     {row.selected ? <span className={styles.selected}>{ui('Selected default')}</span> : null}
                     {row.canCustomize && canManage && onCustomize ? (
                       <SemanticButton action={customizeAction} disabled={rowBusy} onClick={onCustomize} />
+                    ) : null}
+                    {row.testTemplateId && canManage && onTest ? (
+                      <SemanticButton action={`${actionNamespace}:test`} variant="secondary" disabled={rowBusy} onClick={() => onTest(row.testTemplateId!)}>
+                        Test journey
+                      </SemanticButton>
                     ) : null}
                     {row.canEdit && canManage ? (
                       <SemanticButton action={`${actionNamespace}:edit`} disabled={rowBusy} onClick={() => onEdit(row.id)} />

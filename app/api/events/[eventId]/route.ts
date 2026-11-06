@@ -49,8 +49,9 @@ import { journeyRecordingEnabled } from '@/lib/journey/setting';
 import { colourInputsOf, scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
 import { validateWelcomeElements } from '@/lib/events/welcome-composition';
 import { filterUnavailableVisualAssetUrls, visualAssetVisibleToEvent } from '@/lib/visual-assets/filter';
-import { applyExperienceConfig, experienceConfigFromEvent, hasLegacyLocalJourney, JOURNEY_FLOW_FIELDS, journeyConfigFromStoredTemplate, parseExperienceTemplateConfig, parseExperienceTemplateSelection, resolveEventExperienceConfig, validateTemplateAssetScope, type ExperienceTemplateConfig } from '@/lib/visual-assets/templates';
+import { applyExperienceConfig, experienceConfigFromEvent, hasLegacyLocalJourney, JOURNEY_FLOW_FIELDS, journeyConfigFromStoredTemplate, journeyTemplateForAdmin, parseExperienceTemplateConfig, parseExperienceTemplateSelection, resolveEventExperienceConfig, validateTemplateAssetScope, type ExperienceTemplateConfig } from '@/lib/visual-assets/templates';
 import { resolveTemplateConfig } from '@/lib/visual-assets/resolve';
+import { JOURNEY_TEST_COOKIE, readJourneyTestGrant } from '@/lib/visual-assets/journey-test-cookie';
 
 interface EventFrameDetails {
   frameId: string;
@@ -186,11 +187,45 @@ export const GET = withErrorHandler(async (
   // `photoVetting` (who changed it, when) is admin data: guests get `photoVettingRequired`, and when asked as a guest
   // (`?audience=guest`, the capture page) a vetted event with no "who are you" page before the photo gets the default one first:
   // every vetted event asks for an email or a social login (camera#264). The admin editor reads the stored pages, never this one.
-  const resolvedExperience = await resolveEventExperienceConfig(
-    db,
-    event as unknown as Record<string, unknown>,
-    eventPartner as unknown as Record<string, unknown> | null,
-  );
+  const requestedJourneyTestId = request.nextUrl.searchParams.get('journeyTestTemplateId')?.trim() ?? '';
+  if (requestedJourneyTestId && !/^[A-Za-z0-9_-]{1,100}$/.test(requestedJourneyTestId)) {
+    throw apiBadRequest('Invalid journey test selection.');
+  }
+  const testGrant = readJourneyTestGrant(request.cookies.get(JOURNEY_TEST_COOKIE)?.value, event._id.toString());
+  const journeyTestId = requestedJourneyTestId || testGrant?.templateId || '';
+  let resolvedExperience = null;
+  let journeyTest: { name: string } | null = null;
+  if (journeyTestId) {
+    const grantMatches = testGrant?.templateId === journeyTestId;
+    let managerCanTest = Boolean(session && isGlobalAdminSession(session));
+    if (!managerCanTest && session) {
+      const access = await getPartnerScopedAccessForEvent(db, event._id.toString(), session, 'manager');
+      managerCanTest = access.allowed;
+    }
+    if (!grantMatches && !managerCanTest) throw apiForbidden('Start this journey test from the authenticated admin editor.');
+
+    // Only test a global or this event's partner journey; never let a client select an unrelated event's private journey.
+    const allowedTemplateOwners = [
+      { level: 'global', ownerId: null },
+      ...(typeof event.partnerId === 'string' && event.partnerId ? [{ level: 'partner', ownerId: event.partnerId }] : []),
+    ];
+    const storedTemplate = await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({
+      templateId: journeyTestId,
+      $or: allowedTemplateOwners,
+    });
+    if (!storedTemplate) throw apiNotFound('Journey');
+    const safeTemplate = journeyTemplateForAdmin(storedTemplate as Record<string, unknown>);
+    if (!safeTemplate) throw apiBadRequest('This journey has invalid saved page data and cannot be tested.');
+    // `journeyTestId` was validated above and is the exact ID used in the scoped database lookup.
+    resolvedExperience = { templateId: journeyTestId, config: safeTemplate.config };
+    journeyTest = { name: typeof safeTemplate.name === 'string' ? safeTemplate.name : 'Journey test' };
+  } else {
+    resolvedExperience = await resolveEventExperienceConfig(
+      db,
+      event as unknown as Record<string, unknown>,
+      eventPartner as unknown as Record<string, unknown> | null,
+    );
+  }
   const eventWithExperience = applyExperienceConfig(event as unknown as Record<string, unknown>, resolvedExperience);
   const effectiveTemplateName = !forGuest && resolvedExperience?.templateId
     ? (await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({ templateId: resolvedExperience.templateId }, { projection: { name: 1 } }))?.name
@@ -269,6 +304,7 @@ export const GET = withErrorHandler(async (
       ...(forGuest ? { journeyRecording: await journeyRecordingEnabled(db) } : {}),
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
       journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, ...(chosenDocuments(checkboxes) ? { documents: chosenDocuments(checkboxes) } : {}), ...(guestSafeEvent.defaultPageOrders ? { defaultOrders: guestSafeEvent.defaultPageOrders as Record<string, number> } : {}) },
+      ...(forGuest && journeyTest ? { journeyTest } : {}),
       ...(!forGuest && typeof effectiveTemplateName === 'string' ? { effectiveExperienceTemplateName: effectiveTemplateName } : {}),
       _id: event._id.toString(),
       // The generated-frame response also carries mapped message-frame compositions; generatedFrameEnabled gates only the generated fallback.

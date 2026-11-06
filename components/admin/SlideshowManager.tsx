@@ -23,6 +23,7 @@ interface Slideshow {
   isActive: boolean;
   /** The slideshow the welcome page screen and the giant screen start from (camera#327). */
   isDefault?: boolean;
+  inheritedFromLevel?: 'global' | 'partner';
   inheritedFromPartnerId?: string;
   createdAt: string;
   bufferSize?: number;
@@ -41,12 +42,13 @@ interface Slideshow {
 interface Props {
   eventId: string;
   initialSlideshows: Slideshow[];
-  partnerDefaultAvailable?: boolean;
+  inheritedDefaultAvailable?: boolean;
+  inheritedDefaultLabel?: string;
   /** The picture of the welcome page screen drawn from the default slideshow, when the event has one. */
   welcomeScreen?: { url: string; generatedAt: string } | null;
 }
 
-export default function SlideshowManager({ eventId, initialSlideshows, partnerDefaultAvailable = false, welcomeScreen = null }: Props) {
+export default function SlideshowManager({ eventId, initialSlideshows, inheritedDefaultAvailable = false, inheritedDefaultLabel = 'parent default', welcomeScreen = null }: Props) {
   const [slideshows, setSlideshows] = useState<Slideshow[]>(initialSlideshows);
 
   const handleDeleteSlideshow = async (slideshowId: string) => {
@@ -69,7 +71,7 @@ export default function SlideshowManager({ eventId, initialSlideshows, partnerDe
 
   const [busy, setBusy] = useState(false);
   const hasDefault = slideshows.some((slideshow) => slideshow.isDefault);
-  const hasInheritedDefault = slideshows.some((slideshow) => slideshow.isDefault && slideshow.inheritedFromPartnerId);
+  const hasInheritedDefault = slideshows.some((slideshow) => slideshow.isDefault && (slideshow.inheritedFromLevel || slideshow.inheritedFromPartnerId));
 
   // One call to the default-slideshow route, then a reload so the list shows what the server holds (a new one has its picture and link).
   const callDefault = async (method: 'POST' | 'PUT', body?: object) => {
@@ -119,9 +121,9 @@ export default function SlideshowManager({ eventId, initialSlideshows, partnerDe
               Create the default slideshow
             </SemanticButton>
           )}
-          {partnerDefaultAvailable && !hasInheritedDefault ? (
-            <SemanticButton action="slideshows:inherit-partner-default" variant="secondary" loading={busy} disabled={busy} onClick={() => void callDefault('POST', { inheritPartnerDefault: true })}>
-              Use partner default
+          {inheritedDefaultAvailable && !hasInheritedDefault ? (
+            <SemanticButton action="slideshows:inherit-parent-default" variant="secondary" loading={busy} disabled={busy} onClick={() => void callDefault('POST', { inheritParentDefault: true })}>
+              Use {inheritedDefaultLabel}
             </SemanticButton>
           ) : null}
           <Link href={`/admin/events/${eventId}/slideshows/new`} style={{ textDecoration: 'none' }}>
@@ -152,7 +154,9 @@ export default function SlideshowManager({ eventId, initialSlideshows, partnerDe
                   <div style={{ marginTop: '0.25rem' }}>
                     <VisibilityStatusIcon isVisible={slideshow.isActive} />
                     {slideshow.isDefault ? <LabelTag tone="info" label="Default" /> : null}
-                    {slideshow.isDefault && slideshow.inheritedFromPartnerId ? <LabelTag tone="success" label="Partner default" /> : null}
+                    {slideshow.isDefault && (slideshow.inheritedFromLevel || slideshow.inheritedFromPartnerId)
+                      ? <LabelTag tone="success" label={`${slideshow.inheritedFromLevel === 'global' ? 'Global' : 'Partner'} default`} />
+                      : null}
                   </div>
                 </div>
                 <SemanticButton
