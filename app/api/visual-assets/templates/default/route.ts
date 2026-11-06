@@ -9,12 +9,13 @@ import { journeyConfigFromStoredTemplate, journeyTemplateForAdmin } from '@/lib/
 export const GET = withErrorHandler(async () => {
   await requireAdmin();
   const db = await connectToDatabase();
-  const [setting, templates, sourceEvents] = await Promise.all([
+  const [setting, templates, sourceEvents, testEvents] = await Promise.all([
     db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'default-experience-template' }),
     db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).find({ level: 'global', ownerId: null }).sort({ updatedAt: -1 }).toArray(),
     // Do not silently hide older events from the source picker: any event may
     // be the accepted starting point for a reusable Global User Journey.
     db.collection(COLLECTIONS.EVENTS).find({}, { projection: { _id: 1, name: 1, eventId: 1, partnerName: 1, eventDate: 1 } }).sort({ updatedAt: -1 }).toArray(),
+    db.collection(COLLECTIONS.EVENTS).find({ isActive: { $ne: false } }, { projection: { _id: 1, name: 1, eventId: 1, partnerName: 1, eventDate: 1 } }).sort({ updatedAt: -1 }).toArray(),
   ]);
   const safeTemplates = templates.flatMap((template) => {
     const safe = journeyTemplateForAdmin(template as Record<string, unknown>);
@@ -29,6 +30,7 @@ export const GET = withErrorHandler(async () => {
     selectionNeedsRepair: Boolean(requestedId && !selected),
     templates: safeTemplates,
     sourceEvents: sourceEvents.filter((event) => event._id instanceof ObjectId).map((event) => ({ _id: String(event._id), eventId: event.eventId, name: event.name, partnerName: event.partnerName, eventDate: event.eventDate })),
+    testEvents: testEvents.filter((event) => event._id instanceof ObjectId).map((event) => ({ _id: String(event._id), eventId: event.eventId, name: event.name, partnerName: event.partnerName, eventDate: event.eventDate })),
   });
 });
 

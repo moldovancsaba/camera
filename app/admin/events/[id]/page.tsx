@@ -142,6 +142,7 @@ export default async function EventDetailPage({
 
   let event: EventDoc | null = null;
   let partner: PartnerDoc | null = null;
+  let globalSlideshowDefault: PartnerContentDefaults['slideshow'] | null = null;
   let photoCount = 0;
   let slideshows: SlideshowDoc[] = [];
   let slideshowLayouts: SlideshowLayoutDoc[] = [];
@@ -170,6 +171,8 @@ export default async function EventDetailPage({
     }
 
     partner = (await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId })) as PartnerDoc | null;
+    const globalContentDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' }, { projection: { slideshow: 1 } });
+    globalSlideshowDefault = (globalContentDefaults?.slideshow as PartnerContentDefaults['slideshow'] | null) ?? null;
     const styleContext = (event as unknown as { frameDesign?: { context?: { style?: unknown } } }).frameDesign?.context?.style;
     messmassStyle = parseMessmassStylePalette(styleContext);
     eventStats = await collectEventSpecificStats(db, event.eventId);
@@ -447,7 +450,16 @@ export default async function EventDetailPage({
         />
       </SimpleGrid>
 
-      <SlideshowManager eventId={id} initialSlideshows={JSON.parse(JSON.stringify(slideshows))} partnerDefaultAvailable={Boolean(partner?.contentDefaults?.slideshow && partner.contentDefaults.slideshow.isActive !== false)} welcomeScreen={event.welcomeScreen ? { url: event.welcomeScreen.url, generatedAt: event.welcomeScreen.generatedAt } : null} />
+      <SlideshowManager
+        eventId={id}
+        initialSlideshows={JSON.parse(JSON.stringify(slideshows))}
+        inheritedDefaultAvailable={Boolean(
+          (partner?.contentDefaults?.slideshow && partner.contentDefaults.slideshow.isActive !== false)
+          || (globalSlideshowDefault && globalSlideshowDefault.isActive !== false)
+        )}
+        inheritedDefaultLabel={partner?.contentDefaults?.slideshow && partner.contentDefaults.slideshow.isActive !== false ? 'partner default' : 'global default'}
+        welcomeScreen={event.welcomeScreen ? { url: event.welcomeScreen.url, generatedAt: event.welcomeScreen.generatedAt } : null}
+      />
 
       <SlideshowLayoutManager
         eventMongoId={id}

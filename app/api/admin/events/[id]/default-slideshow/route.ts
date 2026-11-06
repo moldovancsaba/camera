@@ -33,22 +33,46 @@ async function loadEvent(request: NextRequest, context?: RouteContext) {
 
 export const POST = withErrorHandler(async (request: NextRequest, context?: RouteContext) => {
   const { db, event } = await loadEvent(request, context);
-  const body = (await request.json().catch(() => null)) as { inheritPartnerDefault?: unknown } | null;
-  if (body?.inheritPartnerDefault === true) {
+  const body = (await request.json().catch(() => null)) as { inheritPartnerDefault?: unknown; inheritParentDefault?: unknown } | null;
+  const inheritParentDefault = body?.inheritParentDefault === true || body?.inheritPartnerDefault === true;
+  if (inheritParentDefault) {
     const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }, { projection: { contentDefaults: 1 } });
-    const template = partner?.contentDefaults?.slideshow;
-    if (!template || template.isActive === false) return apiError('This partner has no active default slideshow to inherit.', 409);
+    const partnerTemplate = partner?.contentDefaults?.slideshow;
+    const globalDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' }, { projection: { revision: 1, slideshow: 1 } });
+    const globalTemplate = globalDefaults?.slideshow;
+    const inheritedFromLevel = partnerTemplate && partnerTemplate.isActive !== false
+      ? 'partner'
+      : globalTemplate && globalTemplate.isActive !== false ? 'global' : null;
+    if (!inheritedFromLevel) return apiError('There is no active partner or global slideshow default to inherit.', 409);
     const current = await db.collection(COLLECTIONS.SLIDESHOWS).findOne({ eventId: event.eventId, isDefault: true });
     if (current) {
+      const set: Record<string, unknown> = {
+        inheritedFromLevel,
+        ...(inheritedFromLevel === 'partner'
+          ? { inheritedFromPartnerId: String(event.partnerId), inheritedPartnerRevision: -1 }
+          : { inheritedGlobalRevision: -1 }),
+        updatedAt: generateTimestamp(),
+      };
+      const unset: Record<string, ''> = { inheritanceMode: '' };
+      if (inheritedFromLevel !== 'partner') { unset.inheritedFromPartnerId = ''; unset.inheritedPartnerRevision = ''; }
+      if (inheritedFromLevel !== 'global') unset.inheritedGlobalRevision = '';
+      // Capture the event's original design once. Subsequent parent updates keep
+      // this baseline so returning to event-owned design never snapshots a parent.
+      if (!current.inheritanceBaseline || typeof current.inheritanceBaseline !== 'object') {
+        set.inheritanceBaseline = Object.fromEntries([
+          'name', 'isActive', 'transitionDurationMs', 'fadeDurationMs', 'bufferSize', 'refreshStrategy', 'playMode', 'orderMode', 'crossfade',
+          'backgroundPrimaryColor', 'backgroundAccentColor', 'backgroundImageUrl', 'viewportScale', 'stageAspect', 'screenDesign',
+        ].map((key) => [key, current[key] ?? null]));
+      }
       await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
         { _id: current._id },
-        { $set: { inheritedFromPartnerId: String(event.partnerId), inheritedPartnerRevision: -1, updatedAt: generateTimestamp() }, $unset: { inheritanceMode: '' } },
+        { $set: set, $unset: unset },
       );
     }
   }
   const result = await ensureDefaultSlideshow(db, event);
   if (!result.ok) return apiError(result.reason, 503);
-  if (body?.inheritPartnerDefault === true) scheduleWelcomeScreen(event._id);
+  if (inheritParentDefault) scheduleWelcomeScreen(event._id);
   return apiSuccess({ slideshowId: result.slideshowId, created: result.created });
 });
 
@@ -63,7 +87,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   if (!own) throw apiNotFound('Slideshow');
   await slideshows.updateOne(
     { slideshowId },
-    { $set: { isDefault: true, inheritanceMode: 'override', updatedAt: generateTimestamp() }, $unset: { inheritedFromPartnerId: '', inheritedPartnerRevision: '', inheritanceBaseline: '' } },
+    { $set: { isDefault: true, inheritanceMode: 'override', updatedAt: generateTimestamp() }, $unset: { inheritedFromLevel: '', inheritedFromPartnerId: '', inheritedPartnerRevision: '', inheritedGlobalRevision: '', inheritanceBaseline: '' } },
   );
   await slideshows.updateMany({ eventId: event.eventId, slideshowId: { $ne: slideshowId }, isDefault: true }, { $unset: { isDefault: '' } });
   // The welcome page screen is the default slideshow's screen: it is drawn from the new default (owner, 2026-10-09).

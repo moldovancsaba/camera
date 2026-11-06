@@ -20,13 +20,17 @@ async function load(request: NextRequest, context: Context, permission: 'viewer'
 
 export const GET = withErrorHandler(async (request: NextRequest, context: Context) => {
   const { db, partner } = await load(request, context, 'viewer');
-  const [templates, sourceEvents] = await Promise.all([
+  const [templates, sourceEvents, testEvents] = await Promise.all([
     db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES)
       .find({ level: 'partner', ownerId: String(partner.partnerId) })
       .sort({ updatedAt: -1 })
       .toArray(),
     db.collection(COLLECTIONS.EVENTS)
       .find({ partnerId: String(partner.partnerId) }, { projection: { _id: 1, name: 1, eventId: 1, eventDate: 1 } })
+      .sort({ updatedAt: -1 })
+      .toArray(),
+    db.collection(COLLECTIONS.EVENTS)
+      .find({ partnerId: String(partner.partnerId), isActive: { $ne: false } }, { projection: { _id: 1, name: 1, eventId: 1, eventDate: 1 } })
       .sort({ updatedAt: -1 })
       .toArray(),
   ]);
@@ -55,6 +59,9 @@ export const GET = withErrorHandler(async (request: NextRequest, context: Contex
     selectionNeedsRepair: Boolean(requestedId && !selected),
     templates: safeTemplates,
     sourceEvents: sourceEvents
+      .filter((event) => event._id instanceof ObjectId)
+      .map((event) => ({ _id: String(event._id), eventId: event.eventId, name: event.name, eventDate: event.eventDate })),
+    testEvents: testEvents
       .filter((event) => event._id instanceof ObjectId)
       .map((event) => ({ _id: String(event._id), eventId: event.eventId, name: event.name, eventDate: event.eventDate })),
     globalTemplates: globalTemplates.flatMap((template) => {

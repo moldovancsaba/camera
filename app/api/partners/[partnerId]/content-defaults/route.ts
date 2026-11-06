@@ -4,8 +4,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiBadRequest, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, requireAuth, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { getPartnerScopedAccessForPartner } from '@/lib/partners/authorization';
-import { parseScreenDesign } from '@/lib/slideshow/screen-design';
-import { SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY } from '@/lib/gds/tokens/colors';
+import { cleanSlideshowDefault } from '@/lib/slideshow/content-defaults';
 
 type Context = { params: Promise<{ partnerId: string }> };
 
@@ -20,39 +19,6 @@ const color = (value: unknown): string | null => {
   if (!/^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(normalized)) throw apiBadRequest('Colours must be three- or six-digit hexadecimal values.');
   return normalized;
 };
-
-function cleanSlideshow(value: Record<string, unknown>) {
-  const bounded = (key: string, fallback: number, min: number, max: number) => {
-    const n = Number(value[key] ?? fallback);
-    if (!Number.isFinite(n) || n < min || n > max) throw apiBadRequest(`${key} is outside the allowed range.`);
-    return Math.round(n);
-  };
-  const aspect = value.stageAspect == null || value.stageAspect === '' ? null : Number(value.stageAspect);
-  if (aspect !== null && (!Number.isFinite(aspect) || aspect < 0.25 || aspect > 4)) throw apiBadRequest('Stage aspect must be between 0.25 and 4.');
-  let screenDesign = null;
-  if (value.screenDesign) {
-    const parsed = parseScreenDesign(value.screenDesign);
-    if (!parsed.ok) throw apiBadRequest(parsed.error);
-    screenDesign = parsed.value;
-  }
-  return {
-    name: text(value.name, 120) ?? 'Partner default slideshow',
-    isActive: value.isActive !== false,
-    transitionDurationMs: bounded('transitionDurationMs', 5000, 1000, 600000),
-    fadeDurationMs: bounded('fadeDurationMs', 1000, 0, 60000),
-    bufferSize: bounded('bufferSize', 10, 1, 50),
-    refreshStrategy: value.refreshStrategy === 'batch' ? 'batch' as const : 'continuous' as const,
-    playMode: value.playMode === 'once' ? 'once' as const : 'loop' as const,
-    orderMode: value.orderMode === 'random' ? 'random' as const : 'fixed' as const,
-    crossfade: value.crossfade === true,
-    backgroundPrimaryColor: color(value.backgroundPrimaryColor) ?? SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
-    backgroundAccentColor: color(value.backgroundAccentColor) ?? SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
-    backgroundImageUrl: text(value.backgroundImageUrl, 2048),
-    viewportScale: value.viewportScale === 'fill' ? 'fill' as const : 'fit' as const,
-    stageAspect: aspect,
-    screenDesign,
-  };
-}
 
 function cleanLandingPage(value: Record<string, unknown>) {
   const fields = [
@@ -99,7 +65,7 @@ export const PATCH = withErrorHandler(async (request, context: Context) => {
   if (kind !== 'slideshow' && kind !== 'landingPage') throw apiBadRequest('kind must be slideshow or landingPage.');
   const value = body?.value;
   if (value !== null && (!value || typeof value !== 'object' || Array.isArray(value))) throw apiBadRequest('value must be an object or null.');
-  const cleanValue = value === null ? null : kind === 'slideshow' ? cleanSlideshow(value as Record<string, unknown>) : cleanLandingPage(value as Record<string, unknown>);
+  const cleanValue = value === null ? null : kind === 'slideshow' ? cleanSlideshowDefault(value as Record<string, unknown>) : cleanLandingPage(value as Record<string, unknown>);
   const updatedAt = generateTimestamp();
   const field = kind === 'slideshow' ? 'slideshow' : 'landingPage';
   await db.collection(COLLECTIONS.PARTNERS).updateOne(
