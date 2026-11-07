@@ -35,7 +35,10 @@ function setup(t: TestContext, options: { denied?: boolean; ensure?: { ok: true;
       },
     },
   });
-  t.mock.module('@/lib/slideshow/default-slideshow', { exports: { ensureDefaultSlideshow: async () => options.ensure ?? { ok: true, slideshowId: 's-old', created: false } } });
+  t.mock.module('@/lib/slideshow/default-slideshow', { exports: {
+    applyPartnerSlideshowDefault: async () => ({}),
+    ensureDefaultSlideshow: async () => options.ensure ?? { ok: true, slideshowId: 's-old', created: false },
+  } });
   return { ...seeded, roles };
 }
 

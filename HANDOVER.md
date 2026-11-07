@@ -1,5 +1,9 @@
 # Handover
 
+## Current change — named Global and Partner slideshow defaults
+
+Global and Partner Slideshow workspaces now manage named reusable configurations with list, create, edit, rename, delete and one selected default. Partners can follow Global or select their own. Events resolve their local override first, then the Partner selection, then Global; parent updates reach only events still inheriting. The editor keeps event runtime data and tracked QR destinations event-owned. The Experience journey list registers the runtime-composed test actions and only offers testing when an active event exists, preventing an unknown-action render failure and a no-op test control. See `docs/PARTNER_CONTENT_DEFAULTS.md`. This branch still needs local release checks and GitHub Verify; live production behavior is not claimed as verified here.
+
 ## Current change — responsive live preview for journey pages
 
 The shared Global, Partner, and Event journey page editor now places the editable page settings beside a live preview on desktop; narrower layouts stack the two. The preview renders from the current unsaved draft, reuses guest components where available, and offers Mobile, Tablet, and Desktop proportions. Camera/Submit/frame-message steps use placeholders. Preview content is inert, and preview-aware renderers do not navigate or run guest-flow side effects. Local regression and full release checks are recorded in the release notes after completion. See `docs/JOURNEY_EDITOR_PREVIEW.md`.

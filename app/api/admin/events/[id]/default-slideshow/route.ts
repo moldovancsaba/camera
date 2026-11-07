@@ -15,7 +15,8 @@ import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { apiBadRequest, apiError, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, requireAuth, withErrorHandler } from '@/lib/api';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 import { scheduleWelcomeScreen } from '@/lib/screen/welcome-screen-store';
-import { ensureDefaultSlideshow } from '@/lib/slideshow/default-slideshow';
+import { applyPartnerSlideshowDefault, ensureDefaultSlideshow } from '@/lib/slideshow/default-slideshow';
+import { resolveParentSlideshowDefault } from '@/lib/slideshow/parent-templates';
 
 type RouteContext = { params?: Promise<{ id: string }> };
 
@@ -37,37 +38,23 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: Rout
   const inheritParentDefault = body?.inheritParentDefault === true || body?.inheritPartnerDefault === true;
   if (inheritParentDefault) {
     const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }, { projection: { contentDefaults: 1 } });
-    const partnerTemplate = partner?.contentDefaults?.slideshow;
-    const globalDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' }, { projection: { revision: 1, slideshow: 1 } });
-    const globalTemplate = globalDefaults?.slideshow;
-    const inheritedFromLevel = partnerTemplate && partnerTemplate.isActive !== false
-      ? 'partner'
-      : globalTemplate && globalTemplate.isActive !== false ? 'global' : null;
-    if (!inheritedFromLevel) return apiError('There is no active partner or global slideshow default to inherit.', 409);
+    const globalDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne(
+      { settingId: 'global-content-defaults' },
+      { projection: { revision: 1, slideshow: 1, slideshowTemplates: 1, defaultSlideshowTemplateId: 1 } },
+    );
+    const inherited = resolveParentSlideshowDefault(
+      partner?.contentDefaults as Record<string, unknown> | null | undefined,
+      globalDefaults as Record<string, unknown> | null | undefined,
+      String(event.partnerId ?? ''),
+    );
+    if (!inherited) return apiError('There is no active partner or global slideshow default to inherit.', 409);
     const current = await db.collection(COLLECTIONS.SLIDESHOWS).findOne({ eventId: event.eventId, isDefault: true });
     if (current) {
-      const set: Record<string, unknown> = {
-        inheritedFromLevel,
-        ...(inheritedFromLevel === 'partner'
-          ? { inheritedFromPartnerId: String(event.partnerId), inheritedPartnerRevision: -1 }
-          : { inheritedGlobalRevision: -1 }),
-        updatedAt: generateTimestamp(),
-      };
-      const unset: Record<string, ''> = { inheritanceMode: '' };
-      if (inheritedFromLevel !== 'partner') { unset.inheritedFromPartnerId = ''; unset.inheritedPartnerRevision = ''; }
-      if (inheritedFromLevel !== 'global') unset.inheritedGlobalRevision = '';
-      // Capture the event's original design once. Subsequent parent updates keep
-      // this baseline so returning to event-owned design never snapshots a parent.
-      if (!current.inheritanceBaseline || typeof current.inheritanceBaseline !== 'object') {
-        set.inheritanceBaseline = Object.fromEntries([
-          'name', 'isActive', 'transitionDurationMs', 'fadeDurationMs', 'bufferSize', 'refreshStrategy', 'playMode', 'orderMode', 'crossfade',
-          'backgroundPrimaryColor', 'backgroundAccentColor', 'backgroundImageUrl', 'viewportScale', 'stageAspect', 'screenDesign',
-        ].map((key) => [key, current[key] ?? null]));
-      }
-      await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
-        { _id: current._id },
-        { $set: set, $unset: unset },
-      );
+      // Apply the resolved parent config before marking its revision. Stamping
+      // inheritance metadata first made the resolver believe the design had
+      // already been applied, so choosing “Use parent default” appeared to do
+      // nothing for manually created event defaults and existing overrides.
+      await applyPartnerSlideshowDefault(db, event, current, { force: true });
     }
   }
   const result = await ensureDefaultSlideshow(db, event);

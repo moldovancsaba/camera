@@ -31,6 +31,7 @@ export const cameraAdminVocabularyPacks = [
     'customize-inherited-global': { defaultMessage: 'Customize inherited journey', icon: GdsIcons.Edit, feedback: savedFeedback },
     'event-inherit': { defaultMessage: 'Use parent default', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'select-default': { defaultMessage: 'Set as default', icon: GdsIcons.Check, feedback: savedFeedback },
+    test: { defaultMessage: 'Test journey', icon: GdsIcons.Eye, feedback: openedFeedback },
     edit: { defaultMessage: 'Edit journey', icon: GdsIcons.Edit, feedback: savedFeedback },
     'close-editor': { defaultMessage: 'Close editor', icon: GdsIcons.Cancel, feedback: openedFeedback },
     rename: { defaultMessage: 'Rename', icon: GdsIcons.Edit, feedback: savedFeedback },
@@ -42,6 +43,7 @@ export const cameraAdminVocabularyPacks = [
   }),
   createGdsVocabularyPack('event-journey', {
     select: { defaultMessage: 'Use for this event', icon: GdsIcons.Check, feedback: savedFeedback },
+    test: { defaultMessage: 'Test journey', icon: GdsIcons.Eye, feedback: openedFeedback },
     'customize-inherited': { defaultMessage: 'Customize inherited journey', icon: GdsIcons.Edit, feedback: savedFeedback },
     rename: { defaultMessage: 'Rename', icon: GdsIcons.Edit, feedback: savedFeedback },
     delete: { defaultMessage: 'Delete', icon: GdsIcons.Delete, feedback: deletedFeedback },

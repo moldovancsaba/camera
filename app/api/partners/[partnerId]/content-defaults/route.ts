@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { apiBadRequest, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, requireAuth, withErrorHandler } from '@/lib/api';
+import { apiBadRequest, apiError, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, requireAuth, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { getPartnerScopedAccessForPartner } from '@/lib/partners/authorization';
-import { cleanSlideshowDefault } from '@/lib/slideshow/content-defaults';
+import { mutateParentSlideshowTemplates, normalizeParentSlideshowTemplates } from '@/lib/slideshow/parent-templates';
 
 type Context = { params: Promise<{ partnerId: string }> };
 
@@ -53,24 +53,66 @@ async function loadPartner(request: NextRequest, partnerId: string, minRole: 'vi
 
 export const GET = withErrorHandler(async (request, context: Context) => {
   const { partnerId } = await context.params;
-  const { partner } = await loadPartner(request, partnerId, 'viewer');
-  return apiSuccess({ contentDefaults: partner.contentDefaults ?? { revision: 0, slideshow: null, landingPage: null } });
+  const { db, partner } = await loadPartner(request, partnerId, 'viewer');
+  const [globalSetting] = await Promise.all([
+    db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' }),
+  ]);
+  const local = normalizeParentSlideshowTemplates(
+    partner.contentDefaults as Record<string, unknown> | null,
+    `legacy-partner-slideshow-${partnerId}`,
+    false,
+  );
+  const global = normalizeParentSlideshowTemplates(globalSetting as Record<string, unknown> | null, 'legacy-global-slideshow', true);
+  return apiSuccess({
+    contentDefaults: { ...(partner.contentDefaults ?? {}), ...local },
+    global,
+  });
 });
 
 export const PATCH = withErrorHandler(async (request, context: Context) => {
   const { partnerId } = await context.params;
   const { db, partner, session } = await loadPartner(request, partnerId, 'manager');
-  const body = await request.json().catch(() => null) as { kind?: unknown; value?: unknown } | null;
+  const parsedBody: unknown = await request.json().catch(() => null);
+  if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) throw apiBadRequest('A content-default operation is required.');
+  const body = parsedBody as Parameters<typeof mutateParentSlideshowTemplates>[1] & { kind?: unknown; value?: unknown };
   const kind = body?.kind;
-  if (kind !== 'slideshow' && kind !== 'landingPage') throw apiBadRequest('kind must be slideshow or landingPage.');
+  if (kind === 'slideshowTemplate' || kind === 'slideshow') {
+    const state = normalizeParentSlideshowTemplates(
+      partner.contentDefaults as Record<string, unknown> | null,
+      `legacy-partner-slideshow-${partnerId}`,
+      false,
+    );
+    const next = mutateParentSlideshowTemplates(state, body, false, `legacy-partner-slideshow-${partnerId}`);
+    const previousRevision = partner.contentDefaults?.revision;
+    const filter = {
+      _id: partner._id,
+      ...(typeof previousRevision === 'number'
+        ? { 'contentDefaults.revision': previousRevision }
+        : { 'contentDefaults.revision': { $exists: false } }),
+    };
+    const saved = await db.collection(COLLECTIONS.PARTNERS).updateOne(filter, {
+      $set: {
+        // Keep this write scoped to slideshow fields. Replacing the whole
+        // contentDefaults object could erase an independent landing-page edit.
+        'contentDefaults.slideshowTemplates': next.slideshowTemplates,
+        'contentDefaults.defaultSlideshowTemplateId': next.defaultSlideshowTemplateId,
+        'contentDefaults.slideshow': next.slideshow,
+        'contentDefaults.revision': next.revision,
+        updatedAt: generateTimestamp(),
+        updatedBy: session.user.id,
+      },
+    });
+    if (saved.matchedCount !== 1) return apiError('These slideshow settings changed elsewhere. Reload and try again.', 409);
+    return apiSuccess({ contentDefaults: { ...next, landingPage: partner.contentDefaults?.landingPage ?? null } });
+  }
+  if (kind !== 'landingPage') throw apiBadRequest('kind must be slideshowTemplate or landingPage.');
   const value = body?.value;
   if (value !== null && (!value || typeof value !== 'object' || Array.isArray(value))) throw apiBadRequest('value must be an object or null.');
-  const cleanValue = value === null ? null : kind === 'slideshow' ? cleanSlideshowDefault(value as Record<string, unknown>) : cleanLandingPage(value as Record<string, unknown>);
+  const cleanValue = value === null ? null : cleanLandingPage(value as Record<string, unknown>);
   const updatedAt = generateTimestamp();
-  const field = kind === 'slideshow' ? 'slideshow' : 'landingPage';
   await db.collection(COLLECTIONS.PARTNERS).updateOne(
     { _id: partner._id },
-    { $set: { [`contentDefaults.${field}`]: cleanValue, updatedAt, updatedBy: session.user.id }, $inc: { 'contentDefaults.revision': 1 } },
+    { $set: { 'contentDefaults.landingPage': cleanValue, updatedAt, updatedBy: session.user.id }, $inc: { 'contentDefaults.revision': 1 } },
   );
   const saved = await db.collection(COLLECTIONS.PARTNERS).findOne({ _id: partner._id }, { projection: { 'contentDefaults.revision': 1 } });
   const revision = Math.max(1, Number(saved?.contentDefaults?.revision) || 1);
