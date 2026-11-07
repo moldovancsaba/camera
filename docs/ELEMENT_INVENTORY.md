@@ -4,6 +4,8 @@
 
 > **A frozen reading of `main` at 6db8dcd (2026-10-09); its rows are not updated.** Since then: the consent controls (the acceptance sentence on the Who-are-you page, the public gallery permission, the three documents of the default consent page) became the checkbox settings, shown or not and required or optional, at the partner, the event and each checkbox (issue 558; `docs/JOURNEY_DEFAULT_PAGES.md`), so the rows for those switches and for the old gallery control describe controls that are replaced; the camera setting is a four-way selector (issue 547); the try-on hub (`/admin/tryon`) with its Queue, Identity, Maintenance, Garments and AI Setups screens is gone; `/admin/tryon/vetting` is `/admin/vetting`; the vendored GDS is 6.8.0. Line numbers refer to that commit.
 
+> **Current-state note:** this inventory is historical. Since its snapshot, Global/Partner named slideshow defaults and Partner landing-page defaults were delivered. Current ownership and inheritance rules are in [PARTNER_CONTENT_DEFAULTS.md](PARTNER_CONTENT_DEFAULTS.md); do not use the frozen rows below as the current capability list.
+
 Research of 2026-10-09 (camera#412, register item 151), read from the code of `main` at 6db8dcd. **Nothing was run and nothing was changed.** It answers the owner's request to collect *all* elements needed to deliver an event (texts, graphics, anything visible on a screen, in an e-mail or in any admin screen), and to find which relates to what. The brick model that is built on it is [BUILDING_BRICKS.md](BUILDING_BRICKS.md).
 
 **477 rows in five readings** (flow 138, texts 72, graphics 108, admin editors 68, data model 91), and a sixth reading that measures how the admin screens use the design system (section F, 128 files). The same element can appear in more than one reading (the logo appears in all five); that overlap is the finding, not an error. Every row in the JSON files carries file and line references; the tables below shorten long cells (marked …). The full records are in [`_research/element-inventory/`](_research/element-inventory/).
@@ -514,7 +516,7 @@ Rows are in graphics.json (108, ids gfx-001 to gfx-108). levels_today: "event" =
 
 #### 3. Event-only, partner-only, global-only
 - Only colours, frames and logos are inherited event from partner (inheritPartnerDefaults). Everything else is typed per event: language, loading text, 3 emails, share-page texts, journey pages (welcome, consent, login, CTA, photo texts), try-on settings, slideshows, layouts, landing pages, short links.
-- Partner has no pages, texts, emails, pictures, try-on or slideshow defaults; Global has no default-content editor (journey defaults are code in lib/events/default-pages.ts plus one switch).
+- Historical snapshot only: Partner pages, texts, emails, pictures and slideshow defaults, plus a Global default-content editor, were not present at the snapshot date. Current landing-page and slideshow defaults are documented in `docs/PARTNER_CONTENT_DEFAULTS.md`; journey defaults are documented in `docs/GLOBAL_DEFAULT_JOURNEY.md`.
 - Users get a default consent page and login page that the Event pages editor never shows (it reads stored pages); pages cannot be switched off, only deleted.
 - Global-only with no partner level: garments and AI setups (events pick straight from global, breaking the one-way Global -> Partner -> Event rule of docs/LIBRARIES.md).
 - Partner-only: user access, delete partner, messmass logo import. Partner managers cannot edit the partner's default colours but can edit its frame and logo defaults.

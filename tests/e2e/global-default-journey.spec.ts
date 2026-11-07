@@ -61,6 +61,42 @@ test('global admin manages named journeys and explicitly changes the one global 
   await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll');
 });
 
+test('global journey list renders its test action and opens the selected active event flow', async ({ page }) => {
+  const eventId = 'abcdefabcdefabcdefabcdef';
+  const existing = template('global-existing', 'global', null, 'Global matchday journey');
+  await page.addInitScript(() => {
+    (window as Window & { __openedJourneyTests?: string[] }).__openedJourneyTests = [];
+    window.open = ((url?: string | URL) => {
+      (window as Window & { __openedJourneyTests?: string[] }).__openedJourneyTests?.push(String(url ?? ''));
+      return null;
+    }) as typeof window.open;
+  });
+  await page.route('**/api/**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname === '/api/auth/dev-login') return route.continue();
+    if (url.pathname === '/api/visual-assets/templates/default' && request.method() === 'GET') {
+      return route.fulfill({ json: { data: {
+        templateId: existing.templateId,
+        templates: [existing],
+        sourceEvents: [{ _id: eventId, name: 'MTK test event', partnerName: 'MTK Budapest', eventDate: '2026-10-16' }],
+        testEvents: [{ _id: eventId, name: 'MTK test event', partnerName: 'MTK Budapest', eventDate: '2026-10-16' }],
+      } } });
+    }
+    return route.fulfill({ json: { data: {} } });
+  });
+
+  await page.goto('/api/auth/dev-login?role=admin&access=true&email=journey-test@camera.local&name=Journey%20Editor&userId=global-journey-test-e2e&redirectTo=%2Fadmin%2Fsettings%2Fexperience');
+  await expect(page.getByRole('heading', { name: 'Global User Journey', level: 1 })).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Global matchday journey/ })).toBeChecked();
+  const testButton = page.getByRole('button', { name: 'Test journey' });
+  await expect(testButton).toBeVisible();
+  await testButton.click();
+  await expect.poll(() => page.evaluate(() => (window as Window & { __openedJourneyTests?: string[] }).__openedJourneyTests ?? []))
+    .toEqual([`/api/experience-journey-test?eventId=${eventId}&templateId=${existing.templateId}`]);
+  await expect(page.getByText('Oops! Something went wrong')).toHaveCount(0);
+});
+
 test('event manager selects one Event Journey and stable event links stay unchanged', async ({ page }) => {
   const eventId = 'abcdefabcdefabcdefabcdef';
   const captureUrl = `https://camera.messmass.com/capture/${eventId}`;

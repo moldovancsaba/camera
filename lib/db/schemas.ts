@@ -241,6 +241,10 @@ export interface Partner {
 export interface PartnerContentDefaults {
   revision: number;
   slideshow?: PartnerDefaultSlideshow | null;
+  /** Named configurations available to this partner. Event photos and players remain event-owned. */
+  slideshowTemplates?: ParentSlideshowTemplate[];
+  /** Selected partner default; null means inherit the global default. */
+  defaultSlideshowTemplateId?: string | null;
   landingPage?: PartnerDefaultLandingPage | null;
 }
 
@@ -250,6 +254,11 @@ export type PartnerDefaultSlideshow = Pick<Slideshow,
   | 'backgroundPrimaryColor' | 'backgroundAccentColor' | 'backgroundImageUrl'
   | 'viewportScale' | 'stageAspect' | 'screenDesign'
 >;
+
+export interface ParentSlideshowTemplate extends PartnerDefaultSlideshow {
+  templateId: string;
+  name: string;
+}
 
 export type PartnerDefaultLandingPage = Pick<LandingPage,
   | 'title' | 'description' | 'logoId' | 'logoUrl' | 'qrCodeImageUrl' | 'url' | 'urlButtonText'

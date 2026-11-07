@@ -30,6 +30,7 @@ import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { collectEventSpecificStats, type EventSpecificStats } from '@/lib/events/stats';
 import { parseMessmassStylePalette, type MessmassStylePalette } from '@/lib/theme/messmass-style-palette';
+import { resolveParentSlideshowDefault } from '@/lib/slideshow/parent-templates';
 
 interface EventFrameDetails {
   frameId: string;
@@ -142,7 +143,7 @@ export default async function EventDetailPage({
 
   let event: EventDoc | null = null;
   let partner: PartnerDoc | null = null;
-  let globalSlideshowDefault: PartnerContentDefaults['slideshow'] | null = null;
+  let inheritedSlideshowDefault: ReturnType<typeof resolveParentSlideshowDefault> = null;
   let photoCount = 0;
   let slideshows: SlideshowDoc[] = [];
   let slideshowLayouts: SlideshowLayoutDoc[] = [];
@@ -171,8 +172,15 @@ export default async function EventDetailPage({
     }
 
     partner = (await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId })) as PartnerDoc | null;
-    const globalContentDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' }, { projection: { slideshow: 1 } });
-    globalSlideshowDefault = (globalContentDefaults?.slideshow as PartnerContentDefaults['slideshow'] | null) ?? null;
+    const globalContentDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne(
+      { settingId: 'global-content-defaults' },
+      { projection: { revision: 1, slideshow: 1, slideshowTemplates: 1, defaultSlideshowTemplateId: 1 } },
+    );
+    inheritedSlideshowDefault = resolveParentSlideshowDefault(
+      partner?.contentDefaults as unknown as Record<string, unknown> | null | undefined,
+      globalContentDefaults as Record<string, unknown> | null | undefined,
+      event.partnerId,
+    );
     const styleContext = (event as unknown as { frameDesign?: { context?: { style?: unknown } } }).frameDesign?.context?.style;
     messmassStyle = parseMessmassStylePalette(styleContext);
     eventStats = await collectEventSpecificStats(db, event.eventId);
@@ -453,11 +461,8 @@ export default async function EventDetailPage({
       <SlideshowManager
         eventId={id}
         initialSlideshows={JSON.parse(JSON.stringify(slideshows))}
-        inheritedDefaultAvailable={Boolean(
-          (partner?.contentDefaults?.slideshow && partner.contentDefaults.slideshow.isActive !== false)
-          || (globalSlideshowDefault && globalSlideshowDefault.isActive !== false)
-        )}
-        inheritedDefaultLabel={partner?.contentDefaults?.slideshow && partner.contentDefaults.slideshow.isActive !== false ? 'partner default' : 'global default'}
+        inheritedDefaultAvailable={Boolean(inheritedSlideshowDefault)}
+        inheritedDefaultLabel={inheritedSlideshowDefault?.level === 'partner' ? 'partner default' : 'global default'}
         welcomeScreen={event.welcomeScreen ? { url: event.welcomeScreen.url, generatedAt: event.welcomeScreen.generatedAt } : null}
       />
 

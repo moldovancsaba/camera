@@ -1,33 +1,47 @@
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { apiBadRequest, apiSuccess, checkRateLimit, RATE_LIMITS, requireAdmin, withErrorHandler } from '@/lib/api';
+import { apiBadRequest, apiError, apiSuccess, checkRateLimit, RATE_LIMITS, requireAdmin, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
-import { cleanSlideshowDefault } from '@/lib/slideshow/content-defaults';
+import { mutateParentSlideshowTemplates, normalizeParentSlideshowTemplates } from '@/lib/slideshow/parent-templates';
 
-/** The one global slideshow fallback inherited by partners, then events. */
+const SETTING_ID = 'global-content-defaults';
+/** Named global slideshow defaults are inherited by partners and then events. */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   await requireAdmin(request);
   await checkRateLimit(request, RATE_LIMITS.ADMIN);
   const db = await connectToDatabase();
-  const setting = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' });
-  return apiSuccess({ revision: Number(setting?.revision) || 0, slideshow: setting?.slideshow ?? null });
+  const setting = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: SETTING_ID });
+  const state = normalizeParentSlideshowTemplates(setting as Record<string, unknown> | null, 'legacy-global-slideshow', true);
+  return apiSuccess(state);
 });
 
 export const PATCH = withErrorHandler(async (request: NextRequest) => {
   const session = await requireAdmin(request);
   await checkRateLimit(request, RATE_LIMITS.ADMIN);
-  const body = await request.json().catch(() => null) as { kind?: unknown; value?: unknown } | null;
-  if (body?.kind !== 'slideshow') throw apiBadRequest('kind must be slideshow.');
-  const value = body.value;
-  if (value !== null && (!value || typeof value !== 'object' || Array.isArray(value))) throw apiBadRequest('value must be an object or null.');
-  const slideshow = value === null ? null : cleanSlideshowDefault(value as Record<string, unknown>);
-  const updatedAt = generateTimestamp();
+  const parsedBody: unknown = await request.json().catch(() => null);
+  if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) throw apiBadRequest('A slideshow-template operation is required.');
+  const body = parsedBody as Parameters<typeof mutateParentSlideshowTemplates>[1];
+  if (!body || (body.kind !== 'slideshowTemplate' && body.kind !== 'slideshow')) throw apiBadRequest('kind must be slideshowTemplate.');
+
   const db = await connectToDatabase();
-  await db.collection(COLLECTIONS.ADMIN_SETTINGS).updateOne(
-    { settingId: 'global-content-defaults' },
-    { $set: { settingId: 'global-content-defaults', slideshow, updatedAt, updatedBy: session.user.email ?? null }, $inc: { revision: 1 } },
-    { upsert: true },
-  );
-  const saved = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' }, { projection: { revision: 1 } });
-  return apiSuccess({ kind: 'slideshow', value: slideshow, revision: Math.max(1, Number(saved?.revision) || 1), updatedAt });
+  const collection = db.collection(COLLECTIONS.ADMIN_SETTINGS);
+  const setting = await collection.findOne({ settingId: SETTING_ID });
+  const state = normalizeParentSlideshowTemplates(setting as Record<string, unknown> | null, 'legacy-global-slideshow', true);
+  const next = mutateParentSlideshowTemplates(state, body, true, 'legacy-global-slideshow');
+  const filter = setting
+    ? { settingId: SETTING_ID, ...(Object.hasOwn(setting, 'revision') ? { revision: setting.revision } : { revision: { $exists: false } }) }
+    : { settingId: SETTING_ID };
+  const saved = await collection.updateOne(filter, {
+    $set: {
+      settingId: SETTING_ID,
+      slideshowTemplates: next.slideshowTemplates,
+      defaultSlideshowTemplateId: next.defaultSlideshowTemplateId,
+      slideshow: next.slideshow,
+      revision: next.revision,
+      updatedAt: generateTimestamp(),
+      updatedBy: session.user.email ?? null,
+    },
+  }, { upsert: !setting });
+  if (setting && saved.matchedCount !== 1) return apiError('These slideshow settings changed elsewhere. Reload and try again.', 409);
+  return apiSuccess(next);
 });

@@ -23,6 +23,7 @@ import { createShortLink, listShortLinks } from '@/lib/short-links/store';
 import { repairDefaultSlideshowQr } from '@/lib/short-links/slideshow-qr';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { loadEventTheme } from '@/lib/theme/load';
+import { resolveParentSlideshowDefault } from '@/lib/slideshow/parent-templates';
 
 /** The name of the tracked link behind the QR code of the default screen, as the event's links list shows it. */
 export const GIANT_SCREEN_PLACEMENT = 'Giant screen';
@@ -52,21 +53,27 @@ export async function findDefaultSlideshow(db: Db, eventUuid: string): Promise<D
 }
 
 /** Applies the nearest active parent slideshow default, without overwriting an event-level override. */
-export async function applyPartnerSlideshowDefault(db: Db, event: Document, source: Document): Promise<Document> {
+export async function applyPartnerSlideshowDefault(
+  db: Db,
+  event: Document,
+  source: Document,
+  options: { force?: boolean } = {},
+): Promise<Document> {
+  const force = options.force === true;
   const partnerId = typeof event.partnerId === 'string' ? event.partnerId : '';
-  if (!partnerId || source.isDefault !== true || source.inheritanceMode === 'override') return source;
-  const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId }, { projection: { contentDefaults: 1 } });
-  const partnerDefaults = partner?.contentDefaults as { revision?: number; slideshow?: Record<string, unknown> | null } | undefined;
-  const globalDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' }, { projection: { revision: 1, slideshow: 1 } });
-  const partnerTemplate = partnerDefaults?.slideshow;
-  const globalTemplate = globalDefaults?.slideshow as Record<string, unknown> | null | undefined;
-  const inheritedFromLevel = partnerTemplate && partnerTemplate.isActive !== false
-    ? 'partner'
-    : globalTemplate && globalTemplate.isActive !== false ? 'global' : null;
-  const template = inheritedFromLevel === 'partner' ? partnerTemplate : inheritedFromLevel === 'global' ? globalTemplate : null;
-  const revision = inheritedFromLevel === 'partner'
-    ? Math.max(0, Number(partnerDefaults?.revision) || 0)
-    : Math.max(0, Number(globalDefaults?.revision) || 0);
+  if (source.isDefault !== true || (source.inheritanceMode === 'override' && !force)) return source;
+  const [partner, globalDefaults] = await Promise.all([
+    partnerId ? db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId }, { projection: { contentDefaults: 1 } }) : Promise.resolve(null),
+    db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' }, { projection: { revision: 1, slideshow: 1, slideshowTemplates: 1, defaultSlideshowTemplateId: 1 } }),
+  ]);
+  const resolved = resolveParentSlideshowDefault(
+    partner?.contentDefaults as Record<string, unknown> | null | undefined,
+    globalDefaults as Record<string, unknown> | null | undefined,
+    partnerId,
+  );
+  const inheritedFromLevel = resolved?.level ?? null;
+  const template = resolved?.slideshow ?? null;
+  const revision = resolved?.revision ?? 0;
   const isAlreadyInherited = source.inheritedFromLevel === 'partner' && source.inheritedFromPartnerId === partnerId
     || source.inheritedFromLevel === 'global'
     || (!source.inheritedFromLevel && source.inheritedFromPartnerId === partnerId);
@@ -76,7 +83,7 @@ export async function applyPartnerSlideshowDefault(db: Db, event: Document, sour
     : inheritedFromLevel === 'global' && source.inheritedFromLevel === 'global';
   const currentRevision = inheritedFromLevel === 'partner' ? source.inheritedPartnerRevision : source.inheritedGlobalRevision;
   if (!template) {
-    if (!isAlreadyInherited) return source;
+    if (!isAlreadyInherited || force) return source;
     const restoredAt = generateTimestamp();
     const baseline = source.inheritanceBaseline && typeof source.inheritanceBaseline === 'object'
       ? source.inheritanceBaseline as Record<string, unknown>
@@ -96,8 +103,8 @@ export async function applyPartnerSlideshowDefault(db: Db, event: Document, sour
     delete detached.inheritanceBaseline;
     return detached;
   }
-  if (!isAlreadyInherited && !isLegacyGeneratedDefault) return source;
-  if (sameInheritedSource && Number(currentRevision) === revision) return source;
+  if (!force && !isAlreadyInherited && !isLegacyGeneratedDefault) return source;
+  if (!force && sameInheritedSource && Number(currentRevision) === revision) return source;
   const baseline = source.inheritanceBaseline && typeof source.inheritanceBaseline === 'object'
     ? source.inheritanceBaseline as Record<string, unknown>
     : {
@@ -119,7 +126,7 @@ export async function applyPartnerSlideshowDefault(db: Db, event: Document, sour
       };
   const sourceDesign = source.screenDesign && typeof source.screenDesign === 'object' ? source.screenDesign as Record<string, unknown> : null;
   const baselineDesign = baseline.screenDesign && typeof baseline.screenDesign === 'object' ? baseline.screenDesign as Record<string, unknown> : null;
-  const templateDesign = template.screenDesign && typeof template.screenDesign === 'object' ? template.screenDesign as Record<string, unknown> : null;
+  const templateDesign = template.screenDesign && typeof template.screenDesign === 'object' ? template.screenDesign as unknown as Record<string, unknown> : null;
   const sourceQr = sourceDesign?.qr && typeof sourceDesign.qr === 'object' ? sourceDesign.qr as Record<string, unknown> : null;
   const baselineQr = baselineDesign?.qr && typeof baselineDesign.qr === 'object' ? baselineDesign.qr as Record<string, unknown> : null;
   const templateQr = templateDesign?.qr && typeof templateDesign.qr === 'object' ? templateDesign.qr as Record<string, unknown> : null;
@@ -160,7 +167,9 @@ export async function applyPartnerSlideshowDefault(db: Db, event: Document, sour
   if (inheritedFromLevel !== 'partner') { unset.inheritedFromPartnerId = ''; unset.inheritedPartnerRevision = ''; }
   if (inheritedFromLevel !== 'global') unset.inheritedGlobalRevision = '';
   await db.collection(COLLECTIONS.SLIDESHOWS).updateOne({ _id: source._id }, { $set: set, $unset: unset });
-  return { ...source, ...set };
+  const applied: Document = { ...source, ...set };
+  for (const key of Object.keys(unset)) delete applied[key];
+  return applied;
 }
 
 /**

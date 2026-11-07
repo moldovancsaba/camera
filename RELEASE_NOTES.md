@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — Global and Partner slideshow versions and Experience page stability
+
+- **Added:** Global and Partner slideshow settings are named, reusable versions with list, create, edit, rename, delete, and one selected default. Partners may inherit the Global default; events inherit their Partner default, falling back to Global, until an event selects its own slideshow.
+- **Changed:** Global and Partner slideshow workspaces use the same configuration editor and live preview. Event players, photos, QR destinations, and public runtime records remain event-owned; applying a parent default preserves each event's tracked QR destination and does not replace an event override unless the manager explicitly chooses the parent default.
+- **Fixed:** Journey-list “Test journey” controls now have registered GDS actions and are shown only when an active event context exists, preventing the Experience settings page from failing while rendering an unknown semantic action or showing a nonfunctional test button.
+- **Verification:** Pending local release checks and GitHub Verify. Database-backed browser verification requires a disposable test MongoDB connection; production data is not used for tests.
+
 ## v12.3.47 — live responsive preview in the shared journey editor
 
 - **Added:** the Global, Partner, and Event journey page editor now shows the guest page beside its settings on desktop. The preview uses the current unsaved draft and updates as fields change; a viewport selector switches between mobile, tablet, and desktop proportions.
@@ -108,9 +115,9 @@
 - **Fixed:** the frame inventory no longer renders sharing actions as duplicate generic “Edit” buttons; the sharing control is an accessible GDS icon action.
 - **Changed (data):** scoped six legacy unowned frames to their verified partner/event owners, created an event-owned copy for the existing cross-partner assignment, and preserved all 21 event assignments and partner references. No media files were deleted. The Global Frames inventory is empty.
 - **Verification:** type-check, focused ESLint, GDS checks, inventory checks, production guards, production build, and `git diff --check` passed. Unit and browser tests were not run.
-## Unreleased — partner landing-page and slideshow defaults
+## Historical rollout — partner landing-page and initial slideshow defaults (superseded for slideshow management)
 
-- **Added:** partner-scoped editors and authenticated APIs for saving/removing a default landing-page template and slideshow configuration.
+- **Added:** partner-scoped editors and authenticated APIs for saving/removing a default landing-page template and an initial single slideshow configuration. The single slideshow configuration has since been superseded by the named Global/Partner version manager documented above.
 - **Added:** events inherit partner defaults. Partner revisions refresh inherited event records; editing/choosing an event default detaches it and preserves that event override.
 - **Changed:** removing a partner default restores inherited event slideshows to their generated event baseline and removes inherited landing-page copies; event overrides remain unchanged.
 - **Added:** the stable public URL `/landing/event/<event Mongo id>` resolves the event's own default first, otherwise the current partner default, and redirects to its event-specific canonical page. Partner capture-action URLs can use `{eventCaptureUrl}`.

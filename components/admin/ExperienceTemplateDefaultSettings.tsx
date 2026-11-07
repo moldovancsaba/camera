@@ -193,14 +193,17 @@ export default function ExperienceTemplateDefaultSettings({ level, resourceId, s
       id: 'inherit', value: 'inherit', name: data?.globalTemplateName || ui('Global default journey'),
       detail: ui('Following the global default'), selected: choice === 'inherit', canSelect: true,
       canCustomize: Boolean(canManage && data?.globalTemplateId),
-      testTemplateId: data?.globalTemplateId ?? undefined,
+      // Testing an inherited journey still needs an eligible event context.
+      testTemplateId: testEventId && data?.globalTemplateId ? data.globalTemplateId : undefined,
     }] : []),
     ...(data?.templates ?? []).map((template) => ({
       id: template.templateId, value: template.templateId, name: template.name,
       detail: ui(level === 'global' ? 'Global journey' : 'Partner journey'),
       selected: activeId === template.templateId, busy: savingId === template.templateId || creating,
       canEdit: canManage, canRename: canManage, canDelete: canManage && activeId !== template.templateId,
-      testTemplateId: template.templateId,
+      // A parent journey test needs a real, active event context. Do not render
+      // a button that silently does nothing when no eligible event exists.
+      testTemplateId: testEventId ? template.templateId : undefined,
     })),
   ];
 
