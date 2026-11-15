@@ -1,6 +1,6 @@
 # Camera photo content precheck
 
-**Status:** implemented in this branch; live task/model discovery and a one-image provider smoke test passed in Preview. Full capture-to-reviewer verification still needs a consented test submission.
+**Status:** merged to main 2026-11-15 (PR #735), off by default per event; live task/model discovery and a one-image provider smoke test passed in Preview. Full capture-to-reviewer verification still needs a consented test submission.
 **Owner:** Camera.  
 **Boundary:** this is a moderation signal for the existing human Vetting workflow. It does not make Fanmass audience/brand analytics, change publication state, or replace a person's decision.
 
