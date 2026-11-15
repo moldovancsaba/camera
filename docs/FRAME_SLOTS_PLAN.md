@@ -36,9 +36,13 @@ This document is the design. The feasibility check (one server renderer, every c
 | 1 Model and checks | built (`lib/frame/slots.ts`, `slots-draft.ts`) |
 | 2 Layout and drawing | built (`slot-layout.ts`, `renderSlotFrame`, the variants pipeline); the default slots equal the generated frame in numbers and in pixels |
 | 3 Save and a preview | built (`PUT /frame-slots`, `POST /frame-slots/preview`, the snapshot refresh keeps `slots`) |
-| 4 The admin panel | built (`FrameSlotsPanel` on the event's Frames page) |
-| 5 Partner and general defaults | built (owner answer 220, "now"): `lib/frame/slots-inherit.ts`, `default-slots.ts`, the routes `/api/partners/<id>/frame-slots` and `/api/admin/frame-slots`, `DefaultSlotsPanel` on the partner's Frames page and Settings, Frame slots; followers are redrawn one event at a time |
+| 4 The admin panel | built (`FrameSlotsPanel` on the event's Frames page, under the collapsed **Advanced generated-frame layout** section) |
+| 5 Partner and general defaults | built (owner answer 220, "now"): `lib/frame/slots-inherit.ts`, `default-slots.ts`, the routes `/api/partners/<id>/frame-slots` and `/api/admin/frame-slots`, `DefaultSlotsPanel` under the collapsed **Advanced generated-frame layout** section on Global and Partner Frames pages; followers are redrawn one event at a time |
 | 6 Guide and the MTK set-up | the guide is written in English and Hungarian (messmass `docs/guides/guides-tutorial-camera-frame-slots.md`, messmass#442 and #443); the MTK set-up is still the owner's go (it changes a live event) |
+
+### Admin entry point and naming (2026-11-02)
+
+The Frame Slots item is no longer a separate navigation destination. Global, Partner and Event frames and slot composition are reached from the matching **Frames** workspace; old Frame Slots page URLs redirect to the advanced layout section. The underlying APIs and saved slot data remain unchanged. The advanced section is optional composition configuration and does not add a frame to the user's chooser. At upload, every frame needs a chooser name; an Event upload additionally lets the manager choose an existing event message, add one, or leave the frame without a message. That printed message is separate from the chooser name. New event wording is saved and linked to the uploaded frame; its default text area is lower-center and can be adjusted after upload. Global and Partner uploads stay wording-neutral. Owned frame editors can replace the image or chooser name while preserving identity and assignments.
 
 ## 3. Not in this plan
 

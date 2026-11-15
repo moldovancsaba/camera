@@ -88,6 +88,7 @@ export interface WhoAreYouPageProps {
   captureSubmissionId?: string | null;
   captureSourceSlug?: string | null;
   onBeforeSocialLogin?: () => Promise<boolean>;
+  preview?: boolean;
 }
 
 export default function WhoAreYouPage({
@@ -108,6 +109,7 @@ export default function WhoAreYouPage({
   captureSourceSlug,
   onBeforeSocialLogin,
   onDraftChange,
+  preview = false,
 }: WhoAreYouPageProps) {
   const { t, own } = useT();
   const [name, setName] = useState(initialData?.name ?? '');
@@ -201,6 +203,7 @@ export default function WhoAreYouPage({
       title={own('login.title', config.title)}
       description={own('login.description', config.description)}
       logoUrl={logoUrl}
+      preview={preview}
     >
       {acceptance ? (
         <Box p="xs" style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }} data-acceptance>

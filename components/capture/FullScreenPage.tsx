@@ -16,10 +16,11 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { CAMERA_STAGE_BLACK } from '@/lib/gds/tokens/colors';
 
-export default function FullScreenPage({ children, marker }: { children: ReactNode; marker: Record<`data-${string}`, string> }) {
+export default function FullScreenPage({ children, marker, preview = false }: { children: ReactNode; marker: Record<`data-${string}`, string>; preview?: boolean }) {
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    if (preview) return;
     const el = ref.current;
     if (!el) return;
     const root = document.documentElement;
@@ -30,13 +31,13 @@ export default function FullScreenPage({ children, marker }: { children: ReactNo
       root.style.backgroundColor = before.background;
       root.style.overscrollBehavior = before.bounce;
     };
-  }, []);
+  }, [preview]);
 
   return (
     <main
       ref={ref}
       {...marker}
-      style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', containerType: 'size', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}
+      style={{ position: preview ? 'absolute' : 'fixed', inset: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', containerType: 'size', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}
     >
       {children}
     </main>

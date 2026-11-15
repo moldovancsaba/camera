@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import type { ImageCopy } from '@/lib/db/schemas';
 import { uploadToImgbbOnly, deleteImage, type MirrorResult } from '@/lib/imgbb/upload';
 import { isRenderableImgbbImageUrl } from '@/lib/imgbb/url';
-import { deleteCameraOriginalR2Copy, putVerifiedOriginalR2Copy } from '@/lib/storage/r2';
+import { deleteCameraImageR2Copy, putVerifiedOriginalR2Copy } from '@/lib/storage/r2';
 import { logWarn } from '@/lib/observability/logger';
 
 const MAX_ORIGINAL_BYTES = 15 * 1024 * 1024;
@@ -116,7 +116,7 @@ export async function createRequiredOriginalBackups(input: {
     // so always try deleting the deterministic R2 key. Capture unsuccessful
     // rollbacks in the asset manifest so the scheduled cleanup can retry them.
     const cleanup = await Promise.allSettled([
-      deleteCameraOriginalR2Copy(key),
+      deleteCameraImageR2Copy(key),
       uploadedImgBb ? deleteImage(uploadedImgBb.deleteUrl, uploadedImgBb.imageUrl) : Promise.resolve(true),
     ]);
     const cleanupPendingCopies: ImageCopy[] = [];
@@ -153,7 +153,7 @@ export async function deleteOriginalBackupCopies(copies: ImageCopy[]): Promise<v
   await Promise.all(external.map(async (copy) => {
     if (copy.store === 'r2') {
       if (!copy.objectKey) throw new Error('Original R2 object key is missing');
-      await deleteCameraOriginalR2Copy(copy.objectKey);
+      await deleteCameraImageR2Copy(copy.objectKey);
       return;
     }
     if (copy.store === 'imgbb') {

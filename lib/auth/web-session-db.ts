@@ -51,6 +51,9 @@ export async function saveWebSessionDocument(session: StoredWebSession): Promise
   const expireAt = new Date(session.expiresAt);
   await db.collection(COLLECTIONS.WEB_SESSIONS).insertOne({
     sid,
+    // Persist the normalized verified identity separately so account recovery and
+    // merge lookups don't depend on a Camera photo submission existing first.
+    identityEmailNormalized: typeof session.user.email === 'string' ? session.user.email.trim().toLowerCase() : '',
     expireAt,
     session,
     createdAt: new Date(),

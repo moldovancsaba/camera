@@ -51,9 +51,8 @@ export interface ExperienceTemplate {
 }
 
 export interface ExperienceTemplateSelection {
-  /** Explicit local template disables inheritance only for this level. */
+  /** Follow the parent's one selected journey, or choose this level's version. */
   mode: 'inherit' | 'template';
-  templateId?: string | null;
-  /** Per-field edits overlay the selected template and remain local. */
-  overrides?: Record<string, unknown>;
+  /** Required when mode is `template`; never null/disable. */
+  templateId?: string;
 }

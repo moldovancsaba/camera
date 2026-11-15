@@ -6,12 +6,11 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { getInactiveUserEmails } from '@/lib/db/sso';
-import { CONSENT_ELIGIBLE_FILTER } from '@/lib/events/consent-eligibility';
+import { CONSENT_ELIGIBLE_FILTER, ownerMediaUseMongoFilter } from '@/lib/events/consent-eligibility';
 import { processingContactMongoFilter } from '@/lib/submissions/guest-contact';
 import { notWaitingOrRejectedClause, plainPhotoClause } from '@/lib/submissions/visibility';
 
 export { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
-import { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
 
 export async function galleryFilter(eventUuid: string): Promise<Document> {
   const inactiveEmails = await getInactiveUserEmails();
@@ -26,15 +25,26 @@ export async function galleryFilter(eventUuid: string): Promise<Document> {
     ],
   };
   const notErasedOrDeleted = {
-    retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] },
-    'privacyErasure.state': { $nin: ['fenced', 'record_erased'] },
-    analyticsDeletion: { $nin: ['manual', 'automatic_no_login', 'automatic_other'] },
+    $and: [
+      {
+        $or: [
+          { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+          ownerMediaUseMongoFilter('public_gallery', eventUuid),
+        ],
+      },
+      { 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } },
+      {
+        $or: [
+          { analyticsDeletion: { $nin: ['manual', 'automatic_no_login', 'automatic_other'] } },
+          ownerMediaUseMongoFilter('public_gallery', eventUuid),
+        ],
+      },
+    ],
   };
   return {
     $and: [
       { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
       { isArchived: { $ne: true } },
-      processingContactMongoFilter,
       // A plain photo: a stored try-on result of the removed integration is not a photo of the event (issue 557).
       plainPhotoClause,
       // A picture that is gone is not shown, in any gallery (lib/media/broken.ts); the page says how many it hides.
@@ -50,7 +60,9 @@ export async function galleryFilter(eventUuid: string): Promise<Document> {
           { $and: [{ 'metadata.adminGalleryUpload': true }, hasDisplayImage, notErasedOrDeleted] },
           // Guest photos need a complete timestamped audit. `expired` and
           // unknown consent cannot appear, even if a prior review decision remains.
-          { $and: [CONSENT_ELIGIBLE_FILTER, hasDisplayImage, notErasedOrDeleted] },
+          { $and: [CONSENT_ELIGIBLE_FILTER, processingContactMongoFilter, hasDisplayImage, notErasedOrDeleted] },
+          // An event owner's explicit, event-scoped rights instruction is recorded separately; it does not fabricate participant consent.
+          { $and: [ownerMediaUseMongoFilter('public_gallery', eventUuid), hasDisplayImage, notErasedOrDeleted] },
         ],
       },
       {
@@ -63,9 +75,13 @@ export async function galleryFilter(eventUuid: string): Promise<Document> {
   };
 }
 
-export async function loadGallerySubmissions(db: Db, eventUuid: string, limit: number = GALLERY_PAGE_SIZE): Promise<{ submissions: Document[]; total: number }> {
+export async function loadGallerySubmissions(db: Db, eventUuid: string, limit?: number): Promise<{ submissions: Document[]; total: number }> {
   const filter = await galleryFilter(eventUuid);
-  const submissions = await db.collection(COLLECTIONS.SUBMISSIONS).find(filter).sort({ createdAt: -1 }).limit(limit).toArray();
+  let cursor = db.collection(COLLECTIONS.SUBMISSIONS).find(filter).sort({ createdAt: -1 });
+  if (typeof limit === 'number' && limit > 0) {
+    cursor = cursor.limit(limit);
+  }
+  const submissions = await cursor.toArray();
   const total = await db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(filter);
   return { submissions, total };
 }

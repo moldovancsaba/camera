@@ -21,7 +21,7 @@ export default function ProcessingOverlay({ message, logoUrl, logoAlt }: { messa
     >
       <div data-event-card className="flex w-full max-w-xs flex-col items-center gap-3 p-6 text-center shadow-lg">
         {logoUrl ? <Image src={logoUrl} alt={logoAlt ?? ''} width={96} height={96} unoptimized className="object-contain" /> : null}
-        <Loader size="md" color="var(--event-button-bg)" />
+        <Loader size="md" color="var(--event-control-accent)" />
         <p className="font-medium">{message}</p>
       </div>
     </div>

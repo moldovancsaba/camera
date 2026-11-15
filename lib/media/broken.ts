@@ -9,7 +9,7 @@
 import type { Db, Document, ObjectId } from 'mongodb';
 import { ObjectId as Oid } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { isAllowedLogoUrl } from '@/lib/frame/logo';
+import { isProbeableStoredImageUrl } from '@/lib/media/image-source-policy';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 
 export type PictureCheck = 'ok' | 'broken' | 'unknown';
@@ -28,7 +28,7 @@ const CHECK_TIMEOUT_MS = 10_000;
  * else (a timeout, a server error, a refusal, an address that is not one of our image hosts). A one-byte range is asked for, so no picture is downloaded.
  */
 export async function checkPicture(url: string, fetchImpl: typeof fetch = fetch): Promise<PictureCheck> {
-  if (!isAllowedLogoUrl(url)) return 'unknown';
+  if (!isProbeableStoredImageUrl(url)) return 'unknown';
   try {
     const res = await fetchImpl(url, { headers: { Range: 'bytes=0-0', Accept: 'image/*' }, signal: AbortSignal.timeout(CHECK_TIMEOUT_MS), redirect: 'follow' });
     if (res.status === 404 || res.status === 410) return 'broken';

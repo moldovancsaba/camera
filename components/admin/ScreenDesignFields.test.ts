@@ -16,9 +16,13 @@ test('the overlay chosen from the library is stored as the same plain address, a
   assert.equal(parsed.ok && parsed.value?.overlayImageUrl, LIBRARY_PICTURE.imageUrl);
 });
 
-test('an overlay address in no library keeps working, an empty one removes the design, and the https check stays', () => {
+test('an overlay address in no library keeps working, removing every graphic layer keeps the photo window, and the https check stays', () => {
   assert.equal(designFromDraft(draft(R2_OVERLAY))?.overlayImageUrl, R2_OVERLAY);
-  assert.equal(designFromDraft(draft('  ')), null, 'Clear in the picker: no picture, a plain slideshow');
+  const windowOnlyDraft = { ...emptyDraft(), left: '2', top: '3', width: '69', height: '69' };
+  const windowOnly = { window: { left: 2, top: 3, width: 69, height: 69 }, photoFit: 'cover' as const };
+  assert.deepEqual(designFromDraft(draft('  ')), windowOnly, 'clearing the overlay keeps the plain photo window');
+  assert.deepEqual(designFromDraft(windowOnlyDraft), windowOnly, 'a plain photo window remains valid after all graphic layers are removed');
+  assert.equal(designFromDraft(emptyDraft()), null, 'a never-configured empty form does not create a partial design');
   for (const bad of ['http://i.ibb.co/x/overlay.png', 'overlay.png', 'https://user:secret@example.test/overlay.png']) {
     assert.equal(parseScreenDesign(designFromDraft(draft(bad))).ok, false, bad);
   }
@@ -52,6 +56,33 @@ test('a text keeps its own fit setting through the editor: a fixed size stays fi
     { text: 'Filled', x: 1, y: 90, width: 60, size: 9, align: 'center' as const, fit: true },
   ] };
   assert.deepEqual(designFromDraft(draftFromDesign(design)), design);
+});
+
+test('hidden layers keep their content through an editor round trip, and QR/text can work without an overlay', () => {
+  const design = {
+    window: { left: 2, top: 3, width: 69, height: 69 },
+    photoFit: 'cover' as const,
+    qr: { url: 'https://go.example.test/event', x: 73, y: 2, size: 24, visible: false },
+    texts: [{ text: 'Event address', x: 2, y: 80, width: 69, size: 8, align: 'center' as const, visible: false }],
+  };
+  const draft = draftFromDesign(design);
+  assert.equal(draft.qrVisible, false);
+  assert.equal(draft.texts[0].visible, false);
+  assert.deepEqual(designFromDraft(draft), design);
+});
+
+test('overlay and QR can be hidden reversibly without deleting their addresses', () => {
+  const initial = { ...draft(R2_OVERLAY), ...WINDOW, qrUrl: 'https://go.example.test/event', qrX: '70', qrY: '2', qrSize: '20' };
+  const hidden = designFromDraft({ ...initial, overlayVisible: false, qrVisible: false });
+  assert.equal(hidden?.overlayImageUrl, R2_OVERLAY);
+  assert.equal(hidden?.overlayVisible, false);
+  assert.equal(hidden?.qr?.url, 'https://go.example.test/event');
+  assert.equal(hidden?.qr?.visible, false);
+  const restored = draftFromDesign(hidden);
+  assert.equal(restored.overlayVisible, false);
+  assert.equal(restored.qrVisible, false);
+  assert.equal(designFromDraft({ ...restored, overlayVisible: true, qrVisible: true })?.overlayVisible, undefined);
+  assert.equal(designFromDraft({ ...restored, overlayVisible: true, qrVisible: true })?.qr?.visible, undefined);
 });
 
 test('a QR code address typed without https:// gets it, so the save is not refused (owner, 2026-10-09: "screenDesign.qr needs an https address")', () => {

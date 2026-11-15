@@ -1,11 +1,12 @@
 /**
  * Rollout of the generated default frame to the events that already exist (docs/DEFAULT_FRAME_PLAN.md, camera#238).
  *
- * Which events: every event with no active frame of its own and no generated images yet. Events with an own active
- * frame are never touched, events that already have images are skipped, so a run can be repeated and an interrupted
- * run continues where it stopped. `dryRun` writes nothing (and, with `probe`, only reads from messmass); `runBackfillBatch`
- * takes the snapshot and draws the images for a few events per call, within a time budget, and reports failures per
- * event without stopping. A linked event whose messmass answer is missing is not drawn from camera's fallback; it waits. Dependencies are injected so it is unit-tested without a network or a database server.
+ * Which events: only those with `generatedFrameEnabled === true`, no active complete frame of their own, and no
+ * current generated images (or stale images in redraw mode). Events without an explicit opt-in are never enrolled by
+ * this tool. `dryRun` writes nothing (and, with `probe`, only reads from messmass); `runBackfillBatch` takes the
+ * snapshot and draws the images for a few events per call, within a time budget, and reports failures per event
+ * without stopping. A linked event whose messmass answer is missing is not drawn from camera's fallback; it waits.
+ * Dependencies are injected so it is unit-tested without a network or a database server.
  */
 
 import type { Db, Document } from 'mongodb';
@@ -19,6 +20,8 @@ import { generateFrameVariants } from './variants';
 
 export type Classification =
   | { kind: 'own-frame' }
+  /** Events without explicit opt-in are never generated or redrawn by the global maintenance tool. */
+  | { kind: 'opted-out' }
   /** Has generated images; `stale` when some were drawn with an older drawing code (or before the version was kept). */
   | { kind: 'done'; stale: boolean }
   | { kind: 'todo'; linked: boolean; hasSnapshot: boolean; inactive: boolean };
@@ -27,6 +30,7 @@ export type Classification =
 export function classifyEvent(event: Document): Classification {
   const frames = Array.isArray(event.frames) ? (event.frames as Array<{ isActive?: boolean }>) : [];
   if (frames.some((frame) => frame?.isActive)) return { kind: 'own-frame' };
+  if (event.generatedFrameEnabled !== true) return { kind: 'opted-out' };
   const variants = Array.isArray(event.frameDesign?.variants) ? (event.frameDesign.variants as Array<{ imageUrl?: unknown; renderVersion?: unknown }>) : [];
   if (variants.some((variant) => typeof variant?.imageUrl === 'string' && variant.imageUrl)) {
     return { kind: 'done', stale: variants.some((variant) => typeof variant?.renderVersion !== 'number' || variant.renderVersion < FRAME_RENDER_VERSION) };
@@ -61,6 +65,8 @@ export interface BackfillReport {
   total: number;
   /** Untouched: an active frame of their own. */
   ownFrame: number;
+  /** Untouched: the event has not explicitly enabled its generated default frame. */
+  optedOut: number;
   /** Skipped: generated images exist already. */
   done: number;
   /** Of those, how many have images drawn with an older drawing code; the "redraw" run draws them again (camera#274). */
@@ -94,7 +100,7 @@ const defaultDeps: BackfillDeps = {
   now: () => Date.now(),
 };
 
-const PROJECTION = { name: 1, messmassEventId: 1, frames: 1, isActive: 1, partnerId: 1, 'frameDesign.context': 1, 'frameDesign.variants.imageUrl': 1, 'frameDesign.variants.renderVersion': 1 };
+const PROJECTION = { name: 1, messmassEventId: 1, frames: 1, isActive: 1, partnerId: 1, generatedFrameEnabled: 1, 'frameDesign.context': 1, 'frameDesign.variants.imageUrl': 1, 'frameDesign.variants.renderVersion': 1 };
 const sortKey = (event: Document) => String(event._id);
 
 async function listEvents(db: Db): Promise<Document[]> {
@@ -175,6 +181,7 @@ export async function dryRun(db: Db, options: { probe?: boolean } = {}, deps: Ba
   const report: BackfillReport = {
     total: events.length,
     ownFrame: 0,
+    optedOut: 0,
     done: 0,
     doneStale: 0,
     todo: 0,
@@ -189,6 +196,7 @@ export async function dryRun(db: Db, options: { probe?: boolean } = {}, deps: Ba
   for (const event of events) {
     const c = classifyEvent(event);
     if (c.kind === 'own-frame') report.ownFrame += 1;
+    else if (c.kind === 'opted-out') report.optedOut += 1;
     else if (c.kind === 'done') {
       report.done += 1;
       if (c.stale) report.doneStale += 1;

@@ -45,6 +45,7 @@ export type WelcomeScreenResult = { ok: true; url: string; created: boolean } | 
 
 /** The frame/message variant chosen for the welcome composition, else the historical no-message/first-variant default. */
 function frameImageUrl(event: Document): string | null {
+  if (event.generatedFrameEnabled !== true) return null;
   const variants = (event.frameDesign as FrameDesign | undefined)?.variants ?? [];
   const selected = event.welcomeScreenComposition as { frameId?: unknown; messageIndex?: unknown } | undefined;
   const chosen = selected && variants.find((variant) => (variant.frameId ?? null) === (typeof selected.frameId === 'string' ? selected.frameId : null) && variant.index === (Number.isInteger(selected.messageIndex) ? selected.messageIndex : null));
@@ -66,6 +67,8 @@ export async function ensureWelcomeScreen(db: Db, event: Document, deps: Welcome
   const design = parsed.value;
 
   const theme = await loadEventTheme(db, event);
+  // The generated welcome screen contains guest actions, so its accent follows the same configured button fill as the journey.
+  // Contrast diagnostics are shown in the editor; they must never rewrite the palette used for the image.
   const colours = { background: theme.background, accent: theme.buttonBackground };
   const font = await deps.resolveFont({ fontFamily: design.fontFamily ?? theme.font.family, fontSource: design.fontFamily ? 'google' : theme.font.source, fontFile: design.fontFamily ? null : theme.font.file });
   const frameUrl = frameImageUrl(event);
@@ -81,9 +84,10 @@ export async function ensureWelcomeScreen(db: Db, event: Document, deps: Welcome
     return { ok: true, url: stored.url, created: false };
   }
 
-  // The overlay is fetched only when something is drawn (since the automatic redraw, issue 327, asks after every change of a source, "nothing changed" must not cost a network call).
-  const overlay = await deps.fetchImage(design.overlayImageUrl);
-  if (!overlay) return { ok: false, reason: 'The overlay picture of the screen design could not be fetched.' };
+  // Fetch only a visible configured overlay; disabled layers stay saved but do not add work to the generated welcome picture.
+  const wantsOverlay = Boolean(design.overlayImageUrl) && design.overlayVisible !== false;
+  const overlay = wantsOverlay && design.overlayImageUrl ? await deps.fetchImage(design.overlayImageUrl) : null;
+  if (wantsOverlay && !overlay) return { ok: false, reason: 'The overlay picture of the screen design could not be fetched.' };
 
   const window = await fetchWindow(plan, deps);
   // The key says what was really drawn: when the first sample selfie could not be fetched, the next one is what is in the picture (and becomes the pick).

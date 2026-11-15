@@ -7,6 +7,7 @@ import { runAfterResponse } from '@/lib/api/run-after-response';
 import { isCountableVisit } from '@/lib/short-links/device';
 import { recordServerJourney } from '@/lib/journey/store';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
+import { isBlobStorageHostname } from '@/lib/imgbb/url';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,7 @@ export async function GET(
     // offered the approved try-on pictures of the photo until the try-on integration was removed (issue 557); a stored try-on result is not
     // public (the rule above), so it has no download.
     const imageUrl = requestedVariantId === `${String(doc._id)}:camera-result` ? readString(doc.imageUrl) : null;
-    if (!imageUrl) {
+    if (!imageUrl || !isCameraBlobUrl(imageUrl)) {
       return NextResponse.json({ error: 'No downloadable image available' }, { status: 404 });
     }
 
@@ -93,5 +94,15 @@ export async function GET(
   } catch (error) {
     console.error('Error downloading share image:', error);
     return NextResponse.json({ error: 'Failed to download image' }, { status: 500 });
+  }
+}
+
+/** Share downloads are production image delivery: only Camera's Blob source is eligible, never an ImgBB backup URL. */
+function isCameraBlobUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash && isBlobStorageHostname(url.hostname) && url.pathname !== '/';
+  } catch {
+    return false;
   }
 }

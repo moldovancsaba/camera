@@ -53,6 +53,7 @@ export const GET = withErrorHandler(async (request: NextRequest, context?: Route
 
   return apiSuccess({
     frameDesign: event.frameDesign ?? null,
+    generatedFrameEnabled: event.generatedFrameEnabled === true,
     defaultMessages: DEFAULT_FRAME_MESSAGES,
     limits: { maxMessages: MAX_FRAME_MESSAGES, maxLength: MAX_FRAME_MESSAGE_LENGTH, maxImages: MAX_FRAME_IMAGES },
     availableFrames: [...carriers.values()].map(({ frameId, name, imageUrl }) => ({ frameId, name, imageUrl })),
@@ -73,9 +74,9 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object') throw apiBadRequest('A JSON body is required');
   const saved = await saveFrameMessages(db, event, body as { messages?: unknown; reset?: unknown; messageFrames?: unknown; darkArea?: unknown });
-  const images = await generateFrameVariants(db, { ...event, frameDesign: saved }).catch((error: unknown) => {
+  const images = await generateFrameVariants(db, { ...event, frameDesign: saved }, undefined, { includeGeneratedFallback: event.generatedFrameEnabled === true }).catch((error: unknown) => {
     console.error(`Event ${id}: frame images could not be generated`, error);
-    throw apiError('The messages were saved but the frame images could not be generated. Try again.', 502);
+    throw apiError('The messages were saved but their frame images could not be generated. Try again.', 502);
   });
   return apiSuccess({ frameDesign: images.design, variants: { total: images.design.variants?.length ?? 0, generated: images.generated, reused: images.reused } });
 });

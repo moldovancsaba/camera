@@ -1,7 +1,7 @@
 /**
  * The frames an event's gallery can put on an uploaded photo (camera#488, owner report 207: "we need the option to add the frames to it so they will look identical as the
  * generated images"). It follows what the guests get (lib/frame/capture.ts `captureFrameOf`): an event with a frame of its own (a complete frame, switched on) uses those;
- * otherwise the generated frame, one image for each message (and design). A photo gets one of them at random, never the same for every photo, as at a shutter press.
+ * otherwise the assigned message-frame compositions, plus generated-layout compositions only when the event opted into that fallback. A photo gets one available composition at random.
  */
 
 import type { Db, Document } from 'mongodb';
@@ -43,11 +43,16 @@ export async function loadGalleryFrames(db: Db, event: Document): Promise<Galler
     .filter((row) => isOwnActiveFrame({ isActive: row.isActive, frameDetails: row.frameDetails }) && row.frameDetails?.imageUrl)
     .map((row): GalleryFrame => ({ imageUrl: row.frameDetails!.imageUrl as string, frameId: row.frameId as string, frameName: row.frameDetails!.name ?? null, variant: null }));
   if (own.length > 0) return own;
-  const generated = captureFrameOf({ frames: rows, frameDesign: event.frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] });
+  const generated = captureFrameOf({
+    frames: rows,
+    generatedFrameEnabled: event.generatedFrameEnabled === true,
+    frameDesign: event.frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'],
+  });
+  const frameNames = new Map(docs.map((doc) => [String(doc.frameId), typeof doc.name === 'string' ? doc.name : String(doc.frameId)]));
   return (generated?.variants ?? []).map((variant): GalleryFrame => ({
     imageUrl: variant.imageUrl,
     frameId: variant.frameId,
-    frameName: null,
+    frameName: variant.frameId ? frameNames.get(variant.frameId) ?? null : null,
     variant: { index: variant.index, message: variant.message, imageUrl: variant.imageUrl },
   }));
 }

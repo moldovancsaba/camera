@@ -6,10 +6,12 @@ type UploadModule = typeof import('./upload');
 
 // The mirror is imgbb; `mirror` decides how it behaves. Vercel Blob is always quick; what it was given is kept in `puts`.
 const puts: Array<{ name: string; body: Buffer; contentType: string }> = [];
+const postCalls: Array<{ url: string; body: FormData; config?: { headers?: Record<string, string> } }> = [];
 async function load(t: TestContext, tag: string, mirror: 'hangs' | 'works' | 'slow'): Promise<UploadModule> {
   process.env.IMGBB_API_KEY = 'test-key-not-real';
   t.after(() => { delete process.env.IMGBB_API_KEY; });
   puts.length = 0;
+  postCalls.length = 0;
   t.mock.module('@vercel/blob', {
     exports: {
       put: async (name: string, body: Buffer, options: { contentType: string }) => {
@@ -19,11 +21,15 @@ async function load(t: TestContext, tag: string, mirror: 'hangs' | 'works' | 'sl
     },
   });
   const answer = { data: { success: true, data: { id: 'abc', url: 'https://i.ibb.co/abc/photo.png', display_url: 'https://i.ibb.co/abc/photo.png', delete_url: 'https://ibb.co/abc/del' } } };
-  const post = mirror === 'hangs'
+  const respond = mirror === 'hangs'
     ? () => new Promise(() => undefined)
     : mirror === 'slow'
       ? () => new Promise((resolve) => setTimeout(() => resolve(answer), 60))
       : async () => answer;
+  const post = (url: string, body: FormData, config?: { headers?: Record<string, string> }) => {
+    postCalls.push({ url, body, config });
+    return respond();
+  };
   const axios = { post, get: async () => ({ data: { destroy: () => undefined } }), isAxiosError: () => false };
   t.mock.module('axios', { exports: { default: axios, AxiosError: class extends Error {} } });
   return (await import('./upload?case=' + tag)) as UploadModule;
@@ -92,6 +98,9 @@ test('uploading to imgbb only makes no Blob copy, gives the address, delete link
   const { uploadToImgbbOnly } = await load(t, 'only', 'works');
   const result = await uploadToImgbbOnly(await png(), { name: 'unframed-1', validatePublicUrl: false });
   assert.deepEqual(result, { imageUrl: 'https://i.ibb.co/abc/photo.png', deleteUrl: 'https://ibb.co/abc/del', imageId: 'abc' });
+  assert.equal(new URL(postCalls[0].url).searchParams.get('key'), 'test-key-not-real');
+  assert.deepEqual(Array.from(postCalls[0].body.keys()), ['image', 'name']);
+  assert.equal(postCalls[0].config?.headers?.['Content-Type'], undefined, 'Axios generates the multipart boundary');
   assert.equal(puts.length, 0, 'nothing went to Blob');
   delete process.env.IMGBB_API_KEY;
   await assert.rejects(() => uploadToImgbbOnly('aGVsbG8='), /not configured/);

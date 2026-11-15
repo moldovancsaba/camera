@@ -12,6 +12,7 @@ import { framesUploader } from './uploaders/frames';
 import { imagesUploader } from './uploaders/images';
 import { logosUploader } from './uploaders/logos';
 import type { Uploader } from './uploaders/types';
+import { parseMessageArea, type MessageArea } from '@/lib/frame/message-area';
 
 /** The kinds that can be uploaded here. A kind adds its uploader to this object. */
 const UPLOADERS: Partial<Record<LibraryKind, Uploader>> = {
@@ -47,12 +48,14 @@ export interface UploadInput {
   owner: Owner;
   /** What the item is for (`lib/library/sample-selfie.ts`), images only. */
   tags?: string[];
+  /** Optional event-frame message area, validated before the image is stored. */
+  messageArea?: unknown;
 }
 
 export type UploadResult = { ok: true; item: Document } | { ok: false; status: 400; reason: string };
 
 /** The fields of the upload that do not need the network: checked first, so a bad request never reaches the file store. */
-export function checkUpload(input: Pick<UploadInput, 'kind' | 'file' | 'name' | 'description'>): { ok: true; name: string; description: string } | { ok: false; reason: string } {
+export function checkUpload(input: Pick<UploadInput, 'kind' | 'file' | 'name' | 'description' | 'messageArea'>): { ok: true; name: string; description: string; messageArea?: MessageArea } | { ok: false; reason: string } {
   const uploader = UPLOADERS[input.kind];
   if (!uploader) return { ok: false, reason: `Uploading ${KIND_META[input.kind].noun}s here is not available yet.` };
   const name = typeof input.name === 'string' ? input.name.trim() : '';
@@ -60,12 +63,19 @@ export function checkUpload(input: Pick<UploadInput, 'kind' | 'file' | 'name' | 
   if (name.length > MAX_NAME) return { ok: false, reason: `The name can have ${MAX_NAME} characters at most.` };
   const description = typeof input.description === 'string' ? input.description.trim() : '';
   if (description.length > MAX_DESCRIPTION) return { ok: false, reason: `The description can have ${MAX_DESCRIPTION} characters at most.` };
+  let messageArea: MessageArea | undefined;
+  if (input.messageArea !== undefined) {
+    if (input.kind !== 'frames') return { ok: false, reason: 'Only a frame can carry an event message.' };
+    const parsedArea = parseMessageArea(input.messageArea);
+    if (!parsedArea) return { ok: false, reason: 'The message area must fit inside a 1920 x 1080 frame.' };
+    messageArea = parsedArea;
+  }
   const file = input.file as { type?: unknown; size?: unknown } | null;
   if (!(typeof File !== 'undefined' && input.file instanceof File) || typeof file?.type !== 'string') return { ok: false, reason: 'Choose a file to upload.' };
   if (!uploader.fileTypes.includes(file.type)) return { ok: false, reason: `Only ${uploader.fileTypeWords} files are allowed.` };
   if (typeof file.size === 'number' && file.size === 0) return { ok: false, reason: 'The file is empty.' };
   if (uploader.maxBytes && typeof file.size === 'number' && file.size > uploader.maxBytes) return { ok: false, reason: `The file is too big: ${Math.round(uploader.maxBytes / 1048576)} MB at most.` };
-  return { ok: true, name, description };
+  return { ok: true, name, description, ...(messageArea ? { messageArea } : {}) };
 }
 
 /** The owner written on the item. */
@@ -95,6 +105,7 @@ export async function createLibraryItem(db: Db, input: UploadInput): Promise<Upl
       now: generateTimestamp(),
       owner: ownerFields(input.owner),
       ...(input.kind === 'images' && input.tags && input.tags.length > 0 ? { tags: input.tags } : {}),
+      ...(checked.messageArea ? { messageArea: checked.messageArea } : {}),
     },
     file
   );
@@ -103,4 +114,50 @@ export async function createLibraryItem(db: Db, input: UploadInput): Promise<Upl
   if (item.scope === 'global' || item.scope === 'partner') item.shareToChildren = false;
   await db.collection(KIND_META[input.kind].collection).insertOne(item);
   return { ok: true, item };
+}
+
+export type ReplaceFrameImageResult =
+  | { ok: true; item: Document }
+  | { ok: false; status: 400 | 404 | 409; reason: string };
+
+/**
+ * Replace a frame's stored image without changing its identity or ownership.
+ * The caller supplies an exact owner-scoped selector after authorization. The
+ * new file is stored first; an optimistic imageUrl check prevents concurrent
+ * edits from silently overwriting one another. Old media is retained because
+ * other generated outputs may still reference it until regeneration completes.
+ */
+export async function replaceLibraryFrameImage(
+  db: Db,
+  selector: Record<string, unknown>,
+  file: unknown,
+  name: unknown,
+  now: string,
+): Promise<ReplaceFrameImageResult> {
+  const checked = checkUpload({ kind: 'frames', file, name });
+  if (!checked.ok) return { ok: false, status: 400, reason: checked.reason };
+
+  const frames = db.collection(KIND_META.frames.collection);
+  const current = await frames.findOne(selector);
+  if (!current) return { ok: false, status: 404, reason: 'Frame not found' };
+
+  const stored = await uploadImage(file as File, { name: `frame-${Date.now()}` });
+  const result = await frames.updateOne(
+    { ...selector, imageUrl: current.imageUrl },
+    {
+      $set: {
+        name: checked.name,
+        imageUrl: stored.imageUrl,
+        thumbnailUrl: stored.thumbnailUrl,
+        deleteUrl: stored.deleteUrl,
+        imageId: stored.imageId,
+        fileSize: stored.fileSize,
+        mimeType: stored.mimeType,
+        updatedAt: now,
+      },
+    },
+  );
+  if (result.matchedCount === 0) return { ok: false, status: 409, reason: 'This frame changed while the new image was uploading. Reload it and try again.' };
+  const updated = await frames.findOne(selector);
+  return { ok: true, item: updated ?? { ...current, name: checked.name, imageUrl: stored.imageUrl, thumbnailUrl: stored.thumbnailUrl, updatedAt: now } };
 }

@@ -16,6 +16,7 @@ import { assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization'
 import { KIND_META, parseKind } from '@/lib/library/kinds';
 import { deleteLibraryUpload, itemView, updateLibraryUpload } from '@/lib/library/db';
 import { findAssetUsages } from '@/lib/library/usages';
+import { replaceLibraryFrameImage } from '@/lib/library/upload';
 
 export const DELETE = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ partnerId: string; itemId: string }> }) => {
   const session = await requireAuth();
@@ -56,4 +57,23 @@ export const PATCH = withErrorHandler(async (request: NextRequest, context: { pa
   if (!result.ok) throw result.status === 404 ? apiNotFound(kind === 'frames' ? 'Frame' : kind === 'logos' ? 'Logo' : 'Image') : apiError(result.reason, result.status);
   if (kind === 'frames' && (body.messageArea !== undefined || body.isActive !== undefined)) afterResponse(() => regenerateEventsUsingFrame(db, itemId).then((done) => { if (done.failed.length) console.error('Frame images could not be redrawn', done.failed); }));
   return apiSuccess({ item: itemView(kind, result.item) });
+});
+
+/** Replace an image for a frame owned by this partner; descendants keep the same frame id. */
+export const POST = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ partnerId: string; itemId: string }> }) => {
+  const session = await requireAuth();
+  const { partnerId, itemId } = await context.params;
+  const db = await connectToDatabase();
+  const { partner } = await assertPartnerMongoWorkspaceAccess(db, session, partnerId, 'manager');
+  const form = await request.formData();
+  const result = await replaceLibraryFrameImage(
+    db,
+    { frameId: itemId, scope: 'partner', partnerId: String(partner.partnerId) },
+    form.get('file'),
+    form.get('name'),
+    generateTimestamp(),
+  );
+  if (!result.ok) throw result.status === 404 ? apiNotFound('Frame') : apiError(result.reason, result.status);
+  afterResponse(() => regenerateEventsUsingFrame(db, itemId).then((done) => { if (done.failed.length) console.error('Frame images could not be redrawn', done.failed); }));
+  return apiSuccess({ item: itemView('frames', result.item) });
 });

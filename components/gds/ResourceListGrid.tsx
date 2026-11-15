@@ -2,6 +2,7 @@
 
 import type { AdminResourceAction, AdminResourceRecord } from '@sovereignsquad/gds-admin/client';
 import { GdsIcons } from '@sovereignsquad/gds-core/client';
+import type { ReactNode } from 'react';
 import { Badge, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 
 /**
@@ -20,15 +21,18 @@ export function ResourceListGrid<T extends AdminResourceRecord>({
   records,
   actions,
   onPreview,
+  renderStatus,
 }: {
   records: T[];
   actions: Array<AdminResourceAction<T>>;
   onPreview?: (record: T) => void;
+  /** Replace the default status badge with a caller-provided action or read-only indicator. */
+  renderStatus?: (record: T) => ReactNode;
 }) {
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
       {records.map((record) => (
-        <ResourceListCard key={record.id} record={record} actions={actions} onPreview={onPreview} />
+        <ResourceListCard key={record.id} record={record} actions={actions} onPreview={onPreview} renderStatus={renderStatus} />
       ))}
     </SimpleGrid>
   );
@@ -44,10 +48,12 @@ function ResourceListCard<T extends AdminResourceRecord>({
   record,
   actions,
   onPreview,
+  renderStatus,
 }: {
   record: T;
   actions: Array<AdminResourceAction<T>>;
   onPreview?: (record: T) => void;
+  renderStatus?: (record: T) => ReactNode;
 }) {
   const primary = actions.find((action) => action.kind === 'primary');
   const secondary = actions.filter((action) => action.kind === 'secondary' || action.kind === 'danger');
@@ -77,7 +83,7 @@ function ResourceListCard<T extends AdminResourceRecord>({
               </Stack>
             ) : null}
           </Stack>
-          {record.status ? <Badge variant="light">{record.status}</Badge> : null}
+          {renderStatus ? renderStatus(record) : record.status ? <Badge variant="light">{record.status}</Badge> : null}
         </Group>
         <Group justify="space-between" align="center" gap="sm" wrap="wrap">
           <Group gap="sm" wrap="wrap">

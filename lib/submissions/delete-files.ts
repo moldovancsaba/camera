@@ -27,7 +27,7 @@ import { isRenderableImgbbImageUrl } from '@/lib/imgbb/url';
 import { logWarn } from '@/lib/observability/logger';
 import { blobStoreHostFromToken } from '@/lib/submissions/original-image';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
-import { deleteCameraOriginalR2Copy, isCameraOriginalR2Key } from '@/lib/storage/r2';
+import { deleteCameraImageR2Copy, isCameraImageR2Key } from '@/lib/storage/r2';
 
 /** Display fields another submission may legitimately share a file through. */
 const SHARED_URL_FIELDS = ['imageUrl', 'finalImageUrl', 'originalImageUrl', 'previewImageUrl', 'screenImageUrl'] as const;
@@ -39,8 +39,6 @@ export interface SubmissionFilesDeps {
   storeHost: string | null;
   del: (urls: string[]) => Promise<void>;
   deleteImage: (url: string, publicImageUrl?: string | null) => Promise<boolean>;
-  /** Delete a path from the separate private recovery store, if this submission has one. */
-  deleteRecovery?: (pathname: string) => Promise<void>;
   /** Remove the temporary original-copy manifest once every provider delete succeeds. */
   deleteOriginalAssetManifest?: (submissionId: ObjectId) => Promise<void>;
   /** Which of `urls` is still referenced by a submission other than `selfId`. */
@@ -126,18 +124,11 @@ function publicImageUrlForDeleteLink(submission: Document, link: string): string
   return null;
 }
 
-export function defaultDeps(db: Db, runtimeOidcToken?: string): SubmissionFilesDeps {
+export function defaultDeps(db: Db): SubmissionFilesDeps {
   return {
     storeHost: blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN),
     del: (urls) => del(urls),
     deleteImage: (url, publicImageUrl) => deleteImage(url, publicImageUrl),
-    deleteRecovery: async (pathname) => {
-      const storeId = process.env.CAMERA_MTK_RECOVERY_STORE_ID?.trim();
-      // Vercel Functions expose OIDC on the incoming request, not process.env.
-      const oidcToken = runtimeOidcToken?.trim() || process.env.VERCEL_OIDC_TOKEN?.trim();
-      if (!storeId || !oidcToken) throw new Error('The private recovery store is not configured');
-      await del(pathname, { storeId, oidcToken });
-    },
     deleteOriginalAssetManifest: async (submissionId) => {
       await db.collection(COLLECTIONS.ORIGINAL_ASSETS).deleteOne({ _id: submissionId });
     },
@@ -166,29 +157,9 @@ export async function deleteSubmissionFiles(
   db: Db,
   submission: Document,
   deps: SubmissionFilesDeps = defaultDeps(db),
-  runtimeOidcToken?: string,
 ): Promise<SubmissionFilesResult> {
   const { fileUrls, imgbbDeleteLinks } = ownedUrls(submission);
   const candidates = fileUrls.filter((url) => inStore(url, deps.storeHost));
-
-  const recovery = (submission.adminRecovery ?? {}) as Document;
-  const recoveryPath = text(recovery.pathname);
-  const recoveryFileIsOwned = recovery.store === 'camera-mtk-recovery'
-    && recoveryPath === `camera-admin-recovery/mtk/${String(submission._id)}.jpg`;
-  if (recoveryFileIsOwned) {
-    const deleteRecovery = runtimeOidcToken?.trim()
-      ? defaultDeps(db, runtimeOidcToken).deleteRecovery
-      : deps.deleteRecovery;
-    if (!deleteRecovery) {
-      throw apiError('Could not delete the restricted recovery image, so the submission was kept. Try again.', 502);
-    }
-    try {
-      await deleteRecovery(recoveryPath!);
-    } catch (error) {
-      console.error(`Submission ${String(submission._id)}: deleting its restricted recovery copy failed`, error);
-      throw apiError('Could not delete the restricted recovery image, so the submission was kept. Try again.', 502);
-    }
-  }
 
   const shared = candidates.length ? await deps.referencedElsewhere(candidates, submission._id) : new Set<string>();
   const toDelete = candidates.filter((url) => !shared.has(url));
@@ -206,11 +177,11 @@ export async function deleteSubmissionFiles(
     .filter((copy) => copy.store === 'r2' && !copy.deleted)
     .map((copy) => copy.objectKey)
     .filter((key): key is string => key !== null))];
-  if (copiesOf(submission).some((copy) => copy.store === 'r2' && !copy.deleted && (!copy.objectKey || !isCameraOriginalR2Key(copy.objectKey)))) {
+  if (copiesOf(submission).some((copy) => copy.store === 'r2' && !copy.deleted && (!copy.objectKey || !isCameraImageR2Key(copy.objectKey)))) {
     throw apiError('Could not verify the private backup image reference, so the submission was kept. Try again.', 502);
   }
   try {
-    await Promise.all(r2Keys.map((key) => deleteCameraOriginalR2Copy(key)));
+    await Promise.all(r2Keys.map((key) => deleteCameraImageR2Copy(key)));
   } catch (error) {
     console.error(`Submission ${String(submission._id)}: deleting a private R2 image copy failed`, error instanceof Error ? error.name : 'unknown error');
     throw apiError('Could not delete the private backup image, so the submission was kept. Try again.', 502);

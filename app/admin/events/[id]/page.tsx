@@ -13,6 +13,7 @@ import { StatsStrip } from '@/components/gds/ClientWrappers';
 import { Breadcrumbs, Button, Card, Code, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
+import EventStatusToggle from '@/components/gds/EventStatusToggle';
 import StyleSections, { type ThemeColours } from '@/components/admin/StyleSections';
 import { loadEventTheme } from '@/lib/theme/load';
 import SlideshowManager from '@/components/admin/SlideshowManager';
@@ -29,6 +30,7 @@ import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { collectEventSpecificStats, type EventSpecificStats } from '@/lib/events/stats';
 import { parseMessmassStylePalette, type MessmassStylePalette } from '@/lib/theme/messmass-style-palette';
+import { resolveParentSlideshowDefault } from '@/lib/slideshow/parent-templates';
 
 interface EventFrameDetails {
   frameId: string;
@@ -141,6 +143,7 @@ export default async function EventDetailPage({
 
   let event: EventDoc | null = null;
   let partner: PartnerDoc | null = null;
+  let inheritedSlideshowDefault: ReturnType<typeof resolveParentSlideshowDefault> = null;
   let photoCount = 0;
   let slideshows: SlideshowDoc[] = [];
   let slideshowLayouts: SlideshowLayoutDoc[] = [];
@@ -169,6 +172,15 @@ export default async function EventDetailPage({
     }
 
     partner = (await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId })) as PartnerDoc | null;
+    const globalContentDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne(
+      { settingId: 'global-content-defaults' },
+      { projection: { revision: 1, slideshow: 1, slideshowTemplates: 1, defaultSlideshowTemplateId: 1 } },
+    );
+    inheritedSlideshowDefault = resolveParentSlideshowDefault(
+      partner?.contentDefaults as unknown as Record<string, unknown> | null | undefined,
+      globalContentDefaults as Record<string, unknown> | null | undefined,
+      event.partnerId,
+    );
     const styleContext = (event as unknown as { frameDesign?: { context?: { style?: unknown } } }).frameDesign?.context?.style;
     messmassStyle = parseMessmassStylePalette(styleContext);
     eventStats = await collectEventSpecificStats(db, event.eventId);
@@ -176,7 +188,7 @@ export default async function EventDetailPage({
     try {
       const theme = await loadEventTheme(db, event as unknown as Record<string, unknown>);
       const style = (event as unknown as { frameDesign?: { context?: { style?: { name?: unknown } } } }).frameDesign?.context?.style;
-      themeColours = { fill: theme.buttonBackground, label: theme.buttonText, ring: theme.buttonRing, source: theme.buttonSource, styleName: typeof style?.name === 'string' ? style.name : null };
+      themeColours = { fill: theme.buttonBackground, label: theme.buttonText, ring: theme.buttonRing, controlAccent: theme.controlAccent, contrastWarnings: theme.contrastWarnings, source: theme.buttonSource, styleName: typeof style?.name === 'string' ? style.name : null };
     } catch (error) {
       console.error('Error resolving the event theme for the colours panel:', error);
     }
@@ -247,7 +259,11 @@ export default async function EventDetailPage({
         eyebrow="Events"
         title={event.name}
         description={event.description}
-        status={<VisibilityStatusIcon isVisible={event.isActive === true} />}
+        status={canManageEvent ? (
+          <EventStatusToggle eventId={id} eventName={event.name} initialIsActive={event.isActive === true} />
+        ) : (
+          <VisibilityStatusIcon isVisible={event.isActive === true} />
+        )}
         actions={
           <>
             {event.messmassEventId ? (
@@ -442,7 +458,13 @@ export default async function EventDetailPage({
         />
       </SimpleGrid>
 
-      <SlideshowManager eventId={id} initialSlideshows={JSON.parse(JSON.stringify(slideshows))} partnerDefaultAvailable={Boolean(partner?.contentDefaults?.slideshow && partner.contentDefaults.slideshow.isActive !== false)} welcomeScreen={event.welcomeScreen ? { url: event.welcomeScreen.url, generatedAt: event.welcomeScreen.generatedAt } : null} />
+      <SlideshowManager
+        eventId={id}
+        initialSlideshows={JSON.parse(JSON.stringify(slideshows))}
+        inheritedDefaultAvailable={Boolean(inheritedSlideshowDefault)}
+        inheritedDefaultLabel={inheritedSlideshowDefault?.level === 'partner' ? 'partner default' : 'global default'}
+        welcomeScreen={event.welcomeScreen ? { url: event.welcomeScreen.url, generatedAt: event.welcomeScreen.generatedAt } : null}
+      />
 
       <SlideshowLayoutManager
         eventMongoId={id}

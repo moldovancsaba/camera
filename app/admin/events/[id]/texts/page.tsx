@@ -31,8 +31,12 @@ export default function EventTextsPage({ params }: { params: Promise<{ id: strin
       <WorkspaceHeader
         eyebrow="Events"
         title={`Texts: ${data.name}`}
-        description={`The wording of the default texts for this event. Its users see ${UI_LANGUAGE_LABELS[data.language]}. Where you write nothing, the partner's wording, the global wording or the dictionary is used; a text you wrote on a page of the journey always wins.`}
+        description={`Default guest wording for this event. Its users see ${UI_LANGUAGE_LABELS[data.language]}. Where you write nothing, the partner wording, global wording, or dictionary is used; text written directly on a journey page takes priority.`}
       />
+      <p style={{ margin: 0, color: 'var(--mantine-color-dimmed)' }}>
+        This page edits shared fallback wording. To change page order or text written directly on a custom page, use the event journey. Those page-specific edits take priority.
+        {' '}<Link href={`/admin/events/${id}/pages`}>Open Event User Journey</Link>
+      </p>
       <TextLevelEditor
         own={data.texts}
         inherited={[

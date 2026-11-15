@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ownerMediaUseMongoFilter } from '@/lib/events/consent-eligibility';
 import { isHiddenFromAllEvents, isPubliclyVisible, plainPhotoClause, publiclyVisibleClauses, visibilityInputOf } from './visibility';
 
 test('a plain photo is public unless it is pending or rejected; a missing status is public (legacy photos)', () => {
@@ -12,6 +13,37 @@ test('a plain photo is public unless it is pending or rejected; a missing status
   assert.equal(isPubliclyVisible({ reviewStatus: 'pending_review' }), false, 'a photo without a kind is a plain photo');
   assert.equal(isPubliclyVisible({ consentStatus: 'pending' }), false, 'a photo awaiting consent is private');
   assert.equal(isPubliclyVisible({ consentStatus: 'expired' }), false, 'an expired photo stays private');
+});
+
+test('the owner-authorized MTK restore grant can expose only the event-scoped approved photo despite expired consent history', () => {
+  const grant = {
+    version: 1,
+    source: 'event_owner_instruction',
+    status: 'active',
+    authorizationId: '00000000-0000-4000-8000-000000000001',
+    eventId: 'mtk-event',
+    grantedAt: '2026-10-30T12:00:00.000Z',
+    scopes: ['storage', 'admin_review', 'public_gallery', 'public_share', 'slideshow', 'download'],
+  };
+  assert.equal(isPubliclyVisible({
+    submissionKind: 'original',
+    reviewStatus: 'approved',
+    eventId: 'mtk-event',
+    eventIds: ['mtk-event'],
+    consentStatus: 'expired',
+    retentionStatus: 'erased',
+    mediaUseAuthorization: grant,
+  }), true);
+  assert.equal(isPubliclyVisible({
+    submissionKind: 'original',
+    reviewStatus: 'approved',
+    eventId: 'mtk-event',
+    eventIds: ['mtk-event'],
+    consentStatus: 'expired',
+    retentionStatus: 'erased',
+    privacyErasure: { state: 'record_erased' },
+    mediaUseAuthorization: grant,
+  }), false, 'a verified privacy-erasure fence always wins');
 });
 
 test('a stored try-on result is never public, whatever its review or sharing flag says (issue 557)', () => {
@@ -48,8 +80,19 @@ test('the query clauses express the same rule', () => {
   assert.equal(clauses.length, 7);
   assert.deepEqual(clauses[0], { isArchived: { $ne: true } });
   assert.deepEqual(clauses[1], { 'mediaHealth.broken': { $ne: true } }, 'a picture that is gone is not public');
-  assert.deepEqual(clauses[2], { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } });
-  assert.deepEqual(clauses[3], { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } });
+  const consent = clauses[2] as { $or: object[] };
+  assert.deepEqual(consent.$or[0], { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } });
+  const expiredConsentOwnerGrant = consent.$or[1] as { $and: object[] };
+  assert.deepEqual(expiredConsentOwnerGrant.$and[1], { consentStatus: 'expired' });
+  assert.deepEqual(expiredConsentOwnerGrant.$and[0], {
+    $or: (['public_share', 'public_gallery', 'slideshow'] as const)
+      .map((scope) => ownerMediaUseMongoFilter(scope, ['e1', 'u1'])),
+  });
+  const retention = clauses[3] as { $or: object[] };
+  assert.deepEqual(retention.$or[0], { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } });
+  const erasedRetentionOwnerGrant = retention.$or[1] as { $and: object[] };
+  assert.deepEqual(erasedRetentionOwnerGrant.$and[1], { retentionStatus: 'erased' });
+  assert.deepEqual(erasedRetentionOwnerGrant.$and[0], expiredConsentOwnerGrant.$and[0]);
   assert.deepEqual(clauses[4], { 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } });
   assert.deepEqual(clauses[5], { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: ['e1', 'u1'] } }] });
   const review = clauses[6] as { $and: object[] };

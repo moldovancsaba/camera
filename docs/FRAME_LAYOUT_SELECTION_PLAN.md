@@ -1,6 +1,6 @@
 # Layout and message selection at an event (client feedback 2026-10-09)
 
-Tracker: epic [#444](https://github.com/moldovancsaba/camera/issues/444) on board [#24](https://github.com/users/moldovancsaba/projects/24). Status: **answered by the owner 2026-10-09 (section 6), delivery mandatory for the MTK x Vasas match on Friday 2026-10-16**. Segment status is in section 7. Nothing changes for any event until an editor sets it.
+Tracker: epic [#444](https://github.com/moldovancsaba/camera/issues/444) on board [#24](https://github.com/users/moldovancsaba/projects/24). Status: **answered by the owner 2026-10-09 (section 6), delivery mandatory for the MTK x Vasas match on Friday 2026-10-16**. Segment status is in section 7. The generated default layout is now separately opt-in: `generatedFrameEnabled` must be exactly `true`, set only after an event manager explicitly generates it; absent/false means no generated layout. This current rule supersedes historical statements in this plan that implied every frameless event used the generated default.
 
 ## 1. What the client asked (my reading, to be confirmed)
 
@@ -31,7 +31,7 @@ For **messages** the same three ways apply when the event has more than one mess
 | Admin | Event frames page (assign, upload, message area editor), the generated frame panel (messages, refresh), the event editor setting "How a user gets the frame message" (replaced by S1) | `app/admin/events/[id]/frames`, `GeneratedFramePanel`, event edit |
 | Levels | The slot model (partner default, event own, nothing copied), the text levels | docs/BUILDING_BRICKS.md, docs/TEXT_LEVELS.md |
 
-**The real MTK x Vasas event today** (read-only check): two library frames, **blue** and **pink**, both text-free with a message area; four messages; two messages are written on blue and two on pink (the pink design carries "MINDEN NŐ SZÁMÍT!"); four generated images; no setting for how the user selects. 13 of 212 events have assigned frames, 1 has messages that choose frames.
+**The real MTK x Vasas event at the time of the read-only check**: two library frames, **blue** and **pink**, both text-free with a message area; four messages; two messages are written on blue and two on pink (the pink design carries "MINDEN NŐ SZÁMÍT!"); four generated images; no setting for how the user selects. 13 of 212 events have assigned frames, 1 has messages that choose frames. This is historical inventory, not a claim that generated frames remain enabled.
 
 ## 3. What is missing
 
@@ -64,7 +64,7 @@ Issues: S1 #445, S2 #446, S3 #449, S4 #448, S5 #447, S6 #450, S7 #451 (with #331
 
 ## 5. What does not change
 
-Every existing event keeps what it does today until its editor sets the selection: events with several complete own frames keep the user's frame step, events with messages on library frames keep the random image, and every event with no own frame keeps the random generated message. Stored photos and their records are untouched.
+Existing library-frame assignments and saved photos are untouched. Generated defaults are a distinct event-level choice: existing records with `generatedFrameEnabled` absent or false do not use one. A manager can generate the default from Event → Frames; only after generation succeeds does the event start using it, and only while it has no active complete frame of its own. Once enabled, message/layout selection follows the settings described above.
 
 ## 6. The owner's answers (2026-10-09)
 
@@ -82,7 +82,7 @@ Every existing event keeps what it does today until its editor sets the selectio
 ### What this settles in the build
 
 - **Settings (S1, built):** `Event.frameSelection = { layout: { mode, pick }, message: { mode, pick } }`, `mode` is `editor` (with a `pick`: a layout id, or the message as listed), `random` or `user`. Missing means what the event always did (`todaysSelection`). Saved from the panel **How users get the layout and the message** on the event's Frames page (`GET`/`PUT /api/admin/events/<id>/frame-selection`); the panel shows only what can be chosen (more than one layout, more than one message) and names the situation A, B or C.
-- **Layouts of an event:** its own complete frames when it has any (the generated frame is not used then), otherwise the designs its messages are written on plus the generated layout for messages written on none (`layoutOptionsOf`).
+- **Layouts of an event:** its own complete frames when it has any; otherwise its message-area designs plus the generated layout only when `generatedFrameEnabled === true` (`layoutOptionsOf`). With opt-in off, no generated layout is offered or applied.
 - **Messages on designs (S3):** `frameDesign.messageFrames[message]` becomes one frame id **or a list** (`framesOfMessage` reads both); one image per (message, design) pair, reused by key; an admin table of messages by designs.
 - **Capture (S2, built):** `lib/frame/choose.ts` decides everything (`nextStep`, `layoutsToChoose`, `messagesToChoose`, `chooseLayout`, `drawVariant`, `drawOwnFrame`); the image or frame of a photo is drawn **when the camera step opens**, so the live view and the move-and-zoom step show the dark area of that design (S5 builds on this); an event with the setting unset keeps the random image at every shutter press. The ordered selector handles design and message choices; random is a new draw at every photo, never the same pair twice in a row.
 - **Capture (S2, built):** `lib/frame/choose.ts` decides what is selectable (`nextStep`, `layoutsToChoose`, `messagesToChoose`, `chooseLayout`, `drawVariant`, `drawOwnFrame`). The selector is a built-in ordered page in Pages, saved with `Event.defaultPageOrders`, and can be moved through the guest journey. It shows square frame/layout tiles and message-text buttons together, and skips itself when neither section has multiple choices. The Pages setting can hide frame choices while still showing every available message; each chosen message uses one of the frame designs carrying it. When frame choices are hidden without that override, the page follows the Frames settings for messages. Editors may set each square tile to an uploaded event image or a colour; without a square image, the tile uses its name rather than the full frame artwork. The camera page has no design or message selector buttons.

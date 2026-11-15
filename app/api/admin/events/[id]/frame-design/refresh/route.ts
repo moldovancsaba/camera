@@ -2,7 +2,8 @@
  * Take a new snapshot of the messmass data the generated default frame is built from (camera#234).
  *
  * POST /api/admin/events/[id]/frame-design/refresh   (manager)
- * -> { frameDesign, changed, messmassUnavailable, variants: { total, generated, reused } }
+ * Explicit event-level opt-in: take/refresh the snapshot, generate its image variants, then enable the frame.
+ * -> { frameDesign, generatedFrameEnabled: true, changed, messmassUnavailable, variants: { total, generated, reused } }
  *
  * After the snapshot the frame images are generated (one per usable message); images whose inputs did not change are
  * reused. If they cannot be generated the snapshot is already saved and the answer is 502; repeating is safe.
@@ -50,8 +51,16 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
     console.error(`Event ${id}: frame images could not be generated`, error);
     throw apiError('The snapshot was updated but the frame images could not be generated. Try again.', 502);
   });
+  const hasUsableImage = images.design.variants?.some((variant) => typeof variant.imageUrl === 'string' && variant.imageUrl.trim().length > 0) === true;
+  if (!hasUsableImage) throw apiError('No generated frame image was created. The event remains off; try again.', 502);
+  const activation = await db.collection(COLLECTIONS.EVENTS).updateOne(
+    { _id: event._id },
+    { $set: { generatedFrameEnabled: true, updatedAt: new Date().toISOString() } },
+  );
+  if (activation.matchedCount !== 1) throw apiError('The frame was generated but could not be enabled. Try again.', 500);
   return apiSuccess({
     frameDesign: images.design,
+    generatedFrameEnabled: true,
     changed,
     messmassUnavailable,
     variants: { total: images.design.variants?.length ?? 0, generated: images.generated, reused: images.reused },

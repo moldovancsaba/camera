@@ -11,13 +11,14 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 const id = new ObjectId().toHexString();
 const session = { user: { id: 'u1', email: 'admin@example.com' }, appRole: 'admin', appAccess: true } as unknown as Session;
 
-function setup(t: import('node:test').TestContext, options: { event?: Record<string, unknown> | null; deny?: boolean; imagesFail?: boolean } = {}) {
+function setup(t: import('node:test').TestContext, options: { event?: Record<string, unknown> | null; deny?: boolean; imagesFail?: boolean; noUsableImage?: boolean } = {}) {
   const refreshed: unknown[] = [];
   const generated: unknown[] = [];
   const access: unknown[] = [];
+  const updates: unknown[] = [];
   const event = options.event === undefined ? { _id: new ObjectId(id), name: 'E' } : options.event;
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => session, checkRateLimit: async () => undefined } });
-  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({ collection: () => ({ findOne: async () => event }) }) } });
+  t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({ collection: () => ({ findOne: async () => event, updateOne: async (filter: unknown, update: unknown) => (updates.push({ filter, update }), { matchedCount: 1 }) }) }) } });
   t.mock.module('@/lib/partners/authorization', {
     exports: {
       assertGlobalAdminOrPartnerEventAccess: async (_db: unknown, _s: unknown, eventId: string, role: unknown) => {
@@ -36,18 +37,18 @@ function setup(t: import('node:test').TestContext, options: { event?: Record<str
       generateFrameVariants: async (_db: unknown, e: { frameDesign: unknown }) => {
         generated.push(e);
         if (options.imagesFail) throw new Error('blob down');
-        return { design: { ...(e.frameDesign as object), variants: [{}, {}, {}, {}, {}] }, generated: 2, reused: 3 };
+        return { design: { ...(e.frameDesign as object), variants: options.noUsableImage ? [] : Array.from({ length: 5 }, (_, index) => ({ imageUrl: `https://blob.test/frame-${index + 1}.png` })) }, generated: 2, reused: 3 };
       },
     },
   });
-  return { refreshed, generated, access };
+  return { refreshed, generated, access, updates };
 }
 
 const call = (POST: RouteModule['POST'], value = id) =>
   POST(new NextRequest(`http://localhost/api/admin/events/${value}/frame-design/refresh`, { method: 'POST' }), { params: Promise.resolve({ id: value }) });
 
 test('a manager refreshes the snapshot and learns whether anything changed', async (t) => {
-  const { refreshed, access } = setup(t);
+  const { refreshed, access, updates } = setup(t);
   const { POST } = await importRoute('ok');
   const res = await call(POST);
   const body = await res.json();
@@ -59,6 +60,13 @@ test('a manager refreshes the snapshot and learns whether anything changed', asy
   assert.equal(body.data.changed, true);
   assert.equal(body.data.messmassUnavailable, false);
   assert.deepEqual(body.data.frameDesign.messages, ['Go!']);
+  assert.equal(body.data.generatedFrameEnabled, true);
+  const activation = updates.find((write) => 'generatedFrameEnabled' in (write as { update: { $set?: Record<string, unknown> } }).update.$set!);
+  assert.ok(activation, 'a completed generation enables the event default');
+  assert.equal(String((activation as { filter: { _id: ObjectId } }).filter._id), id);
+  const enabledAt = (activation as { update: { $set: { generatedFrameEnabled: boolean; updatedAt: string } } }).update.$set;
+  assert.equal(enabledAt.generatedFrameEnabled, true);
+  assert.ok(Number.isFinite(Date.parse(enabledAt.updatedAt)));
 });
 
 test('the images are generated from the refreshed snapshot', async (t) => {
@@ -70,11 +78,21 @@ test('the images are generated from the refreshed snapshot', async (t) => {
 });
 
 test('when the images cannot be generated the answer is 502 and the message says the snapshot is saved', async (t) => {
-  setup(t, { imagesFail: true });
+  const { updates } = setup(t, { imagesFail: true });
   const { POST } = await importRoute('images-fail');
   const res = await call(POST);
   assert.equal(res.status, 502);
   assert.match((await res.json()).error, /snapshot was updated/);
+  assert.equal(updates.some((write) => 'generatedFrameEnabled' in (write as { update: { $set?: Record<string, unknown> } }).update.$set!), false, 'a failed frame generation does not enable the default');
+});
+
+test('an empty generation result does not enable the event', async (t) => {
+  const { updates } = setup(t, { noUsableImage: true });
+  const { POST } = await importRoute('empty-images');
+  const res = await call(POST);
+  assert.equal(res.status, 502);
+  assert.match((await res.json()).error, /No generated frame image was created/);
+  assert.equal(updates.some((write) => 'generatedFrameEnabled' in (write as { update: { $set?: Record<string, unknown> } }).update.$set!), false);
 });
 
 test('without access the answer is 403 and messmass is not asked', async (t) => {

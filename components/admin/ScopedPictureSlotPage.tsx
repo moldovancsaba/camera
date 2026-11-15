@@ -12,11 +12,11 @@ type Kind = 'selfie' | 'stadium';
 
 const DETAILS: Record<Scope, Record<Kind, { title: string; description: string }>> = {
   partner: {
-    selfie: { title: 'Partner Selfies', description: 'Choose the sample selfie inherited by the partner’s events until an event chooses its own.' },
+    selfie: { title: 'Partner Selfies', description: 'Optional sample photos for the welcome-screen preview. An event uses these only when its editor chooses the partner default. They do not appear in the slideshow; add slideshow photos in Event Gallery.' },
     stadium: { title: 'Partner Stadiums', description: 'Choose the stadium backgrounds inherited by the partner’s events until an event chooses its own.' },
   },
   event: {
-    selfie: { title: 'Event Selfies', description: 'Choose the sample selfie used by this event’s welcome screen.' },
+    selfie: { title: 'Event Selfies', description: 'Optional sample photo for this event’s welcome-screen preview. New events start with no sample selected. Slideshow photos are managed separately in Event Gallery.' },
     stadium: { title: 'Event Stadiums', description: 'Choose the stadium background used by this event’s default slideshow stage.' },
   },
 };

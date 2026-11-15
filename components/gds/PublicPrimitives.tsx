@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, cloneElement, createElement, forwardRef, isValidElement, type ReactNode } from 'react';
+import { Children, cloneElement, createElement, forwardRef, isValidElement, useId, type ReactNode } from 'react';
 import {
   Button as MantineButton,
   Checkbox as MantineCheckbox,
@@ -130,7 +130,10 @@ export { LocalizedTextInput as TextInput };
 
 export function NumberInput(props: NumberInputProps) {
   const language = useUiLanguage();
-  return <MantineNumberInput {...localizedInputProps(props, language)} />;
+  // Mantine's built-in spinner arrows are icon-only buttons without labels.
+  // Keep numeric keyboard stepping (ArrowUp/ArrowDown), but hide those
+  // unnamed controls unless a caller explicitly opts into them.
+  return <MantineNumberInput {...localizedInputProps(props, language)} hideControls={props.hideControls ?? true} />;
 }
 
 const LocalizedTextarea = forwardRef<HTMLTextAreaElement, TextareaProps>((props, ref) => {
@@ -160,13 +163,63 @@ export function FileInput<Multiple extends boolean = false>(props: FileInputProp
 
 export function ColorInput(props: ColorInputProps) {
   const language = useUiLanguage();
-  return <MantineColorInput {...localizedInputProps(props, language)} />;
+  return (
+    <MantineColorInput
+      {...localizedInputProps(props, language)}
+      eyeDropperButtonProps={{
+        ...props.eyeDropperButtonProps,
+        'aria-label': props.eyeDropperButtonProps?.['aria-label'] ?? 'Choose a color with the eyedropper',
+      }}
+    />
+  );
+}
+
+const fieldControlTypes = new Set<unknown>([
+  LocalizedTextInput,
+  NumberInput,
+  LocalizedTextarea,
+  Select,
+  FileInput,
+  ColorInput,
+]);
+
+function labelFirstFieldControl(node: ReactNode, labelId: string, helperId?: string): ReactNode {
+  let labelled = false;
+
+  function visit(current: ReactNode): ReactNode {
+    return Children.map(current, (child) => {
+      if (!isValidElement<{ children?: ReactNode; label?: ReactNode }>(child)) return child;
+
+      if (fieldControlTypes.has(child.type) && !labelled) {
+        labelled = true;
+        const props = child.props as Record<string, unknown>;
+        const nextProps: Record<string, unknown> = {};
+        if (!props['aria-label'] && !props['aria-labelledby'] && !props.label) {
+          nextProps['aria-labelledby'] = labelId;
+        }
+        if (helperId && !props['aria-describedby']) {
+          nextProps['aria-describedby'] = helperId;
+        }
+        return cloneElement(child, nextProps);
+      }
+
+      if (child.props.children !== undefined) {
+        return cloneElement(child, undefined, visit(child.props.children));
+      }
+      return child;
+    });
+  }
+
+  return visit(node);
 }
 
 // Custom lightweight helpers mapped to Mantine
 export function Field({ label, children, helper }: { label: ReactNode; children: ReactNode; helper?: ReactNode }) {
   const language = useUiLanguage();
   const direction = uiLanguageDirection(language);
+  const fieldId = useId();
+  const labelId = `${fieldId}-label`;
+  const helperId = helper ? `${fieldId}-description` : undefined;
   const localize = (value: ReactNode) => {
     if (typeof value !== 'string') return { value, translated: false };
     const translated = adminOperationText(value, language);
@@ -174,11 +227,12 @@ export function Field({ label, children, helper }: { label: ReactNode; children:
   };
   const localizedLabel = localize(label);
   const localizedHelper = localize(helper);
+  const labelledChildren = labelFirstFieldControl(children, labelId, helperId);
   return (
     <Stack gap={6} dir={direction}>
-      <Text size="sm" fw={500} lang={localizedLabel.translated ? language : undefined} dir={localizedLabel.translated ? direction : undefined}>{localizedLabel.value}</Text>
-      {children}
-      {helper ? <Text size="xs" c="dimmed" lang={localizedHelper.translated ? language : undefined} dir={localizedHelper.translated ? direction : undefined}>{localizedHelper.value}</Text> : null}
+      <Text id={labelId} size="sm" fw={500} lang={localizedLabel.translated ? language : undefined} dir={localizedLabel.translated ? direction : undefined}>{localizedLabel.value}</Text>
+      {labelledChildren}
+      {helper ? <Text id={helperId} size="xs" c="dimmed" lang={localizedHelper.translated ? language : undefined} dir={localizedHelper.translated ? direction : undefined}>{localizedHelper.value}</Text> : null}
     </Stack>
   );
 }

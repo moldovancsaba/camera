@@ -207,7 +207,21 @@ export async function GET(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
+    const inheritedStateBefore = JSON.stringify([
+      slideshow.updatedAt,
+      slideshow.inheritedFromLevel,
+      slideshow.inheritedFromPartnerId,
+      slideshow.inheritedPartnerRevision,
+      slideshow.inheritedGlobalRevision,
+    ]);
     Object.assign(slideshow, await applyPartnerSlideshowDefault(db, event as unknown as Document, slideshow));
+    const inheritedStateChanged = inheritedStateBefore !== JSON.stringify([
+      slideshow.updatedAt,
+      slideshow.inheritedFromLevel,
+      slideshow.inheritedFromPartnerId,
+      slideshow.inheritedPartnerRevision,
+      slideshow.inheritedGlobalRevision,
+    ]);
     if (slideshow.isActive === false) {
       return NextResponse.json(
         {
@@ -247,6 +261,12 @@ export async function GET(
 
     const eventUuid = event.eventId;
     const eventMongoId = event._id!.toString();
+    // The welcome-page screen is rendered from the event's default slideshow.
+    // Parent defaults are applied lazily on playlist requests, so redraw it
+    // when this request first adopts a new inherited revision.
+    if (slideshow.isDefault === true && inheritedStateChanged) {
+      scheduleWelcomeScreen(event._id!);
+    }
     if (slideshow.isDefault === true) {
       try {
         const repaired = await repairDefaultSlideshowQr(db, event as unknown as Document, slideshow, defaultGoShortOrigin());
@@ -334,8 +354,10 @@ export async function GET(
     if (slideshow.screenDesign) {
       const font = theme?.font ?? (await loadEventTheme(db, event as unknown as Record<string, unknown>)).font;
       screenDesign = resolveScreenDesign(slideshow.screenDesign, { family: font.family, source: font.source, url: font.url });
-      // The overlay is the frame of the whole screen: if its picture is gone the stage plays plain, never an empty window or a broken tile (issue 514).
-      if (screenDesign && (await brokenAddresses(db)).has(screenDesign.overlayImageUrl)) screenDesign = null;
+      // If an optional overlay is broken, omit only that layer; the photo window, QR code and texts can still be useful on their own.
+      if (screenDesign?.overlayImageUrl && screenDesign.overlayVisible !== false && (await brokenAddresses(db)).has(screenDesign.overlayImageUrl)) {
+        screenDesign = { ...screenDesign, overlayVisible: false };
+      }
     }
 
     // The phases of this call for the browser's network tab; a slow call also leaves one warning line with them (camera#476).

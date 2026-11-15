@@ -110,13 +110,13 @@ export default function NewFramePage() {
     >
 
       <form onSubmit={handleSubmit}>
-        <AdminCrudForm title="Frame details" description="Upload an image and set the frame's metadata.">
+        <AdminCrudForm title="Frame details" description="Upload an image and set the chooser name. Printed messages belong to an event and are added or selected in that event's frame upload.">
           <FormSection title="Frame preview">
             {preview ? (
               <MediaCard
                 src={preview}
                 alt="Frame preview"
-                caption={file?.name}
+                caption={name.trim() || file?.name}
                 action={
                   <SemanticButton action="frames:remove-upload" variant="secondary" leftSection={<IconTrash size={16} />} onClick={clearFile}>
                     Remove
@@ -138,7 +138,7 @@ export default function NewFramePage() {
           </FormSection>
 
           <AdminFormSection title="Frame details">
-            <AdminTextInput name="name" label="Frame name" value={name} onChange={setName} required placeholder="e.g., Holiday Frame 2024" />
+            <AdminTextInput name="name" label="Frame name users see in the chooser" description="This is the chooser label. It is not printed on the photo." value={name} onChange={setName} required placeholder="e.g., Holiday Frame 2024" />
             <AdminTextarea name="description" label="Description" value={description} onChange={setDescription} placeholder="Optional description..." />
             <AdminSelect
               name="category"

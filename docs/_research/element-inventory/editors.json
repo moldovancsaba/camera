@@ -235,7 +235,7 @@
     "reached_from": "top of the event frames page",
     "lines": 515,
     "overlaps_with": ["/admin/frames/generated rollout console (same generated frames, all events at once)", "frame message areas (MessageAreaEditor) on frames pages"],
-    "notes": "The message list has a default (defaultMessages from code) but no partner or global editor, so a club wanting the same messages on all its events must retype them per event. The panel shows whether the snapshot comes from messmass or from camera's own data; the user can only refresh it, not choose the source."
+    "notes": "The panel is off by default. A manager must choose Generate default frame to snapshot context, render variants, and opt the event in; editing messages, slots and refresh actions are available only after successful generation. The message list has a code default but no partner or global editor, so a club wanting the same messages on all its events must retype them per event. The panel shows whether the snapshot comes from messmass or Camera's own data; the user can refresh it, not choose the source."
   },
   {
     "id": "ed-012",
@@ -754,13 +754,13 @@
     "parts": ["app/admin/frames/generated/page.tsx (28)", "components/admin/FrameBackfillConsole.tsx (221)"],
     "level": "global",
     "who": "global admin",
-    "edits": ["events.frameDesign (generate images for every event without an own frame; dry run, run, redraw older images)"],
+    "edits": ["Refresh/redraw events.frameDesign only for events whose generatedFrameEnabled is exactly true (dry run, batch run, redraw stale images); the tool never enables an event"],
     "api": ["POST /api/admin/frame-backfill"],
     "in_menu": true,
     "reached_from": "menu (Libraries)",
     "lines": 249,
     "overlaps_with": ["GeneratedFramePanel (one event)"],
-    "notes": "A one-time rollout tool living in the Libraries menu section. Same rollout-console pattern as ed-056, ed-055, ed-062."
+    "notes": "Global-admin maintenance console. It refreshes or redraws only events whose generatedFrameEnabled is exactly true; non-opted-in events are skipped and remain off. It does not enroll events."
   },
   {
     "id": "ed-041",

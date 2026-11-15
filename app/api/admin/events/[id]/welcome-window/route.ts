@@ -17,7 +17,6 @@ import { ensureDefaultSlideshow } from '@/lib/slideshow/default-slideshow';
 import { ensureWelcomeScreen } from '@/lib/screen/welcome-screen-store';
 import { parseWindowRequest, windowState } from '@/lib/screen/welcome-window';
 import { eligiblePhoto } from '@/lib/screen/welcome-photo';
-import { selectionWithExperienceOverrides } from '@/lib/visual-assets/templates';
 
 type RouteContext = { params?: Promise<{ id: string }> };
 
@@ -44,7 +43,10 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   if (!parsed.ok) throw apiBadRequest(parsed.reason);
   const { source, photoId, again, composition } = parsed.value;
   if (source === 'photo' && !(await eligiblePhoto(db, event, photoId!))) throw apiBadRequest('This photo cannot be shown: it is not a photo of this event that is approved and visible.');
-  if (composition && !((event.frameDesign as { variants?: Array<{ frameId?: string | null; index?: number | null }> } | undefined)?.variants ?? []).some((variant) => (variant.frameId ?? null) === composition.frameId && (variant.index ?? null) === composition.messageIndex)) {
+  const availableVariants = event.generatedFrameEnabled === true
+    ? (event.frameDesign as { variants?: Array<{ frameId?: string | null; index?: number | null }> } | undefined)?.variants ?? []
+    : [];
+  if (composition && !availableVariants.some((variant) => (variant.frameId ?? null) === composition.frameId && (variant.index ?? null) === composition.messageIndex)) {
     throw apiBadRequest('Choose a frame and message variant that exists for this event.');
   }
   if (source !== undefined) {
@@ -59,13 +61,9 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
     await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: new ObjectId(id) }, update);
   }
   if (composition) {
-    const experienceTemplate = selectionWithExperienceOverrides(
-      event.experienceTemplate,
-      { welcomeScreenComposition: composition },
-    );
     await db.collection(COLLECTIONS.EVENTS).updateOne(
       { _id: new ObjectId(id) },
-      { $set: { welcomeScreenComposition: composition, ...(experienceTemplate ? { experienceTemplate } : {}) } },
+      { $set: { welcomeScreenComposition: composition, updatedAt: generateTimestamp() } },
     );
   }
   const current = (await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) })) ?? event;

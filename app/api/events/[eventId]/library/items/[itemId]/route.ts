@@ -17,6 +17,7 @@ import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 import { KIND_META, parseKind } from '@/lib/library/kinds';
 import { deleteLibraryUpload, itemView, updateLibraryUpload } from '@/lib/library/db';
 import { findAssetUsages } from '@/lib/library/usages';
+import { replaceLibraryFrameImage } from '@/lib/library/upload';
 
 export const DELETE = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ eventId: string; itemId: string }> }) => {
   const session = await requireAuth();
@@ -61,4 +62,27 @@ export const PATCH = withErrorHandler(async (request: NextRequest, context: { pa
   if (!result.ok) throw result.status === 404 ? apiNotFound(kind === 'frames' ? 'Frame' : kind === 'logos' ? 'Logo' : 'Image') : apiError(result.reason, result.status);
   if (kind === 'frames' && (body.messageArea !== undefined || body.isActive !== undefined)) afterResponse(() => regenerateEventsUsingFrame(db, itemId).then((done) => { if (done.failed.length) console.error('Frame images could not be redrawn', done.failed); }));
   return apiSuccess({ item: itemView(kind, result.item) });
+});
+
+/** Replace an image for a frame owned by this event without changing its assignment. */
+export const POST = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ eventId: string; itemId: string }> }) => {
+  const session = await requireAuth();
+  const { eventId, itemId } = await context.params;
+  if (!ObjectId.isValid(eventId)) throw apiBadRequest('Invalid event ID format');
+  const db = await connectToDatabase();
+  const access = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
+  if (!access.allowed) throw apiForbidden('Partner-level Events manager access is required');
+  const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(eventId) }, { projection: { eventId: 1 } });
+  if (!event) throw apiNotFound('Event');
+  const form = await request.formData();
+  const result = await replaceLibraryFrameImage(
+    db,
+    { frameId: itemId, scope: 'event', eventId: String(event.eventId) },
+    form.get('file'),
+    form.get('name'),
+    generateTimestamp(),
+  );
+  if (!result.ok) throw result.status === 404 ? apiNotFound('Frame') : apiError(result.reason, result.status);
+  afterResponse(() => regenerateEventsUsingFrame(db, itemId).then((done) => { if (done.failed.length) console.error('Frame images could not be redrawn', done.failed); }));
+  return apiSuccess({ item: itemView('frames', result.item) });
 });

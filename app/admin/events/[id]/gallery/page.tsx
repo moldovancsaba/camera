@@ -9,15 +9,18 @@ import { ObjectId } from 'mongodb';
 import { Breadcrumbs, Card, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
+import EventStatusToggle from '@/components/gds/EventStatusToggle';
 import EventGallery from '@/components/admin/EventGallery';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { loadGallerySubmissions, GALLERY_PAGE_SIZE } from '@/lib/gallery/submissions';
+import { loadGallerySubmissions } from '@/lib/gallery/submissions';
 import { galleryFrameKey, loadGalleryFrames } from '@/lib/gallery/frame';
+import { loadMessageFrames } from '@/lib/frame/message-frames';
 import { countBroken } from '@/lib/media/broken';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
+import { hasOwnerMediaUseAuthorization } from '@/lib/events/consent-eligibility';
 
 export default async function EventGalleryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -32,31 +35,17 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) });
   if (!event) notFound();
 
-  const { submissions } = await loadGallerySubmissions(db, String(event.eventId), GALLERY_PAGE_SIZE);
+  const { submissions } = await loadGallerySubmissions(db, String(event.eventId));
   const galleryFrames = await loadGalleryFrames(db, event);
   const hasFrame = galleryFrames.length > 0;
+  const frameSetupNeeded = !hasFrame && (await loadMessageFrames(db, event)).size > 0;
   const frameOptions = galleryFrames.map((frame, index) => ({
     key: galleryFrameKey(frame),
-    label: frame.frameName || (frame.variant?.message ? `Frame ${index + 1}: ${frame.variant.message}` : `Frame ${index + 1}`),
+    label: frame.variant?.message
+      ? `${frame.frameName ?? `Frame ${index + 1}`} — ${frame.variant.message}`
+      : frame.frameName || `Frame ${index + 1}`,
     imageUrl: frame.imageUrl,
   }));
-  // Keep the normal/public gallery filter strict. These archive images are added only to this manager-only Camera view.
-  const managerOnlyImages = canManage
-    ? await db.collection(COLLECTIONS.SUBMISSIONS).find({
-        $and: [
-          { $or: [{ eventId: event.eventId }, { eventIds: { $in: [String(event.eventId)] } }] },
-          {
-            consentStatus: 'expired',
-            retentionStatus: 'erased',
-            'adminRecovery.state': 'available',
-            'adminRecovery.store': 'camera-mtk-recovery',
-            'adminRecovery.originalReviewStatus': 'approved',
-            isArchived: { $ne: true },
-          },
-          PRIVACY_ERASURE_ACTIVE_FILTER,
-        ],
-      }, { projection: { _id: 1, createdAt: 1, userName: 1 } }).sort({ createdAt: -1 }).limit(100).toArray()
-    : [];
   // Photos whose picture is gone are not listed (lib/media/broken.ts); the gallery says how many it hides.
   const hiddenBroken = await countBroken(db, [String(event.eventId), id]);
   // Photos an editor uploaded that have no frame yet (before the option existed, or uploaded with it off): the gallery offers to frame them in one press.
@@ -81,14 +70,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
       galleryUpload: (submission.metadata as { adminGalleryUpload?: boolean } | undefined)?.adminGalleryUpload === true,
       frameId: typeof submission.frameId === 'string' ? submission.frameId : null,
       frameVariant: submission.frameVariant ?? null,
-    })),
-    ...managerOnlyImages.map((submission) => ({
-      _id: String(submission._id),
-      previewImageUrl: `/api/admin/events/${id}/recovered-photos/${String(submission._id)}/image`,
-      consentStatus: 'expired',
-      userName: typeof submission.userName === 'string' ? submission.userName : 'NO USER',
-      createdAt: typeof submission.createdAt === 'string' ? submission.createdAt : '',
-      recoveryOnly: true,
+      ownerAuthorized: hasOwnerMediaUseAuthorization(submission, 'public_gallery'),
     })),
   ];
 
@@ -100,7 +82,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
         <Text>Gallery</Text>
       </Breadcrumbs>
 
-      <WorkspaceHeader eyebrow="Events" title={`${String(event.name)} — Gallery`} description="The photos of the event: upload images, select several at once, remove them from the event." status={<VisibilityStatusIcon isVisible={event.isActive !== false} />} />
+      <WorkspaceHeader eyebrow="Events" title={`${String(event.name)} — Gallery`} description="The photos of the event: upload images, select several at once, remove them from the event." status={canManage ? <EventStatusToggle eventId={id} eventName={String(event.name)} initialIsActive={event.isActive === true} /> : <VisibilityStatusIcon isVisible={event.isActive === true} />} />
 
       <Card p={0}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
@@ -112,6 +94,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
         <EventGallery
           eventId={id}
           eventName={String(event.name)}
+          frameSetupNeeded={frameSetupNeeded}
           initialSubmissions={JSON.parse(JSON.stringify(galleryCards))}
           slideshows={JSON.parse(JSON.stringify(slideshows))}
           canManage={canManage}

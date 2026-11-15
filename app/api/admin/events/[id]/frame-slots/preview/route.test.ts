@@ -14,10 +14,10 @@ const session = { user: { id: 'u1', email: 'admin@example.com' }, appRole: 'admi
 const design = { context: { source: 'camera' }, messages: [...DEFAULT_FRAME_MESSAGES], messagesOverridden: false, updatedAt: 'x' };
 const slots = { text: { 'top-left': { source: 'custom', text: 'Hello' } }, picture: {} };
 
-function setup(t: import('node:test').TestContext, options: { deny?: boolean } = {}) {
+function setup(t: import('node:test').TestContext, options: { deny?: boolean; enabled?: boolean } = {}) {
   const previews: Array<{ slots: unknown; messageIndex: number | null }> = [];
   const access: unknown[] = [];
-  const event = { _id: new ObjectId(id), name: 'E', frameDesign: design };
+  const event = { _id: new ObjectId(id), name: 'E', frameDesign: design, generatedFrameEnabled: options.enabled ?? true };
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => session, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => ({ collection: () => ({ findOne: async () => event }) }) } });
   t.mock.module('@/lib/partners/authorization', {
@@ -68,5 +68,14 @@ test('POST is refused for a caller without access', async (t) => {
   const { previews } = setup(t, { deny: true });
   const { POST } = await importRoute('denied');
   assert.equal((await POST(req({ slots }), ctx())).status, 403);
+  assert.equal(previews.length, 0);
+});
+
+test('POST does not preview or create a snapshot while the optional generated frame is off', async (t) => {
+  const { previews } = setup(t, { enabled: false });
+  const { POST } = await importRoute('disabled');
+  const res = await POST(req({ slots }), ctx());
+  assert.equal(res.status, 409);
+  assert.match(JSON.stringify(await res.json()), /Generate the default frame/);
   assert.equal(previews.length, 0);
 });

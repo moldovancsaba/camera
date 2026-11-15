@@ -9,6 +9,9 @@ import SlideshowsInventoryList, {
 } from '@/components/gds/SlideshowsInventoryList';
 import { formatAdminDate, mongoIdString } from '@/lib/gds/serialize-admin-rows';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
+import PartnerContentDefaultsEditor from '@/components/admin/PartnerContentDefaultsEditor';
+import type { PartnerDefaultSlideshow } from '@/lib/db/schemas';
+import { normalizeParentSlideshowTemplates } from '@/lib/slideshow/parent-templates';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,10 +53,20 @@ export default async function SlideshowsInventoryPage({
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
 
   let slideshowRows: SerializedSlideshowRow[] = [];
+  let globalSlideshow: PartnerDefaultSlideshow | null = null;
+  let globalSlideshowTemplates: ReturnType<typeof normalizeParentSlideshowTemplates>['slideshowTemplates'] = [];
+  let globalDefaultSlideshowTemplateId: string | null = null;
+  let globalSlideshowRevision = 0;
   let dbError = null;
 
   try {
     const db = await connectToDatabase();
+    const globalDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne({ settingId: 'global-content-defaults' }, { projection: { slideshow: 1, slideshowTemplates: 1, defaultSlideshowTemplateId: 1, revision: 1 } });
+    const globalSlideshowState = normalizeParentSlideshowTemplates(globalDefaults as Record<string, unknown> | null, 'legacy-global-slideshow', true);
+    globalSlideshow = globalSlideshowState.slideshow;
+    globalSlideshowTemplates = globalSlideshowState.slideshowTemplates;
+    globalDefaultSlideshowTemplateId = globalSlideshowState.defaultSlideshowTemplateId;
+    globalSlideshowRevision = globalSlideshowState.revision;
     const query: Record<string, unknown> = {};
 
     if (search) {
@@ -157,6 +170,15 @@ export default async function SlideshowsInventoryPage({
       toolbarHint="Use the global slideshow inventory to find and edit event players."
       dbError={dbError}
     >
+      <PartnerContentDefaultsEditor
+        scope="global"
+        partnerName="all partners"
+        kind="slideshow"
+        initial={globalSlideshow}
+        slideshowTemplates={globalSlideshowTemplates}
+        defaultSlideshowTemplateId={globalDefaultSlideshowTemplateId}
+        slideshowRevision={globalSlideshowRevision}
+      />
       <SlideshowsInventoryList slideshows={slideshowRows} />
     </AdminListPageShell>
   );

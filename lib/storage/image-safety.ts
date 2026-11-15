@@ -20,7 +20,7 @@ import { COLLECTIONS, type ImageCopy } from '@/lib/db/schemas';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { hasVerifiableConsentAudit } from '@/lib/events/consent-eligibility';
 import { isAllowedLogoUrl } from '@/lib/frame/logo';
-import { detectImageProvider } from '@/lib/imgbb/url';
+import { detectImageProvider, isRenderableImgbbImageUrl } from '@/lib/imgbb/url';
 import { isMissingImagePlaceholder } from '@/lib/media/placeholder';
 import { fetchImageBuffer } from '@/lib/media/image-buffer';
 import { logWarn } from '@/lib/observability/logger';
@@ -324,7 +324,8 @@ function within<T>(promise: Promise<T>, ms: number, message: string): Promise<T>
 
 /** Downloads a picture and makes sure it is a picture of ours and not the host's "not found" stand-in. */
 async function download(url: string, deps: SafetyDeps): Promise<{ buffer: Buffer; format: string }> {
-  if (!isAllowedLogoUrl(url)) throw new Error('the address is not on one of our image hosts');
+  // ImgBB can be read only by this server-side backup-repair workflow. It must never be returned to a browser.
+  if (!isAllowedLogoUrl(url) && !isRenderableImgbbImageUrl(url)) throw new Error('the address is not on one of our stored-copy hosts');
   const buffer = await within(deps.fetchPicture(url), deps.downloadMs, `the host did not send the file within ${deps.downloadMs / 1000} s`);
   if (buffer.length === 0) throw new Error('the host sent an empty file');
   const meta = await sharp(buffer, { failOn: 'none' }).metadata().catch(() => null);

@@ -125,6 +125,7 @@ test('a new frame draws the picture again with the frame in the window, and the 
   const keyBefore = w.current().welcomeScreen!.key;
   const frameUrl = 'https://blob.example/frame.png';
   const frame = await sharp({ create: { width: 1920, height: 1080, channels: 4, background: { r: 10, g: 200, b: 10, alpha: 1 } } }).png().toBuffer();
+  w.current().generatedFrameEnabled = true;
   w.current().frameDesign = { variants: [{ index: null, message: null, imageUrl: frameUrl }] };
   const log: Log = { uploads: [], fetched: [] };
   const outcome = await redrawEvent(w.db, w.current(), { deps: deps(log, { [frameUrl]: frame }) });

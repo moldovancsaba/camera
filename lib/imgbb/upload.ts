@@ -245,22 +245,22 @@ async function uploadToImgbbMirror(
       console.log(`imgbb mirror upload attempt ${attempt}/${maxRetries}...`);
 
       const formData = new FormData();
-      formData.append('key', apiKey);
       formData.append('image', base64Image);
       if (name) {
         formData.append('name', name);
       }
-      if (expiration) {
-        formData.append('expiration', expiration.toString());
-      }
+
+      // ImgBB documents the API key as a query parameter. Keeping it out of
+      // multipart form data also lets Axios generate the multipart boundary
+      // for Node's Web FormData implementation instead of sending a bare
+      // `multipart/form-data` content type that some API gateways cannot parse.
+      const query = new URLSearchParams({ key: apiKey });
+      if (expiration) query.set('expiration', expiration.toString());
 
       const response = await axios.post<ImgbbUploadResponse>(
-        IMGBB_UPLOAD_URL,
+        `${IMGBB_UPLOAD_URL}?${query.toString()}`,
         formData,
         {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
           timeout: 30000,
         }
       );

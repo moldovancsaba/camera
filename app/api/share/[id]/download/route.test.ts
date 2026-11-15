@@ -22,7 +22,8 @@ function setup(t: import('node:test').TestContext) {
   return state;
 }
 
-const photo = (over: Record<string, unknown> = {}) => ({ _id: new ObjectId(id), submissionKind: 'original', imageUrl: 'https://example.public.blob.vercel-storage.com/p.jpg', eventId: 'evt-1', eventIds: ['evt-1'], ...over });
+const blobUrl = 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/p.jpg';
+const photo = (over: Record<string, unknown> = {}) => ({ _id: new ObjectId(id), submissionKind: 'original', imageUrl: blobUrl, eventId: 'evt-1', eventIds: ['evt-1'], ...over });
 
 test('a photo that is not public cannot be downloaded: the answer is the same as for an unknown id', async (t) => {
   const state = setup(t);
@@ -84,7 +85,7 @@ test('the photo is offered as <id>:camera-result and nothing else is downloadabl
   assert.equal(ok.status, 200);
   assert.equal(ok.headers.get('Content-Type'), 'image/jpeg');
   assert.match(ok.headers.get('Content-Disposition') ?? '', /attachment; filename="[0-9a-f]{24}-camera-result\.jpg"/);
-  assert.deepEqual(fetched, ['https://example.public.blob.vercel-storage.com/p.jpg']);
+  assert.deepEqual(fetched, [blobUrl]);
 
   for (const variant of [`${id}:tryon-result`, `${id}:tryon-framed`, `${id}:original-capture`, 'other:camera-result']) {
     const res = await GET(new NextRequest(`http://localhost/api/share/${id}/download?variant=${encodeURIComponent(variant)}`), ctx);
@@ -93,6 +94,23 @@ test('the photo is offered as <id>:camera-result and nothing else is downloadabl
   }
   assert.equal(fetched.length, 1, 'nothing else was fetched');
   assert.equal((await GET(new NextRequest(`http://localhost/api/share/${id}/download`), ctx)).status, 400, 'a variant is required');
+});
+
+test('a public photo with only an ImgBB backup is not proxied or counted as a download', async (t) => {
+  const state = setup(t);
+  const records = spyOnRecording(t);
+  state.doc = photo({ reviewStatus: 'approved', imageUrl: 'https://i.ibb.co/backup/photo.jpg' });
+  let fetched = false;
+  t.mock.method(globalThis, 'fetch', async () => {
+    fetched = true;
+    return new Response('should not fetch');
+  });
+  const { GET } = await importRoute('imgbb-backup');
+  const res = await GET(request(), ctx);
+  assert.equal(res.status, 404);
+  assert.equal(((await res.json()) as { error?: string }).error, 'No downloadable image available');
+  assert.equal(fetched, false, 'ImgBB backup is never fetched and relayed to a user');
+  assert.deepEqual(records, [], 'a refused source is not counted as a delivered download');
 });
 
 // The anonymous journey recording (issue 521, phase 2): a download by a person is counted for the photo's event, after the answer; a crawler's is not; the download itself is unchanged.

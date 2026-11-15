@@ -35,10 +35,19 @@ Written for owner decision 243 (2026-10-10, issue 521 phase 2): **stop storing t
 | Screen diagnostics | log lines only (`camera.slideshow_diagnostic`) | the same kind of record from the giant screens | the log service's retention |
 | A crash of a page | log line (`/api/observability/client-error`) | the error, the address of the page, the user agent | the log service's retention |
 | People who manage the service | `activity_log` | who did what and when, the outcome; **no IP address, no request body** | until the weekly export after the one that sent it |
-| A signed-in session | `web_sessions` | the session payload of a signed-in person | until it expires |
+| A signed-in session | `web_sessions` | the session payload of a signed-in person, including the SSO subject and verified e-mail; `identityEmailNormalized` is an indexed lookup copy of that e-mail and is not a separate profile record | until it expires |
 | SSO elapsed-flow continuity | browser `sessionStorage` | event-scoped capture start timestamp only, used to span the SSO page reload; no visit ID or identity | until the final configured page, six-hour expiry/reset, or the tab is closed |
 
 The Analytics all-events repeat cohort groups existing photo submitter account/e-mail values in memory for a report and returns only counts to global admins. It does not create a stored cross-event identity map or join identities to anonymous Journey rows. The source slug is a narrow attribution field on the submission and should be included in the photo's normal deletion lifecycle.
+
+### Admin account merge
+
+`POST /api/admin/users/merge` resolves the destination SSO account in this order:
+
+1. An unexpired `web_sessions` record with `session.user.email_verified === true` and an exact case-insensitive e-mail match. New sessions also store the normalized e-mail in `identityEmailNormalized` for indexed lookup; older sessions are matched against their verified session e-mail until their normal expiry.
+2. If there is no active session, an active, non-erased Camera submission with the exact e-mail and a non-anonymous SSO subject.
+
+The endpoint requires one unique SSO subject. Missing identity returns `404`; multiple subjects for the same verified address return `409`; neither case changes photos. Source submissions must be pseudo identities and must not be fenced for privacy erasure. A successful operation updates their account attribution fields only; it does not alter image bytes, consent, review status, public visibility, or Fanmass analysis. The operation is idempotent, so retrying after a partial write completes only the remaining eligible source rows. Operational account merge must be initiated by an administrator who has verified the intended source and destination with the account owner.
 
 ## Camera → Fanmass image analysis
 

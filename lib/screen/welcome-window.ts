@@ -146,7 +146,9 @@ export async function windowState(db: Db, event: Document): Promise<WindowState>
   const photo = photoId ? await eligiblePhoto(db, event, photoId) : null;
   const chosenPhoto = windowSourceOf(event) === 'photo' && photoId ? (photo ? { id: photoId, imageUrl: photo.picture.url, kind: photo.picture.framed ? ('framed' as const) : ('clean' as const), usable: true } : { id: photoId, imageUrl: '', kind: 'framed' as const, usable: false }) : null;
   const design = event.frameDesign as { variants?: Array<{ frameId?: string | null; index?: number | null; message?: string | null; imageUrl?: string }> } | undefined;
-  const variants = (design?.variants ?? []).filter((variant) => typeof variant.imageUrl === 'string' && variant.imageUrl);
+  const variants = event.generatedFrameEnabled === true
+    ? (design?.variants ?? []).filter((variant) => typeof variant.imageUrl === 'string' && variant.imageUrl)
+    : [];
   const frameIds = [...new Set(variants.map((variant) => variant.frameId ?? null))];
   const frameDocs = frameIds.some((frameId) => frameId !== null)
     ? await db.collection(COLLECTIONS.FRAMES).find({ frameId: { $in: frameIds.filter((frameId): frameId is string => frameId !== null) } }).toArray()

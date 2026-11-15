@@ -2,7 +2,7 @@
 
 Owner request 2026-10-10 (task 254, issue 540): upload or use a selfie for the **Welcome page screen**: (a) upload a general one, (b) assign one from the event's clean selfies, (c) use the real slideshow. "I want to have it by design generated from the general elements including general selfies in the system, so that I should be able to add images to that, and the system provides them to the partner until the partner selects or uploads their own, and the event receives a random photo from the parent. Break it down, check the existing solution and make a plan to make it UX friendly, layout and consequent."
 
-Status: **decided by the owner on 2026-10-10 (answers 255 to 260, section 7); steps 1 to 5 are built (HANDOVER; `docs/LIBRARIES.md` "Sample selfies", `docs/SCREEN_DESIGN.md`), steps 6 to 8 follow after the match.** It continues step 5 of `docs/BUILDING_BRICKS.md` (the sample selfie, owner question 181) and the "photo window" row of section 6.2.
+Status: **the optional welcome-screen sample-photo library, event source choices and preview are built. New events start with no sample photo selected.** Event Selfies are only sample images inside the Welcome page screen; slideshow photos remain in Event Gallery. Existing event choices are unchanged by the new-event default.
 
 ## 1. What the three letters mean (my reading)
 
@@ -40,21 +40,21 @@ And the rule behind (a), which is the owner's own model, already decided for log
 
 - **Library:** the Images library gets a **tag** on an item (`tags: ['sample-selfie']`, set by the page that uploads it). A new library page **Sample selfies** (the Images library filtered by the tag, the same upload and switch off) is the global place. A partner and an event have the same page filtered to their level (the rule of docs/LIBRARIES.md: partner takes from global plus its own; event takes from its partner plus its own).
 - **Slot:** slot id `selfie` (`Partner.slots.selfie`, `Event.slots.selfie`, same shape as the logo slot). The chain is **global default, partner, event**. The **global default** is the set of **active** global sample selfies (a global admin switches one off to take it out of the default; no copying anywhere). A partner with nothing stored **follows the global set**; an event with nothing stored follows its partner. "Add more", "replace" and "none" work as for logos. Resolver and panel are the existing ones (`resolveSlot`, `SlotPanel` with `noun: "sample selfie"`).
-- **The random pick:** the resolved set may hold several; the event gets **one**, picked at random **once and stored** with the welcome screen (`Event.welcomeScreen.window = { source, pictureId, pickedAt }`; the earlier plan item 49: "pick one, once, and store the pick"), so the picture does not change on every redraw. It is picked again only when the picked item is no longer in the set (switched off, deleted, a gone picture), or when the editor presses **Pick another**.
+- **The random pick:** the resolved set may hold several; once an editor explicitly chooses the sample-photo source, the event gets **one**, picked at random **once and stored** with the welcome screen (`Event.welcomeScreen.window = { source, pictureId, pickedAt }`; the earlier plan item 49: "pick one, once, and store the pick"), so the picture does not change on every redraw. It is picked again only when the picked item is no longer in the set (switched off, deleted, a gone picture), or when the editor presses **Pick another**. New events explicitly start with this slot set to none; existing events keep their current saved or inherited choice.
 - **Never an error:** a gone or missing sample selfie falls back to the next item of the set, and with none to the stand-in that is drawn today. The picture is checked by the broken-picture rule like any other (`picture_health`).
 
 ### 3.2 What the window shows, and how it is drawn
 
 The **Welcome page screen** card also lets the event choose the frame and message variant composited over the window. The frame list comes from the event's generated frame variants, and the message list is limited to messages available on the selected frame. The chosen pair is saved on `Event.welcomeScreenComposition`; when no saved choice exists, the historical no-message variant (or first available variant) remains the default. Changing the pair redraws only the welcome screen image and does not change guest capture settings.
 
-The event chooses **one source** for the window (the default is the first):
+The event chooses **one source** for the window. A newly created event starts with **Keep the stand-in** so no sample selfie appears until an editor chooses a source; older events retain their saved source:
 
 | Source | Window shows | Drawn how |
 |---|---|---|
-| **Sample selfie** (default, letter a) | the event's pick from its slot | the **clean** selfie, cropped to the window, with **the event's frame drawn over it** (the renderer does this today) |
+| **Sample selfie** (letter a; opt in) | the event's pick from its slot | the **clean** selfie, cropped to the window, with **the event's frame drawn over it** (the renderer does this today) |
 | **A photo of this event** (letter b) | the photo the editor picked | a **clean** photo (an editor's upload with its plain original) is drawn like a sample selfie, with the frame; a photo that exists only **framed** is drawn **as it is, without a second frame** |
 | **The latest approved photo** (letter c) | the newest photo that passes the one visibility rule, as the slideshow shows it | as it is (already framed), redrawn after approvals, at most every 10 minutes, and the previous stored picture is deleted when the new one is live |
-| **Keep the stand-in** | the head-and-shoulders drawing of today | the escape hatch, so an event never has to show a selfie |
+| **Keep the stand-in** (new-event default) | the head-and-shoulders drawing of today | the default for a newly created event, so it never shows a sample selfie unless an editor opts in |
 
 - **Only photos that may be shown:** a photo of the event is eligible when it passes the one visibility rule (`isPubliclyVisible`: approved, not hidden, not broken). **No other condition (owner answer 256):** every approved or uploaded image is one the service has the right to use anywhere, any time and in any context, and the library holds only images cleared for commercial use; if there is ever a problem with an image it is declined and never used again. The same rule as the giant screen and the share page applies to the welcome page, no new exception.
 - **Stored picture and key:** the key already hashes everything the picture is drawn from; the picked picture's address and the source go into it, so a change redraws and nothing else does.

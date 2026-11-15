@@ -1,6 +1,6 @@
 /**
  * Which library frames each message of an event is written on (camera#366, issue 449). `frameDesign.messageFrames` maps the text of a message to the id of a frame
- * of the event that has a message area, or to a list of ids when the message goes on several designs; a message that is not listed keeps the older base picture or the generated layout. Server side (it reads the
+ * of the event that has a message area, or to a list of ids when the message goes on several designs; an unassigned message uses the older base picture and then generated layout only when the event has enabled that optional fallback. `messageFramesOverridden` records an intentional empty map and prevents inference from restoring removed assignments. Server side (it reads the
  * library); `parseMessageFrames` and `frameBaseOf` are pure and unit-tested.
  */
 
@@ -9,7 +9,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import type { FrameBase } from './base';
 import type { FrameDesign } from './context';
 import { parseMessageArea, type MessageArea } from './message-area';
-import { framesOfMessage } from './selection';
+import { effectiveMessageFrames, framesOfMessage } from './selection';
 
 const MAX_FRAME_ID_LENGTH = 80;
 
@@ -22,7 +22,7 @@ export const MAX_FRAME_IMAGES = 40;
  * The submitted choices, checked against the message list: every key is a message of the list, every value a frame id or a list of them (a message on several designs). Nothing
  * or null means no choices. One design is kept as the plain id it always was, several as a list without repeats; an empty value means none.
  */
-export function parseMessageFrames(input: unknown, messages: readonly string[]): ParsedMessageFrames {
+export function parseMessageFrames(input: unknown, messages: readonly string[], includeGeneratedFallback = true): ParsedMessageFrames {
   if (input === undefined || input === null) return { ok: true, messageFrames: {} };
   if (typeof input !== 'object' || Array.isArray(input)) return { ok: false, error: 'The frames of the messages must be a list of message and frame' };
   const known = new Set(messages);
@@ -36,7 +36,10 @@ export function parseMessageFrames(input: unknown, messages: readonly string[]):
     if (ids.length === 1) messageFrames[message] = ids[0];
     else if (ids.length > 1) messageFrames[message] = ids;
   }
-  const images = messages.reduce((total, message) => total + Math.max(1, framesOfMessage(messageFrames, message).length), 0);
+  const images = messages.reduce((total, message) => {
+    const assigned = framesOfMessage(messageFrames, message).length;
+    return total + (assigned > 0 ? assigned : includeGeneratedFallback ? 1 : 0);
+  }, 0);
   if (images > MAX_FRAME_IMAGES) return { ok: false, error: `That makes ${images} pictures (one for each message on each design); at most ${MAX_FRAME_IMAGES}` };
   return { ok: true, messageFrames };
 }
@@ -67,8 +70,8 @@ export async function loadMessageFrames(db: Db, event: Document): Promise<Map<st
 }
 
 /** The choices checked against the frames the event can use: a frame that is not assigned, switched off or without a message area is refused with a plain message. */
-export async function validateMessageFrames(db: Db, event: Document, messages: readonly string[], input: unknown): Promise<ParsedMessageFrames> {
-  const parsed = parseMessageFrames(input, messages);
+export async function validateMessageFrames(db: Db, event: Document, messages: readonly string[], input: unknown, includeGeneratedFallback = true): Promise<ParsedMessageFrames> {
+  const parsed = parseMessageFrames(input, messages, includeGeneratedFallback);
   if (!parsed.ok || Object.keys(parsed.messageFrames).length === 0) return parsed;
   const usable = await loadMessageFrames(db, event);
   for (const message of Object.keys(parsed.messageFrames)) {
@@ -79,11 +82,16 @@ export async function validateMessageFrames(db: Db, event: Document, messages: r
   return parsed;
 }
 
-/** The frames chosen for the message at `index` of the list, in the order they were chosen; empty when none (the message keeps the older picture or the generated layout). */
-export function chosenFrameIds(design: Pick<FrameDesign, 'messages' | 'messageFrames'>, index: number | null): string[] {
+/** The frames chosen for the message at `index` of the list, in the order they were chosen; empty when none are assigned. */
+export function chosenFrameIds(design: {
+  messages: string[];
+  messageFrames?: FrameDesign['messageFrames'];
+  variants?: FrameDesign['variants'];
+  context?: FrameDesign['context'];
+}, index: number | null): string[] {
   if (index === null) return [];
   const message = design.messages[index];
-  return message === undefined ? [] : framesOfMessage(design.messageFrames, message);
+  return message === undefined ? [] : framesOfMessage(effectiveMessageFrames(design), message);
 }
 
 /** The same shape the older base picture has, made from one library frame, so the renderer draws it the same way. */

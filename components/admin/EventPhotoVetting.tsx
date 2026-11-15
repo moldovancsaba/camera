@@ -42,9 +42,9 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
   const eventUuid = String(event.eventId ?? '');
   // The words of the event first: the photos of the queue are read with them (a custom option would otherwise make a marked photo read as unmarked).
   const vocabulary = await loadEventVocabulary(db, event);
-  const counts = await countPhotoQueue(db, eventUuid, eventMongoId);
+  const counts = await countPhotoQueue(db, eventUuid);
   const activePage = Math.min(page, Math.max(1, Math.ceil(counts[status] / 60)));
-  const items = await loadPhotoQueue(db, eventUuid, status, 60, (activePage - 1) * 60, { eventMongoId });
+  const items = await loadPhotoQueue(db, eventUuid, status, 60, (activePage - 1) * 60);
   const required = photoVettingRequired(event);
   const moderationEnabled = photoModerationPrecheckEnabled(event);
   const moderationConfigured = moderationConfiguration() !== null;

@@ -120,7 +120,8 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
       if (response.ok) {
         showMessage('success', data.message);
         setShowMergeDialog(false);
-        setTimeout(() => window.location.reload(), 1500);
+        setRealUserEmail('');
+        setTimeout(() => window.location.reload(), 3000);
       } else {
         showMessage('error', data.error || 'Failed to merge users');
       }
@@ -215,8 +216,11 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
               />
             </label>
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
-              This transfers all submissions from the pseudo user to the real user account. This action cannot be undone.
+              Merge this submission-only identity into the signed-in account. Its photos will appear under that account. Run this from the Pseudo row; merging in the opposite direction is not supported.
             </p>
+            {message?.type === 'error' ? (
+              <InlineAlert title="Could not merge identities" message={message.text} severity="error" />
+            ) : null}
             <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
             <SemanticButton action="users:merge-confirm" onClick={() => void handleMerge()} loading={loading} disabled={!realUserEmail}>
               {loading ? 'Merging...' : 'Merge Users'}

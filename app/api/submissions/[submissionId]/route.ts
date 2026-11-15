@@ -166,7 +166,7 @@ export const DELETE = withErrorHandler(async (
 
   // Files first, row second: a failed file delete answers 502 and keeps the row, so the same
   // request can simply be repeated (camera#211).
-  const files = await deleteSubmissionFiles(db, submission, undefined, request.headers.get('x-vercel-oidc-token') ?? undefined);
+  const files = await deleteSubmissionFiles(db, submission);
 
   // Preserve only the event-scoped analytics needed after this submission is permanently removed.
   await recordManualPhotoDeletion(db, submission);

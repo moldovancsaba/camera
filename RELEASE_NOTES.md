@@ -1,14 +1,123 @@
 # RELEASE_NOTES.md
 
+## Unreleased — Global and Partner slideshow versions and Experience page stability
+
+- **Added:** Global and Partner slideshow settings are named, reusable versions with list, create, edit, rename, delete, and one selected default. Partners may inherit the Global default; events inherit their Partner default, falling back to Global, until an event selects its own slideshow.
+- **Changed:** Global and Partner slideshow workspaces use the same configuration editor and live preview. Event players, photos, QR destinations, and public runtime records remain event-owned; applying a parent default preserves each event's tracked QR destination and does not replace an event override unless the manager explicitly chooses the parent default.
+- **Fixed:** Journey-list “Test journey” controls now have registered GDS actions and are shown only when an active event context exists, preventing the Experience settings page from failing while rendering an unknown semantic action or showing a nonfunctional test button.
+- **Verification:** Pending local release checks and GitHub Verify. Database-backed browser verification requires a disposable test MongoDB connection; production data is not used for tests.
+
+## v12.3.47 — live responsive preview in the shared journey editor
+
+- **Added:** the Global, Partner, and Event journey page editor now shows the guest page beside its settings on desktop. The preview uses the current unsaved draft and updates as fields change; a viewport selector switches between mobile, tablet, and desktop proportions.
+- **Changed:** the editor uses a two-column layout on desktop and stacks its settings and preview on narrower screens. Existing guest renderers are reused where available; camera and submission runtime steps are represented by read-only placeholders.
+- **Safety:** preview content is inert and preview-aware renderers suppress navigation and runtime side effects. A complete camera/submission test still requires the event capture URL.
+- **Verification:** `npm run release:check` and `npm run inventory:check` passed. Focused Playwright coverage passed for the wide two-column layout, live unsaved edits, and narrow stacked layout. GitHub `Verify` is the merge gate.
+
+## Unreleased — list-first Global, Partner and Event journey workspaces
+
+- **Changed:** each level opens on a single journey list with one selected default, scoped Edit/Rename/Delete actions, and journey creation below the list. Inherited parent choices are explicit on Partner and Event screens.
+- **Added:** Partner User Journey has a dedicated partner workspace route; the partner overview no longer embeds a second journey manager. All scopes reuse one full-width page editor and the same scope-aware media and message libraries.
+- **Fixed:** view-only users can no longer change the selected journey through list controls. Creating a named snapshot from legacy event pages selects it and opens that same editor.
+- **Verification:** `npm run release:check` passed (GDS checks, type-check, lint, 389 unit tests, production guards and production build); `npm run inventory:check` passed (723 links, no broken references). The focused browser check remains blocked because this worktree has no disposable `MONGODB_URI`; GitHub `Verify` is the merge gate.
+
+## Unreleased — keep journey page moves tied to page identity
+
+- **Fixed:** journey page move controls now resolve the selected page by its stable `pageId` against the full journey, so hidden built-in steps cannot shift the target row or corrupt the saved order.
+- **Fixed:** registered the page editor's hide/show semantic actions, which previously caused the editor to throw while rendering those controls.
+- **Verification:** the focused mobile browser regression moved a page across built-in steps, saved, reloaded and confirmed the persisted order; `npm run release:check`, `npm run inventory:check`, and `git diff --check` passed.
+
+## v12.3.46 — use one full journey editor at every level
+
+- **Added:** Global, Partner, and Event journey lists now open the same full page editor for any journey owned at that level. Editors can create, rename, select, and edit multiple named versions without a second, reduced editor.
+- **Changed:** a Partner or Event that customizes an inherited journey creates and selects a child-owned version before editing. The editor uses the existing image, frame, logo, text, and message resources through the selected scope; it does not duplicate their editors or libraries.
+- **Preserved:** only one selected journey resolves for an event. Editing a selected parent journey updates only descendants that still inherit it; a child-selected journey remains independent. Event policy and identity settings remain event-owned.
+- **Verification:** `npm run inventory:check`, `npm run release:check`, and focused journey API/component tests passed. The focused Playwright journey checks passed against the local production build at desktop and mobile viewport sizes. GitHub `Verify` is the merge gate.
+
+## v12.3.45 — make Global → Partner → Event journey selection consistent
+
+- **Fixed:** journey runtime uses one selected version at a time: Event replaces Partner; otherwise the event follows the selected Partner; otherwise it follows the Global default. Parent flows never stack or become field-level overlays.
+- **Fixed:** invalid/stale selections safely fall back to the nearest valid parent journey. A legacy event with local pages keeps those pages until an editor snapshots and selects a named Event Journey; only then can it switch to inherited flow. The generic event-update API enforces the same protection as the dedicated selector API.
+- **Improved:** selected journey editors warn that saving changes the live guest flow, including children that still follow the selected parent. The global source-event list no longer silently omits events older than the latest 200.
+- **Fixed:** journey fields are limited to page flow/order, share-page configuration and message-selector display. Legacy stored templates are projected onto that contract on reads and scrubbed when saved; invalid templates are not offered as usable defaults. Branding, colors, frames, welcome artwork and other presentation remain partner/event owned. Frame and welcome presentation APIs no longer mutate journey flow.
+- **Documentation:** reconciled architecture, runbook, handover and journey/visual-asset contracts; removed obsolete overlay/opt-out wording.
+- **Verification:** `npm run release:check` passed (GDS compliance, TypeScript, lint, 389/389 unit-test files, production guards and production build); `npm run inventory:check` passed (723 links, no broken references); focused Playwright coverage passed (3/3). GitHub `Verify` remains the merge gate.
+
+## Unreleased — show one Event journey template creator
+
+- **Fixed:** Event User Journey no longer renders Global and Partner template creators alongside the Event creator. The event endpoint exposes a single Event-level creation capability, and the event editor shows one reusable-template panel.
+- **Fixed:** removed the duplicate helper sentence inside the template-creation panel; the section description now appears once.
+- **Verification:** focused mobile Chromium Playwright coverage passed for one creator, one helper sentence, Event-scoped creation, and hiding the creator when permission is false. `npm run inventory:check` passed (721 links, no broken references); `npm run release:check` passed (GDS checks, TypeScript, lint, unit tests, production guards, production build). The browser check used the local Webpack dev server with mocked APIs because the default Turbopack startup fails while parsing the installed GDS stylesheet.
+
+## v12.3.44 — select the guest journey served by event links
+
+- **Added:** Global, Partner and Event User Journey settings support multiple named journey versions. Creating a version only adds it to the available list; an explicit selection and save controls the active default at that level.
+- **Added:** Event User Journey now shows the effective inherited journey, event-owned versions, and the event's own pages. Selecting one sets the flow used by the event capture URL, short link and QR codes; those public addresses stay stable.
+- **Changed:** new event templates appear in the selector immediately. The event journey choice is managed in Event User Journey instead of the general Event Edit page.
+- **Preserved:** parent defaults continue down the Global → Partner → Event chain only while a child inherits. A child-owned selection remains independent of later parent changes. Existing legacy event journeys remain in place until saved as a named EUJ and selected; the saved snapshot remains available if the event later inherits.
+- **Operations:** deployment does not write a global selection to production. A global admin creates or chooses a version in Global User Journey and separately saves the intended default. See `docs/GLOBAL_DEFAULT_JOURNEY.md` and `docs/VISUAL_ASSET_HIERARCHY.md`.
+- **Verification:** template inheritance, version creation/selection, and 23-locale journey-control unit coverage; focused mobile browser check for event selection and stable links; `npm run inventory:check` passed; `npm run release:check` passed (GDS checks, TypeScript, lint, 386/386 unit-test files, production guards, and production build). GitHub Verify remains the merge gate.
+
+## Unreleased — accepted Global default guest journey
+
+- **Added:** Global User Journey can snapshot an accepted event flow as **Global default journey**. The MTK source event is preselected when it is available; creation adds a version without activating it.
+- **Behavior:** the global template preserves reusable page flow/order, forces the built-in frame/message step to messages-only, strips source-event wording, consent/identity content, event links, artwork and brand styling, and resolves blank generic copy in each destination event's language. Child-owned media and styling remain local.
+- **Inheritance:** new/provisioned partners and events inherit Global → Partner → Event at read time. Existing event journeys stay intact until saved as a named EUJ and selected. Editing at a child creates or updates a child-owned journey version so later parent edits do not replace that work.
+- **Operations:** deployment does not write the global setting to production. A global admin reviews the source in Global User Journey, creates the version, then selects and saves it as the active default. See `docs/GLOBAL_DEFAULT_JOURNEY.md`.
+- **Verification:** template inheritance and sanitization unit tests pass; localized Welcome and CTA fallbacks pass; the global admin create/rename flow passed a mocked mobile browser test; `npm run inventory:check` and `npm run release:check` passed (GDS checks, type-check, lint, 385/385 unit test files, production guards, and production build). GitHub Verify remains the merge gate.
+
+## Unreleased — toggle event visibility from the eye control
+
+- **Changed:** event managers can activate or deactivate an event from its Events inventory card, a partner's event list, and the event workspace. The control uses a green open-eye button for active and a red closed-eye button for inactive; view-only users retain a read-only icon.
+- **Behavior:** the status change uses the existing authenticated event update API with strict boolean validation. Inactive events remain in the admin inventory and continue to follow the Greatest Selfies redirect for public event-specific URLs. The switch does not change photo or asset records.
+- **Accessibility and localization:** the icon-only button has an action-and-event accessible name, pressed/busy states, a 44px minimum target, and translated labels/error feedback for all supported admin locales.
+- **Verification:** focused UI rendering, event API authorization/validation, and translation tests pass. `npm run release:check` and `npm run inventory:check` pass. A local mocked-API browser check passed at desktop and mobile sizes. The database-backed Playwright test was not run because no disposable local `MONGODB_URI` is configured; GitHub Verify remains the merge gate.
+
+## Unreleased — make slideshow screen-design layers optional
+
+- **Changed:** the event and partner slideshow editors now let managers show or hide the overlay picture, dynamic QR code, and every text line separately. Hiding a layer keeps its saved configuration; it can be shown again without re-uploading or retyping.
+- **Changed:** screen designs can omit the overlay while keeping the photo window, QR and text. An uploaded overlay can therefore carry its own baked-in information while Camera's duplicate QR/text layers are switched off. Broken overlay media no longer hides the remaining configured layers.
+- **Compatibility:** legacy designs with no visibility flags stay visible. The generated Welcome-screen image and live slideshow apply the same visibility settings.
+- **Accessibility and localization:** visibility controls are labeled checkboxes and all added labels/guidance are translated for 23 admin locales.
+- **Verification:** `npm run release:check` passed, including type-check, lint, 384 unit-test files, production guards and a production build. `npm run inventory:check` passed with no broken links. A Chromium interaction smoke check at 390px verified the three visibility switches and no horizontal overflow. The full safe E2E suite was not run because no disposable local MongoDB connection is configured. No production event configuration or data was changed.
+
+## Unreleased — keep ImgBB backup URLs out of production image serving
+
+- **Changed:** Fanmass photo cards and one-photo review return only first-party Vercel Blob sources. Guest theme/logo resolution and server-side frame-logo fetching reject ImgBB. Camera's CSP and Next image optimizer allowlist no longer permit ImgBB as an image source. A legacy photo with only an ImgBB backup shows an unavailable state rather than making a production request to ImgBB.
+- **Why:** ImgBB is backup storage only; its public URLs are not user-facing image sources.
+- **Verification:** focused Fanmass, theme, logo-fetch and email-theme tests passed before the complete release checks. Full repository checks are pending.
+- **Not changed:** the private R2 photo backups and Blob live copies are unchanged. Camera still has no general public R2 CDN path for event photos, and this change does not migrate legacy ImgBB-only assets to a serving host.
+
+## Unreleased — replace the generated image on the Welcome journey page
+
+- **Changed:** the Welcome composition explains when its image follows the event's generated default slideshow and provides a direct **Choose or upload a different image** action. Managers can select an event or partner image, upload into the event Images library, or enter an HTTPS image address.
+- **Safety:** the generated slideshow image stays selected until a replacement is chosen or an address is explicitly applied; cancelling keeps the original source. The slideshow configuration remains one click away. The event's welcome configuration changes only when the editor is saved; uploading a replacement adds it to the event Images library immediately.
+- **Accessibility and localization:** controls use the Camera GDS vocabulary and the new guidance/actions are translated for all 23 admin locales.
+- **Verification:** `npm run inventory:check` and `npm run release:check` pass, including all 383 unit-test files and a production build. The focused Chromium journey test passes at 390px for opening the picker, switching to upload, cancelling without changing the generated source, and selecting a partner image. GitHub Verify remains required before merge. The test used the local Webpack dev server because the default Turbopack dev startup hits the repository's known GDS stylesheet import issue before rendering.
+
+## Unreleased — generated default frame is event-level opt-in
+
+- **Changed:** the generated default frame is off for new events, imported events and existing records without an explicit opt-in. Creating/provisioning an event no longer snapshots Messmass data or draws generated-frame images.
+- **Added:** Event → Frames shows only a **Generate default frame** action while the option is off. The action takes the snapshot, creates the frame variants and enables the frame only after image generation succeeds. Editing and refresh controls appear after generation.
+- **Safety:** capture, frame selection, gallery composition, welcome composition and moderation submissions ignore generated-frame data unless `events.generatedFrameEnabled` is exactly `true`. A failed generation leaves the event off. The global rollout skips events that have not opted in.
+- **Verification:** `npm run inventory:check` passed (718 links, no broken references); `npm run release:check` passed, including 378 unit-test files and a production build. A focused Playwright test passed at 1440 px and 390 px using an isolated `camera_test` database. The default Turbopack dev runner hit a GDS stylesheet parse error before rendering, so the browser check used Webpack dev mode. No production event settings or images were changed; this change has not been deployed.
+
+## Unreleased — MTK approved-photo restoration
+
+- **Changed:** replaced the deleted local production-data script with a global-admin-only, event-locked Camera operation that restores one of the 40 owner-authorized MTK archive matches per request into the ordinary Approved and Gallery flow. No Recovered category is added.
+- **Safety:** each composed image is SHA-256 verified in Vercel Blob, Cloudflare R2, and ImgBB before publication. The private recovery source is retained until those copies and the regular submission record are durable; retries resume safely. No original selfie, participant consent audit, contact address, or decision e-mail is fabricated.
+- **Status:** implementation is prepared for review; the production data operation has not run. It requires the PR to merge/deploy and a global admin to start it from MTK → Vetting.
+- **Verification:** type-check, lint, focused restoration-route tests, visibility tests, and the full release check passed before the final preflight hardening; final release check will run before opening the PR.
+
 ## Unreleased — global frame ownership and editor loading
 
 - **Fixed:** the frame editor reads the standard API response envelope (`data.frame`) and validates the record before rendering, preventing a valid frame from crashing as “Frame not found”. Non-404 and malformed responses now show a retryable load error.
 - **Fixed:** the frame inventory no longer renders sharing actions as duplicate generic “Edit” buttons; the sharing control is an accessible GDS icon action.
 - **Changed (data):** scoped six legacy unowned frames to their verified partner/event owners, created an event-owned copy for the existing cross-partner assignment, and preserved all 21 event assignments and partner references. No media files were deleted. The Global Frames inventory is empty.
 - **Verification:** type-check, focused ESLint, GDS checks, inventory checks, production guards, production build, and `git diff --check` passed. Unit and browser tests were not run.
-## Unreleased — partner landing-page and slideshow defaults
+## Historical rollout — partner landing-page and initial slideshow defaults (superseded for slideshow management)
 
-- **Added:** partner-scoped editors and authenticated APIs for saving/removing a default landing-page template and slideshow configuration.
+- **Added:** partner-scoped editors and authenticated APIs for saving/removing a default landing-page template and an initial single slideshow configuration. The single slideshow configuration has since been superseded by the named Global/Partner version manager documented above.
 - **Added:** events inherit partner defaults. Partner revisions refresh inherited event records; editing/choosing an event default detaches it and preserves that event override.
 - **Changed:** removing a partner default restores inherited event slideshows to their generated event baseline and removes inherited landing-page copies; event overrides remain unchanged.
 - **Added:** the stable public URL `/landing/event/<event Mongo id>` resolves the event's own default first, otherwise the current partner default, and redirects to its event-specific canonical page. Partner capture-action URLs can use `{eventCaptureUrl}`.
@@ -16,6 +125,15 @@
 - **Security and recovery:** partner writes require partner Events manager access, event changes require event manager access, and no partner template data is exposed in public APIs. Landing-page materialization is idempotent and uses event-specific target/QR/capture data.
 - **Documentation:** added `docs/PARTNER_CONTENT_DEFAULTS.md` and updated the current architecture and navigation delivery notes.
 - **Verification:** GDS manifest and boundary checks, type-check, lint, all 368 unit test files, production guards, production build, and repository inventory check pass.
+
+## Unreleased — clearer frame and welcome-photo workflows
+
+- **Changed:** Global, Partner and Event frames now use one Frames workspace. Advanced generated-frame slot controls are collapsed inside it; former Frame Slots page URLs redirect to that section, while the existing slot APIs and saved layouts remain available.
+- **Changed:** frame uploads and editors label the frame name as the chooser name, distinguish it from text printed onto the photo, and show that name in previews. During Event frame upload, a manager may select an existing event message or add a new one; the frame and message association are saved together, and the printed text area starts lower-center. Partner and Event managers can edit the chooser name and replace an owned PNG/SVG without changing the frame ID or assignments. The server validates the upload, checks the source image has not changed concurrently, and redraws dependent generated event photos when the event opted into generated frames.
+- **Changed:** newly created events start with no welcome sample selfie selected. Event Selfies are described as Welcome page screen samples; slideshow photos remain in Event Gallery. Existing event settings are unchanged.
+- **Clarified:** Dictionary editors explain that they set shared fallback wording, while page order and page-specific copy belong in the User Journey editor.
+- **Recovery:** upload status distinguishes ready, generation still needed, generation failed, and message-link failure. If the message list is changing concurrently, the association retries a bounded number of times and reports a conflict; the uploaded frame remains available to finish setup without uploading it twice.
+- **Verification:** focused upload, association, replacement and 23-locale translation tests pass. `npm run release:check` passed, including all 382 unit-test files, production guards and the production build; `npm run inventory:check` passed with no broken links. The upload journey passed a local browser check at desktop and 390px using API fixtures. GitHub Verify is the remaining merge gate. No production records or event configuration were changed.
 
 ## Unreleased — locale selector consistency
 
@@ -51,7 +169,7 @@
 
 ## Unreleased — scoped journey and email navigation
 
-- **Changed:** the global, partner, and event guest-flow destinations are labeled **Global User Journey**, **Partner User Journey**, and **Event User Journey**. The partner shortcut jumps to its inherited journey defaults on the partner overview; the event link opens the page-order editor.
+- **Changed:** the global, partner, and event guest-flow destinations are labeled **Global User Journey**, **Partner User Journey**, and **Event User Journey**. The partner link opens the dedicated partner journey workspace; the event link opens the journey list and page editor.
 - **Changed:** global, partner, and event email destinations are labeled by scope and grouped under **Blocks**. The underlying routes and email settings are unchanged.
 - **Changed:** partner and event block labels now name their scope, matching the global block names. Partner/event frame slots, sample selfies, and stadium backgrounds now have direct scoped pages; event menu links include scoped dictionary, gallery, landing-page, and slideshow names, and the partner gallery is directly reachable from the partner menu.
 - **Not available at partner scope:** landing-page and slideshow editors do not exist for partners. The Admin UI text editor is not present at any scope and remains omitted, as previously agreed. These are not shown as broken menu links.
@@ -86,7 +204,7 @@
 - **Added:** a versioned visibility policy for logos, frames and images. A source owner can share an asset down one level; partners and events can hide inherited assets locally, and partners can stop forwarding global assets to events. Inactive or unshared assets cannot be newly selected or returned to guests.
 - **Fixed:** source sharing is now usable across both Global → Partner and Partner → Event for legacy as well as inherited catalogs. Partner-owned frames, logos, images and tagged pictures expose event sharing; inherited global assets expose partner visibility and event-forwarding controls. Event hide actions on legacy catalogs preserve their current catalog during the compatibility transition.
 - **Fixed:** logo edit failures now validate the `data.logo` response and show a retryable load error separately from a true missing logo. The Global Logos inventory uses one accessible sharing action instead of duplicate generic Edit actions.
-- **Added:** reusable guest-experience templates with a global default, optional partner overlay/opt-out and event-level inheritance, independent template or local opt-out. Resolution happens at read time; new partners/events begin on the new default path while existing partner/event data keeps its prior behavior until an explicit opt-in.
+- **Superseded:** the original implementation allowed partner overlays, opt-outs and event-local opt-out behavior. Current behavior is replacement-only with one selected flow, as documented in `docs/GLOBAL_DEFAULT_JOURNEY.md`.
 - **Safety:** enabling an existing partner computes local hides from its prior library before turning on inheritance. Template config is allow-listed and excludes identity, consent, submissions, analytics and photo data. Known library assets are checked for ownership, sharing and active state before a reusable preset can be saved. Admin template metadata is removed from the public event response.
 - **UX:** global, partner and event selectors use Camera GDS controls and semantic button actions, with localized labels, save/error states and confirmation for changes that stop child sharing.
 - **Documentation:** added `docs/VISUAL_ASSET_HIERARCHY.md`; aligned the library reference, architecture, runbook and handover with the staged migration and rollback behavior.

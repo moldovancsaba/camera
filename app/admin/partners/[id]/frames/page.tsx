@@ -15,6 +15,8 @@ import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
+import FrameAssetEditor from '@/components/admin/library/FrameAssetEditor';
+import AdvancedFrameLayout from '@/components/admin/AdvancedFrameLayout';
 import EnablePartnerInheritance from '@/components/admin/library/EnablePartnerInheritance';
 import VisualAssetPolicyActions from '@/components/admin/library/VisualAssetPolicyActions';
 import ShareToChildrenToggle from '@/components/admin/library/ShareToChildrenToggle';
@@ -63,6 +65,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
   const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  const [editingFrame, setEditingFrame] = useState<string | null>(null);
   const [usageConflict, setUsageConflict] = useState<{ kind: 'frames'; assetId: string } | null>(null);
   const { confirmDestructive } = useGdsConfirm();
 
@@ -209,7 +212,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                   thumbnailUrl={item.thumbnailUrl}
                   noun="frame"
                   scope={item.scope}
-                  wide={editing === item.id}
+                  wide={editing === item.id || editingFrame === item.id}
                   note={item.messageArea ? 'Users never pick this frame: the messages of an event are written on it.' : undefined}
                   badges={
                     <>
@@ -238,6 +241,11 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                         </SemanticButton>
                       ) : null}
                       {item.via === 'own' ? (
+                        <SemanticButton action="library:message-area" variant="secondary" size="xs" disabled={busy} onClick={() => setEditingFrame(editingFrame === item.id ? null : item.id)}>
+                          Edit frame name/image
+                        </SemanticButton>
+                      ) : null}
+                      {item.via === 'own' ? (
                         <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(item.id, item.name)}>
                           Delete upload
                         </SemanticButton>
@@ -251,6 +259,18 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                 >
                   {editing === item.id ? (
                     <MessageAreaEditor pictureUrl={item.imageUrl} name={item.name} value={item.messageArea} disabled={busy} onSave={(area) => saveMessageArea(item.id, area)} onCancel={() => setEditing(null)} />
+                  ) : null}
+                  {editingFrame === item.id && item.via === 'own' ? (
+                    <FrameAssetEditor
+                      endpoint={`/api/partners/${partnerId}/library/items/${item.id}`}
+                      scope="partner"
+                      name={item.name}
+                      imageUrl={item.imageUrl}
+                      thumbnailUrl={item.thumbnailUrl}
+                      disabled={busy}
+                      onSaved={async () => { setEditingFrame(null); await reload(); }}
+                      onCancel={() => setEditingFrame(null)}
+                    />
                   ) : null}
                 </LibraryItemCard>
               ))}
@@ -301,12 +321,14 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
       <section style={SECTION}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Upload a frame for {partner.name}</h3>
-          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>It goes into this library at once. No other partner can take it.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>The frame goes into this partner library. Enter the chooser name here; event message wording belongs to each event, so choose or add it when uploading the frame there.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           <LibraryUploadForm endpoint={`/api/partners/${partnerId}/library/upload`} kind="frames" noun="frame" accept="image/png,image/svg+xml" acceptWords="PNG or SVG" onUploaded={reload} />
         </div>
       </section>
+
+      <AdvancedFrameLayout level={{ scope: 'partner', partnerMongoId: partnerId }} />
 
       <Link href={`/admin/partners/${partnerId}`}>← Back to Partner</Link>
     </div>

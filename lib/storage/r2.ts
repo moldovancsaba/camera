@@ -55,17 +55,20 @@ function client(): { client: S3Client; bucket: string } {
 }
 
 /** Keys are content-addressed and scoped to one event/submission; reject arbitrary deletion paths. */
-export function isCameraOriginalR2Key(value: unknown): value is string {
+export function isCameraImageR2Key(value: unknown): value is string {
   return typeof value === 'string'
-    && /^camera\/originals\/[A-Za-z0-9_-]{1,64}\/[A-Fa-f0-9]{24}\/[a-f0-9]{64}\.jpg$/.test(value);
+    && /^camera\/(?:originals|composed)\/[A-Za-z0-9_-]{1,64}\/[A-Fa-f0-9]{24}\/[a-f0-9]{64}\.jpg$/.test(value);
 }
 
-export async function putVerifiedOriginalR2Copy(input: {
+/** Compatibility name retained for existing full-frame original backup callers. */
+export const isCameraOriginalR2Key = isCameraImageR2Key;
+
+export async function putVerifiedCameraImageR2Copy(input: {
   key: string;
   bytes: Buffer;
   sha256: string;
 }): Promise<void> {
-  if (!isCameraOriginalR2Key(input.key)) throw new Error('Invalid Camera original R2 object key');
+  if (!isCameraImageR2Key(input.key)) throw new Error('Invalid Camera image R2 object key');
   const { client: s3, bucket } = client();
   await s3.send(new PutObjectCommand({
     Bucket: bucket,
@@ -78,31 +81,35 @@ export async function putVerifiedOriginalR2Copy(input: {
   }), { abortSignal: AbortSignal.timeout(45_000) });
 
   const response = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: input.key }), { abortSignal: AbortSignal.timeout(30_000) });
-  if (!response.Body) throw new Error('R2 original read-back returned no body');
+  if (!response.Body) throw new Error('R2 image read-back returned no body');
   const stored = Buffer.from(await response.Body.transformToByteArray());
   const digest = createHash('sha256').update(stored).digest('hex');
   if (stored.byteLength !== input.bytes.byteLength || digest !== input.sha256) {
-    throw new Error('R2 original read-back did not match the uploaded file');
+    throw new Error('R2 image read-back did not match the uploaded file');
   }
 }
 
-export async function deleteCameraOriginalR2Copy(key: string): Promise<void> {
-  if (!isCameraOriginalR2Key(key)) throw new Error('Invalid Camera original R2 object key');
+export const putVerifiedOriginalR2Copy = putVerifiedCameraImageR2Copy;
+
+export async function deleteCameraImageR2Copy(key: string): Promise<void> {
+  if (!isCameraImageR2Key(key)) throw new Error('Invalid Camera image R2 object key');
   const { client: s3, bucket } = client();
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }), { abortSignal: AbortSignal.timeout(20_000) });
   try {
     await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }), { abortSignal: AbortSignal.timeout(15_000) });
-    throw new Error('R2 original still exists after delete');
+    throw new Error('R2 image still exists after delete');
   } catch (error) {
-    if (error instanceof Error && error.message === 'R2 original still exists after delete') throw error;
+    if (error instanceof Error && error.message === 'R2 image still exists after delete') throw error;
     const name = error && typeof error === 'object' ? String((error as { name?: unknown }).name ?? '') : '';
     const status = error && typeof error === 'object' ? Number((error as { $metadata?: { httpStatusCode?: unknown } }).$metadata?.httpStatusCode) : 0;
     if (name !== 'NotFound' && status !== 404) throw error;
   }
 }
 
-export async function cameraOriginalR2CopyExists(key: string): Promise<boolean> {
-  if (!isCameraOriginalR2Key(key)) throw new Error('Invalid Camera original R2 object key');
+export const deleteCameraOriginalR2Copy = deleteCameraImageR2Copy;
+
+export async function cameraImageR2CopyExists(key: string): Promise<boolean> {
+  if (!isCameraImageR2Key(key)) throw new Error('Invalid Camera image R2 object key');
   const { client: s3, bucket } = client();
   try {
     await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }), { abortSignal: AbortSignal.timeout(15_000) });
@@ -114,3 +121,5 @@ export async function cameraOriginalR2CopyExists(key: string): Promise<boolean> 
     throw error;
   }
 }
+
+export const cameraOriginalR2CopyExists = cameraImageR2CopyExists;

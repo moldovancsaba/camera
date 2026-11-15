@@ -60,6 +60,7 @@ export default function EventPicker({ basePath }: { basePath: string }) {
 
   return (
     <Select
+      aria-label="Jump to an event"
       placeholder="Jump to an event..."
       searchable
       searchValue={search}

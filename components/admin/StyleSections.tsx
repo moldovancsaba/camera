@@ -49,6 +49,8 @@ export interface ThemeColours {
   fill: string;
   label: string;
   ring: string;
+  controlAccent?: string;
+  contrastWarnings?: string[];
   source: ButtonColourSource;
   /** The name of the messmass style of the event, when it has one. */
   styleName: string | null;
@@ -168,7 +170,7 @@ function MessmassStylePaletteCard({
       {style ? (
         <>
           <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', margin: '0.5rem 0 1rem' }}>
-            These are the source values Camera receives from Messmass. Camera may adjust effective guest button colors to keep the text and button edges accessible.
+              These are the source values Camera receives from Messmass. Camera uses the configured colors as-is and reports contrast concerns below without changing the guest experience.
           </p>
           <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.75rem', margin: 0 }}>
             {colors.map(({ label, value }) => (
@@ -231,7 +233,7 @@ export default function StyleSections({
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
               {isPartner
                 ? 'Optional Camera button defaults for this partner’s events. Messmass remains the source of the partner and event report style; an event can still set its own Camera button colors.'
-                : 'Camera’s effective guest controls after applying the Messmass style, Camera overrides, welcome-button settings, and accessibility contrast checks.'}
+                : 'Guest colors follow the Messmass style unless this event or its welcome page sets an override. Contrast concerns are reported without changing those colors.'}
             </p>
           </div>
           <Link href={isPartner ? `/admin/partners/${id}/edit` : `/admin/events/${id}/edit`} style={{ textDecoration: 'none' }}>
@@ -249,7 +251,7 @@ export default function StyleSections({
                 <div style={{ display: 'grid', gap: '0.25rem' }}>
                   <strong style={{ fontSize: '0.875rem' }}>{isEvent ? 'Effective guest button' : 'Partner button default'}</strong>
                   <code style={{ fontWeight: 700 }}>{themeColours?.fill ?? brandColor ?? CAMERA_DEFAULT_BRAND_COLOR}</code>
-                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>Buttons, camera button fill, focus states</span>
+                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>Configured primary button fill</span>
                 </div>
               </div>
 
@@ -258,17 +260,36 @@ export default function StyleSections({
                 <div style={{ display: 'grid', gap: '0.25rem' }}>
                   <strong style={{ fontSize: '0.875rem' }}>{isEvent ? 'Effective button ring' : 'Partner button ring'}</strong>
                   <code style={{ fontWeight: 700 }}>{themeColours?.ring ?? brandBorderColor ?? CAMERA_DEFAULT_BRAND_BORDER_COLOR}</code>
-                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>Input borders, checkboxes, camera button border</span>
+                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>Configured button outline</span>
                 </div>
               </div>
+              {isEvent && themeColours?.controlAccent ? (
+                <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
+                  <ColorPreviewSwatch color={themeColours.controlAccent} />
+                  <div style={{ display: 'grid', gap: '0.25rem' }}>
+                    <strong style={{ fontSize: '0.875rem' }}>Selection color</strong>
+                    <code style={{ fontWeight: 700 }}>{themeColours.controlAccent}</code>
+                    <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>Configured accent for checkboxes and selected options</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
+          {isEvent && themeColours?.contrastWarnings?.length ? (
+            <div role="alert" aria-labelledby="theme-contrast-warning-title" style={{ border: '1px solid var(--mantine-color-yellow-6)', borderRadius: '0.875rem', padding: '1rem' }}>
+              <strong id="theme-contrast-warning-title">Contrast warning</strong>
+              <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0.5rem' }}>These configured colors may be difficult to distinguish. Camera has kept them unchanged.</p>
+              <ul style={{ margin: 0, paddingInlineStart: '1.25rem' }}>
+                {themeColours.contrastWarnings.map((warning) => <li key={warning}>{warning}</li>)}
+              </ul>
+            </div>
+          ) : null}
           <MessmassStylePaletteCard style={messmassStyle} linked={messmassLinked} />
           {isEvent && themeColours ? (
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', margin: 0 }}>
               {colourSourceText(themeColours.source, themeColours.styleName, Boolean(brandColor || brandBorderColor), brandColorsOverridden === true, partnerName)}
               {themeColours.source === 'welcome' && (brandColor || brandBorderColor) ? ' The colours set here are kept, but they do not show while the welcome page sets its own.' : ''}
-              {themeColours.source === 'messmass' ? ' The source palette is shown above; this effective button color may be adjusted to meet accessibility contrast.' : ''}
+              {themeColours.source === 'messmass' ? ' The guest buttons use this Messmass palette as configured.' : ''}
             </p>
           ) : null}
         </div>

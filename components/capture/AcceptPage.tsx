@@ -54,6 +54,7 @@ export interface AcceptPageProps {
   brandColor?: string;
   brandBorderColor?: string;
   buttonSize?: EventButtonSize;
+  preview?: boolean;
 }
 
 export default function AcceptPage({
@@ -65,6 +66,7 @@ export default function AcceptPage({
   brandColor = CAMERA_DEFAULT_BRAND_COLOR,
   brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
+  preview = false,
 }: AcceptPageProps) {
   const { t } = useT();
   const listed = consentCheckboxes(config);
@@ -110,6 +112,7 @@ export default function AcceptPage({
       title={config.title}
       description={config.description}
       logoUrl={logoUrl}
+      preview={preview}
     >
       <Stack gap="sm">
         {boxes.map((item, index) => {
@@ -125,10 +128,10 @@ export default function AcceptPage({
                 borderColor: error && !isChecked && !optional
                   ? 'var(--mantine-color-red-5)'
                   : isChecked
-                    ? `var(--event-button-bg, ${brandBorderColor})`
+                    ? `var(--event-control-accent, ${brandBorderColor})`
                     : 'var(--mantine-color-gray-3)',
-                // A ticked box takes the event's button colour (the theme's), not a default blue; the tint is the one the theme's link colour is checked against.
-                backgroundColor: isChecked ? `color-mix(in srgb, var(--event-button-bg, ${brandColor}) ${SELECTED_TINT * 100}%, var(--event-card-bg, transparent))` : undefined,
+                // A ticked box uses the configured Messmass accent; the contrast warning is shown in the admin theme panel.
+                backgroundColor: isChecked ? `color-mix(in srgb, var(--event-control-accent, ${brandColor}) ${SELECTED_TINT * 100}%, var(--event-card-bg, transparent))` : undefined,
               }}
             >
               <Checkbox

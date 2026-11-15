@@ -6,8 +6,9 @@
 
 Single long-lived branch `main` (production), plus short-lived per-task branches
 (`feature/*`, `fix/*`, `chore/*`, `dependabot/*`, …) merged in and then
-deleted; no `dev`/`preview` branch exists. Every push to `main` deploys. Policy
-and current practice (PRs recommended; most changes are pushed directly) in
+deleted; no `dev`/`preview` branch exists. Every merge to `main` deploys. Changes
+must go through a pull request and the required `Verify` check; direct pushes are
+blocked. See the policy in
 [docs/BRANCHING.md](docs/BRANCHING.md).
 
 ## Visual asset inheritance and experience defaults
@@ -18,15 +19,25 @@ To enable a legacy partner, open its Frames, Logos or Images library and use **E
 
 Parent asset changes take effect immediately for descendants that still follow that parent. If an asset becomes unavailable, descendants cannot override that restriction; re-share or reactivate it at its owner to restore availability. Hiding an asset at a child changes only that child's catalog and never deletes media or existing assignments.
 
+Global slideshow versions are managed from Global → Content → Global Slideshows; Partner versions are managed from the partner's Content → Partner Slideshows. Each level has one selected default. A partner may follow Global or select one of its own versions. An event receives the selected Partner version, falling back to Global, until it selects an event-owned slideshow; use **Use parent default** to explicitly apply the current parent configuration to an existing event player. The event's photos, tracked QR target, player record, and runtime URL remain event-owned. Parent edits refresh only inheriting events; event overrides are preserved. See [PARTNER_CONTENT_DEFAULTS.md](docs/PARTNER_CONTENT_DEFAULTS.md).
+
 Deleting an asset is a two-pass operation. A 409 means Camera found references and has not deleted the catalog row or media file. Use the conflict panel's links to open each named partner/event setting, remove the reference, select a replacement, or upload a saved copy at its new owner level. Return to the original asset page, refresh the usage list, and retry Delete. The server repeats the scan at deletion time; do not manually edit MongoDB references to bypass the guard. If the list says it has more than 500 uses, resolve all pages before retrying. If a known field is missing from the list, keep the asset and report the field/path so the scanner can be updated.
 
-Experience templates are managed from Global Settings → Experience defaults, Partner → Experience defaults, and Event → Edit → Experience defaults. Set the global selection first; optionally create and select a partner template; then confirm the event is set to follow its parent or select an event template. The event editor preserves historical local configuration until an editor opts in. If a parent selection is disabled, the event's stored configuration remains in use. Template writes and selections are reversible through their settings pages. Selected templates cannot be deleted; remove their references first. There is no job queue or external service for template application.
+User journeys are managed from Global Settings → **Global User Journey**, Partner → **Partner User Journey**, and Event → **Event User Journey**. Each level starts with a list of its owned named versions and can select exactly one active default; a child either uses its own selected version or follows the current parent default. Resolution replaces the whole flow and never overlays fields: EUJ → PUJ → GUJ. Creating a version only adds it to the list; selecting it is a separate action. All owned versions at all levels use the same page editor and the current level’s shared visual-resource pickers. At desktop width, page settings sit beside a safe live preview that updates from the unsaved draft and can be switched between mobile, tablet, and desktop sizes; at narrower widths they stack. The preview reuses guest renderers for regular screens and shows action-heavy camera/upload/session steps as placeholders. It is inert and never submits, records consent, navigates, or opens the camera. Use the event capture URL for an end-to-end check. A Partner or Event must use **Customize inherited journey** to create and select a child-owned version before changing inherited content; it cannot modify a parent version. Editing a selected parent version immediately changes the flow for descendants that still follow it; descendants with their own selection stay unchanged. Event selection controls the flow at the existing capture URL, short link and QR codes without changing their addresses. New partners and events inherit. Existing events with saved legacy pages keep them until an editor snapshots those pages into a named EUJ; the editor must do this before selecting inheritance. Event presentation, branding, frames and media remain event-owned. Selected versions cannot be deleted; change all references first. Journey resolution is read-time and has no job queue or external service. See [docs/GLOBAL_DEFAULT_JOURNEY.md](docs/GLOBAL_DEFAULT_JOURNEY.md) and [docs/JOURNEY_EDITOR_PREVIEW.md](docs/JOURNEY_EDITOR_PREVIEW.md).
+
+### Uploading an event frame with its printed message
+
+On Event → Frames, enter the **chooser name** (the label users see when choosing a frame) separately from the optional **printed message**. Choose no message, select one of the event's existing messages, or add a new event message in the upload form. The upload assigns the frame to that event and associates the selected/new message with its text area; new text uses the lower-center area and can be repositioned with **Message area** after upload. This upload does not enable generated-frame output. If the event has not opted in, the page reports that the message is saved and linked and the editor can later click **Generate default frame**. If generation is already enabled, Camera redraws the dependent message images as part of the upload. A failed link/generation is shown beside the upload; the uploaded frame remains assigned, so return to its message settings and finish the association rather than uploading a duplicate. A concurrent edit that exhausts the bounded retry returns a conflict; reload the event's Frames page and retry the association. Global and Partner frame uploads are reusable assets and do not create event-specific wording.
 
 For release, run `npm run db:ensure-indexes` through the normal approved database-index procedure to create the unique experience-template key. Do not run production migrations, change production defaults, or bulk-opt-in partners as part of a code-only deployment. Verify authorization, template selection, known library asset scope checks, guest response stripping, and keyboard/screen-reader states before opening the change for merge review.
 
 ## Finding every event for a partner
 
 The partner overview shows the total event count and a compact preview of its 10 most recently created events. Use **Open Events** to open the Events inventory scoped by the partner's stable ID. The inventory shows 50 matching events per page; use the page links to continue through the full set. Event name/location search remains scoped to that partner, and the partner/search filter chips can be removed independently. The **Clear** action returns to the unfiltered Events inventory. Partner-scoped users continue to see only events covered by their active assignments. The overview count and partner-delete guard use the complete count, not the preview size. See [Partner event inventory](docs/PARTNER_EVENT_INVENTORY.md).
+
+## Activating or deactivating an event
+
+Global admins and partner event managers can use the eye button on an event card, in a partner's event list, or in the event workspace. A green open eye means the event is active; a red closed eye means it is inactive. The control saves through the authenticated `PATCH /api/events/[eventId]` route and refreshes the current view. If the request fails, the status remains as it was and the UI displays an error so the manager can retry. Viewers see the same status as a read-only icon. Inactive events remain in the Events inventory to allow reactivation. Their public event-specific URLs redirect to the event's Greatest Selfies page; see [Tracked short links — inactive events](docs/SHORT_LINKS.md#inactive-events). No photo or event asset is removed by this switch.
 
 ## Deploying to production
 
@@ -162,6 +173,8 @@ The optional marketing checkbox is controlled with the other consent settings at
 
 After the guest confirms the crop, the browser uploads the unframed, full-camera JPEG to Vercel Blob at the stable path `originals/<eventId>/<captureId>.jpg`. Vercel Blob is the first landing copy, not the completed save. Its signed completion callback reads the Blob back and synchronously creates byte-identical, verified copies in the private Cloudflare R2 bucket and ImgBB. `POST /api/submissions` attaches the original only after all three providers report the expected bytes. The composed submission remains on its existing path. A storage failure returns a retryable error and leaves the capture on screen; it does not acknowledge a saved photo with a missing original backup.
 
+**Serving rule:** ImgBB is backup storage only. Never use an ImgBB URL as an image source in Camera or return it for production display. The Content Security Policy blocks ImgBB image requests; guest theme/logo resolution and frame-logo fetching also reject ImgBB. Fanmass review uses a first-party Blob copy and displays an unavailable state if that copy is missing. ImgBB URLs remain server-side for backup verification, copy repair, and deletion. Current photo R2 copies are private backups; do not treat their object keys as public CDN URLs. Legacy records that contain only ImgBB URLs require migration to a serving host before their pictures can be displayed.
+
 - **Configuration:** server-side `BLOB_READ_WRITE_TOKEN`, `IMGBB_API_KEY`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_PRIVATE_BUCKET=camera-photo-backups`, `R2_JURISDICTION=eu`, `MONGODB_URI`, `MONGODB_DB`, and `CRON_SECRET`. The three provider keys are never exposed to browser code. Missing/invalid R2 or ImgBB configuration makes original upload fail closed. Configure the same storage variables in Vercel Production and Preview before enabling capture there.
 - **Provider records:** `submissions.imageCopies` stores verified `original` entries for Blob, R2 (private object key), and ImgBB (public URL and deletion link); `camera_original_assets` is the retry/cleanup manifest, keyed by the stable capture ObjectId. The delete link and R2 key are operational secrets and are removed from browser-facing submission responses. `npm run db:ensure-indexes` creates the manifest query indexes before rollout.
 - **Retries:** browser retries reuse the same capture id and Blob path. The signed callback uses a Mongo lease to prevent duplicate mirrors; stale leases can be claimed after 150 seconds. R2 uses a deterministic content-addressed object key. Both secondary copies are read back and compared by byte count and SHA-256 before the callback succeeds. A partial secondary copy is rolled back; rollback failures are recorded for cleanup and surfaced in sanitized logs.
@@ -235,18 +248,19 @@ code), so the wording below is for the owner to paste where it fits; nothing her
 
 ## Generated default frame (camera#231)
 
-An event without a frame of its own gets a generated frame (plan: `docs/DEFAULT_FRAME_PLAN.md`). This section covers
+Generated default frames are optional and off by default (plan: `docs/DEFAULT_FRAME_PLAN.md`). An event uses one only after a manager generates it from Event → Frames and only while no active complete event frame supersedes it. This section covers
 what is built so far, the data (`events.frameDesign`, camera#234); the renderer, the capture flow, the editor
 panel and the backfill follow (camera#235 to #238).
 
-- **Snapshot:** taken from messmass `GET /api/integrations/camera/events/[id]/frame-context` when messmass provisions
-  the event, and when an admin calls `POST /api/admin/events/[id]/frame-design/refresh` (the editor panel gets a
-  button, camera#237). There is no automatic follow of messmass changes.
+- **Snapshot:** taken from messmass `GET /api/integrations/camera/events/[id]/frame-context` only when a manager clicks
+  **Generate default frame** on `/admin/events/[id]/frames` (which calls
+  `POST /api/admin/events/[id]/frame-design/refresh`). Provisioning from Camera, Messmass or SaveTheWorld does not
+  snapshot or draw a generated frame. There is no automatic follow of messmass changes.
 - **Failure behaviour:** a slow, failing or unconfigured messmass never blocks provisioning. A refresh that gets no
   usable answer keeps the previous snapshot and answers `messmassUnavailable: true`; an event with no snapshot yet
   gets the fallback built from camera's own name and partner logo, no teams, and the system theme (Inter, light
-  colours), `source: camera`. A later refresh replaces the fallback with the messmass data. Look for
-  `frame design snapshot failed for a provisioned event` in the logs.
+  colours), `source: camera`. A later refresh replaces the fallback with the messmass data. A refresh/generation
+  failure leaves `generatedFrameEnabled` off, so partial data cannot activate a frame.
 - **`changed`:** a refresh reports `changed: true` only when something drawn differs (names, partner logo, font,
   colours); fetching the same data again is not a change.
 - **Messages:** `GET` and `PUT /api/admin/events/[id]/frame-design`. At most 10, 80 characters each, placeholders
@@ -257,8 +271,8 @@ panel and the backfill follow (camera#235 to #238).
 - **Images (camera#235):** one transparent 1920x1080 PNG per usable message, drawn on the server
   (`lib/frame/render.ts`, `@napi-rs/canvas`) and stored in Vercel Blob under `frames/generated/<eventId>/<key>.png`;
   `frameDesign.variants[]` keeps each image's URL, message, layer boxes (for the live-view territories), font and logo
-  state. They are generated after a refresh, after the message list is saved (a `502` means the snapshot or the list
-  is saved but the images are not: repeat the request, it is safe), and after provisioning (after the response).
+  state. They are generated after the explicit Generate default frame action and after the message list is saved
+  (a `502` means the snapshot or the list is saved but the images are not: repeat the request, it is safe).
   A message whose `{partner1}` / `{partner2}` cannot be filled is skipped; with no usable message there is one image
   without a message layer.
 - **Reuse:** an image is redrawn only when something that decides it changed (what is drawn, the message, the font
@@ -267,12 +281,12 @@ panel and the backfill follow (camera#235 to #238).
 - **The event emoji as the logo (camera#274):** a partner with no logo gets the first emoji of the event title in the logo spot (see the
   plan, decision 17). Images drawn with an older drawing code are drawn again by "Redraw the older images" on `/admin/frames/generated`
   (dry run first; it only touches images, never the snapshot).
-- **Rolling the frame out to existing events (camera#238):** `/admin/frames/generated` (Blocks, "Generated Frames",
-  global admin only), API `POST /api/admin/frame-backfill`. It covers every event with no active frame of its own and no
-  generated images; events with an own active frame are never touched, events with images are skipped, so it can be
-  repeated and continued. Order:
-  1. **First check on Vercel** (above), on one event, from the Frames page of that event.
-  2. **Dry run**, with the messmass check on. It writes and draws nothing; the messmass check asks messmass once per linked
+- **Maintenance of explicitly enabled events (camera#238):** `/admin/frames/generated` (Settings → Service,
+  global admin only), API `POST /api/admin/frame-backfill`. The tool never enables events. It skips every event without
+  `generatedFrameEnabled: true`, including legacy records, and only checks enabled events that have no active frame of
+  their own. It can be repeated and continued. Order:
+  1. On one event, open Event → Frames and click **Generate default frame**. Confirm the variants and capture behavior.
+  2. **Dry run**, with the messmass check on. It writes and draws nothing; it reports opted-out events separately. The messmass check asks messmass once per linked
      event (read-only, up to 40 s). Read the counts: events with an own frame, with images, to do (linked, native,
      inactive, with a snapshot but no images), native events without a partner logo, and from messmass how many will
      have a logo, real teams, a pairing in the name or the event name only, which theme they get and how many use a
@@ -287,21 +301,21 @@ panel and the backfill follow (camera#235 to #238).
      no logo) on a phone: territories in the live view, a different message on each shutter press, the real composition on
      the preview; save and open the share page; Logs to watch: `Frame backfill: event <id> failed`, `frame images could not be generated`,
      `submissions.frame_variant_dropped`.
-  5. **Rollback**: per event, assign or activate a frame of its own (the generated one stops applying at once). For all
+  5. **Rollback**: per event, assign or activate a complete frame of its own (the generated one stops applying at once). The ordinary event Frames page currently has no disable action after generation; do not unset the flag directly in production without a reviewed operational change. For all
      events, revert the capture change (camera#246) or, with the owner's approval, remove the images from the events
      (`frameDesign.variants`); the stored images stay in Blob and a later run draws them again (identical inputs reuse
      the same files).
   Timing: about 3 events per request; 219 events are about 75 requests.
-- **Editing (camera#237):** the panel at the top of `/admin/events/[id]/frames` shows the images, the snapshot and the
-  message list, and has Save messages, Reset to the default list and Refresh from messmass (the first real way to take
-  a snapshot and draw the images of one event; use it for the "First check on Vercel" above). A save or refresh takes
+- **Editing (camera#237):** while generatedFrameEnabled is off, `/admin/events/[id]/frames` shows only the
+  **Generate default frame** action for this feature. After a successful action, the panel shows the images, snapshot
+  and message list, with Save messages, Reset to the default list and Refresh from messmass. A save or refresh takes
   a few seconds because the images are drawn then; a red notice with "Try again" means the data is saved but the images
   are not, and repeating is safe. "Messages saved" with `N images: X drawn, Y reused` is the normal answer.
-- **Capture (camera#236):** while an event has no active frame of its own and `frameDesign.variants` has images, the
+- **Capture (camera#236):** only while `generatedFrameEnabled: true`, the event has no active complete frame of its own,
+  and `frameDesign.variants` has images, the
   guest page skips the frame picker, shows the layer boxes as 50% black territories in the live view and the reframe
   step, picks a variant at every shutter press and composes it on the preview step. The submission stores
-  `frameVariant { index, message, imageUrl }` and `frameId: null`. To switch an event off, assign it an active frame of
-  its own (the generated frame is derived, so this takes effect at once) and to switch it back, deactivate that frame.
+  `frameVariant { index, message, imageUrl }` and `frameId: null`. An active complete event frame takes precedence while it is active; deactivating that frame makes the opted-in generated default apply again. This precedence does not turn the generated-frame opt-in off.
   A `submissions.frame_variant_dropped` warning means a client sent an image that is not one of ours; the photo was saved
   without the record. The public event response carries `generatedFrame`, not `frameDesign`.
 - **Event names that are a pairing:** when there is no home and visitor team, a name like "A - B", "A x B" or "A vs B"

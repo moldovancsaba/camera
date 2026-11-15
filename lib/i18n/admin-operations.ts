@@ -3,6 +3,9 @@ import { adminCommonText } from '@/lib/i18n/admin-common';
 import { UI_LANGUAGES, type UiLanguage } from '@/lib/i18n';
 import { adminVisualAssetText } from './admin-visual-assets';
 import { adminExperienceTemplateText } from './admin-experience-templates';
+import { adminFrameUploadText } from './admin-frame-upload';
+import { adminWelcomeImageText } from './admin-welcome-image';
+import { adminJourneyPublicationText } from './admin-journey-publication';
 
 const AI_PRECHECK_ADVISORY_SOURCE = 'AI precheck is advisory; all decisions remain with the reviewer.';
 const AI_PRECHECK_ADVISORY: Record<UiLanguage, string> = {
@@ -141,10 +144,16 @@ const EXTRA_INDEX = new Map<string, number>(EXTRA_SOURCES.map((source, index) =>
 export function adminOperationText(source: string, language: UiLanguage): string {
   if (source === AI_PRECHECK_ADVISORY_SOURCE) return AI_PRECHECK_ADVISORY[language];
   if (Object.hasOwn(AI_PRECHECK_COPY.en, source)) return AI_PRECHECK_COPY[language][source as AiPrecheckCopyKey];
+  const welcomeImage = adminWelcomeImageText(source, language);
+  if (welcomeImage !== null) return welcomeImage;
+  const frameUpload = adminFrameUploadText(source, language);
+  if (frameUpload !== source) return frameUpload;
   const visualAssetText = adminVisualAssetText(source, language);
   if (visualAssetText !== null) return visualAssetText;
   const experienceTemplateText = adminExperienceTemplateText(source, language);
   if (experienceTemplateText !== null) return experienceTemplateText;
+  const journeyPublicationText = adminJourneyPublicationText(source, language);
+  if (journeyPublicationText !== null) return journeyPublicationText;
   const common = adminCommonText(source, language);
   if (common !== null) return common;
   const extraIndex = EXTRA_INDEX.get(source);
@@ -161,7 +170,12 @@ export function adminOperationText(source: string, language: UiLanguage): string
 }
 
 export function hasAdminOperationTranslation(source: string): boolean {
-  return INDEX.has(source) || source === AI_PRECHECK_ADVISORY_SOURCE || Object.hasOwn(AI_PRECHECK_COPY.en, source);
+  return INDEX.has(source)
+    || source === AI_PRECHECK_ADVISORY_SOURCE
+    || Object.hasOwn(AI_PRECHECK_COPY.en, source)
+    || adminWelcomeImageText(source, 'en') !== null
+    || adminExperienceTemplateText(source, 'en') !== null
+    || adminJourneyPublicationText(source, 'en') !== null;
 }
 
 // Guard catalog ordering during application startup without turning missing phrases into crashes.

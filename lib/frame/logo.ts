@@ -1,7 +1,7 @@
 /**
  * Fetches the logo of the frame (camera#235). The URL comes from the messmass snapshot, so it is checked before it is
- * fetched: https only, only the image hosts camera uses (its own Vercel Blob store, imgbb's direct host and the logo bucket on
- * Cloudflare R2), no redirects, a size cap and a timeout. The image is drawn as it is; nothing is removed from a logo.
+ * fetched: https only, only Camera's Vercel Blob and logo bucket on Cloudflare R2, no redirects, a size cap and a timeout.
+ * ImgBB is backup-only and is never used as a production source. The image is drawn as it is; nothing is removed from a logo.
  */
 
 import { isBlobStorageHostname, isLogoStorageHostname } from '@/lib/imgbb/url';
@@ -12,7 +12,7 @@ const LOGO_FETCH_TIMEOUT_MS = 8000;
 export function isAllowedLogoUrl(raw: string): boolean {
   try {
     const url = new URL(raw);
-    return url.protocol === 'https:' && !url.username && !url.password && (url.hostname === 'i.ibb.co' || isBlobStorageHostname(url.hostname) || isLogoStorageHostname(url.hostname));
+    return url.protocol === 'https:' && !url.username && !url.password && (isBlobStorageHostname(url.hostname) || isLogoStorageHostname(url.hostname));
   } catch {
     return false;
   }

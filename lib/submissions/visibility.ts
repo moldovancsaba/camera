@@ -17,6 +17,7 @@
  */
 
 import { privacyErasureIsFenced } from '@/lib/privacy/erasure';
+import { hasOwnerMediaUseAuthorization, ownerMediaUseMongoFilter } from '@/lib/events/consent-eligibility';
 
 export interface VisibilityInput {
   submissionKind?: string | null;
@@ -31,6 +32,7 @@ export interface VisibilityInput {
   consentStatus?: string | null;
   retentionStatus?: string | null;
   privacyErasure?: unknown;
+  mediaUseAuthorization?: unknown;
 }
 
 /** Every event reference a photo belongs to (the UUID and the ids it was filed under), without duplicates. */
@@ -39,6 +41,12 @@ function eventRefs(submission: VisibilityInput): string[] {
   if (typeof submission.eventId === 'string' && submission.eventId) refs.add(submission.eventId);
   for (const id of submission.eventIds ?? []) if (typeof id === 'string' && id) refs.add(id);
   return [...refs];
+}
+
+function ownerAuthorizationMatchesEvent(submission: VisibilityInput, scope: 'public_gallery' | 'public_share' | 'slideshow'): boolean {
+  if (!hasOwnerMediaUseAuthorization({ mediaUseAuthorization: submission.mediaUseAuthorization }, scope)) return false;
+  const authorization = submission.mediaUseAuthorization as { eventId?: unknown };
+  return typeof authorization.eventId === 'string' && eventRefs(submission).includes(authorization.eventId);
 }
 
 /** Hidden from every event it belongs to (a photo that belongs to no event cannot be hidden from one). */
@@ -66,6 +74,7 @@ export function visibilityInputOf(doc: Record<string, unknown> | null | undefine
     consentStatus: text(doc.consentStatus),
     retentionStatus: text(doc.retentionStatus),
     privacyErasure: doc.privacyErasure,
+    mediaUseAuthorization: doc.mediaUseAuthorization,
   };
 }
 
@@ -74,8 +83,10 @@ export function isPubliclyVisible(submission: VisibilityInput | null | undefined
   if (privacyErasureIsFenced(submission.privacyErasure)) return false;
   if (submission.isArchived === true) return false;
   if (submission.mediaBroken === true) return false;
-  if (submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || submission.consentStatus === 'expired') return false;
-  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || submission.retentionStatus === 'erased') return false;
+  const ownerPublicShare = (['public_share', 'public_gallery', 'slideshow'] as const).some((scope) =>
+    ownerAuthorizationMatchesEvent(submission, scope));
+  if (submission.consentStatus === 'pending' || submission.consentStatus === 'expiring' || (submission.consentStatus === 'expired' && !ownerPublicShare)) return false;
+  if (submission.retentionStatus === 'pending_erasure' || submission.retentionStatus === 'erasing' || (submission.retentionStatus === 'erased' && !ownerPublicShare)) return false;
   if (isHiddenFromAllEvents(submission)) return false;
   // Only a plain photo can be public: a stored try-on result (or any other kind) never is.
   if (submission.submissionKind != null && submission.submissionKind !== 'original') return false;
@@ -93,12 +104,16 @@ export const plainPhotoClause = { $or: [{ submissionKind: { $exists: false } }, 
 
 /** The same rule for a MongoDB query on plain photos (the shape the slideshow routes use). */
 export function publiclyVisibleClauses(eventIdKeys: readonly string[]): object[] {
+  const ownerPublicShare = {
+    $or: (['public_share', 'public_gallery', 'slideshow'] as const)
+      .map((scope) => ownerMediaUseMongoFilter(scope, eventIdKeys)),
+  };
   return [
     { isArchived: { $ne: true } },
     // A picture that is gone is not shown (lib/media/broken.ts).
     { 'mediaHealth.broken': { $ne: true } },
-    { consentStatus: { $nin: ['pending', 'expiring', 'expired'] } },
-    { retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } },
+    { $or: [{ consentStatus: { $nin: ['pending', 'expiring', 'expired'] } }, { $and: [ownerPublicShare, { consentStatus: 'expired' }] }] },
+    { $or: [{ retentionStatus: { $nin: ['pending_erasure', 'erasing', 'erased'] } }, { $and: [ownerPublicShare, { retentionStatus: 'erased' }] }] },
     { 'privacyErasure.state': { $nin: ['fenced', 'record_erased'] } },
     { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: [...eventIdKeys] } }] },
     {

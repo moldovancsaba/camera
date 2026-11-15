@@ -408,7 +408,7 @@ html[data-app-lock] body {
  * text toolbars. It uses GDS semantic tokens and is limited to the admin shell;
  * guest-facing preview renderers can opt out to keep their output faithful.
  */
-html[data-gds-theme-preset] [data-camera-admin] :is(
+[data-camera-admin] :is(
   button,
   [role='button'],
   [role='tab'],
@@ -423,7 +423,15 @@ html[data-gds-theme-preset] [data-camera-admin] :is(
   border-color: color-mix(in srgb, var(--gds-vibe-text) 62%, var(--gds-vibe-border));
 }
 
-html[data-gds-theme-preset] [data-camera-admin] :is(
+[data-camera-admin] .mantine-AppShell-root {
+  overflow-x: clip;
+}
+
+html:has([data-camera-admin]) {
+  overflow-x: clip;
+}
+
+[data-camera-admin] :is(
   input:not([type='hidden'], [type='checkbox'], [type='radio'], [type='range'], [type='button'], [type='submit'], [type='reset'], [type='image']),
   select,
   textarea,
@@ -436,7 +444,7 @@ html[data-gds-theme-preset] [data-camera-admin] :is(
   border: 2px solid color-mix(in srgb, var(--gds-vibe-text) 48%, var(--gds-vibe-border));
 }
 
-html[data-gds-theme-preset] [data-camera-admin] :is(
+[data-camera-admin] :is(
   input[type='checkbox'],
   input[type='radio'],
   .mantine-Checkbox-input,
@@ -444,4 +452,11 @@ html[data-gds-theme-preset] [data-camera-admin] :is(
   .mantine-Switch-track
 ):not([data-admin-guest-preview] *) {
   border-color: color-mix(in srgb, var(--gds-vibe-text) 58%, var(--gds-vibe-border));
+}
+
+[data-camera-admin] :is(input[type='checkbox'], input[type='radio']):not([data-admin-guest-preview] *) {
+  width: 1.5rem;
+  height: 1.5rem;
+  accent-color: var(--gds-vibe-primary);
+  cursor: pointer;
 }

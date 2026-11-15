@@ -1,135 +1,116 @@
 import assert from 'node:assert/strict';
-import { test, type TestContext } from 'node:test';
+import { test } from 'node:test';
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
+import { COLLECTIONS } from '@/lib/db/schemas';
+import { DEFAULT_UPLOAD_MESSAGE_AREA } from '@/lib/frame/message-area';
 import { fakeDb } from '@/lib/library/fake-db';
 
 const apiReal = await import('@/lib/api');
+const libraryDbReal = await import('@/lib/library/db');
+const ADMIN = { appRole: 'admin', user: { id: 'admin-1', email: 'admin@example.com', name: 'Admin' } };
 
-const EVENT_MONGO_ID = new ObjectId();
-const ADMIN = { appRole: 'admin', user: { id: 'a1', email: 'admin@example.com', name: 'Admin' } };
-
-type RouteModule = typeof import('./route');
-const importRoute = (caseId: string) => import('./route?case=' + caseId) as Promise<RouteModule>;
-
-function setup(t: TestContext, options: { allowed?: boolean; event?: Record<string, unknown> } = {}) {
-  const seeded = fakeDb({
+function setup(t: import('node:test').TestContext, generatedFrameEnabled = false, messageFrames: Record<string, string | string[]> = {}) {
+  const eventId = new ObjectId();
+  const event = {
+    _id: eventId,
+    eventId: 'event-uuid',
+    name: 'Match day',
+    partnerId: 'partner-uuid',
     frames: [],
-    logos: [],
-    partners: [{ partnerId: 'P', name: 'Partner P' }],
-    events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', frames: [], logos: [], ...(options.event ?? {}) }],
-  });
-  const stored: string[] = [];
+    frameDesign: { context: {}, messages: ['Existing message'], messageFrames, messagesOverridden: false, updatedAt: 'before-upload' },
+    generatedFrameEnabled,
+  };
+  const seeded = fakeDb({ events: [event], frames: [] });
+  const generated: unknown[] = [];
+
   t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
   t.mock.module('@/lib/api', { exports: { ...apiReal, requireAuth: async () => ADMIN } });
-  t.mock.module('@/lib/partners/authorization', { exports: { getPartnerScopedAccessForEvent: async () => ({ allowed: options.allowed !== false, role: 'admin', partnerId: 'P' }) } });
-  t.mock.module('@/lib/imgbb/upload', {
+  t.mock.module('@/lib/partners/authorization', {
+    exports: { getPartnerScopedAccessForEvent: async () => ({ allowed: true, role: 'admin', partnerId: 'partner-uuid' }) },
+  });
+  t.mock.module('@/lib/library/upload', {
     exports: {
-      uploadImage: async (file: File) => {
-        stored.push(file.name);
-        return { success: true, imageUrl: 'https://blob.example/event-frame.png', thumbnailUrl: '', deleteUrl: '', imageId: '', fileSize: file.size, mimeType: file.type, fileName: file.name, provider: 'blob', mirrorImageUrl: null };
+      createLibraryItem: async (db: typeof seeded.db, input: { messageArea?: unknown; owner: Record<string, unknown>; name: string }) => {
+        const item = {
+          frameId: 'new-frame',
+          name: input.name,
+          imageUrl: 'https://media.example/frame.png',
+          thumbnailUrl: 'https://media.example/frame-thumb.png',
+          ...input.owner,
+          ...(input.messageArea ? { messageArea: input.messageArea } : {}),
+          isActive: true,
+        };
+        await db.collection(COLLECTIONS.FRAMES).insertOne(item);
+        return { ok: true as const, item };
       },
     },
   });
-  return { ...seeded, stored };
+  t.mock.module('@/lib/library/db', { exports: { ...libraryDbReal, itemView: (_kind: string, item: unknown) => item } });
+  t.mock.module('@/lib/slots/logo-store', { exports: { addLogoToEventSlot: async () => ({ ok: true, value: { slots: {} } }) } });
+  t.mock.module('@/lib/frame/variants', {
+    exports: {
+      generateFrameVariants: async (_db: unknown, input: { frameDesign: unknown }) => {
+        generated.push(input.frameDesign);
+        return { design: { ...(input.frameDesign as object), variants: [{ frameId: 'new-frame' }] }, generated: 1, reused: 0 };
+      },
+    },
+  });
+
+  return { eventId: eventId.toHexString(), event, data: seeded.data, generated };
 }
 
-const params = { params: Promise.resolve({ eventId: String(EVENT_MONGO_ID) }) };
-function post(fields: Record<string, string>, file?: File): NextRequest {
+async function upload(eventId: string, testCase: string, mode = 'new', message = 'Hajrá, MTK!') {
   const form = new FormData();
-  for (const [k, v] of Object.entries(fields)) form.set(k, v);
-  if (file) form.set('file', file);
-  return new NextRequest(`http://localhost/api/events/${EVENT_MONGO_ID}/library/upload`, { method: 'POST', body: form });
+  form.set('kind', 'frames');
+  form.set('file', new File([new Uint8Array([137, 80, 78, 71])], 'match.png', { type: 'image/png' }));
+  form.set('name', 'Match day frame');
+  form.set('frameMessageMode', mode);
+  form.set('frameMessage', message);
+  return import(`./route?case=event-frame-upload-message-${testCase}`).then(({ POST }) => POST(
+    new NextRequest(`http://localhost/api/events/${eventId}/library/upload`, { method: 'POST', body: form }),
+    { params: Promise.resolve({ eventId }) },
+  ));
 }
-const png = () => new File([new Uint8Array([137, 80, 78, 71])], 'pink.png', { type: 'image/png' });
 
-test('an upload for an event is its own frame, assigned at once, and the event now has its own list', async (t) => {
-  const { data } = setup(t);
-  const { POST } = await importRoute('ok');
-  const response = await POST(post({ kind: 'frames', name: 'Pink match frame' }, png()), params);
+test('event frame upload saves its chooser name, adds the printed message and keeps generation opt-in', async (t) => {
+  const { eventId, data, generated } = setup(t, false);
+  const response = await upload(eventId, 'opt-in-off');
+  const body = await response.json();
+
   assert.equal(response.status, 201);
-  const frame = data.frames[0] as Record<string, unknown>;
-  assert.equal(frame.scope, 'event');
-  assert.equal(frame.eventId, 'e-uuid', 'the event UUID, like the partner UUID');
-  assert.equal(frame.partnerId, 'P');
-  const event = data.events[0] as { frames: Array<{ frameId: string; isActive: boolean; addedBy: string }>; framesOverridden?: boolean };
-  assert.deepEqual(event.frames.map((f) => [f.frameId, f.isActive, f.addedBy]), [[frame.frameId, true, 'a1']]);
-  assert.equal(event.framesOverridden, true, 'a later change of the partner defaults must not replace it');
+  assert.equal(body.data.item.name, 'Match day frame');
+  assert.equal(body.data.messageSetup.status, 'needs-generation');
+  assert.equal(body.data.assignment.frameId, 'new-frame');
+  assert.equal(body.data.assignment.isActive, true);
+  assert.equal(body.data.assignment.addedBy, 'admin-1');
+  assert.deepEqual((data.events[0].frameDesign as { messages: string[] }).messages, ['Existing message', 'Hajrá, MTK!']);
+  assert.deepEqual((data.events[0].frameDesign as { messageFrames: Record<string, unknown> }).messageFrames, { 'Hajrá, MTK!': 'new-frame' });
+  assert.deepEqual(data.frames[0].messageArea, DEFAULT_UPLOAD_MESSAGE_AREA);
+  assert.equal((data.events[0] as { generatedFrameEnabled: boolean }).generatedFrameEnabled, false);
+  assert.equal(generated.length, 0, 'upload never generates or enables the default frame by itself');
 });
 
-test('a bad upload changes nothing on the event', async (t) => {
-  const { data, stored } = setup(t);
-  const { POST } = await importRoute('bad');
-  assert.equal((await POST(post({ kind: 'frames', name: '' }, png()), params)).status, 400);
-  assert.equal((await POST(post({ kind: 'frames', name: 'x' }, new File([new Uint8Array([1])], 'a.gif', { type: 'image/gif' })), params)).status, 400);
-  assert.equal((await POST(post({ kind: 'logos', name: 'x', scenario: 'nowhere' }, png()), params)).status, 400, 'a logo needs a scenario that exists');
-  assert.deepEqual(stored, []);
-  assert.deepEqual((data.events[0] as { frames: unknown[] }).frames, []);
-  assert.deepEqual((data.events[0] as { logos?: unknown[] }).logos, []);
-  assert.equal((data.events[0] as { framesOverridden?: boolean }).framesOverridden, undefined);
-  assert.equal((data.events[0] as { logosOverridden?: boolean }).logosOverridden, undefined);
-});
+test('an event that already opted into frame generation redraws after a message upload', async (t) => {
+  const { eventId, generated } = setup(t, true);
+  const response = await upload(eventId, 'opt-in-on');
+  const body = await response.json();
 
-test('a logo uploaded for an event is assigned at once in the scenario chosen, and the event now has its own logo list', async (t) => {
-  const { data } = setup(t);
-  const { POST } = await importRoute('logo');
-  const response = await POST(post({ kind: 'logos', name: 'Match crest', scenario: 'loading-capture' }, png()), params);
   assert.equal(response.status, 201);
-  const logo = data.logos[0] as Record<string, unknown>;
-  assert.deepEqual([logo.scope, logo.eventId, logo.partnerId], ['event', 'e-uuid', 'P']);
-  const event = data.events[0] as { logos: Array<Record<string, unknown>>; logosOverridden?: boolean; framesOverridden?: boolean };
-  assert.deepEqual(event.logos.map((l) => [l.logoId, l.scenario, l.order, l.isActive, l.addedBy]), [[logo.logoId, 'loading-capture', 0, true, 'a1']]);
-  assert.equal(event.logosOverridden, true, 'a later change of the partner defaults must not replace it');
-  assert.equal(event.framesOverridden, undefined, 'the frames are not touched');
-  assert.deepEqual((data.events[0] as { frames: unknown[] }).frames, []);
+  assert.equal(body.data.messageSetup.status, 'ready');
+  assert.equal(generated.length, 1);
 });
 
-test('a logo uploaded without a scenario goes on top of the guest pages (onboarding-thankyou)', async (t) => {
-  const { data } = setup(t);
-  const { POST } = await importRoute('logo-default');
-  assert.equal((await POST(post({ kind: 'logos', name: 'Match crest' }, png()), params)).status, 201);
-  assert.equal(((data.events[0] as { logos: Array<{ scenario: string }> }).logos)[0].scenario, 'onboarding-thankyou');
-});
+test('event frame upload can select an existing printed message without replacing its other frame designs', async (t) => {
+  const { eventId, data, generated } = setup(t, false, { 'Existing message': 'older-frame' });
+  const response = await upload(eventId, 'select-existing', 'existing', 'Existing message');
+  const body = await response.json();
 
-test('without manager access to the event nothing is uploaded', async (t) => {
-  const { data, stored } = setup(t, { allowed: false });
-  const { POST } = await importRoute('denied');
-  assert.equal((await POST(post({ kind: 'frames', name: 'x' }, png()), params)).status, 403);
-  assert.deepEqual(stored, []);
-  assert.equal(data.frames.length, 0);
-});
-
-test('a logo uploaded with a slot joins that slot of the event (on the slot model), not the old list, and needs no scenario', async (t) => {
-  const { data } = setup(t);
-  const { POST } = await importRoute('slot-logo');
-  const response = await POST(post({ kind: 'logos', slot: 'logo', name: 'Own logo' }, png()), params);
   assert.equal(response.status, 201);
-  const logo = data.logos[0] as Record<string, unknown>;
-  assert.equal(logo.scope, 'event');
-  const event = data.events[0] as { slots?: Record<string, { items?: string[] }>; logos: unknown[]; logosOverridden?: unknown };
-  assert.deepEqual(event.slots, { logo: { items: [logo.logoId as string] } });
-  assert.deepEqual(event.logos, [], 'the old list is not touched');
-  assert.equal(event.logosOverridden, undefined);
-  const body = (await response.json()) as { data: { slot: { items: string[] } } };
-  assert.deepEqual(body.data.slot.items, [logo.logoId]);
+  assert.equal(body.data.item.name, 'Match day frame');
+  assert.deepEqual((data.events[0].frameDesign as { messages: string[] }).messages, ['Existing message']);
+  assert.deepEqual((data.events[0].frameDesign as { messageFrames: Record<string, unknown> }).messageFrames, { 'Existing message': ['older-frame', 'new-frame'] });
+  assert.equal(data.frames[0].name, 'Match day frame', 'the chooser label stays separate from the printed message');
+  assert.equal(data.frames[0].messageArea !== undefined, true);
+  assert.equal(generated.length, 0);
 });
-
-test('an upload to a place of use of an event that is not on the model seeds its slots from its old list first, so it keeps showing what it showed', async (t) => {
-  const old = [{ logoId: 'g1', scenario: 'onboarding-thankyou', order: 0, isActive: true }, { logoId: 'g1', scenario: 'loading-capture', order: 0, isActive: true }, { logoId: 'g1', scenario: 'loading-slideshow', order: 0, isActive: true }, { logoId: 'g1', scenario: 'slideshow-transition', order: 0, isActive: true }];
-  const { data } = setup(t, { event: { logos: old, logosOverridden: true } });
-  const { POST } = await importRoute('slot-seed');
-  assert.equal((await POST(post({ kind: 'logos', slot: 'logo-capture-loading', name: 'Loading logo' }, png()), params)).status, 201);
-  const event = data.events[0] as { slots: Record<string, { items?: string[]; useDefault?: boolean }>; logos: unknown[] };
-  assert.deepEqual(event.slots.logo, { items: ['g1'], useDefault: false });
-  assert.equal(event.slots['logo-capture-loading'].items?.length, 1);
-  assert.equal(event.logos.length, 4, 'the old list is still there');
-});
-
-test('an unknown slot is refused before the file is stored', async (t) => {
-  const { data, stored } = setup(t);
-  const { POST } = await importRoute('slot-bad');
-  assert.equal((await POST(post({ kind: 'logos', slot: 'frames', name: 'Nope' }, png()), params)).status, 400);
-  assert.deepEqual(stored, []);
-  assert.deepEqual(data.logos, []);
-});
-

@@ -13,6 +13,7 @@ import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import FramesInventoryList, { type SerializedFrameRow } from '@/components/gds/FramesInventoryList';
 import { mongoIdString } from '@/lib/gds/serialize-admin-rows';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
+import AdvancedFrameLayout from '@/components/admin/AdvancedFrameLayout';
 
 export const dynamic = 'force-dynamic';
 
@@ -213,6 +214,7 @@ export default async function FramesPage({
       dbError={dbError}
     >
       <FramesInventoryList frames={frameRows} />
+      {!showAll ? <AdvancedFrameLayout level={{ scope: 'global' }} /> : null}
     </AdminListPageShell>
   );
 }
