@@ -12,6 +12,13 @@
 - **Default:** off. An event without the `photoModerationPrecheck` setting, or with it off, is unchanged: no queue entry, no outbound request, no change to the Vetting card. Only a global admin can switch it on, only while photo vetting is on and the server key is configured. With no enabled event the per-minute worker only renews its lock document and finds no work.
 - **Verification:** before merge, `npm run inventory:check` and `npm run release:check` passed locally on the branch merged with main (2026-11-15), and GitHub Verify gates the merge. The Preview provider smoke test is described in `docs/PHOTO_CONTENT_PRECHECK.md`. A consented test submission through capture to the reviewer is still not verified; no successful production end-to-end test is claimed.
 
+## Unreleased — read-only visual asset legacy inventory (issue #753)
+
+- **Added:** `npm run visual-assets:legacy-inventory` builds a PII-minimized inventory of legacy frames, logos, images, partner/event assignments and policies, picture references, and experience templates from one serial MongoDB snapshot.
+- **Safety:** it requires explicit read-only migration variables, does not load the app's standard database variables, caps the scan at 50,000 documents / 64 MiB, emits only business IDs and hashed media addresses, and has no write/apply mode. Proposed missing asset fields preserve current runtime defaults; inheritance policies and event/template output are untouched.
+- **Limit:** this is not a production data report, an applied migration, a backup, or a rendered before/after event comparison. Production inventory and every write remain gated on an operator-reviewed report, backup, representative output diff, and a separately reviewed bounded apply/rollback plan.
+- **Verification:** type-check, full lint, GDS checks, documentation inventory/link checks, and production build passed. Unit tests were not rerun after the final inventory edits; GitHub Verify remains the full test gate. Build reports the existing Google Fonts `@import` ordering warning.
+
 ## Unreleased — Global and Partner slideshow versions and Experience page stability
 
 - **Added:** Global and Partner slideshow settings are named, reusable versions with list, create, edit, rename, delete, and one selected default. Partners may inherit the Global default; events inherit their Partner default, falling back to Global, until an event selects its own slideshow.
