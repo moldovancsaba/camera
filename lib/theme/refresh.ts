@@ -15,6 +15,7 @@ import { refreshFrameDesign } from '@/lib/frame/sync';
 import { generateFrameVariants } from '@/lib/frame/variants';
 import type { FrameDesign } from '@/lib/frame/context';
 import { scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
+import { effectiveMessageFrames, frameIdsOf } from '@/lib/frame/selection';
 
 export const THEME_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const THEME_RETRY_AFTER_MS = 10 * 60 * 1000;
@@ -54,8 +55,13 @@ export async function refreshEventTheme(db: Db, event: Document, deps: ThemeRefr
     // An event that already has frame images gets the ones whose inputs changed; the others are kept as they are. An event whose frame is
     // made from the designers' picture (frameDesign.base) is always checked, because the picture, its box or its messages may have changed
     // without the messmass data changing; an image whose key is unchanged is reused, so a check that finds nothing new draws nothing.
-    if (event.generatedFrameEnabled === true && ((changed && (event.frameDesign as FrameDesign | undefined)?.variants?.length) || design.base)) {
-      await deps.generate(db, { ...event, frameDesign: design });
+    const hasMessageFrameAssignments = frameIdsOf(effectiveMessageFrames(design)).length > 0;
+    // Opting into the generated fallback only produces an image when the event has usable message content (or previously generated
+    // variants to refresh). Assigned message carriers and an explicit base image remain independently renderable while that fallback is off.
+    const hasGeneratedFallbackOutput = event.generatedFrameEnabled === true && ((design.messages?.length ?? 0) > 0 || Boolean(design.variants?.length));
+    const hasFrameOutput = hasGeneratedFallbackOutput || hasMessageFrameAssignments || Boolean(design.base);
+    if (hasFrameOutput && (changed || design.base || !design.variants?.length)) {
+      await deps.generate(db, { ...event, frameDesign: design }, undefined, { includeGeneratedFallback: event.generatedFrameEnabled === true });
     }
     await events.updateOne({ _id: event._id }, { $set: { themeCheckedAt: at }, $unset: { themeStale: '' } });
     // A new messmass style (colours, font) is also what the welcome page screen is drawn in (issue 327): the frame images above already schedule it when they were drawn; an event without frame images

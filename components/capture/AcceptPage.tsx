@@ -54,6 +54,7 @@ export interface AcceptPageProps {
   brandColor?: string;
   brandBorderColor?: string;
   buttonSize?: EventButtonSize;
+  preview?: boolean;
 }
 
 export default function AcceptPage({
@@ -65,6 +66,7 @@ export default function AcceptPage({
   brandColor = CAMERA_DEFAULT_BRAND_COLOR,
   brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
+  preview = false,
 }: AcceptPageProps) {
   const { t } = useT();
   const listed = consentCheckboxes(config);
@@ -110,6 +112,7 @@ export default function AcceptPage({
       title={config.title}
       description={config.description}
       logoUrl={logoUrl}
+      preview={preview}
     >
       <Stack gap="sm">
         {boxes.map((item, index) => {

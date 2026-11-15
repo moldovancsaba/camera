@@ -70,14 +70,13 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   await checkRateLimit(request, RATE_LIMITS.ADMIN);
   const { id } = await context!.params!;
   const { db, event } = await loadEvent(id, session, 'manager');
-  if (event.generatedFrameEnabled !== true) throw apiError('Generate the default frame before editing its messages.', 409);
 
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object') throw apiBadRequest('A JSON body is required');
   const saved = await saveFrameMessages(db, event, body as { messages?: unknown; reset?: unknown; messageFrames?: unknown; darkArea?: unknown });
-  const images = await generateFrameVariants(db, { ...event, frameDesign: saved }).catch((error: unknown) => {
+  const images = await generateFrameVariants(db, { ...event, frameDesign: saved }, undefined, { includeGeneratedFallback: event.generatedFrameEnabled === true }).catch((error: unknown) => {
     console.error(`Event ${id}: frame images could not be generated`, error);
-    throw apiError('The messages were saved but the frame images could not be generated. Try again.', 502);
+    throw apiError('The messages were saved but their frame images could not be generated. Try again.', 502);
   });
   return apiSuccess({ frameDesign: images.design, variants: { total: images.design.variants?.length ?? 0, generated: images.generated, reused: images.reused } });
 });

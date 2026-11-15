@@ -1,10 +1,9 @@
 'use client';
 
 /**
- * The generated default frame of one event, in the event editor (camera#237, plan docs/DEFAULT_FRAME_PLAN.md):
- * the images that exist, the messmass snapshot they are built from, the editable message list, and the actions
- * Save, Reset to the default list and Refresh from messmass. An event must explicitly generate this optional frame;
- * after that it applies only while the event has no active frame of its own. Assigning one replaces it at once.
+ * The event's message-to-frame designer plus its optional generated default (camera#237, camera#366):
+ * map event messages to assigned frame graphics and draw their combinations independently of the generated fallback.
+ * The generated fallback remains an explicit opt-in and applies only while no active complete event frame exists.
  *
  * Talks to GET/PUT /api/admin/events/[id]/frame-design and POST .../refresh. Saving and refreshing also generate the
  * images, which takes a few seconds, so the actions show that they are busy.
@@ -21,7 +20,7 @@ import { describeSnapshotChanges } from '@/lib/frame/diff';
 import { eventEmoji } from '@/lib/frame/emoji';
 import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
 import { fillMessage, messageTokens, validateMessages } from '@/lib/frame/messages';
-import { framesOfMessage } from '@/lib/frame/selection';
+import { effectiveMessageFrames, framesOfMessage } from '@/lib/frame/selection';
 
 interface Limits {
   maxMessages: number;
@@ -45,9 +44,11 @@ interface Loaded {
   availableFrames?: CarrierFrame[];
 }
 
-/** The frames chosen for each message of a design, in the order of its messages; an empty list where a message has none (it is on the generated layout). */
-const framesOf = (design: Pick<FrameDesign, 'messages' | 'messageFrames'> | null, messages: readonly string[]): string[][] =>
-  messages.map((message) => framesOfMessage(design?.messageFrames, message));
+/** The frames chosen for each message of a design, in the order of its messages; empty means no assigned design. */
+const framesOf = (design: Pick<FrameDesign, 'messages' | 'messageFrames' | 'messageFramesOverridden' | 'variants' | 'context'> | null, messages: readonly string[]): string[][] => {
+  const choices = effectiveMessageFrames(design ? { ...design, messages: [...messages] } : null);
+  return messages.map((message) => framesOfMessage(choices, message));
+};
 
 interface ImageCounts {
   total: number;
@@ -93,14 +94,15 @@ function Swatch({ colour, label }: { colour: string; label: string }) {
 }
 
 /**
- * Which message goes on which design (issue 449): a row for each message, a column for each design of the event that carries messages. A message on no design is on the generated
- * layout. Every tick is one picture, drawn when the messages are saved.
+ * Which message goes on which design (issue 449): each row is a message and each column is an event design that carries messages. Unassigned messages use the optional fallback only
+ * when enabled. Every selected message/design pair is one picture, drawn when the mapping is saved.
  */
 function MessageDesignTable({
   messages,
   frames,
   carriers,
   maxImages,
+  generatedLayoutEnabled,
   disabled,
   onChange,
 }: {
@@ -108,17 +110,19 @@ function MessageDesignTable({
   frames: string[][];
   carriers: CarrierFrame[];
   maxImages: number;
+  generatedLayoutEnabled: boolean;
   disabled: boolean;
   onChange: (index: number, ids: string[]) => void;
 }) {
   const known = new Set(carriers.map((frame) => frame.frameId));
-  const images = frames.reduce((total, ids) => total + Math.max(1, ids.length), 0);
+  const images = frames.reduce((total, ids) => total + (ids.length > 0 ? ids.length : generatedLayoutEnabled ? 1 : 0), 0);
   return (
     <div style={{ marginTop: '1rem' }}>
       <h4 style={{ margin: '0 0 0.25rem' }}>Which message goes on which design</h4>
       <p style={{ ...muted, margin: '0 0 0.5rem' }}>
-        Tick the designs a message can be written on. With several ticks the message appears on each of them, and a user who chooses a design is offered the messages ticked for it. A
-        message with no tick is written on the generated layout. This makes {images} {images === 1 ? 'picture' : 'pictures'} (at most {maxImages}).
+        Tick the designs a message can be written on. With several ticks the message appears on each of them, and a user who chooses a design is offered the messages ticked for it.{' '}
+        {generatedLayoutEnabled ? 'A message with no tick is written on the generated layout. ' : 'Messages without a selected design do not produce a frame image while the generated default is off. '}
+        This makes {images} {images === 1 ? 'picture' : 'pictures'} (at most {maxImages}).
       </p>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
@@ -135,9 +139,7 @@ function MessageDesignTable({
                   </div>
                 </th>
               ))}
-              <th scope="col" style={{ padding: '0.375rem 0.75rem', textAlign: 'center', verticalAlign: 'bottom' }}>
-                Generated layout
-              </th>
+              {generatedLayoutEnabled ? <th scope="col" style={{ padding: '0.375rem 0.75rem', textAlign: 'center', verticalAlign: 'bottom' }}>Generated layout</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -165,7 +167,7 @@ function MessageDesignTable({
                       />
                     </td>
                   ))}
-                  <td style={{ color: 'var(--mantine-color-dimmed)', padding: '0.375rem 0.75rem', textAlign: 'center' }}>{ids.length === 0 ? 'yes' : ''}</td>
+                  {generatedLayoutEnabled ? <td style={{ color: 'var(--mantine-color-dimmed)', padding: '0.375rem 0.75rem', textAlign: 'center' }}>{ids.length === 0 ? 'yes' : ''}</td> : null}
                 </tr>
               );
             })}
@@ -197,7 +199,7 @@ export default function GeneratedFramePanel({
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState<string[]>([]);
-  // The frames chosen for each message, in the order of `draft` (none = the generated layout).
+  // The assigned frame graphics chosen for each message, in the order of `draft`.
   const [draftFrames, setDraftFrames] = useState<string[][]>([]);
   // Where the dark area of the designs comes from: their own layers, or the mask of the generated frame.
   const [draftDarkArea, setDraftDarkArea] = useState<'frame' | 'generated'>('frame');
@@ -279,7 +281,7 @@ export default function GeneratedFramePanel({
     }
   };
 
-  const save = () =>
+  const save = (regenerateOnly = false) =>
     run('save', async () => {
       if (!validation.ok) throw new Error(validation.error);
       const result = await call<{ frameDesign: FrameDesign; variants: ImageCounts }>(
@@ -293,7 +295,7 @@ export default function GeneratedFramePanel({
         'Could not save the messages'
       );
       adopt(result.frameDesign);
-      return { severity: 'success', title: 'Messages saved', lines: [countText(result.variants)] };
+      return { severity: 'success', title: regenerateOnly ? 'Message-frame images generated' : 'Messages saved', lines: [countText(result.variants)] };
     });
 
   const reset = () =>
@@ -353,25 +355,13 @@ export default function GeneratedFramePanel({
 
   const context = design?.context ?? null;
   const variants = design?.variants ?? [];
-  if (!loaded.generatedFrameEnabled) {
-    return (
-      <section aria-labelledby="generated-frame-title" style={section}>
-        <div style={sectionHead}>
-          <h3 id="generated-frame-title" style={{ margin: 0 }}>Generated default frame</h3>
-          <p style={{ ...muted, margin: '0.5rem 0 0' }}>
-            Off by default. Generate it only if this event should add its logo, teams, theme and message to photos that have no active frame of their own.
-          </p>
-        </div>
-        <div style={sectionBody}>
-          {notice ? <div role="status"><InlineAlert title={notice.title} message={notice.lines.join(' ')} severity={notice.severity} /></div> : null}
-          <Button type="button" loading={busy === 'refresh'} disabled={busy !== null} onClick={() => void refresh()}>
-            Generate default frame
-          </Button>
-          {hasOwnActiveFrame ? <p style={{ ...muted, margin: 0 }}>An active event frame is already in use. Generating this default will keep it as a fallback if that frame is later switched off.</p> : null}
-        </div>
-      </section>
-    );
-  }
+  const activeCarrierIds = new Set(carriers.map((frame) => frame.frameId));
+  const effectiveFrames = effectiveMessageFrames(design);
+  const visibleVariants = variants.filter((variant) => {
+    if (!variant.frameId) return loaded.generatedFrameEnabled;
+    const message = typeof variant.index === 'number' ? design?.messages[variant.index] : null;
+    return activeCarrierIds.has(variant.frameId) && typeof message === 'string' && framesOfMessage(effectiveFrames, message).includes(variant.frameId);
+  });
   const move = (from: number, to: number) => {
     if (to < 0 || to >= draft.length) return;
     const swap = <T,>(list: T[]): T[] => {
@@ -387,12 +377,10 @@ export default function GeneratedFramePanel({
     <section aria-labelledby="generated-frame-title" style={section}>
       <div style={sectionHead}>
         <h3 id="generated-frame-title" style={{ margin: 0 }}>
-          Generated default frame
+          Frame messages and graphics
         </h3>
         <p style={{ ...muted, margin: '0.5rem 0 0' }}>
-          {hasOwnActiveFrame
-            ? 'This event has an active frame of its own, so the generated frame is not used. It applies again as soon as no own frame is active.'
-            : 'This event has no active frame of its own, so users get this generated frame: your partner’s logo, the teams, the theme colours and a random message on every photo.'}
+          Choose which assigned frame graphics carry each event message. Their compositions can be used in the guest flow and when adding frames to gallery uploads. The generated default is a separate optional fallback.
         </p>
       </div>
 
@@ -404,14 +392,41 @@ export default function GeneratedFramePanel({
         ) : null}
 
         <div>
-          <h4 style={{ margin: '0 0 0.5rem' }}>Images ({variants.length})</h4>
-          {variants.length === 0 ? (
+          <h4 style={{ margin: '0 0 0.5rem' }}>Optional generated default frame</h4>
+          <p style={muted}>
+            {!loaded.generatedFrameEnabled
+              ? 'Off by default. This adds the event logo, teams, theme and message only when no complete event frame is active.'
+              : hasOwnActiveFrame
+                ? 'Enabled as a fallback; an active complete event frame takes precedence.'
+                : 'Enabled for photos without an active complete event frame.'}
+          </p>
+          {!loaded.generatedFrameEnabled ? (
+            <div>
+            <Button type="button" loading={busy === 'refresh'} disabled={busy !== null} onClick={() => void refresh()}>
+              Generate default frame
+            </Button>
+            {hasOwnActiveFrame ? <p style={{ ...muted, margin: '0.5rem 0 0' }}>A complete event frame is already in use. This generated default will only be a fallback if that frame is later switched off.</p> : null}
+            </div>
+          ) : (
+            <Button type="button" variant="light" size="xs" loading={busy === 'refresh'} disabled={busy !== null} onClick={() => void refresh()}>
+              Refresh from messmass
+            </Button>
+          )}
+        </div>
+
+        <div>
+          <h4 style={{ margin: '0 0 0.5rem' }}>Ready frame compositions ({visibleVariants.length})</h4>
+          {visibleVariants.length === 0 ? (
             <p style={muted}>
-              No images yet. Use “Refresh from messmass” to take the snapshot and draw them; until they exist users see no generated frame.
+              {loaded.generatedFrameEnabled
+                ? 'No generated images yet. Refresh from messmass to take the snapshot and draw the optional default frame.'
+                : carriers.length > 0
+                  ? 'No message-frame compositions yet. Assign each message to a frame design, then save the messages to draw the images.'
+                  : 'No assigned frame designs carry messages yet. Assign or upload a frame, add its message area, and map messages to it below.'}
             </p>
           ) : (
             <ul style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))', listStyle: 'none', margin: 0, padding: 0 }}>
-              {variants.map((variant) => (
+              {visibleVariants.map((variant) => (
                 <li key={variant.key} style={{ display: 'grid', gap: '0.25rem' }}>
                   <div style={{ backgroundImage: FRAME_PREVIEW_BACKDROP, borderRadius: 8, overflow: 'hidden' }}>
                     <Image
@@ -478,22 +493,17 @@ export default function GeneratedFramePanel({
               </dd>
             </dl>
           ) : (
-            <p style={muted}>There is no snapshot yet. “Refresh from messmass” takes it.</p>
+            <p style={muted}>{loaded.generatedFrameEnabled ? 'There is no snapshot yet. Refresh from messmass takes it.' : 'There is no snapshot yet. Saving the message-to-frame setup takes the snapshot and draws assigned compositions without enabling the generated default.'}</p>
           )}
-          <div style={{ marginTop: '0.75rem' }}>
-            <Button type="button" variant="light" size="xs" loading={busy === 'refresh'} disabled={busy !== null} onClick={() => void refresh()}>
-              Refresh from messmass
-            </Button>
-            <p style={{ ...muted, margin: '0.5rem 0 0' }}>
-              The snapshot does not follow messmass by itself. Refresh after changing the partner, logo, teams or theme there.
-            </p>
-          </div>
+          <p style={{ ...muted, margin: '0.5rem 0 0' }}>
+            The snapshot does not follow messmass by itself. Refresh it after changing the partner, logo, teams or theme there.
+          </p>
         </div>
 
         {design?.base ? (
           <div>
             <h4 style={{ margin: '0 0 0.5rem' }}>The designers’ picture of this event</h4>
-            {design.messages.length > 0 && design.messages.every((message) => framesOfMessage(design.messageFrames, message).length > 0) ? (
+            {design.messages.length > 0 && design.messages.every((message) => framesOfMessage(effectiveFrames, message).length > 0) ? (
               <>
                 <p style={{ ...muted, margin: '0 0 0.5rem' }}>
                   The pictures are frames of this event now, and every message chooses one (see the Frame of each message below). The old data on the event is still kept: check the images above, then remove it.
@@ -525,8 +535,10 @@ export default function GeneratedFramePanel({
             like “A - B”); a message that cannot be filled for this event is skipped.
           </p>
           <p style={{ ...muted, margin: '0 0 0.75rem' }}>
-            {carriers.length > 0
-              ? 'Each message can be written on one, several or all of the frames of this event that carry messages (the table below the list); a message on no frame uses the generated layout.'
+              {carriers.length > 0
+                ? loaded.generatedFrameEnabled
+                ? 'Select one or more assigned frame graphics for each message. A message without a selected graphic uses the generated default layout.'
+                : 'Select one or more assigned frame graphics for each message. These compositions are available in the guest flow and gallery upload while the generated default stays off.'
               : 'To write messages on your own frames, assign or upload a frame below and give it a message area (Message area on its card): a text-free frame that carries the messages of this event.'}
           </p>
           <ol style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', margin: 0, padding: 0 }}>
@@ -571,6 +583,7 @@ export default function GeneratedFramePanel({
               frames={draftFrames}
               carriers={carriers}
               maxImages={limits.maxImages ?? 40}
+              generatedLayoutEnabled={loaded.generatedFrameEnabled}
               disabled={busy !== null}
               onChange={(index, ids) => setDraftFrames((list) => list.map((item, at) => (at === index ? ids : item)))}
             />
@@ -601,6 +614,18 @@ export default function GeneratedFramePanel({
             <Button type="button" size="xs" loading={busy === 'save'} disabled={busy !== null || !dirty || validationError !== null} onClick={() => void save()}>
               Save messages
             </Button>
+            {!loaded.generatedFrameEnabled && carriers.length > 0 ? (
+              <Button
+                type="button"
+                variant="light"
+                size="xs"
+                loading={busy === 'save'}
+                disabled={busy !== null || validationError !== null || !draftFrames.some((ids) => ids.length > 0)}
+                onClick={() => void save(true)}
+              >
+                {dirty ? 'Save and generate message-frame images' : 'Generate message-frame images'}
+              </Button>
+            ) : null}
             <Button type="button" variant="light" size="xs" disabled={busy !== null || !dirty} onClick={() => { setDraft(saved); setDraftFrames(savedFrames); setDraftDarkArea(savedDarkArea); }}>
               Discard changes
             </Button>

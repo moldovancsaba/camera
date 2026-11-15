@@ -18,7 +18,7 @@ import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorizat
 import { parseFrameSelection } from '@/lib/frame/selection';
 import { loadSelectionContext } from '@/lib/frame/selection-options';
 import { allowedImage } from '@/lib/theme/event-theme';
-import { applyExperienceConfig, resolveEventExperienceConfig, selectionWithExperienceOverrides } from '@/lib/visual-assets/templates';
+import { applyExperienceConfig, resolveEventExperienceConfig } from '@/lib/visual-assets/templates';
 
 type RouteContext = { params?: Promise<{ id: string }> };
 
@@ -90,11 +90,6 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   else unset.frameSelection = '';
   if (Object.keys(tiles).length) set.frameSelectionTiles = tiles;
   else unset.frameSelectionTiles = '';
-  const templateSelection = selectionWithExperienceOverrides(
-    event.experienceTemplate,
-    { frameSelection: parsed.value, frameSelectionTiles: tiles },
-  );
-  if (templateSelection) set.experienceTemplate = templateSelection;
   await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, {
     ...(Object.keys(set).length ? { $set: set } : {}),
     ...(Object.keys(unset).length ? { $unset: unset } : {}),

@@ -282,7 +282,14 @@ test('the generated frame variant a photo used is stored with the submission', a
   const restore = withStoreToken();
   const quiet = silence();
   try {
-    const h = mockDeps(t, goodHead, { event: { generatedFrameEnabled: true } });
+    const h = mockDeps(t, goodHead, {
+      event: {
+        generatedFrameEnabled: true,
+        frameDesign: {
+          variants: [{ index: 2, message: 'Together for Victory!', imageUrl: GENERATED }],
+        },
+      },
+    });
     const { POST } = await importRouteModule('variant');
     const response = await POST(submissionRequest({ frameVariant: { index: 2, message: 'Together for Victory!', imageUrl: GENERATED } }));
     assert.equal(response.status, 201);

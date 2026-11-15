@@ -207,7 +207,21 @@ export async function GET(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
+    const inheritedStateBefore = JSON.stringify([
+      slideshow.updatedAt,
+      slideshow.inheritedFromLevel,
+      slideshow.inheritedFromPartnerId,
+      slideshow.inheritedPartnerRevision,
+      slideshow.inheritedGlobalRevision,
+    ]);
     Object.assign(slideshow, await applyPartnerSlideshowDefault(db, event as unknown as Document, slideshow));
+    const inheritedStateChanged = inheritedStateBefore !== JSON.stringify([
+      slideshow.updatedAt,
+      slideshow.inheritedFromLevel,
+      slideshow.inheritedFromPartnerId,
+      slideshow.inheritedPartnerRevision,
+      slideshow.inheritedGlobalRevision,
+    ]);
     if (slideshow.isActive === false) {
       return NextResponse.json(
         {
@@ -247,6 +261,12 @@ export async function GET(
 
     const eventUuid = event.eventId;
     const eventMongoId = event._id!.toString();
+    // The welcome-page screen is rendered from the event's default slideshow.
+    // Parent defaults are applied lazily on playlist requests, so redraw it
+    // when this request first adopts a new inherited revision.
+    if (slideshow.isDefault === true && inheritedStateChanged) {
+      scheduleWelcomeScreen(event._id!);
+    }
     if (slideshow.isDefault === true) {
       try {
         const repaired = await repairDefaultSlideshowQr(db, event as unknown as Document, slideshow, defaultGoShortOrigin());

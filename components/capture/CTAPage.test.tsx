@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
+import UiLanguageProvider from '@/components/i18n/UiLanguageProvider';
 
 type CtaModule = typeof import('./CTAPage');
 
@@ -116,4 +117,16 @@ test('a page with no address has no visit button and no link, even when a photo 
   const html = renderToStaticMarkup(<CTAPage config={{ ...config, checkboxText: '', pictureLink: true }} pageId="p1" submissionId="s1" onNext={() => undefined} />);
   assert.equal(/Visit URL/.test(html), false);
   assert.equal(/data-cta-picture-link/.test(html), false);
+});
+
+test('blank global journey CTA copy uses translated visible text', async (t) => {
+  const { default: CTAPage } = await load(t, 'translated-global-copy');
+  const html = renderToStaticMarkup(
+    <UiLanguageProvider language="hu" syncDocumentLanguage={false}>
+      <CTAPage config={{ title: '', description: '', checkboxText: '', buttonText: '', hasButton: true, backgroundImageUrl: 'https://images.example.test/default.png', hideVisitButton: true }} pageId="global-cta" onNext={() => undefined} />
+    </UiLanguageProvider>,
+  );
+  assert.match(html, /<h1[^>]*>Köszönjük!<\/h1>/);
+  const actions = divBlock(html, 'data-cta-picture-actions');
+  assert.match(actions, /<button[^>]*aria-label="TOVÁBB"[^>]*>TOVÁBB<\/button>/);
 });

@@ -12,6 +12,7 @@ import { OVERLAY_PICTURE_TYPES, OVERLAY_PICTURE_WORDS } from '@/lib/library/imag
 import type { ScreenDesign } from '@/lib/slideshow/screen-design';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminScreenDesignText } from '@/lib/i18n/admin-screen-design';
+import type { PickerLevel } from '@/lib/library/picker';
 
 export interface ScreenDesignTextDraft { text: string; x: string; y: string; width: string; size: string; color: string; fit: boolean; visible: boolean }
 export interface ScreenDesignDraft {
@@ -92,12 +93,12 @@ function Num({ label, value, onChange, helper, disabled }: { label: string; valu
 }
 
 /** `eventMongoId` is the event of the slideshow: the overlay is chosen from that event's images library (camera#368). */
-export default function ScreenDesignFields({ draft, onChange, eventMongoId, partnerId }: { draft: ScreenDesignDraft; onChange: (next: ScreenDesignDraft) => void; eventMongoId?: string; partnerId?: string }) {
+export default function ScreenDesignFields({ draft, onChange, eventMongoId, partnerId, level }: { draft: ScreenDesignDraft; onChange: (next: ScreenDesignDraft) => void; eventMongoId?: string; partnerId?: string; level?: PickerLevel }) {
   const language = useUiLanguage();
   const translate = (source: string) => adminScreenDesignText(source, language);
   const overlayHelper = [
     translate('A 16:9 picture (1920×1080), transparent where photos play.'),
-    translate(partnerId ? "Upload to the partner's Images library." : "Upload to the event's Images library."),
+    translate(level?.scope === 'global' ? 'Upload to the global Images library.' : partnerId || level?.scope === 'partner' ? "Upload to the partner's Images library." : "Upload to the event's Images library."),
     translate('Choose from available Images libraries or paste an HTTPS address.'),
     translate('PNG, WebP or SVG can be transparent; JPEG cannot.'),
     translate('Leave empty to skip the overlay image. QR and text layers can still show.'),
@@ -112,7 +113,7 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId, part
         helper={overlayHelper}
         value={draft.overlayImageUrl}
         onChange={(url) => set('overlayImageUrl', url)}
-        level={partnerId ? { scope: 'partner', partnerId } : { scope: 'event', eventId: eventMongoId ?? '' }}
+        level={level ?? (partnerId ? { scope: 'partner', partnerId } : { scope: 'event', eventId: eventMongoId ?? '' })}
         fileTypes={OVERLAY_PICTURE_TYPES}
         fileTypeWords={OVERLAY_PICTURE_WORDS}
       />

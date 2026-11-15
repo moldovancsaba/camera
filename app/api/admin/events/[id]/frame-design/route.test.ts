@@ -21,6 +21,7 @@ const design = {
 
 function setup(t: import('node:test').TestContext, options: { event?: Record<string, unknown> | null; deny?: boolean; imagesFail?: boolean } = {}) {
   const generated: unknown[] = [];
+  const generatedOptions: unknown[] = [];
   const access: Array<{ id: string; role: unknown }> = [];
   const updates: unknown[] = [];
   const event = options.event === undefined ? { _id: new ObjectId(id), name: 'E', partnerId: 'p', frameDesign: design, generatedFrameEnabled: true } : options.event;
@@ -42,14 +43,15 @@ function setup(t: import('node:test').TestContext, options: { event?: Record<str
   });
   t.mock.module('@/lib/frame/variants', {
     exports: {
-      generateFrameVariants: async (_db: unknown, e: { frameDesign: object }) => {
+      generateFrameVariants: async (_db: unknown, e: { frameDesign: object }, _deps: unknown, generationOptions: unknown) => {
         generated.push(e.frameDesign);
+        generatedOptions.push(generationOptions);
         if (options.imagesFail) throw new Error('blob down');
         return { design: { ...e.frameDesign, variants: [{}, {}] }, generated: 2, reused: 0 };
       },
     },
   });
-  return { access, updates, generated };
+  return { access, updates, generated, generatedOptions };
 }
 
 const req = (method: string, body?: unknown) =>
@@ -145,12 +147,12 @@ test('PUT without access is 403 and writes nothing', async (t) => {
   assert.equal(updates.length, 0);
 });
 
-test('PUT refuses to edit or generate a default frame before the manager opts in', async (t) => {
-  const { updates, generated } = setup(t, { event: { _id: new ObjectId(id), name: 'E', frameDesign: design } });
+test('PUT saves message settings without enabling the optional generated fallback', async (t) => {
+  const { updates, generated, generatedOptions } = setup(t, { event: { _id: new ObjectId(id), name: 'E', frameDesign: design } });
   const { PUT } = await importRoute('put-disabled');
   const response = await PUT(req('PUT', { messages: ['Go!'] }), ctx());
-  assert.equal(response.status, 409);
-  assert.match((await response.json()).error, /Generate the default frame/);
-  assert.deepEqual(updates, []);
-  assert.deepEqual(generated, []);
+  assert.equal(response.status, 200);
+  assert.equal(updates.length, 1, 'independent message settings can be edited');
+  assert.equal(generated.length, 1, 'the generation service handles assigned frames and the no-fallback case');
+  assert.deepEqual(generatedOptions, [{ includeGeneratedFallback: false }]);
 });

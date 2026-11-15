@@ -14,8 +14,9 @@ import EventGallery from '@/components/admin/EventGallery';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { loadGallerySubmissions, GALLERY_PAGE_SIZE } from '@/lib/gallery/submissions';
+import { loadGallerySubmissions } from '@/lib/gallery/submissions';
 import { galleryFrameKey, loadGalleryFrames } from '@/lib/gallery/frame';
+import { loadMessageFrames } from '@/lib/frame/message-frames';
 import { countBroken } from '@/lib/media/broken';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
@@ -34,12 +35,15 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) });
   if (!event) notFound();
 
-  const { submissions } = await loadGallerySubmissions(db, String(event.eventId), GALLERY_PAGE_SIZE);
+  const { submissions } = await loadGallerySubmissions(db, String(event.eventId));
   const galleryFrames = await loadGalleryFrames(db, event);
   const hasFrame = galleryFrames.length > 0;
+  const frameSetupNeeded = !hasFrame && (await loadMessageFrames(db, event)).size > 0;
   const frameOptions = galleryFrames.map((frame, index) => ({
     key: galleryFrameKey(frame),
-    label: frame.frameName || (frame.variant?.message ? `Frame ${index + 1}: ${frame.variant.message}` : `Frame ${index + 1}`),
+    label: frame.variant?.message
+      ? `${frame.frameName ?? `Frame ${index + 1}`} — ${frame.variant.message}`
+      : frame.frameName || `Frame ${index + 1}`,
     imageUrl: frame.imageUrl,
   }));
   // Photos whose picture is gone are not listed (lib/media/broken.ts); the gallery says how many it hides.
@@ -90,6 +94,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
         <EventGallery
           eventId={id}
           eventName={String(event.name)}
+          frameSetupNeeded={frameSetupNeeded}
           initialSubmissions={JSON.parse(JSON.stringify(galleryCards))}
           slideshows={JSON.parse(JSON.stringify(slideshows))}
           canManage={canManage}

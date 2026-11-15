@@ -11,6 +11,7 @@ import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminOperationText } from '@/lib/i18n/admin-operations';
 import type { WelcomeAnchor, WelcomeElement, WelcomeHorizontalAlignment, WelcomeParentRelation, WelcomeVerticalAlignment } from '@/lib/events/welcome-composition';
 import { WELCOME_MAX_ELEMENTS, WELCOME_PARENT_RELATIONS } from '@/lib/events/welcome-composition';
+import type { PickerLevel } from '@/lib/library/picker';
 
 const VERTICAL: Array<{ value: string; label: string }> = [
   { value: 'top', label: 'Top' }, { value: 'middle', label: 'Middle' }, { value: 'bottom', label: 'Bottom' },
@@ -57,7 +58,8 @@ function rootAnchor(element: WelcomeElement, byId: Map<string, WelcomeElement>):
 }
 
 export interface WelcomeCompositionEditorProps {
-  eventId: string;
+  eventId?: string;
+  pickerLevel?: PickerLevel;
   elements: WelcomeElement[];
   onElementsChange: (elements: WelcomeElement[]) => void;
   buttonText: string;
@@ -73,6 +75,7 @@ export interface WelcomeCompositionEditorProps {
 
 export default function WelcomeCompositionEditor({
   eventId,
+  pickerLevel,
   elements,
   onElementsChange,
   buttonText,
@@ -91,6 +94,7 @@ export default function WelcomeCompositionEditor({
   const [openImagePickerFor, setOpenImagePickerFor] = useState<string | null>(null);
   const [replacementImageUrl, setReplacementImageUrl] = useState('');
   const [previewSize, setPreviewSize] = useState<'mobile' | 'desktop'>('mobile');
+  const assetLevel: PickerLevel = pickerLevel ?? (eventId ? { scope: 'event', eventId } : { scope: 'global' });
   const selected = elements.find((element) => element.id === selectedId) ?? elements[0];
   const byId = useMemo(() => new Map(elements.map((element) => [element.id, element])), [elements]);
   const safeParents = selected ? descendantsOf(elements, selected.id) : new Set<string>();
@@ -173,7 +177,7 @@ export default function WelcomeCompositionEditor({
             label="Stage background image"
             value={backgroundImageUrl}
             onChange={onBackgroundImageChange}
-            level={{ scope: 'event', eventId }}
+            level={assetLevel}
             helper="This image fills the stage behind the elements. Each object you add below can be independently positioned."
           />
         </Stack>
@@ -244,9 +248,7 @@ export default function WelcomeCompositionEditor({
                               setOpenImagePickerFor(selected.id);
                             }}
                           />
-                          <Anchor component={Link} href={`/admin/events/${eventId}#slideshows`}>
-                            {t('Open Event Slideshows')}
-                          </Anchor>
+                          {assetLevel.scope === 'event' && eventId ? <Anchor component={Link} href={`/admin/events/${eventId}#slideshows`}>{t('Open Event Slideshows')}</Anchor> : null}
                         </div>
                         {openImagePickerFor === selected.id ? (
                           <Stack gap="xs" align="flex-start" style={{ width: '100%' }}>
@@ -258,7 +260,7 @@ export default function WelcomeCompositionEditor({
                                 update(selected.id, { imageUrl, imageSource: undefined });
                                 setOpenImagePickerFor(null);
                               }}
-                              level={{ scope: 'event', eventId }}
+                              level={assetLevel}
                               helper={t('Choose an event or partner image, upload a new image to this event’s Images library, or enter an HTTPS address.')}
                               initialPanel="library"
                             />
@@ -291,7 +293,7 @@ export default function WelcomeCompositionEditor({
                         label={t('Welcome page image')}
                         value={selected.imageUrl ?? ''}
                         onChange={(imageUrl) => update(selected.id, { imageUrl, imageSource: undefined })}
-                        level={{ scope: 'event', eventId }}
+                        level={assetLevel}
                         helper={t('Choose an event or partner image, upload a new image to this event’s Images library, or enter an HTTPS address.')}
                         initialPanel={openImagePickerFor === selected.id ? 'library' : undefined}
                       />

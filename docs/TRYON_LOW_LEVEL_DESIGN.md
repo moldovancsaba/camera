@@ -2,7 +2,7 @@
 
 > **REMOVED INTEGRATION (camera issue 557, 2026-10-10).** This document describes the try-on integration as it was at git tag `tryon-integration-final`. Try-on was switched off on every event and has been removed from the camera app; [TRYON_REMOVED.md](./TRYON_REMOVED.md) says what existed, what it left in the database and what a rebuild as an add-on needs. Nothing below is current behaviour or an operating guide; it is kept as the record of the contract.
 
-**Version**: 12.3.43
+**Version**: 12.3.44
 **Last Updated**: 2026-10-01
 
 **Runtime status 2026-10-01**: The renderer is paused; this document remains authoritative for Camera's retained moderation and recovery contracts. The planned image.direct protocol is specified separately in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md) and must not be treated as implemented.

@@ -1,6 +1,6 @@
 # Camera
 
-**Version**: 12.3.43
+**Version**: 12.3.44
 **Last Updated**: 2026-10-11  
 **Status**: Production system
 
@@ -262,6 +262,8 @@ post-selfie CTA when `SAVETHEWORLD_APP_URL` is set.
 See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
 
 ## Documentation map
+
+- [Project board review and manual movement / Scrum journal](docs/PROJECT_BOARD_MOVEMENT_LOG.md)
 
 Canonical docs:
 

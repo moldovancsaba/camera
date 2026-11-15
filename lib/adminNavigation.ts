@@ -307,7 +307,7 @@ const scopedItems = (kind: AdminContextKind): AdminContextItem[] => {
   const scope = kind === 'event' ? 'Event' : 'Partner';
   const userJourney: AdminContextItem = kind === 'event'
     ? { section: 'Content', label: 'Event User Journey', description: 'Choose, edit and order the pages guests see for this event.', iconKey: 'layoutDashboard', path: '/pages', isVisible: everyone }
-    : { section: 'Content', label: 'Partner User Journey', description: 'Choose the reusable guest journey inherited by this partner’s events.', iconKey: 'layoutDashboard', path: '#partner-user-journey', isVisible: everyone };
+    : { section: 'Content', label: 'Partner User Journey', description: 'Choose the reusable guest journey inherited by this partner’s events.', iconKey: 'layoutDashboard', path: '/user-journey', isVisible: everyone };
   const sharedBlocks: AdminContextItem[] = orderBlockItems([
     { section: 'Blocks', label: `${scope} Images`, description: `The pictures available to ${scope.toLowerCase()} content.`, iconKey: 'photo', blockKey: 'images', path: '/images', ...(kind === 'partner' ? { also: ['/pictures'] } : {}), isVisible: everyone },
     { section: 'Blocks', label: `${scope} Frames`, description: `The frames available to ${scope.toLowerCase()} content.`, iconKey: 'frame', blockKey: 'frames', path: '/frames', also: ['/frame-slots'], isVisible: everyone },

@@ -12,6 +12,7 @@ import LedScreen3D from '@/components/capture/LedScreen3D';
 import PillButton, { safeColour } from '@/components/capture/PillButton';
 import WelcomeCompositionCanvas from '@/components/capture/WelcomeCompositionCanvas';
 import type { WelcomeElement } from '@/lib/events/welcome-composition';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 
 export interface WelcomePageConfig {
   /** Read by screen readers, not shown. */
@@ -35,6 +36,8 @@ export interface WelcomePageConfig {
 export interface WelcomePageProps {
   config: WelcomePageConfig;
   onNext: () => void;
+  /** Renders inside the admin preview without changing the document or navigating. */
+  preview?: boolean;
 }
 
 export { safeColour };
@@ -51,20 +54,26 @@ export const WELCOME_LAYER_CSS = `
 }
 `;
 
-export default function WelcomePage({ config, onNext }: WelcomePageProps) {
+export default function WelcomePage({ config, onNext, preview = false }: WelcomePageProps) {
+  const { own } = useT();
+  const title = own('welcome.title', config.title);
+  const buttonText = own('welcome.button', config.buttonText);
+  const screenImageAlt = own('welcome.screenAlt', config.screenImageAlt);
+
   return (
-    <FullScreenPage marker={{ 'data-welcome-step': '' }}>
-      <h1 className="sr-only">{config.title}</h1>
+    <FullScreenPage marker={{ 'data-welcome-step': '' }} preview={preview}>
+      <h1 className="sr-only">{title}</h1>
       <style>{WELCOME_LAYER_CSS}</style>
 
       {config.welcomeElements !== undefined ? (
         <WelcomeCompositionCanvas
           elements={config.welcomeElements}
-          buttonText={config.buttonText}
+          buttonText={buttonText}
           backgroundImageUrl={config.backgroundImageUrl}
           eventWelcomeScreenUrl={config.eventWelcomeScreenUrl}
           buttonColors={{ fill: config.buttonColor, label: config.buttonTextColor, ring: config.buttonBorderColor }}
-          onStart={onNext}
+          preview={preview}
+          onStart={preview ? undefined : onNext}
           style={{ inset: 0, position: 'absolute' }}
         />
       ) : null}
@@ -80,15 +89,16 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
         data-welcome-group
         style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 'var(--gds-safe-area-inset-top, 0px)', pointerEvents: 'none' }}
       >
-        {config.screenImageUrl ? <LedScreen3D imageUrl={config.screenImageUrl} alt={config.screenImageAlt || ''} /> : null}
+        {config.screenImageUrl ? <LedScreen3D imageUrl={config.screenImageUrl} alt={screenImageAlt} /> : null}
         <PillButton
-          onClick={onNext}
+          onClick={preview ? () => undefined : onNext}
+          disabled={preview}
           fill={config.buttonColor}
           label={config.buttonTextColor}
           ring={config.buttonBorderColor}
           style={{ flex: 'none', pointerEvents: 'auto' }}
         >
-          {config.buttonText}
+          {buttonText}
         </PillButton>
       </div> : null}
     </FullScreenPage>

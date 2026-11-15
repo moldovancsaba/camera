@@ -1,0 +1,197 @@
+.editorDialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  height: min(92dvh, 1100px);
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+  padding: 1.5rem;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 1rem;
+  background: var(--mantine-color-body);
+}
+
+.dialogTitle {
+  flex: none;
+  margin: 0 0 1rem;
+}
+
+.editorForm {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.editorColumns {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1.1fr) minmax(330px, 0.9fr);
+  gap: 1.25rem;
+  min-height: 0;
+}
+
+.formFields {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 0.5rem 1rem 0.125rem;
+  overscroll-behavior: contain;
+}
+
+.editorActions {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mantine-color-default-border);
+  background: var(--mantine-color-body);
+}
+
+.previewPanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.75rem;
+  padding: 1rem;
+  overflow: auto;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 1rem;
+  background: var(--mantine-color-body);
+}
+
+.previewHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.previewHeader h3 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.previewHint {
+  margin: 0;
+  color: var(--mantine-color-dimmed);
+  font-size: 0.875rem;
+}
+
+.previewStageFrame {
+  display: grid;
+  flex: 1 0 auto;
+  place-items: center;
+  min-height: 420px;
+  padding: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 0.75rem;
+  background: var(--mantine-color-default-hover);
+}
+
+.previewStageFrame[data-preview-size='mobile'] .previewStage {
+  width: min(100%, 350px);
+  max-height: 68dvh;
+  aspect-ratio: 9 / 16;
+}
+
+.previewStageFrame[data-preview-size='tablet'] .previewStage {
+  width: min(100%, 480px);
+  max-height: 68dvh;
+  aspect-ratio: 3 / 4;
+}
+
+.previewStageFrame[data-preview-size='desktop'] .previewStage {
+  width: 100%;
+  max-height: 68dvh;
+  aspect-ratio: 16 / 10;
+}
+
+.previewStage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--mantine-color-default-border) 70%, transparent);
+  border-radius: 0.5rem;
+  background: var(--event-bg);
+  box-shadow: var(--mantine-shadow-md);
+  contain: layout paint;
+}
+
+.runtimeStep {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  text-align: center;
+  border: 1px dashed var(--mantine-color-default-border);
+  border-radius: 0.75rem;
+}
+
+.runtimeStep p {
+  max-width: 28rem;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.runtimeIcon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .editorDialog {
+    width: 100%;
+    max-width: none;
+    height: min(94dvh, 1100px);
+    padding: 1rem;
+  }
+
+  .editorColumns {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(320px, auto) minmax(460px, auto);
+    overflow: auto;
+  }
+
+  .formFields,
+  .previewPanel {
+    overflow: visible;
+  }
+
+  .previewStageFrame {
+    min-height: 450px;
+  }
+
+  .previewStageFrame[data-preview-size='mobile'] .previewStage,
+  .previewStageFrame[data-preview-size='tablet'] .previewStage {
+    max-height: 56dvh;
+  }
+}
+
+@media (max-width: 520px) {
+  .editorDialog {
+    width: 100%;
+    height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - 1rem);
+    padding: 0.75rem;
+  }
+
+  .editorColumns {
+    grid-template-rows: minmax(320px, auto) minmax(420px, auto);
+    gap: 0.75rem;
+  }
+
+  .previewPanel {
+    padding: 0.75rem;
+  }
+
+  .previewStageFrame {
+    min-height: 430px;
+    padding: 0.5rem;
+  }
+}

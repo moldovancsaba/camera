@@ -214,7 +214,7 @@ export interface Partner {
   library?: { frames?: string[]; logos?: string[]; images?: string[] };
   /** Versioned parent→child asset visibility policy; missing remains on the legacy resolver until backfill. */
   visualAssetPolicy?: VisualAssetLevelPolicy & { inheritanceVersion?: 2 };
-  /** Partner-level starter experience; null explicitly disables the inherited global starter. */
+  /** Partner-owned default journey. Missing and legacy null values inherit the required global default. */
   defaultExperienceTemplateId?: string | null;
   /** Partner-owned landing-page and slideshow defaults. Events inherit each default until they save an event-level override. */
   contentDefaults?: PartnerContentDefaults;
@@ -241,6 +241,10 @@ export interface Partner {
 export interface PartnerContentDefaults {
   revision: number;
   slideshow?: PartnerDefaultSlideshow | null;
+  /** Named configurations available to this partner. Event photos and players remain event-owned. */
+  slideshowTemplates?: ParentSlideshowTemplate[];
+  /** Selected partner default; null means inherit the global default. */
+  defaultSlideshowTemplateId?: string | null;
   landingPage?: PartnerDefaultLandingPage | null;
 }
 
@@ -250,6 +254,11 @@ export type PartnerDefaultSlideshow = Pick<Slideshow,
   | 'backgroundPrimaryColor' | 'backgroundAccentColor' | 'backgroundImageUrl'
   | 'viewportScale' | 'stageAspect' | 'screenDesign'
 >;
+
+export interface ParentSlideshowTemplate extends PartnerDefaultSlideshow {
+  templateId: string;
+  name: string;
+}
 
 export type PartnerDefaultLandingPage = Pick<LandingPage,
   | 'title' | 'description' | 'logoId' | 'logoUrl' | 'qrCodeImageUrl' | 'url' | 'urlButtonText'

@@ -24,6 +24,7 @@ export interface RestartPageProps {
   brandColor?: string;
   brandBorderColor?: string;
   buttonSize?: EventButtonSize;
+  preview?: boolean;
 }
 
 export default function RestartPage({
@@ -34,15 +35,19 @@ export default function RestartPage({
   brandColor = CAMERA_DEFAULT_BRAND_COLOR,
   brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
+  preview = false,
 }: RestartPageProps) {
-  const { t } = useT();
+  const { t, own } = useT();
   void brandBorderColor;
+  const title = own('approval.title', config.title);
+  const restartText = own('welcome.button', config.restartButtonText || config.buttonText);
 
   return (
     <CaptureStageShell
-      title={config.title}
+      title={title}
       description={config.description}
       logoUrl={logoUrl}
+      preview={preview}
     >
       <Group grow>
         {onBack ? (
@@ -54,9 +59,9 @@ export default function RestartPage({
           onClick={onRestart}
           color={brandColor}
           size={buttonSize}
-          aria-label={config.restartButtonText || config.buttonText}
+          aria-label={restartText}
         >
-          {config.restartButtonText || config.buttonText}
+          {restartText}
         </Button>
       </Group>
     </CaptureStageShell>

@@ -5,6 +5,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type PartnerDefaultSlideshow } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
 import { getPartnerScopedAccessForPartner, isGlobalAdminSession } from '@/lib/partners/authorization';
+import { normalizeParentSlideshowTemplates } from '@/lib/slideshow/parent-templates';
 
 export default async function PartnerSlideshowDefaultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,5 +17,31 @@ export default async function PartnerSlideshowDefaultsPage({ params }: { params:
   if (!partner) notFound();
   const access = await getPartnerScopedAccessForPartner(db, session, String(partner.partnerId), 'events');
   if (!access.allowed) redirect('/admin/partners');
-  return <PartnerContentDefaultsEditor partnerId={id} partnerName={String(partner.name)} kind="slideshow" initial={(partner.contentDefaults?.slideshow as PartnerDefaultSlideshow | null) ?? null} canManage={isGlobalAdminSession(session) || access.role === 'manager' || access.role === 'admin'} />;
+  const globalDefaults = await db.collection(COLLECTIONS.ADMIN_SETTINGS).findOne(
+    { settingId: 'global-content-defaults' },
+    { projection: { slideshow: 1, slideshowTemplates: 1, defaultSlideshowTemplateId: 1, revision: 1 } },
+  );
+  const partnerState = normalizeParentSlideshowTemplates(
+    partner.contentDefaults as Record<string, unknown> | null,
+    `legacy-partner-slideshow-${id}`,
+    false,
+  );
+  const globalState = normalizeParentSlideshowTemplates(
+    globalDefaults as Record<string, unknown> | null,
+    'legacy-global-slideshow',
+    true,
+  );
+  return (
+    <PartnerContentDefaultsEditor
+      partnerId={id}
+      partnerName={String(partner.name)}
+      kind="slideshow"
+      initial={partnerState.slideshow as PartnerDefaultSlideshow | null}
+      canManage={isGlobalAdminSession(session) || access.role === 'manager' || access.role === 'admin'}
+      slideshowTemplates={partnerState.slideshowTemplates}
+      defaultSlideshowTemplateId={partnerState.defaultSlideshowTemplateId}
+      slideshowRevision={partnerState.revision}
+      inheritedSlideshow={globalState.slideshow}
+    />
+  );
 }

@@ -189,6 +189,14 @@ test('PATCH: a partner events manager can still update the rest of the event', a
   assert.equal('photoVetting' in h.updates[0], false);
 });
 
+test('PATCH: generic event updates cannot bypass the legacy journey preservation guard', async (t) => {
+  const h = mockDeps(t, { event: { customPages: [WHO_ARE_YOU_PAGE] }, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-legacy-experience-inherit');
+  const response = await PATCH(patchRequest({ experienceTemplate: { mode: 'inherit' } }), params);
+  assert.equal(response.status, 400);
+  assert.equal(h.updates.length, 0, 'legacy event pages remain untouched until explicitly snapshotted');
+});
+
 test('PATCH: the setting must be true or false', async (t) => {
   const h = mockDeps(t, { event: { photoVetting: STORED_VETTING }, session: ADMIN });
   const { PATCH } = await importRouteModule('patch-invalid');

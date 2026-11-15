@@ -73,6 +73,9 @@ export interface EventTheme {
   };
 }
 
+/** A theme may be partial in parent-level journey editors with no selected event context. */
+export type EventThemePreview = Partial<Omit<EventTheme, 'font'>> & { font?: Partial<EventTheme['font']> };
+
 export interface ThemeInput {
   /** The event's own brand colour from the editor (#RRGGBB), used for buttons before the Messmass style. */
   brandColor?: string | null;
