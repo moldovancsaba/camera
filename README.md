@@ -263,6 +263,8 @@ See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md)
 
 ## Documentation map
 
+- [Project board review and manual movement / Scrum journal](docs/PROJECT_BOARD_MOVEMENT_LOG.md)
+
 Canonical docs:
 
 - [docs/BRANCHING.md](docs/BRANCHING.md)
