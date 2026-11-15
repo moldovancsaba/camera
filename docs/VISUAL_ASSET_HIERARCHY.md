@@ -1,6 +1,6 @@
 # Visual assets and experience defaults
 
-Status: maintained architecture reference. Journey inheritance rules are detailed in [Global, Partner and Event User Journeys](GLOBAL_DEFAULT_JOURNEY.md).
+Status: maintained architecture reference. Journey inheritance rules are detailed in [Global, Partner and Event User Journeys](GLOBAL_DEFAULT_JOURNEY.md). Issue #753 adds a read-only legacy inventory; no historical data has been migrated or production inventory run.
 
 ## Product model
 
@@ -59,6 +59,14 @@ The selected or inherited journey is returned by the event API and is the flow o
 - Rollback is selection-based: partners can return to the GUJ by choosing **Follow the global default**; events can return to the current partner/GUJ chain by selecting **Use parent default**. There is no disabled global default and no null-template sentinel. To delete a version, change every reference first; deletion rechecks references and returns 409 while selected. Existing legacy event pages stay intact until a named EUJ is created and selected or the parent default is chosen.
 - The asset version-2 policy can be reverted by clearing the partner's `visualAssetPolicy`; do not do this after child-specific policies have been added without first exporting those policies.
 - No historical partner migration runs automatically. The partner UI opt-in preserves each partner's current visible set by writing local hides. Production enablement and a backfill require separate inventory, dry run, backup and operator review.
+
+## Legacy inventory gate (issue #753)
+
+`npm run visual-assets:legacy-inventory` is a read-only, PII-minimized dry run. It requires the operator to provide `CAMERA_VISUAL_ASSET_MIGRATION_READONLY_URI` and `CAMERA_VISUAL_ASSET_MIGRATION_DB` explicitly. The command does not load `.env`, read the app's normal `MONGODB_URI`, or offer an apply mode. Use an account that has read-only permissions on the selected database. The command reads a single MongoDB snapshot serially, with a 50,000-document and 64 MiB projected-data ceiling; it stops with `inventory_limit_exceeded` if either bound is reached.
+
+The report covers frames, logos, images, partner/event catalogs and assignments, local visibility policies, direct picture fields, slideshow/landing/layout artwork, and experience-template records and selections. It includes stable business IDs and SHA-256 digests, not raw image URLs or participant/contact fields. A JSON copy can be written to a new file with `--output=/secure/path/report.json`; the file is created exclusively with owner-only permissions. Each query has a 30-second server limit; the full snapshot is capped at four minutes to stay within MongoDB's default snapshot history window. Exit code `0` means no unresolved reference/ownership findings, `2` means findings need disposition, and `1` means configuration or inventory execution failed.
+
+`outputComparison.status: equivalent-by-contract` only means the proposed missing asset fields match the current legacy runtime defaults. `renderedEventOutputDiff.status` remains `not-run`: no event before/after rendering is claimed. This command proposes explicit values for legacy asset scope/activity/sharing only. It does not enable policy version 2, alter assignments or templates, move media, or write checkpoints. There is no apply or rollback implementation in this phase. Do not normalize production records until a reviewed report, backup, representative rendered-output diff, and separately reviewed bounded apply/rollback design are available. No production inventory has been run by this code change.
 
 ## Accessibility and verification
 
