@@ -34,6 +34,52 @@ export interface PhotoQueueItem {
   rejectReasons: string[];
   /** This authorized image has no surviving unframed source, so it cannot be returned for reframing. */
   canReturnToVetting: boolean;
+  /** Optional Camera screening hint; its result cannot make a vetting decision. */
+  precheck: PhotoModerationQueueSignal | null;
+}
+
+export interface PhotoModerationQueueSignal {
+  status: 'queued' | 'submitting' | 'queued_remote' | 'running' | 'completed' | 'failed';
+  signal?: 'flagged' | 'uncertain' | 'no_flags_detected';
+  flags: string[];
+  model?: string;
+  /** Preserve the provider's mandatory no-automation invariants in the reviewer data contract. */
+  review_required?: true;
+  automated_decision?: 'none';
+  categories?: Record<PrecheckCategory, PrecheckCategorySignal>;
+  evidence?: string;
+  limitations?: string;
+  errorCode?: string;
+}
+
+const PRECHECK_STATUSES = new Set<PhotoModerationQueueSignal['status']>(['queued', 'submitting', 'queued_remote', 'running', 'completed', 'failed']);
+const PRECHECK_CATEGORY_KEYS = ['nudity', 'sexualContent', 'middleFinger', 'hateSymbols', 'hateWords', 'alcohol', 'drugs', 'violence', 'weapons'] as const;
+const PRECHECK_CATEGORIES = new Set<string>(PRECHECK_CATEGORY_KEYS);
+type PrecheckCategory = (typeof PRECHECK_CATEGORY_KEYS)[number];
+type PrecheckCategorySignal = 'detected' | 'not_detected' | 'uncertain';
+
+function queueCategories(value: unknown): Record<PrecheckCategory, PrecheckCategorySignal> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  if (Object.keys(source).length !== PRECHECK_CATEGORY_KEYS.length) return null;
+  const result = {} as Record<PrecheckCategory, PrecheckCategorySignal>;
+  for (const category of PRECHECK_CATEGORY_KEYS) {
+    const signal = source[category];
+    if (signal !== 'detected' && signal !== 'not_detected' && signal !== 'uncertain') return null;
+    result[category] = signal;
+  }
+  return result;
+}
+
+export function precheckSummary(precheck: PhotoModerationQueueSignal | null): string | null {
+  if (!precheck) return null;
+  if (precheck.status === 'failed') return 'Unavailable · review manually';
+  if (precheck.status === 'queued' || precheck.status === 'submitting') return 'Waiting';
+  if (precheck.status === 'queued_remote') return 'Queued';
+  if (precheck.status === 'running') return 'Analyzing';
+  if (precheck.signal === 'flagged') return `Possible concern · ${precheck.flags.length} signal${precheck.flags.length === 1 ? '' : 's'}`;
+  if (precheck.signal === 'uncertain') return 'Uncertain · review manually';
+  return 'No listed concern detected · review manually';
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
@@ -44,6 +90,25 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
   const history = Array.isArray(doc.reviewHistory) ? (doc.reviewHistory as Document[]) : [];
   const last = history[history.length - 1];
   const ownerAuthorizedMedia = doc.mediaUseAuthorization?.source === 'event_owner_instruction';
+  const rawPrecheck = doc.moderationPrecheck && typeof doc.moderationPrecheck === 'object' ? doc.moderationPrecheck as Document : null;
+  const rawResult = rawPrecheck?.result && typeof rawPrecheck.result === 'object' ? rawPrecheck.result as Document : null;
+  const rawSignal = rawResult?.signal;
+  const precheckStatus = rawPrecheck?.status;
+  const categories = queueCategories(rawResult?.categories);
+  const precheck: PhotoModerationQueueSignal | null = typeof precheckStatus === 'string' && PRECHECK_STATUSES.has(precheckStatus as PhotoModerationQueueSignal['status'])
+    ? {
+        status: precheckStatus as PhotoModerationQueueSignal['status'],
+        ...(rawSignal === 'flagged' || rawSignal === 'uncertain' || rawSignal === 'no_flags_detected' ? { signal: rawSignal } : {}),
+        flags: Array.isArray(rawResult?.flags) ? rawResult!.flags.filter((flag): flag is string => typeof flag === 'string' && PRECHECK_CATEGORIES.has(flag)) : [],
+        ...(typeof rawResult?.model === 'string' ? { model: rawResult.model.slice(0, 160) } : {}),
+        ...(rawResult?.review_required === true ? { review_required: true as const } : {}),
+        ...(rawResult?.automated_decision === 'none' ? { automated_decision: 'none' as const } : {}),
+        ...(categories ? { categories } : {}),
+        ...(typeof rawResult?.evidence === 'string' ? { evidence: rawResult.evidence.slice(0, 800) } : {}),
+        ...(typeof rawResult?.limitations === 'string' ? { limitations: rawResult.limitations.slice(0, 800) } : {}),
+        ...(typeof rawPrecheck?.lastErrorCode === 'string' ? { errorCode: rawPrecheck.lastErrorCode.slice(0, 80) } : {}),
+      }
+    : null;
   const contact = guestContactOf(doc);
   const name = contact.name ?? text(doc.userInfoDraft?.name) ?? text(doc.userName) ?? 'Guest';
   const email = contact.email;
@@ -65,6 +130,7 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
     shareOptIn: review.shareOptIn === true,
     canReturnToVetting: Boolean(review.photoUrl || review.returnedAt || doc.originalImageUrl),
     rejectReasons: Array.isArray(doc.rejectReasons) ? doc.rejectReasons.filter((key): key is string => typeof key === 'string' && key.length > 0) : [],
+    precheck,
     last:
       last && (last.action === 'approve' || last.action === 'reject' || last.action === 'return_to_vetting')
         ? { action: last.action, by: text(last.by) ?? 'unknown', at: text(last.at) ?? '', reason: ownerAuthorizedMedia ? null : text(last.reason) }
