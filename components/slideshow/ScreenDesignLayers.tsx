@@ -103,9 +103,11 @@ export default function ScreenDesignLayers({ design }: { design: ResolvedScreenD
         <link rel="stylesheet" href={href} />
       ) : null}
       {fontFace ? <style>{fontFace}</style> : null}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={design.overlayImageUrl} alt="" className="pointer-events-none absolute inset-0 z-[3] h-full w-full" data-screen-overlay />
-      {design.qr && design.qrSvg ? (
+      {design.overlayImageUrl && design.overlayVisible !== false ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={design.overlayImageUrl} alt="" className="pointer-events-none absolute inset-0 z-[3] h-full w-full" data-screen-overlay />
+      ) : null}
+      {design.qr && design.qr.visible !== false && design.qrSvg ? (
         <div
           role="img"
           aria-label="QR code"
@@ -115,7 +117,7 @@ export default function ScreenDesignLayers({ design }: { design: ResolvedScreenD
           dangerouslySetInnerHTML={{ __html: design.qrSvg }}
         />
       ) : null}
-      {(design.texts ?? []).map((t, i) => (
+      {(design.texts ?? []).filter((t) => t.visible !== false).map((t, i) => (
         <ScreenText key={i} t={t} font={font} />
       ))}
     </>

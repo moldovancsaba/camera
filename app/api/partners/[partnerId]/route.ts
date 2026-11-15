@@ -30,6 +30,7 @@ import { parseGalleryConsent } from '@/lib/events/gallery-consent';
 import { parseCheckboxSettings } from '@/lib/events/checkbox-settings';
 import { parseLogoDefaults, type LogoDefault } from '@/lib/library/logos';
 import { scheduleWelcomeRedrawForPartner } from '@/lib/screen/welcome-redraw';
+import { journeyTemplateForAdmin } from '@/lib/visual-assets/templates';
 
 export const GET = withErrorHandler(async (
   _request: NextRequest,
@@ -166,10 +167,10 @@ export const PATCH = withErrorHandler(async (
   const unsetFields: Record<string, ''> = {};
   if (defaultExperienceTemplateId !== undefined) {
     if (defaultExperienceTemplateId === 'inherit') {
-      // Missing means follow the global starter; null is an explicit opt-out.
+      // A missing partner journey means it follows the required global default.
       unsetFields.defaultExperienceTemplateId = '';
     } else if (defaultExperienceTemplateId === null) {
-      updates.defaultExperienceTemplateId = null;
+      throw apiBadRequest('A partner must inherit the global journey or select a partner-owned journey.');
     } else if (typeof defaultExperienceTemplateId === 'string' && defaultExperienceTemplateId.length <= 100) {
       const template = await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({
         templateId: defaultExperienceTemplateId,
@@ -177,9 +178,10 @@ export const PATCH = withErrorHandler(async (
         ownerId: String(existingPartner.partnerId),
       });
       if (!template) throw apiBadRequest('Choose a template owned by this partner.');
+      if (!journeyTemplateForAdmin(template as Record<string, unknown>)) throw apiBadRequest('This Partner Journey has invalid saved page data and cannot be selected.');
       updates.defaultExperienceTemplateId = defaultExperienceTemplateId;
     } else {
-      throw apiBadRequest('defaultExperienceTemplateId must be a partner template, null to disable the global default, or "inherit".');
+      throw apiBadRequest('defaultExperienceTemplateId must be a partner-owned journey or "inherit".');
     }
   }
 

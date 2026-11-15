@@ -24,6 +24,7 @@ function setup(t: TestContext) {
     logos: [logo('l1'), logo('l2'), logo('lp', { scope: 'partner', partnerId: 'P' })],
     partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'Partner P', source: 'messmass', library: { frames: ['g1'], logos: ['l1'] }, defaultFrames: [] }],
     events: [],
+    experience_templates: [],
   });
   const cascades: unknown[] = [];
   t.mock.module('@/lib/db/mongodb', { exports: { connectToDatabase: async () => seeded.db } });
@@ -112,6 +113,19 @@ test('the default language of the partner\'s events: set to a language we have, 
   assert.equal((await PATCH(patch({ uiLanguage: 'de' }), params)).status, 200);
   assert.equal((data.partners[0] as { uiLanguage?: string | null }).uiLanguage, 'de');
   for (const bad of ['DE', 'xx', 7, {}]) assert.equal((await PATCH(patch({ uiLanguage: bad }), params)).status, 400, String(bad));
+});
+
+test('the generic partner API refuses a malformed saved Partner Journey', async (t) => {
+  const { data } = setup(t);
+  data.experience_templates.push({
+    templateId: 'broken-partner-journey', level: 'partner', ownerId: 'P', name: 'Broken',
+    config: { customPages: [{ userEmail: 'private@example.test' }] },
+  });
+  const { PATCH } = await importRoute('broken-partner-journey');
+  const response = await PATCH(patch({ defaultExperienceTemplateId: 'broken-partner-journey' }), params);
+  assert.equal(response.status, 400);
+  assert.match(((await response.json()) as { error: string }).error, /invalid saved page data/);
+  assert.equal((data.partners[0] as { defaultExperienceTemplateId?: string }).defaultExperienceTemplateId, undefined);
 });
 
 test('the camera mode of the partner\'s events: a mode we have, cleared with an empty value, refused otherwise, left alone when absent (issue 547)', async (t) => {

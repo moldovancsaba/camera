@@ -136,12 +136,13 @@ test('an event with complete frames of its own offers them as layouts, and today
   assert.equal(context.today.layout.mode, 'user');
 });
 
-test('an event without explicit opt-in does not offer generated layouts or messages from saved variants', async () => {
-  const { db } = fakeDb({ frames: [frame('blue', { messageArea: area })] });
-  const context = await loadSelectionContext(db, { frames: [row('blue')], frameDesign: MTK_DESIGN });
-  assert.deepEqual(context.layouts, []);
-  assert.deepEqual(context.messages, []);
-  assert.equal(context.situation, 'A');
+test('an event can use assigned message-frame designs without opting into the generated fallback', async () => {
+  const { db } = fakeDb({ frames: [frame('blue', { messageArea: area }), frame('pink', { messageArea: area })] });
+  const context = await loadSelectionContext(db, { frames: [row('blue'), row('pink')], frameDesign: MTK_DESIGN });
+  assert.deepEqual(context.layouts.map((layout) => layout.id), ['blue', 'pink']);
+  assert.equal(context.layouts.some((layout) => layout.id === GENERATED_LAYOUT), false, 'the optional generated fallback stays off');
+  assert.equal(context.messages.length, 4, 'event messages remain available to their assigned graphics');
+  assert.equal(context.situation, 'C');
 });
 
 test('the previews are the images already drawn: a design with its first message, a message on its first design, a complete frame as it is (segment S4)', () => {

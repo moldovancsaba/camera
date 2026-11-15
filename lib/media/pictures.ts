@@ -9,8 +9,8 @@
 
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { isAllowedLogoUrl } from '@/lib/frame/logo';
 import { checkPicture, type PictureCheck } from '@/lib/media/broken';
+import { isProbeableStoredImageUrl } from '@/lib/media/image-source-policy';
 
 export interface PictureHealth {
   _id: string;
@@ -30,11 +30,11 @@ const PICTURE_PATH = /image|logo|picture|thumbnail|background|overlay|screen/i;
 
 const MAX_DEPTH = 8;
 
-/** Collects every picture address in a document. Only addresses of our image hosts count (`isAllowedLogoUrl`). */
+/** Collects serving and backup image addresses for server-side health checks; this does not make backup URLs renderable in browsers. */
 function addressesIn(value: unknown, path: string, found: Set<string>, depth = 0): void {
   if (depth > MAX_DEPTH) return;
   if (typeof value === 'string') {
-    if (PICTURE_PATH.test(path) && isAllowedLogoUrl(value)) found.add(value);
+    if (PICTURE_PATH.test(path) && isProbeableStoredImageUrl(value)) found.add(value);
   } else if (Array.isArray(value)) {
     for (const item of value) addressesIn(item, path, found, depth + 1);
   } else if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {

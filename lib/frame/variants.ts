@@ -1,6 +1,6 @@
 /**
- * Generates the images of an event's default frame: one transparent 1920x1080 PNG per usable message, stored in
- * Vercel Blob, with the layer boxes kept for the live-view territories (docs/DEFAULT_FRAME_PLAN.md, camera#235).
+ * Generates assigned message-frame compositions and, when requested, the event's optional default layout: one
+ * 1920x1080 PNG per usable message/design pair, stored in Vercel Blob, with layer boxes for live-view territories.
  * An image is reused while everything that decides it is unchanged. Old files are never deleted: a submission
  * records the variant it used. Dependencies are injected so it is
  * unit-tested without Blob or a network.
@@ -18,6 +18,7 @@ import { fetchLogo } from './logo';
 import { eventEmoji, withoutEmoji } from './emoji';
 import { chosenFrameIds, frameBaseOf, loadMessageFrames, type MessageFrame } from './message-frames';
 import { messageTokens, usableMessages } from './messages';
+import { effectiveMessageFrames } from './selection';
 import { FRAME_RENDER_VERSION, generatedLayers, renderFrame, renderSlotFrame, slotLayers } from './render';
 import { slotLayerBoxes } from './slot-layout';
 import { scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
@@ -57,6 +58,11 @@ export interface GenerateResult {
   reused: number;
 }
 
+export interface GenerateOptions {
+  /** Keep the event's optional default layout out while still drawing assigned message-frame combinations. */
+  includeGeneratedFallback?: boolean;
+}
+
 /** Everything that decides the image: what is drawn, the message, the font actually used, the size and the drawing code. */
 export function variantKey(design: FrameDesign, message: string | null, font: ResolvedFont, frame?: MessageFrame, template: string | null = null): string {
   const decides: unknown[] = [contextHash(design.context), message, font.family, font.used, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, FRAME_RENDER_VERSION];
@@ -72,9 +78,13 @@ export function variantKey(design: FrameDesign, message: string | null, font: Re
 /** A stored image can be reused when its key is unchanged and it was not a result of a failure that is worth retrying. */
 const reusable = (variant: FrameVariant, key: string) => variant.key === key && variant.logo !== 'failed' && !variant.font.retry;
 
-export async function generateFrameVariants(db: Db, event: Document, deps: VariantDeps = defaultDeps): Promise<GenerateResult> {
-  const design = event.frameDesign as FrameDesign | undefined;
-  if (!design?.context) throw new Error('The frame design has no snapshot yet');
+export async function generateFrameVariants(db: Db, event: Document, deps: VariantDeps = defaultDeps, options: GenerateOptions = {}): Promise<GenerateResult> {
+  const storedDesign = event.frameDesign as FrameDesign | undefined;
+  if (!storedDesign?.context) throw new Error('The frame design has no snapshot yet');
+  const inferredFrames = effectiveMessageFrames(storedDesign);
+  const design = storedDesign.messageFramesOverridden !== true && Object.keys(storedDesign.messageFrames ?? {}).length === 0 && Object.keys(inferredFrames).length > 0
+    ? { ...storedDesign, messageFrames: inferredFrames }
+    : storedDesign;
 
   const { context } = design;
   // The slots that draw this frame: the event's own, else the partner's default, else the general default (issue 502, segment 5); undefined is the generated layout of the default frame. Never stored on the event.
@@ -93,19 +103,22 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
   let logoBytes: Buffer | null | undefined;
   const base = parseFrameBase(design.base);
   const baseBytes = new Map<string, Buffer>();
-  // The frames the messages chose: only those of the event that can still carry a message; a message whose frame is gone keeps the older picture or the layout.
+  // The frames the messages chose: only assigned event frames that are active and can still carry a message.
   const chosenFrames = Object.keys(design.messageFrames ?? {}).length > 0 ? await loadMessageFrames(db, event) : new Map<string, MessageFrame>();
   let generated = 0;
+  const includeGeneratedFallback = options.includeGeneratedFallback ?? true;
 
-  // One image for each message and each design it is written on; a message on no usable design has the one image on the older picture or the generated layout. No usable message: one
-  // frame without a message layer, so the event still has its frame.
-  const jobs: Array<{ index: number | null; message: string | null; chosen: MessageFrame | undefined }> =
+  // Draw each assigned message/design pair. The optional generated layout is a separate fallback: when it is off,
+  // messages without an assigned carrier do not create a default frame image.
+  type VariantJob = { index: number | null; message: string | null; chosen: MessageFrame | undefined };
+  const jobs: VariantJob[] =
     usable.length > 0
-      ? usable.flatMap((m) => {
+      ? usable.flatMap<VariantJob>((m) => {
           const frames = chosenFrameIds(design, m.index).flatMap((id) => chosenFrames.get(id) ?? []);
-          return (frames.length > 0 ? frames : [undefined]).map((chosen) => ({ index: m.index, message: m.text, chosen }));
+          if (frames.length > 0) return frames.map((chosen) => ({ index: m.index, message: m.text, chosen }));
+          return includeGeneratedFallback ? [{ index: m.index, message: m.text, chosen: undefined }] : [];
         })
-      : [{ index: null, message: null, chosen: undefined }];
+      : includeGeneratedFallback ? [{ index: null, message: null, chosen: undefined }] : [];
 
   // The dark area of an image written on a library frame: the layers its designer put in the message area, or (`design.darkArea` is `generated`) the mask of the generated default frame for
   // that message. It is not part of the image, so a change of it does not redraw anything: kept images get their layers set again.
@@ -237,7 +250,13 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
   const generatedAt = deps.now();
   const next: FrameDesign = { ...design, variants, generatedAt };
   // One write at the end: a failed upload above leaves the previous variants as they were.
-  await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, { $set: { 'frameDesign.variants': variants, 'frameDesign.generatedAt': generatedAt } });
+  await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, {
+    $set: {
+      'frameDesign.variants': variants,
+      'frameDesign.generatedAt': generatedAt,
+      ...(storedDesign.messageFramesOverridden !== true && Object.keys(storedDesign.messageFrames ?? {}).length === 0 && Object.keys(inferredFrames).length > 0 ? { 'frameDesign.messageFrames': inferredFrames } : {}),
+    },
+  });
   // The welcome page screen shows this frame, in the colours and the font of the same snapshot (issue 327): when the event has that picture it is drawn again after the response, once, if anything it is
   // drawn from changed (lib/screen/welcome-redraw.ts; an event without the picture, a call outside a request and a switched-off redraw do nothing).
   scheduleWelcomeRedraw(event, 'frame');

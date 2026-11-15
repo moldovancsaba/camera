@@ -2752,14 +2752,134 @@ const EXTRA_TRANSLATIONS: Record<UiLanguage, Record<string, string>> = {
   'sr-Latn': { 'The analytics report could not be loaded. Please try again.': 'Analitički izveštaj nije mogao da se učita. Pokušajte ponovo.' },
 };
 
+const EVENT_STATUS_TEXT: Record<UiLanguage, Record<string, string>> = {
+  en: {
+    'Activate event': 'Activate event',
+    'Deactivate event': 'Deactivate event',
+    'Could not update the event status. Please try again.': 'Could not update the event status. Please try again.',
+  },
+  hu: {
+    'Activate event': 'Esemény aktiválása',
+    'Deactivate event': 'Esemény inaktiválása',
+    'Could not update the event status. Please try again.': 'Nem sikerült frissíteni az esemény állapotát. Próbálja meg újra.',
+  },
+  de: {
+    'Activate event': 'Veranstaltung aktivieren',
+    'Deactivate event': 'Veranstaltung deaktivieren',
+    'Could not update the event status. Please try again.': 'Der Veranstaltungsstatus konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.',
+  },
+  it: {
+    'Activate event': 'Attiva evento',
+    'Deactivate event': 'Disattiva evento',
+    'Could not update the event status. Please try again.': 'Impossibile aggiornare lo stato dell’evento. Riprova.',
+  },
+  'pt-BR': {
+    'Activate event': 'Ativar evento',
+    'Deactivate event': 'Desativar evento',
+    'Could not update the event status. Please try again.': 'Não foi possível atualizar o status do evento. Tente novamente.',
+  },
+  'pt-PT': {
+    'Activate event': 'Ativar evento',
+    'Deactivate event': 'Desativar evento',
+    'Could not update the event status. Please try again.': 'Não foi possível atualizar o estado do evento. Tente novamente.',
+  },
+  es: {
+    'Activate event': 'Activar evento',
+    'Deactivate event': 'Desactivar evento',
+    'Could not update the event status. Please try again.': 'No se pudo actualizar el estado del evento. Vuelve a intentarlo.',
+  },
+  fr: {
+    'Activate event': 'Activer l’événement',
+    'Deactivate event': 'Désactiver l’événement',
+    'Could not update the event status. Please try again.': 'Impossible de mettre à jour l’état de l’événement. Veuillez réessayer.',
+  },
+  ru: {
+    'Activate event': 'Активировать событие',
+    'Deactivate event': 'Деактивировать событие',
+    'Could not update the event status. Please try again.': 'Не удалось обновить статус события. Попробуйте ещё раз.',
+  },
+  'zh-Hans': {
+    'Activate event': '启用活动',
+    'Deactivate event': '停用活动',
+    'Could not update the event status. Please try again.': '无法更新活动状态。请重试。',
+  },
+  'zh-Hant': {
+    'Activate event': '啟用活動',
+    'Deactivate event': '停用活動',
+    'Could not update the event status. Please try again.': '無法更新活動狀態。請重試。',
+  },
+  ro: {
+    'Activate event': 'Activează evenimentul',
+    'Deactivate event': 'Dezactivează evenimentul',
+    'Could not update the event status. Please try again.': 'Starea evenimentului nu a putut fi actualizată. Încercați din nou.',
+  },
+  pl: {
+    'Activate event': 'Aktywuj wydarzenie',
+    'Deactivate event': 'Dezaktywuj wydarzenie',
+    'Could not update the event status. Please try again.': 'Nie udało się zaktualizować statusu wydarzenia. Spróbuj ponownie.',
+  },
+  sk: {
+    'Activate event': 'Aktivovať podujatie',
+    'Deactivate event': 'Deaktivovať podujatie',
+    'Could not update the event status. Please try again.': 'Stav podujatia sa nepodarilo aktualizovať. Skúste to znova.',
+  },
+  hr: {
+    'Activate event': 'Aktiviraj događaj',
+    'Deactivate event': 'Deaktiviraj događaj',
+    'Could not update the event status. Please try again.': 'Nije moguće ažurirati status događaja. Pokušajte ponovno.',
+  },
+  sl: {
+    'Activate event': 'Aktiviraj dogodek',
+    'Deactivate event': 'Deaktiviraj dogodek',
+    'Could not update the event status. Please try again.': 'Stanja dogodka ni bilo mogoče posodobiti. Poskusite znova.',
+  },
+  bg: {
+    'Activate event': 'Активирай събитието',
+    'Deactivate event': 'Деактивирай събитието',
+    'Could not update the event status. Please try again.': 'Състоянието на събитието не можа да се актуализира. Опитайте отново.',
+  },
+  tr: {
+    'Activate event': 'Etkinliği etkinleştir',
+    'Deactivate event': 'Etkinliği devre dışı bırak',
+    'Could not update the event status. Please try again.': 'Etkinlik durumu güncellenemedi. Lütfen tekrar deneyin.',
+  },
+  ar: {
+    'Activate event': 'تفعيل الفعالية',
+    'Deactivate event': 'إلغاء تفعيل الفعالية',
+    'Could not update the event status. Please try again.': 'تعذر تحديث حالة الفعالية. يُرجى المحاولة مرة أخرى.',
+  },
+  hi: {
+    'Activate event': 'इवेंट सक्रिय करें',
+    'Deactivate event': 'इवेंट निष्क्रिय करें',
+    'Could not update the event status. Please try again.': 'इवेंट की स्थिति अपडेट नहीं हो सकी। कृपया फिर से प्रयास करें।',
+  },
+  ka: {
+    'Activate event': 'ღონისძიების გააქტიურება',
+    'Deactivate event': 'ღონისძიების გამორთვა',
+    'Could not update the event status. Please try again.': 'ღონისძიების სტატუსის განახლება ვერ მოხერხდა. სცადეთ ხელახლა.',
+  },
+  'sr-Cyrl': {
+    'Activate event': 'Активирај догађај',
+    'Deactivate event': 'Деактивирај догађај',
+    'Could not update the event status. Please try again.': 'Није могуће ажурирати статус догађаја. Покушајте поново.',
+  },
+  'sr-Latn': {
+    'Activate event': 'Aktiviraj događaj',
+    'Deactivate event': 'Deaktiviraj događaj',
+    'Could not update the event status. Please try again.': 'Nije moguće ažurirati status događaja. Pokušajte ponovo.',
+  },
+};
+
 export const ADMIN_PAGE_TEXTS_ENGLISH: readonly AdminPageText[] = ENGLISH;
 
 export function hasAdminPageTranslation(source: string): boolean {
-  return INDEX.has(source) || CATALOG_KEY_BY_ENGLISH.has(source);
+  return INDEX.has(source) || CATALOG_KEY_BY_ENGLISH.has(source) || Object.hasOwn(EVENT_STATUS_TEXT.en, source);
 }
 
 export function adminPageText(source: string, language: UiLanguage): string {
   if (hasAdminShellTranslation(source)) return adminShellText(source, language);
+  const eventStatusText = EVENT_STATUS_TEXT[language][source];
+  if (eventStatusText) return eventStatusText;
   const extra = EXTRA_TRANSLATIONS[language][source];
   if (extra) return extra;
   const index = INDEX.get(source);

@@ -16,20 +16,22 @@ interface CaptureStageShellProps {
   eyebrow?: React.ReactNode;
   notice?: React.ReactNode;
   status?: PublicFlowStageStatus;
+  /** Fits the guest stage inside the journey editor's preview viewport. */
+  preview?: boolean;
 }
 
 /**
  * One stage of the guest journey (login, consent, call to action, restart): the event's logo on top, the stage card under it, centred on the
  * page, drawn with the theme of the event (camera#285).
  */
-export default function CaptureStageShell({ title, description, children, logoUrl, notice, status = 'ready' }: CaptureStageShellProps) {
+export default function CaptureStageShell({ title, description, children, logoUrl, notice, status = 'ready', preview = false }: CaptureStageShellProps) {
   const { t } = useT();
   const theme = useEventTheme();
   const logo = logoUrl ?? theme?.logoUrl ?? null;
   const emoji = !logo ? theme?.emoji ?? null : null;
 
   return (
-    <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-3">
+    <div className={preview ? 'app-safe-pad flex h-full min-h-0 w-full items-center justify-center overflow-y-auto p-3' : 'app-safe-pad flex min-h-dvh w-full items-center justify-center p-3'}>
       <Stack align="center" gap="md" className="w-full max-w-xl" data-event-stage>
         {logo ? (
           <Image

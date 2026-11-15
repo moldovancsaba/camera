@@ -77,8 +77,9 @@ function mergeTemplateValues(base: Record<string, unknown>, next: Record<string,
   return merged;
 }
 
-/** Merge a level chain without copying parent values into child storage. A
- * `template` mode starts a new child template; `inherit` keeps the parent. */
+/** Merge edits into one stored template config without mutating its source.
+ * This helper is for a local editor save/fork; runtime journey resolution is
+ * replacement-based and never merges a Global, Partner and Event chain. */
 export function resolveTemplateConfig<T extends Record<string, unknown>>(
   levels: readonly TemplateLevel<T>[],
 ): T {

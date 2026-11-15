@@ -51,6 +51,31 @@ test('optional parts may be left out, and an unknown alignment or fit falls back
   assert.equal(r.ok && r.value?.qr, undefined);
 });
 
+test('overlay, QR and text layers can be disabled independently without deleting their saved configuration', () => {
+  const result = parseScreenDesign({
+    ...good,
+    overlayVisible: false,
+    qr: { ...good.qr, visible: false },
+    texts: [{ ...good.texts[0], visible: false }],
+  });
+  assert.ok(result.ok && result.value);
+  assert.equal(result.value.overlayVisible, false);
+  assert.equal(result.value.overlayImageUrl, good.overlayImageUrl);
+  assert.equal(result.value.qr?.visible, false);
+  assert.equal(result.value.qr?.url, good.qr.url);
+  assert.equal(result.value.texts?.[0].visible, false);
+  assert.equal(result.value.texts?.[0].text, good.texts[0].text);
+  assert.equal(resolveScreenDesign(result.value)?.qrSvg, undefined, 'a hidden QR is not rendered or sent to the player');
+});
+
+test('a photo-window design works without an overlay, with or without dynamic layers', () => {
+  const withoutOverlay = parseScreenDesign({ window: good.window, photoFit: 'contain', qr: good.qr, texts: good.texts });
+  assert.ok(withoutOverlay.ok && withoutOverlay.value);
+  assert.equal(withoutOverlay.value.overlayImageUrl, undefined);
+  assert.match(resolveScreenDesign(withoutOverlay.value)?.qrSvg ?? '', /^<svg /);
+  assert.equal(parseScreenDesign({ window: good.window, photoFit: 'cover' }).ok, true);
+});
+
 test('the QR code is an SVG of dark modules in the given colour, square, with the three finder squares', () => {
   const svg = qrSvg('https://go.example.test/mtk-screen', hex('ffffff'));
   const size = Number(/viewBox="0 0 (\d+) \1"/.exec(svg)?.[1]);

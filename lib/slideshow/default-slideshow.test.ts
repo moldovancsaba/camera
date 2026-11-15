@@ -8,7 +8,7 @@ import { DEFAULT_STAGE, renderDefaultOverlay } from '@/lib/screen/default-stage'
 import { clearBrokenCache } from '@/lib/media/pictures';
 import { loadEventTheme } from '@/lib/theme/load';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY } from '@/lib/gds/tokens/colors';
+import { SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY, SLIDESHOW_LAYOUT_PRESET_COLORS } from '@/lib/gds/tokens/colors';
 import { GIANT_SCREEN_PLACEMENT, applyPartnerSlideshowDefault, ensureDefaultSlideshow, findDefaultSlideshow, writtenAddress, type DefaultSlideshowDeps } from './default-slideshow';
 import { en } from '@/lib/i18n/messages.en';
 import { hu } from '@/lib/i18n/messages.hu';
@@ -42,6 +42,107 @@ test('clearing the partner screen design restores the event baseline and keeps i
   const updated = await applyPartnerSlideshowDefault(db, EVENT, source as never);
   assert.deepEqual(updated.screenDesign, baselineDesign);
   assert.equal(updated.inheritedPartnerRevision, 2);
+});
+
+test('an event inherits the selected named partner slideshow and keeps the tracked event QR', async () => {
+  const eventQr = 'https://go.messmass.com/event-tracked-qr';
+  const partnerScreen = {
+    name: 'Partner selected screen', isActive: true, transitionDurationMs: 9000, fadeDurationMs: 1500,
+    bufferSize: 12, refreshStrategy: 'continuous', playMode: 'loop', orderMode: 'fixed', crossfade: false,
+    backgroundPrimaryColor: SLIDESHOW_LAYOUT_PRESET_COLORS[0], backgroundAccentColor: SLIDESHOW_LAYOUT_PRESET_COLORS[1], backgroundImageUrl: null,
+    viewportScale: 'fit', stageAspect: null,
+    screenDesign: { overlayImageUrl: 'https://partner.example/overlay.png', window: { left: 0, top: 0, width: 70, height: 70 }, photoFit: 'cover', qr: { url: 'https://wrong.example/qr', x: 12, y: 12, size: 12 }, texts: [] },
+  };
+  const source = {
+    _id: 'slideshow-named-partner', slideshowId: 'named-partner', eventId: EVENT.eventId,
+    isDefault: true, createdBy: 'system', name: 'Generated screen', isActive: true,
+    screenDesign: { qr: { url: eventQr, x: 1 }, texts: [] },
+  };
+  const { db, data } = fakeDb({
+    [COLLECTIONS.PARTNERS]: [{ partnerId: EVENT.partnerId, contentDefaults: {
+      revision: 11,
+      slideshowTemplates: [{ ...partnerScreen, templateId: 'partner-screen', name: partnerScreen.name }],
+      defaultSlideshowTemplateId: 'partner-screen',
+    } }],
+    [COLLECTIONS.ADMIN_SETTINGS]: [{ settingId: 'global-content-defaults', revision: 7,
+      slideshowTemplates: [{ ...partnerScreen, templateId: 'global-screen', name: 'Global screen', backgroundPrimaryColor: SLIDESHOW_LAYOUT_PRESET_COLORS[2] }],
+      defaultSlideshowTemplateId: 'global-screen',
+    }],
+    [COLLECTIONS.SLIDESHOWS]: [source],
+  });
+
+  const updated = await applyPartnerSlideshowDefault(db, EVENT, source as never);
+
+  assert.equal(updated.name, 'Partner selected screen');
+  assert.equal(updated.backgroundPrimaryColor, SLIDESHOW_LAYOUT_PRESET_COLORS[0]);
+  assert.equal(updated.inheritedFromLevel, 'partner');
+  assert.equal(updated.inheritedPartnerRevision, 11);
+  assert.equal((updated.screenDesign as { qr: { url: string } }).qr.url, eventQr, 'the event keeps its own QR attribution');
+  assert.equal(data[COLLECTIONS.SLIDESHOWS][0].inheritedFromPartnerId, EVENT.partnerId);
+});
+
+test('explicitly choosing the parent default replaces an event override and captures its baseline', async () => {
+  const parentScreen = {
+    name: 'Partner screen', isActive: true, transitionDurationMs: 9000, fadeDurationMs: 1500,
+    bufferSize: 12, refreshStrategy: 'continuous', playMode: 'loop', orderMode: 'fixed', crossfade: false,
+    backgroundPrimaryColor: SLIDESHOW_LAYOUT_PRESET_COLORS[0], backgroundAccentColor: SLIDESHOW_LAYOUT_PRESET_COLORS[1], backgroundImageUrl: null,
+    viewportScale: 'fit', stageAspect: null,
+    screenDesign: {
+      overlayImageUrl: 'https://partner.example/overlay.png',
+      window: { left: 0, top: 0, width: 70, height: 70 },
+      photoFit: 'cover',
+      qr: { url: 'https://wrong.example/qr', x: 12, y: 12, size: 12 },
+      texts: [],
+    },
+  };
+  const source = {
+    _id: 'slideshow-override', slideshowId: 'override', eventId: EVENT.eventId, isDefault: true,
+    createdBy: 'admin', inheritanceMode: 'override', name: 'Event override',
+    screenDesign: { overlayImageUrl: 'https://event.example/overlay.png', qr: { url: 'https://go.messmass.com/event-qr' }, texts: [{ text: 'Event design' }] },
+  };
+  const { db, data } = fakeDb({
+    [COLLECTIONS.PARTNERS]: [{ partnerId: EVENT.partnerId, contentDefaults: {
+      revision: 11,
+      slideshowTemplates: [{ ...parentScreen, templateId: 'partner-screen', name: parentScreen.name }],
+      defaultSlideshowTemplateId: 'partner-screen',
+    } }],
+    [COLLECTIONS.SLIDESHOWS]: [source],
+  });
+
+  const updated = await applyPartnerSlideshowDefault(db, EVENT, source as never, { force: true });
+
+  assert.equal(updated.name, 'Partner screen');
+  assert.equal(updated.inheritedFromLevel, 'partner');
+  assert.equal(updated.inheritedPartnerRevision, 11);
+  assert.equal(updated.inheritanceMode, undefined);
+  assert.equal((updated.screenDesign as { qr: { url: string } }).qr.url, 'https://go.messmass.com/event-qr');
+  assert.equal((updated.inheritanceBaseline as { name: string }).name, 'Event override');
+  assert.equal(data[COLLECTIONS.SLIDESHOWS][0].name, 'Partner screen');
+});
+
+test('a partner without a selected named slideshow inherits the global named default', async () => {
+  const globalScreen = {
+    name: 'Global selected screen', isActive: true, transitionDurationMs: 7000, fadeDurationMs: 900,
+    bufferSize: 9, refreshStrategy: 'continuous', playMode: 'loop', orderMode: 'fixed', crossfade: false,
+    backgroundPrimaryColor: SLIDESHOW_LAYOUT_PRESET_COLORS[0], backgroundAccentColor: SLIDESHOW_LAYOUT_PRESET_COLORS[1], backgroundImageUrl: null,
+    viewportScale: 'fit', stageAspect: null, screenDesign: null,
+  };
+  const source = { _id: 'slideshow-global', slideshowId: 'global', eventId: EVENT.eventId, isDefault: true, createdBy: 'system', name: 'Generated' };
+  const { db } = fakeDb({
+    [COLLECTIONS.PARTNERS]: [{ partnerId: EVENT.partnerId, contentDefaults: { revision: 3, slideshowTemplates: [], defaultSlideshowTemplateId: null } }],
+    [COLLECTIONS.ADMIN_SETTINGS]: [{ settingId: 'global-content-defaults', revision: 9,
+      slideshowTemplates: [{ ...globalScreen, templateId: 'global-selected', name: globalScreen.name }],
+      defaultSlideshowTemplateId: 'global-selected',
+    }],
+    [COLLECTIONS.SLIDESHOWS]: [source],
+  });
+
+  const updated = await applyPartnerSlideshowDefault(db, EVENT, source as never);
+
+  assert.equal(updated.name, 'Global selected screen');
+  assert.equal(updated.backgroundPrimaryColor, SLIDESHOW_LAYOUT_PRESET_COLORS[0]);
+  assert.equal(updated.inheritedFromLevel, 'global');
+  assert.equal(updated.inheritedGlobalRevision, 9);
 });
 
 test('removing the partner slideshow default restores the generated event baseline and clears inheritance', async () => {

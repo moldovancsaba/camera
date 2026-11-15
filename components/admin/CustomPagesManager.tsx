@@ -19,7 +19,7 @@ import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, type FrameMessageSelectionDisplay, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
-import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
+import { canMoveJourneyRow, customiseDefault, effectiveJourney, hasSeparateSubmit, journeyRowIndexByPageId, moveJourneyRow, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
 import { DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID, dedupeActiveRolePages } from '@/lib/events/default-pages';
 import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type CheckboxMode, type EffectiveCheckboxes, type StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 import CheckboxSettingsFields, { type CheckboxModes } from '@/components/admin/CheckboxSettingsFields';
@@ -27,12 +27,27 @@ import WelcomeCompositionEditor from '@/components/admin/WelcomeCompositionEdito
 import { validateWelcomeElements, welcomeElementsFromLegacy, type WelcomeElement } from '@/lib/events/welcome-composition';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminShellText } from '@/lib/i18n/admin-shell';
+import type { PickerLevel } from '@/lib/library/picker';
+import JourneyPagePreview from '@/components/admin/JourneyPagePreview';
+import styles from '@/components/admin/CustomPagesManager.module.css';
+import type { EventThemePreview } from '@/lib/theme/event-theme';
 
 export interface CustomPagesManagerProps {
-  eventId: string;
+  eventId?: string;
+  /** The shared image library used by this journey's visual composition. */
+  pickerLevel?: PickerLevel;
+  journeyTitle?: string;
+  allowConsentPages?: boolean;
+  /** Parent journeys can position event-owned consent and identity pages, but cannot edit their event-specific policy or copy. */
+  allowEditingEventSpecificDefaults?: boolean;
+  /** Render the same page list for a reusable parent journey, with child-owned policy explained explicitly. */
+  parentJourney?: boolean;
+  /** Consent policy is event-owned and is not part of a reusable journey template. */
+  allowConsentSettings?: boolean;
+  initialDefaultPageOrders?: Record<string, number>;
   /** Event-generated slideshow artwork used by the welcome screen. */
   eventWelcomeScreenUrl?: string;
-  eventTheme?: { background?: string; font?: { family?: string } };
+  eventTheme?: EventThemePreview;
   initialPages: CustomPage[];
   /** What decides which default pages the event gets (`GET /api/events/<id>`): with it the list is the journey as the user goes through it (camera#378). */
   journeyContext?: JourneyContext;
@@ -162,9 +177,10 @@ function MoveButtons({ canUp, canDown, onUp, onDown }: { canUp: boolean; canDown
   );
 }
 
-export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eventTheme, initialPages, journeyContext, acceptanceOnWhoAreYou = null, galleryConsent = null, consentSettings = null, partnerCheckboxes, frameMessageSelectionDisplay = 'automatic', onSave }: CustomPagesManagerProps) {
+export default function CustomPagesManager({ eventId, pickerLevel, journeyTitle: journeyTitleProp, allowConsentPages = true, allowEditingEventSpecificDefaults = true, parentJourney = false, allowConsentSettings = true, initialDefaultPageOrders, eventWelcomeScreenUrl, eventTheme, initialPages, journeyContext, acceptanceOnWhoAreYou = null, galleryConsent = null, consentSettings = null, partnerCheckboxes, frameMessageSelectionDisplay = 'automatic', onSave }: CustomPagesManagerProps) {
   const language = useUiLanguage();
-  const journeyTitle = adminShellText('Event User Journey', language);
+  const journeyTitle = journeyTitleProp ?? adminShellText('Event User Journey', language);
+  const assetLevel: PickerLevel = pickerLevel ?? (eventId ? { scope: 'event', eventId } : { scope: 'global' });
   const [pages, setPages] = useState<CustomPage[]>(initialPages);
   // One value for each kind of checkbox (issue 558): the list at the top and the page editors that show a kind (the Who-are-you page's acceptance, the consent page's acceptance and gallery permission)
   // read and write it here, so they are always the same one. "" is no choice of its own: the event follows its partner.
@@ -174,11 +190,12 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
   });
   const changeMode = (kind: CheckboxKind, mode: CheckboxMode) => setModes((current) => ({ ...current, [kind]: mode }));
   // Where the default pages are (issue 535): the places the editor saved, changed here by the up/down buttons and saved with Save Pages. Null: the default places.
-  const [defaultOrders, setDefaultOrders] = useState<Record<string, number> | null>(journeyContext?.defaultOrders ?? null);
+  const [defaultOrders, setDefaultOrders] = useState<Record<string, number> | null>(journeyContext?.defaultOrders ?? initialDefaultPageOrders ?? null);
   const [selectionDisplay, setSelectionDisplay] = useState<FrameMessageSelectionDisplay>(frameMessageSelectionDisplay);
   const [showModal, setShowModal] = useState(false);
   const [editingPage, setEditingPage] = useState<CustomPage | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   /**
    * Add [Take Photo] placeholder if not present
@@ -236,7 +253,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
   const consentSettingsPage = consentSettingsRow && consentSettingsRow.kind !== 'step' ? consentSettingsRow.page : undefined;
   // Built-in follow-up behavior is configured in its own settings sections; the journey list is for pages guests can visit and editors can arrange.
   // Keep the full rows above for ordering rules, but render only actual pages.
-  const pageRows = rows.flatMap((row, rowIndex) => row.kind === 'step' ? [] : [{ row, rowIndex }]);
+  const pageRows = rows.flatMap((row) => row.kind === 'step' ? [] : [{ row }]);
 
   /** Customise a default page in place. If an own page of that type already exists, promote it to the default's position instead of creating a duplicate. */
   const handleCustomise = (page: CustomPage) => {
@@ -354,6 +371,13 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
     setEditingPage(null);
   };
 
+  /** Required consent and identity steps stay governed by event policy. Other journey pages can be hidden without deleting their reusable configuration. */
+  const handleTogglePageVisibility = (pageId: string) => {
+    setPages((current) => current.map((page) => page.pageId === pageId
+      ? { ...page, isActive: !page.isActive, updatedAt: generateTimestamp() }
+      : page));
+  };
+
   /**
    * Delete page
    */
@@ -377,7 +401,9 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
    * Move a row (an own page or a default page) one place up or down. With the journey known, every page row is numbered together (own pages and default pages), a default page keeps being
    * a default and only its place is saved (issue 535); moving the take-photo page above a default automatically separates the later save step.
    */
-  const handleMove = (rowIndex: number, direction: -1 | 1) => {
+  const handleMove = (pageId: string, direction: -1 | 1) => {
+    const rowIndex = journeyRowIndexByPageId(rows, pageId);
+    if (rowIndex < 0) return;
     if (journeyContext) {
       const moved = moveJourneyRow(rows, rowIndex, direction);
       if (!moved) return;
@@ -385,8 +411,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
       setDefaultOrders(moved.defaultOrders);
       return;
     }
-    const row = rows[rowIndex];
-    const index = sortedPages.findIndex((p) => row.kind === 'own' && p.pageId === row.page.pageId);
+    const index = sortedPages.findIndex((page) => page.pageId === pageId);
     const other = index + direction;
     if (index < 0 || other < 0 || other >= sortedPages.length) return;
     const newPages = [...sortedPages];
@@ -395,10 +420,11 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
   };
 
   /** Whether the row can move one place up or down: the journey says (a default page stays before the photo), without it the own pages only. */
-  const canMove = (rowIndex: number, direction: -1 | 1): boolean => {
+  const canMove = (pageId: string, direction: -1 | 1): boolean => {
+    const rowIndex = journeyRowIndexByPageId(rows, pageId);
+    if (rowIndex < 0) return false;
     if (journeyContext) return canMoveJourneyRow(rows, rowIndex, direction);
-    const row = rows[rowIndex];
-    const index = sortedPages.findIndex((p) => row.kind === 'own' && p.pageId === row.page.pageId);
+    const index = sortedPages.findIndex((page) => page.pageId === pageId);
     return index >= 0 && index + direction >= 0 && index + direction < sortedPages.length;
   };
 
@@ -434,6 +460,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
    */
   const handleSaveAll = async () => {
     setIsSaving(true);
+    setSaveError(null);
     try {
       // Ensure [Take Photo] placeholder exists
       const pagesWithPlaceholder = dedupeActiveRolePages(ensureTakePhotoPlaceholder(pages));
@@ -443,9 +470,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
       }));
       await onSave(pagesToSave, { ...settingsToStore(modes), frameMessageSelectionDisplay: selectionDisplay, ...(defaultOrders ? { defaultPageOrders: defaultOrders } : {}) });
     } catch (error) {
-      console.error('Failed to save pages:', error);
-      const msg = error instanceof Error ? error.message : 'Failed to save pages. Please try again.';
-      alert(msg);
+      setSaveError(error instanceof Error ? error.message : 'Failed to save pages. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -454,12 +479,15 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
   return (
     <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', padding: '1.5rem' }}>
       <div style={{ display: 'grid', gap: '1.5rem' }}>
+        {saveError ? <InlineAlert title="Could not save pages" message={saveError} severity="error" /> : null}
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'grid', gap: '0.25rem' }}>
             <h2 style={{ margin: 0 }}>{journeyTitle}</h2>
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
-              {journeyContext
-                ? 'The pages a user visits, in order. A default page is used until you customise it. Fixed steps such as approval, e-mails and the public photo page are managed in their dedicated settings.'
+              {parentJourney
+                ? 'Edit this reusable journey once with the shared page editor. Inherited partners and events receive its flow changes. Consent wording, identity collection and required policy remain configured by each event.'
+                : journeyContext
+                  ? 'The pages a user visits, in order. A default page is used until you customise it. Fixed steps such as approval, e-mails and the public photo page are managed in their dedicated settings.'
                 : 'Configure the pages of the user journey for this event'}
             </p>
           </div>
@@ -471,7 +499,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
         >
           {isSaving ? 'Saving...' : 'Save Pages'}
           </SemanticButton>
-          {consentSettingsPage && !rows.some((row) => row.kind !== 'step' && row.page.pageType === CustomPageType.ACCEPT) ? (
+          {allowConsentSettings && consentSettingsPage && !rows.some((row) => row.kind !== 'step' && row.page.pageType === CustomPageType.ACCEPT) ? (
             <SemanticButton action="custom-pages:edit-accept-settings" type="button" size="xs" variant="secondary" onClick={() => handleCustomise(consentSettingsPage)}>
               Edit Accept page settings
             </SemanticButton>
@@ -480,13 +508,13 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
 
       {/* Page List */}
         <div style={{ display: 'grid', gap: '0.75rem' }}>
-        {pageRows.map(({ row, rowIndex }, index) => {
+        {pageRows.map(({ row }, index) => {
           if (row.kind === 'default') {
             if (row.page.pageId === DEFAULT_FRAME_MESSAGE_SELECTION_PAGE_ID) {
               return (
                 <article key={row.page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }} data-frame-message-selection-settings>
                   <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
-                    <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
+                    <MoveButtons canUp={canMove(row.page.pageId, -1)} canDown={canMove(row.page.pageId, 1)} onUp={() => handleMove(row.page.pageId, -1)} onDown={() => handleMove(row.page.pageId, 1)} />
                     <div style={{ display: 'grid', flex: '1 1 16rem', gap: '0.25rem', minWidth: 0 }}>
                       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
@@ -514,7 +542,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
             return (
               <article key={row.page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                 <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
-                  <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
+                  <MoveButtons canUp={canMove(row.page.pageId, -1)} canDown={canMove(row.page.pageId, 1)} onUp={() => handleMove(row.page.pageId, -1)} onDown={() => handleMove(row.page.pageId, 1)} />
                   {/* The text keeps at least 12rem; on a narrow screen the Customise button wraps under it instead of squeezing the text to one word a line. */}
                   <div style={{ display: 'grid', flex: '1 1 12rem', gap: '0.25rem', minWidth: 0 }}>
                     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -525,9 +553,11 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
                     <strong style={{ fontSize: '0.875rem' }}>{row.page.config.title || '[Untitled]'}</strong>
                     <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>{row.reason}</span>
                   </div>
-                  <SemanticButton action="custom-pages:customise-default" type="button" size="xs" variant="secondary" onClick={() => handleCustomise(row.page)}>
-                    Customise
-                  </SemanticButton>
+                  {(row.page.pageType === CustomPageType.ACCEPT || row.page.pageType === CustomPageType.WHO_ARE_YOU) && !allowEditingEventSpecificDefaults
+                    ? <LabelTag tone="neutral" label="Configured per event" />
+                    : <SemanticButton action="custom-pages:customise-default" type="button" size="xs" variant="secondary" onClick={() => handleCustomise(row.page)}>
+                      Customise
+                    </SemanticButton>}
                 </div>
               </article>
             );
@@ -537,7 +567,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
             return (
               <article key={page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                 <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                  <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
+                  <MoveButtons canUp={canMove(page.pageId, -1)} canDown={canMove(page.pageId, 1)} onUp={() => handleMove(page.pageId, -1)} onDown={() => handleMove(page.pageId, 1)} />
                   <div style={{ display: 'grid', flex: '1 1 12rem', gap: '0.25rem', minWidth: 0 }}>
                     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
@@ -557,7 +587,7 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
             >
               {/* Order indicators */}
                 <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
-                  <MoveButtons canUp={canMove(rowIndex, -1)} canDown={canMove(rowIndex, 1)} onUp={() => handleMove(rowIndex, -1)} onDown={() => handleMove(rowIndex, 1)} />
+                  <MoveButtons canUp={canMove(page.pageId, -1)} canDown={canMove(page.pageId, 1)} onUp={() => handleMove(page.pageId, -1)} onDown={() => handleMove(page.pageId, 1)} />
 
               {/* Page info */}
                   <div style={{ display: 'grid', flex: 1, gap: '0.25rem' }}>
@@ -575,6 +605,20 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
 
               {/* Actions */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {page.pageType !== CustomPageType.TAKE_PHOTO
+                      && page.pageType !== CustomPageType.ACCEPT
+                      && page.pageType !== CustomPageType.WHO_ARE_YOU ? (
+                        <SemanticButton
+                          action={page.isActive ? 'custom-pages:hide' : 'custom-pages:show'}
+                          type="button"
+                          size="xs"
+                          variant="secondary"
+                          aria-pressed={page.isActive}
+                          onClick={() => handleTogglePageVisibility(page.pageId)}
+                        >
+                          {page.isActive ? 'Hide page' : 'Show page'}
+                        </SemanticButton>
+                      ) : null}
                     <SemanticButton
                       action="custom-pages:edit"
                       type="button"
@@ -604,22 +648,22 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
 
       {/* Add Page Buttons */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <SemanticButton
+          {allowConsentPages ? <SemanticButton
             action="custom-pages:add-who-are-you"
             type="button"
             variant="secondary"
           onClick={() => handleAddPage(CustomPageType.WHO_ARE_YOU)}
         >
           + Who Are You
-          </SemanticButton>
-          <SemanticButton
+          </SemanticButton> : null}
+          {allowConsentPages ? <SemanticButton
             action="custom-pages:add-accept"
             type="button"
             variant="secondary"
           onClick={() => handleAddPage(CustomPageType.ACCEPT)}
         >
           + Accept/Terms
-          </SemanticButton>
+          </SemanticButton> : null}
           <SemanticButton
             action="custom-pages:add-cta"
             type="button"
@@ -654,17 +698,19 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
           aria-labelledby="custom-page-editor-title"
           style={{ background: 'var(--gds-overlay-scrim)', inset: 0, display: 'grid', placeItems: 'center', padding: '1rem', position: 'fixed', zIndex: 1000 }}
         >
-          <div style={{ background: 'var(--gds-overlay-surface)', border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', maxHeight: '90vh', maxWidth: 760, overflowY: 'auto', padding: '1.5rem', width: '100%' }}>
-          <h2 id="custom-page-editor-title" style={{ marginTop: 0 }}>{editingPage ? `Edit ${editingPage.pageType} Page` : 'Edit Page'}</h2>
+          <div className={styles.editorDialog}>
+          <h2 id="custom-page-editor-title" className={styles.dialogTitle}>{editingPage ? `Edit ${editingPage.pageType} Page` : 'Edit Page'}</h2>
           {editingPage ? (
             <PageEditModal
               key={editingPage.pageId}
               page={editingPage}
               eventId={eventId}
+              pickerLevel={assetLevel}
               eventWelcomeScreenUrl={eventWelcomeScreenUrl}
               eventTheme={eventTheme}
               modes={modes}
               onModeChange={changeMode}
+              allowConsentSettings={allowConsentSettings}
               partnerCheckboxes={partnerCheckboxes}
               submitInPage={!hasSeparateSubmit(rows)}
               onSubmitInPageChange={handleSubmitInPage}
@@ -689,10 +735,12 @@ export default function CustomPagesManager({ eventId, eventWelcomeScreenUrl, eve
 function PageEditModal({
   page,
   eventId,
+  pickerLevel,
   eventWelcomeScreenUrl,
   eventTheme,
   modes,
   onModeChange,
+  allowConsentSettings,
   partnerCheckboxes,
   submitInPage,
   onSubmitInPageChange,
@@ -700,18 +748,20 @@ function PageEditModal({
   onCancel,
 }: {
   page: CustomPage;
-  eventId: string;
+  eventId?: string;
+  pickerLevel: PickerLevel;
   eventWelcomeScreenUrl?: string;
-  eventTheme?: { background?: string; font?: { family?: string } };
+  eventTheme?: EventThemePreview;
   modes: CheckboxModes;
   onModeChange: (kind: CheckboxKind, mode: CheckboxMode) => void;
+  allowConsentSettings: boolean;
   partnerCheckboxes?: EffectiveCheckboxes;
   submitInPage: boolean;
   onSubmitInPageChange: (value: boolean) => void;
   onSave: (page: CustomPage) => void;
   onCancel: () => void;
 }) {
-  const pictureLevel = { scope: 'event' as const, eventId };
+  const pictureLevel = pickerLevel;
   const [title, setTitle] = useState(page.config.title);
   const [description, setDescription] = useState(page.config.description);
   const [buttonText, setButtonText] = useState(page.config.buttonText);
@@ -794,10 +844,8 @@ function PageEditModal({
   const [buttonBorderColor, setButtonBorderColor] = useState(page.config.buttonBorderColor || '');
   const welcomeElementsError = page.pageType === CustomPageType.WELCOME ? validateWelcomeElements(welcomeElements) : null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const updated: CustomPage = {
+  // Keep one draft builder for both Save and the live preview so the two cannot render different page settings.
+  const buildDraftPage = (): CustomPage => ({
       ...page,
       config: {
         title,
@@ -878,14 +926,18 @@ function PageEditModal({
           buttonBorderColor: buttonBorderColor.trim() || undefined,
         }),
       },
-    };
+    });
 
-    onSave(updated);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(buildDraftPage());
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ display: 'grid', gap: '1rem' }}>
+    <form className={styles.editorForm} onSubmit={handleSubmit}>
+      <div className={styles.editorColumns} data-journey-editor-columns>
+        <div className={styles.formFields}>
+        <div style={{ display: 'grid', gap: '1rem' }}>
         <Field
           label="Page Title"
           value={title}
@@ -951,6 +1003,7 @@ function PageEditModal({
           <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
             <WelcomeCompositionEditor
               eventId={eventId}
+              pickerLevel={pickerLevel}
               elements={welcomeElements}
               onElementsChange={setWelcomeElements}
               buttonText={buttonText}
@@ -1051,7 +1104,9 @@ function PageEditModal({
                     Choose which checkboxes this page shows and whether they are required. These settings are saved with Save Pages.
                   </p>
                 </div>
-                <CheckboxSettingsFields modes={modes} onChange={onModeChange} level="event" followed={partnerCheckboxes} />
+                {allowConsentSettings
+                  ? <CheckboxSettingsFields modes={modes} onChange={onModeChange} level="event" followed={partnerCheckboxes} />
+                  : <InlineAlert title="Consent policy stays with the event" message="This journey controls page flow and copy. Checkbox visibility, required status, and legal consent policy are configured in the event settings." severity="info" />}
               </div>
             </section>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
@@ -1362,12 +1417,20 @@ function PageEditModal({
           />
         ) : null}
 
-        <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', paddingTop: '0.5rem' }}>
-          <SemanticButton action="custom-pages:save-page" type="submit" disabled={Boolean(welcomeElementsError)}>Save Page</SemanticButton>
-          <SemanticButton action="custom-pages:cancel-page" type="button" variant="secondary" onClick={onCancel}>
-            Cancel
-          </SemanticButton>
         </div>
+        </div>
+        <JourneyPagePreview
+          page={buildDraftPage()}
+          eventId={eventId}
+          eventWelcomeScreenUrl={eventWelcomeScreenUrl}
+          eventTheme={eventTheme}
+        />
+      </div>
+      <div className={styles.editorActions}>
+        <SemanticButton action="custom-pages:save-page" type="submit" disabled={Boolean(welcomeElementsError)}>Save Page</SemanticButton>
+        <SemanticButton action="custom-pages:cancel-page" type="button" variant="secondary" onClick={onCancel}>
+          Cancel
+        </SemanticButton>
       </div>
     </form>
   );

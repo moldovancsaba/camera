@@ -4,6 +4,8 @@ import { UI_LANGUAGES, type UiLanguage } from '@/lib/i18n';
 import { adminVisualAssetText } from './admin-visual-assets';
 import { adminExperienceTemplateText } from './admin-experience-templates';
 import { adminFrameUploadText } from './admin-frame-upload';
+import { adminWelcomeImageText } from './admin-welcome-image';
+import { adminJourneyPublicationText } from './admin-journey-publication';
 
 /**
  * Shared wording for the photo-review and Fanmass operations screens.
@@ -86,12 +88,16 @@ const EXTRA_VALUES: Record<UiLanguage, readonly string[]> = {
 const EXTRA_INDEX = new Map<string, number>(EXTRA_SOURCES.map((source, index) => [source, index]));
 
 export function adminOperationText(source: string, language: UiLanguage): string {
+  const welcomeImage = adminWelcomeImageText(source, language);
+  if (welcomeImage !== null) return welcomeImage;
   const frameUpload = adminFrameUploadText(source, language);
   if (frameUpload !== source) return frameUpload;
   const visualAssetText = adminVisualAssetText(source, language);
   if (visualAssetText !== null) return visualAssetText;
   const experienceTemplateText = adminExperienceTemplateText(source, language);
   if (experienceTemplateText !== null) return experienceTemplateText;
+  const journeyPublicationText = adminJourneyPublicationText(source, language);
+  if (journeyPublicationText !== null) return journeyPublicationText;
   const common = adminCommonText(source, language);
   if (common !== null) return common;
   const extraIndex = EXTRA_INDEX.get(source);
@@ -108,7 +114,10 @@ export function adminOperationText(source: string, language: UiLanguage): string
 }
 
 export function hasAdminOperationTranslation(source: string): boolean {
-  return INDEX.has(source);
+  return INDEX.has(source)
+    || adminWelcomeImageText(source, 'en') !== null
+    || adminExperienceTemplateText(source, 'en') !== null
+    || adminJourneyPublicationText(source, 'en') !== null;
 }
 
 // Guard catalog ordering during application startup without turning missing phrases into crashes.

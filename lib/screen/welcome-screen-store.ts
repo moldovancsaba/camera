@@ -84,9 +84,10 @@ export async function ensureWelcomeScreen(db: Db, event: Document, deps: Welcome
     return { ok: true, url: stored.url, created: false };
   }
 
-  // The overlay is fetched only when something is drawn (since the automatic redraw, issue 327, asks after every change of a source, "nothing changed" must not cost a network call).
-  const overlay = await deps.fetchImage(design.overlayImageUrl);
-  if (!overlay) return { ok: false, reason: 'The overlay picture of the screen design could not be fetched.' };
+  // Fetch only a visible configured overlay; disabled layers stay saved but do not add work to the generated welcome picture.
+  const wantsOverlay = Boolean(design.overlayImageUrl) && design.overlayVisible !== false;
+  const overlay = wantsOverlay && design.overlayImageUrl ? await deps.fetchImage(design.overlayImageUrl) : null;
+  if (wantsOverlay && !overlay) return { ok: false, reason: 'The overlay picture of the screen design could not be fetched.' };
 
   const window = await fetchWindow(plan, deps);
   // The key says what was really drawn: when the first sample selfie could not be fetched, the next one is what is in the picture (and becomes the pick).

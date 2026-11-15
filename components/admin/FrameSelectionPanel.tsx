@@ -25,9 +25,9 @@ interface Loaded {
 }
 
 const SITUATION_TEXT: Record<LayoutSituation, string> = {
-  A: 'Situation A: only the generated layout exists, so every user gets it.',
-  B: 'Situation B: you made one layout, so it is the default and every user gets it.',
-  C: 'Situation C: you made more than one layout, so you choose how users get them.',
+  A: 'There is one usable layout, so users get it automatically.',
+  B: 'There is one assigned layout, so users get it automatically.',
+  C: 'There are multiple layouts. Choose one, rotate them randomly, or let users choose.',
 };
 
 const muted = { color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' } as const;
@@ -173,9 +173,11 @@ export default function FrameSelectionPanel({ eventId }: { eventId: string }) {
     <section aria-labelledby="frame-selection-title" style={section}>
       <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
         <h3 id="frame-selection-title" style={{ margin: 0 }}>
-          How users get the layout and the message
+          How users get a frame and message
         </h3>
-        <p style={{ ...muted, margin: '0.5rem 0 0' }}>{SITUATION_TEXT[loaded.situation]}</p>
+        <p style={{ ...muted, margin: '0.5rem 0 0' }}>
+          {loaded.layouts.length === 0 ? 'No message-frame composition is ready yet. Map a message to an assigned frame graphic below and generate its image.' : SITUATION_TEXT[loaded.situation]}
+        </p>
       </div>
       <div style={{ display: 'grid', gap: '1.25rem', padding: '1rem 1.5rem 1.5rem' }}>
         {notice ? (

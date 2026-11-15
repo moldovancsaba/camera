@@ -7,7 +7,7 @@ process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= 'true';
  * Next.js configuration for Camera webapp
  * 
  * Key configurations:
- * - Image hosts: camera's own Vercel Blob store (primary), the logo bucket on Cloudflare R2 and i.ibb.co (legacy/mirror)
+ * - Image hosts: Camera's Vercel Blob store and the public logo bucket on Cloudflare R2. ImgBB is backup-only.
  * - Security headers (HSTS, CSP, X-Frame-Options)
  * - Performance optimizations (compression, caching)
  * - TypeScript strict mode enforcement
@@ -23,23 +23,16 @@ const nextConfig: NextConfig = {
     '/api/admin/events/*/frame-design/refresh': ['./assets/frame-fonts/*'],
     '/api/internal/messmass/events': ['./assets/frame-fonts/*'],
   },
-  // WHAT: The exact remote hosts /_next/image may fetch and transform: camera's
-  //   own Vercel Blob store and imgbb's direct-image host, nothing else.
+  // WHAT: The exact remote hosts /_next/image may fetch and transform, nothing else.
   // WHY: '*.public.blob.vercel-storage.com' matched every Vercel customer's
-  //   Blob store and 'imgbb.com' is an open upload site, so anyone could use
-  //   camera's domain (and the team's billed optimizer quota) as an image proxy
-  //   for third-party content (SEC-05). The list is the measured set of hosts
-  //   in stored image URLs (submissions, frames, logos, partners, events,
-  //   landing pages, slideshows, and the pictures the removed try-on integration
-  //   stored: jobs, results, garments, which are kept but no longer shown):
+  //   Blob store, so an arbitrary store could use Camera's domain (and the team's
+  //   billed optimizer quota) as an image proxy (SEC-05). ImgBB is a backup
+  //   provider and must never be used as a production/browser image source.
+  //   Legacy ImgBB-only assets must be copied to a serving provider before use.
   //   - bidx0njghn1voknt.public.blob.vercel-storage.com: the only Blob store
   //     camera writes to (lib/imgbb/upload.ts put()); every Blob URL on record.
-  //   - i.ibb.co: legacy primary + current best-effort mirror; still holds most
-  //     stored frames, logos, partner logos and pre-Blob submissions. It is
-  //     also an anonymous upload host, so it stays a residual proxy surface
-  //     until that data moves to Blob or optimization is switched off.
-  //   'ibb.co' (viewer/delete pages, never an image; see normalizeImgbbDirectUrl)
-  //   and 'imgbb.com' (no stored URL uses it) are intentionally absent.
+  //   ImgBB domains are intentionally absent: their stored URLs are backup data,
+  //   not production image sources.
   //   Every next/image call site currently passes `unoptimized`, so this list
   //   does not affect rendering; it only bounds what the optimizer endpoint
   //   will proxy. If the Blob store is ever replaced, add the new store's
@@ -49,11 +42,6 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'bidx0njghn1voknt.public.blob.vercel-storage.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'i.ibb.co',
         pathname: '/**',
       },
       // The logo bucket on Cloudflare R2 (messmass-logos): partner and event logos only (lib/imgbb/url.ts LOGO_STORAGE_HOST).
@@ -133,9 +121,9 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires unsafe-inline/eval
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind requires unsafe-inline, Google Fonts for Material Icons
-              "img-src 'self' data: https://*.public.blob.vercel-storage.com https://i.ibb.co https://imgbb.com https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev blob:",
+              "img-src 'self' data: https://*.public.blob.vercel-storage.com https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev blob:",
               "font-src 'self' data: https://fonts.gstatic.com https://messmass.com https://www.messmass.com", // Google Fonts CDN for Material Icons and the event theme; messmass for the custom fonts of event themes (camera#285)
-              "connect-src 'self' https://sso.doneisbetter.com https://*.public.blob.vercel-storage.com https://api.imgbb.com https://vercel.com/api/blob/", // vercel.com/api/blob/: direct browser upload of the full-frame original (camera#210)
+              "connect-src 'self' https://sso.doneisbetter.com https://*.public.blob.vercel-storage.com https://vercel.com/api/blob/", // vercel.com/api/blob/: direct browser upload of the full-frame original (camera#210)
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self' https://sso.doneisbetter.com",

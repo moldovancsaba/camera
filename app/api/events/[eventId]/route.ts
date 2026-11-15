@@ -8,7 +8,7 @@
 
 import { NextRequest, after } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS, generateTimestamp, CustomPageType } from '@/lib/db/schemas';
+import { COLLECTIONS, generateId, generateTimestamp, CustomPageType } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
 import {
   withErrorHandler,
@@ -49,7 +49,9 @@ import { journeyRecordingEnabled } from '@/lib/journey/setting';
 import { colourInputsOf, scheduleWelcomeRedraw } from '@/lib/screen/welcome-redraw';
 import { validateWelcomeElements } from '@/lib/events/welcome-composition';
 import { filterUnavailableVisualAssetUrls, visualAssetVisibleToEvent } from '@/lib/visual-assets/filter';
-import { applyExperienceConfig, parseExperienceTemplateSelection, resolveEventExperienceConfig, selectionWithExperienceOverrides } from '@/lib/visual-assets/templates';
+import { applyExperienceConfig, experienceConfigFromEvent, hasLegacyLocalJourney, JOURNEY_FLOW_FIELDS, journeyConfigFromStoredTemplate, journeyTemplateForAdmin, parseExperienceTemplateConfig, parseExperienceTemplateSelection, resolveEventExperienceConfig, validateTemplateAssetScope, type ExperienceTemplateConfig } from '@/lib/visual-assets/templates';
+import { resolveTemplateConfig } from '@/lib/visual-assets/resolve';
+import { JOURNEY_TEST_COOKIE, readJourneyTestGrant } from '@/lib/visual-assets/journey-test-cookie';
 
 interface EventFrameDetails {
   frameId: string;
@@ -185,12 +187,49 @@ export const GET = withErrorHandler(async (
   // `photoVetting` (who changed it, when) is admin data: guests get `photoVettingRequired`, and when asked as a guest
   // (`?audience=guest`, the capture page) a vetted event with no "who are you" page before the photo gets the default one first:
   // every vetted event asks for an email or a social login (camera#264). The admin editor reads the stored pages, never this one.
-  const resolvedExperience = await resolveEventExperienceConfig(
-    db,
-    event as unknown as Record<string, unknown>,
-    eventPartner as unknown as Record<string, unknown> | null,
-  );
+  const requestedJourneyTestId = request.nextUrl.searchParams.get('journeyTestTemplateId')?.trim() ?? '';
+  if (requestedJourneyTestId && !/^[A-Za-z0-9_-]{1,100}$/.test(requestedJourneyTestId)) {
+    throw apiBadRequest('Invalid journey test selection.');
+  }
+  const testGrant = readJourneyTestGrant(request.cookies.get(JOURNEY_TEST_COOKIE)?.value, event._id.toString());
+  const journeyTestId = requestedJourneyTestId || testGrant?.templateId || '';
+  let resolvedExperience = null;
+  let journeyTest: { name: string } | null = null;
+  if (journeyTestId) {
+    const grantMatches = testGrant?.templateId === journeyTestId;
+    let managerCanTest = Boolean(session && isGlobalAdminSession(session));
+    if (!managerCanTest && session) {
+      const access = await getPartnerScopedAccessForEvent(db, event._id.toString(), session, 'manager');
+      managerCanTest = access.allowed;
+    }
+    if (!grantMatches && !managerCanTest) throw apiForbidden('Start this journey test from the authenticated admin editor.');
+
+    // Only test a global or this event's partner journey; never let a client select an unrelated event's private journey.
+    const allowedTemplateOwners = [
+      { level: 'global', ownerId: null },
+      ...(typeof event.partnerId === 'string' && event.partnerId ? [{ level: 'partner', ownerId: event.partnerId }] : []),
+    ];
+    const storedTemplate = await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({
+      templateId: journeyTestId,
+      $or: allowedTemplateOwners,
+    });
+    if (!storedTemplate) throw apiNotFound('Journey');
+    const safeTemplate = journeyTemplateForAdmin(storedTemplate as Record<string, unknown>);
+    if (!safeTemplate) throw apiBadRequest('This journey has invalid saved page data and cannot be tested.');
+    // `journeyTestId` was validated above and is the exact ID used in the scoped database lookup.
+    resolvedExperience = { templateId: journeyTestId, config: safeTemplate.config };
+    journeyTest = { name: typeof safeTemplate.name === 'string' ? safeTemplate.name : 'Journey test' };
+  } else {
+    resolvedExperience = await resolveEventExperienceConfig(
+      db,
+      event as unknown as Record<string, unknown>,
+      eventPartner as unknown as Record<string, unknown> | null,
+    );
+  }
   const eventWithExperience = applyExperienceConfig(event as unknown as Record<string, unknown>, resolvedExperience);
+  const effectiveTemplateName = !forGuest && resolvedExperience?.templateId
+    ? (await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({ templateId: resolvedExperience.templateId }, { projection: { name: 1 } }))?.name
+    : undefined;
   const guestSafeEvent = forGuest
     ? await filterUnavailableVisualAssetUrls(db, eventWithExperience, event, eventPartner as unknown as Record<string, unknown> | null)
     : eventWithExperience;
@@ -212,7 +251,9 @@ export const GET = withErrorHandler(async (
 
   // The default consent page comes with the journey defaults: an event created with them, or any event once the global switch is on (camera#330).
   // The page editor asks too (camera#378): it shows the journey from the same function, so it needs to know which defaults the event gets.
-  const consentDefault = eventGetsDefaults(event as { journeyDefaults?: unknown }, await getDefaultsRollout(db));
+  // A selected global/partner/event journey opts the child into its standard
+  // localized consent step; the checkbox choices themselves stay event-owned.
+  const consentDefault = eventGetsDefaults(event as { journeyDefaults?: unknown }, await getDefaultsRollout(db)) || Boolean(resolvedExperience?.templateId);
   // The default welcome page needs the picture drawn from the event's default slideshow (issue 327): an event without it gets none.
   const hasWelcomeScreen = typeof (guestSafeEvent as { welcomeScreen?: { url?: unknown } }).welcomeScreen?.url === 'string';
   // The wordings an admin wrote for the event's partner or for the event, in its language: the default pages use them (lib/i18n/overrides.ts, issue 353). None written: an empty object.
@@ -247,7 +288,7 @@ export const GET = withErrorHandler(async (
       frameSelectionTiles,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
       // A guest gets the consent checkboxes that are switched on only (issue 558): a page whose checkboxes are all off is not a step, and the acceptance on the Who-are-you page is the effective value (event, partner, standard).
-      ...(forGuest ? { customPages: withShownCheckboxes(withPartnerPictures(withDefaultJourneyPages((guestSafeEvent.customPages ?? []) as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, defaultOrders: event.defaultPageOrders as Record<string, number> | undefined, documents: chosenDocuments(checkboxes) }), partnerPictures)), acceptanceOnWhoAreYou: checkboxes.acceptance.shown } : {}),
+      ...(forGuest ? { customPages: withShownCheckboxes(withPartnerPictures(withDefaultJourneyPages((guestSafeEvent.customPages ?? []) as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, defaultOrders: guestSafeEvent.defaultPageOrders as Record<string, number> | undefined, documents: chosenDocuments(checkboxes) }), partnerPictures)), acceptanceOnWhoAreYou: checkboxes.acceptance.shown } : {}),
       photoVettingRequired: vettingRequired,
       // How the photo is taken (issue 547): the event's own choice, else its partner's, else the standard. `cameraMode` stays the stored choice, which the editor shows.
       effectiveCameraMode: effectiveCameraMode(event as { cameraMode?: unknown }, partner),
@@ -262,8 +303,11 @@ export const GET = withErrorHandler(async (
       // Whether the capture page records the anonymous journey (issue 521, phase 2): the owner's global kill switch, on unless switched off (lib/journey/setting.ts). Only the guest answer carries it, and the page records nothing unless it is exactly true.
       ...(forGuest ? { journeyRecording: await journeyRecordingEnabled(db) } : {}),
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
-      journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, ...(chosenDocuments(checkboxes) ? { documents: chosenDocuments(checkboxes) } : {}), ...(event.defaultPageOrders ? { defaultOrders: event.defaultPageOrders as Record<string, number> } : {}) },
+      journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, ...(chosenDocuments(checkboxes) ? { documents: chosenDocuments(checkboxes) } : {}), ...(guestSafeEvent.defaultPageOrders ? { defaultOrders: guestSafeEvent.defaultPageOrders as Record<string, number> } : {}) },
+      ...(forGuest && journeyTest ? { journeyTest } : {}),
+      ...(!forGuest && typeof effectiveTemplateName === 'string' ? { effectiveExperienceTemplateName: effectiveTemplateName } : {}),
       _id: event._id.toString(),
+      // The generated-frame response also carries mapped message-frame compositions; generatedFrameEnabled gates only the generated fallback.
       generatedFrame: captureFrameOf({
         frames: guestSafeEvent.frames as EventFrameAssignment[] | undefined,
         generatedFrameEnabled: event.generatedFrameEnabled === true,
@@ -393,7 +437,10 @@ export const PATCH = withErrorHandler(async (
     Object.assign(updateFields, change.fields);
   }
   if (isActive !== undefined) {
-    updateFields.isActive = Boolean(isActive);
+    if (typeof isActive !== 'boolean') {
+      throw apiBadRequest('isActive must be true or false');
+    }
+    updateFields.isActive = isActive;
   }
 
   if (shortUrlSlug !== undefined) {
@@ -493,6 +540,9 @@ export const PATCH = withErrorHandler(async (
   if (experienceTemplate !== undefined) {
     const parsed = parseExperienceTemplateSelection(experienceTemplate);
     if (!parsed.ok) throw apiBadRequest(parsed.reason);
+    if (parsed.value.mode === 'inherit' && hasLegacyLocalJourney(event as Record<string, unknown>)) {
+      throw apiBadRequest('Create a named Event Journey from the existing event pages before switching this event to its parent default.');
+    }
     if (parsed.value.mode === 'template' && typeof parsed.value.templateId === 'string') {
       const template = await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({
         templateId: parsed.value.templateId,
@@ -500,6 +550,7 @@ export const PATCH = withErrorHandler(async (
         ownerId: String(event.eventId),
       });
       if (!template) throw apiBadRequest('Choose a template owned by this event.');
+      if (!journeyConfigFromStoredTemplate(template.config)) throw apiBadRequest('This Event Journey has invalid saved page data and cannot be selected.');
     }
     updateFields.experienceTemplate = parsed.value;
   }
@@ -576,24 +627,77 @@ export const PATCH = withErrorHandler(async (
     updateFields.customPages = customPages;
   }
 
-  // An event that follows a default keeps later event-level edits as local
-  // overrides. Old events without an explicit template selection stay on their
-  // stored configuration until an editor chooses to inherit a default.
-  const templateOverrides = selectionWithExperienceOverrides(
-    (updateFields.experienceTemplate ?? event.experienceTemplate) as import('@/lib/visual-assets/contracts').ExperienceTemplateSelection | null | undefined,
-    updateFields,
+  // A first local edit of an inherited journey forks an event-owned version.
+  // Later parent changes then cannot alter this event. Legacy event pages stay
+  // local until the editor explicitly converts them or chooses inheritance.
+  const storedSelection = (updateFields.experienceTemplate ?? event.experienceTemplate) as import('@/lib/visual-assets/contracts').ExperienceTemplateSelection | null | undefined;
+  const legacyJourney = updateFields.experienceTemplate === undefined && hasLegacyLocalJourney(event as Record<string, unknown>);
+  const selectedTemplateId = storedSelection?.mode === 'template' && typeof storedSelection.templateId === 'string'
+    ? storedSelection.templateId
+    : null;
+  const selectedEventTemplate = selectedTemplateId
+    ? await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).findOne({ templateId: selectedTemplateId, level: 'event', ownerId: String(event.eventId) })
+    : null;
+  const inheritsJourney = !legacyJourney && (
+    storedSelection?.mode === 'inherit'
+    || !storedSelection
+    || (storedSelection.mode === 'template' && !selectedEventTemplate)
   );
-  if (templateOverrides) updateFields.experienceTemplate = templateOverrides;
+  const changedConfig = experienceConfigFromEvent(updateFields);
+  let createdTemplateId: string | null = null;
+  if (Object.keys(changedConfig).length && selectedEventTemplate && selectedTemplateId) {
+    const existingTemplate = selectedEventTemplate;
+    const existingConfig = journeyConfigFromStoredTemplate(existingTemplate.config);
+    if (!existingConfig) throw apiBadRequest('The selected Event Journey has invalid saved page data. Create a new version before editing it.');
+    const merged = resolveTemplateConfig<ExperienceTemplateConfig>([
+      { value: existingConfig },
+      { mode: 'inherit', overrides: changedConfig },
+    ]);
+    const parsed = parseExperienceTemplateConfig(merged);
+    if (!parsed.ok) throw apiBadRequest(parsed.reason);
+    const partner = typeof event.partnerId === 'string' ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null;
+    const allowed = await validateTemplateAssetScope(db, 'event', parsed.config, event as Record<string, unknown>, partner as Record<string, unknown> | null);
+    if (!allowed.ok) throw apiBadRequest(allowed.reason);
+    await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).updateOne({ templateId: selectedTemplateId }, { $set: { config: parsed.config, updatedAt: generateTimestamp(), updatedBy: session.user.id } });
+    for (const field of JOURNEY_FLOW_FIELDS) delete updateFields[field];
+  } else if (Object.keys(changedConfig).length && inheritsJourney) {
+    const partner = typeof event.partnerId === 'string' ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null;
+    const resolutionEvent = { ...event, ...(storedSelection ? { experienceTemplate: storedSelection } : {}) } as Record<string, unknown>;
+    const inherited = await resolveEventExperienceConfig(db, resolutionEvent, partner as Record<string, unknown> | null);
+    if (inherited) {
+      const merged = resolveTemplateConfig<ExperienceTemplateConfig>([
+        { value: inherited.config },
+        { mode: 'inherit', overrides: changedConfig },
+      ]);
+      const parsed = parseExperienceTemplateConfig(merged);
+      if (!parsed.ok) throw apiBadRequest(parsed.reason);
+      const allowed = await validateTemplateAssetScope(db, 'event', parsed.config, event as Record<string, unknown>, partner as Record<string, unknown> | null);
+      if (!allowed.ok) throw apiBadRequest(allowed.reason);
+      const now = generateTimestamp();
+      const template = {
+        templateId: generateId(), level: 'event' as const, ownerId: String(event.eventId),
+        name: `${typeof event.name === 'string' ? event.name : 'Event'} journey`,
+        config: parsed.config, createdAt: now, updatedAt: now, updatedBy: session.user.id,
+      };
+      if (!template.ownerId || template.ownerId === 'undefined') throw apiBadRequest('The event has no stable event id for its journey version.');
+      await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).insertOne(template);
+      createdTemplateId = template.templateId;
+      updateFields.experienceTemplate = { mode: 'template', templateId: template.templateId };
+      for (const field of JOURNEY_FLOW_FIELDS) delete updateFields[field];
+    }
+  }
 
   // Update event in database
-  const result = await db
-    .collection(COLLECTIONS.EVENTS)
-    .updateOne(
-      { _id: new ObjectId(eventId) },
-      { $set: updateFields }
-    );
+  let result;
+  try {
+    result = await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: new ObjectId(eventId) }, { $set: updateFields });
+  } catch (error) {
+    if (createdTemplateId) await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).deleteOne({ templateId: createdTemplateId });
+    throw error;
+  }
 
   if (result.matchedCount === 0) {
+    if (createdTemplateId) await db.collection(COLLECTIONS.EXPERIENCE_TEMPLATES).deleteOne({ templateId: createdTemplateId });
     throw apiNotFound('Event');
   }
 

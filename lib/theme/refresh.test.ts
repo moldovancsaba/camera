@@ -33,7 +33,7 @@ function fakeDb() {
 
 function deps(result: { changed: boolean; messmassUnavailable?: boolean }, calls: string[], overrides: Partial<ThemeRefreshDeps> = {}): ThemeRefreshDeps {
   return {
-    refresh: async () => (calls.push('refresh'), { design: { context: {}, messages: [], messagesOverridden: false, updatedAt: 'x' } as never, changed: result.changed, messmassUnavailable: result.messmassUnavailable ?? false }),
+    refresh: async (_db, event) => (calls.push('refresh'), { design: { context: {}, messages: [], variants: (event.frameDesign as { variants?: unknown[] } | undefined)?.variants, messagesOverridden: false, updatedAt: 'x' } as never, changed: result.changed, messmassUnavailable: result.messmassUnavailable ?? false }),
     generate: async () => (calls.push('generate'), { design: {} as never, generated: 1, reused: 0 }),
     now: () => NOW,
     ...overrides,

@@ -2,6 +2,7 @@
 
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { Radio } from '@/components/gds/PublicPrimitives';
+import Link from 'next/link';
 import { useUiLanguage } from '@/components/i18n/UiLanguageProvider';
 import { adminOperationText } from '@/lib/i18n/admin-operations';
 /**
@@ -17,6 +18,8 @@ interface Props {
   onUploaded: (submission: Record<string, unknown>) => void;
   /** The event has a frame to put on an uploaded photo (camera#488). */
   frameAvailable?: boolean;
+  /** Active message-frame graphics exist, but their message compositions are not ready yet. */
+  frameSetupNeeded?: boolean;
 }
 
 type UploadStatus = 'queued' | 'preparing' | 'uploading' | 'done' | 'error';
@@ -287,6 +290,7 @@ export default function EventGalleryUpload({
   eventMongoId,
   onUploaded,
   frameAvailable = false,
+  frameSetupNeeded = false,
 }: Props) {
   const language = useUiLanguage();
   const translate = (value: string) => adminOperationText(value, language);
@@ -505,7 +509,12 @@ export default function EventGalleryUpload({
                 {translate('Click each photo to choose or change its frame.')}
               </p>
             ) : null}
-            {!frameAvailable ? (
+            {!frameAvailable && frameSetupNeeded ? (
+              <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
+                {translate('This event has assigned frame graphics, but no message compositions are ready for gallery uploads. Configure them on the')} {' '}
+                <Link href={`/admin/events/${encodeURIComponent(eventMongoId)}/frames`}>{translate('Frames page')}</Link>.
+              </p>
+            ) : !frameAvailable ? (
               <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
                 The event has no frame yet (the Frames page), so there is nothing to add.
               </p>

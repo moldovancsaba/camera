@@ -73,6 +73,9 @@ export interface EventTheme {
   };
 }
 
+/** A theme may be partial in parent-level journey editors with no selected event context. */
+export type EventThemePreview = Partial<Omit<EventTheme, 'font'>> & { font?: Partial<EventTheme['font']> };
+
 export interface ThemeInput {
   /** The event's own brand colour from the editor (#RRGGBB), used for buttons before the Messmass style. */
   brandColor?: string | null;
@@ -193,7 +196,7 @@ export function resolveEventTheme({ brandColor, brandBorderColor, context, email
  * The hosts the guest pages may load images from (the Content-Security-Policy of next.config.ts): a logo anywhere else would not show, so it
  * is not used and the event's emoji takes its place.
  */
-const IMAGE_HOSTS = [/^i\.ibb\.co$/, /^imgbb\.com$/, /^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/];
+const IMAGE_HOSTS = [/^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/];
 export function allowedImage(url: string | null | undefined): string | null {
   if (!url) return null;
   try {

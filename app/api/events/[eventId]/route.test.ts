@@ -154,6 +154,26 @@ test('PATCH: a global admin switches photo vetting off and the change is attribu
   assert.ok(setting.updatedAt);
 });
 
+test('PATCH: a global admin can activate and deactivate an event with explicit booleans only', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-event-visibility');
+  assert.equal((await PATCH(patchRequest({ isActive: false }), params)).status, 200);
+  assert.equal(h.updates[0].isActive, false);
+  assert.equal((await PATCH(patchRequest({ isActive: true }), params)).status, 200);
+  assert.equal(h.updates[1].isActive, true);
+  for (const bad of ['false', 0, null, {}]) {
+    assert.equal((await PATCH(patchRequest({ isActive: bad }), params)).status, 400, String(bad));
+  }
+  assert.equal(h.updates.length, 2, 'invalid status values never reach the database');
+});
+
+test('PATCH: an authorized partner event manager can change event visibility', async (t) => {
+  const h = mockDeps(t, { event: { isActive: true }, session: PARTNER_MANAGER, partnerAllowed: true });
+  const { PATCH } = await importRouteModule('patch-manager-event-visibility');
+  assert.equal((await PATCH(patchRequest({ isActive: false }), params)).status, 200);
+  assert.equal(h.updates[0].isActive, false);
+});
+
 test('PATCH: a partner events manager cannot change photo vetting, and nothing is written', async (t) => {
   const h = mockDeps(t, { event: { photoVetting: STORED_VETTING }, session: PARTNER_MANAGER, partnerAllowed: true });
   const { PATCH } = await importRouteModule('patch-manager');
@@ -167,6 +187,14 @@ test('PATCH: a partner events manager can still update the rest of the event', a
   const { PATCH } = await importRouteModule('patch-manager-other');
   assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
   assert.equal('photoVetting' in h.updates[0], false);
+});
+
+test('PATCH: generic event updates cannot bypass the legacy journey preservation guard', async (t) => {
+  const h = mockDeps(t, { event: { customPages: [WHO_ARE_YOU_PAGE] }, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-legacy-experience-inherit');
+  const response = await PATCH(patchRequest({ experienceTemplate: { mode: 'inherit' } }), params);
+  assert.equal(response.status, 400);
+  assert.equal(h.updates.length, 0, 'legacy event pages remain untouched until explicitly snapshotted');
 });
 
 test('PATCH: the setting must be true or false', async (t) => {
@@ -310,7 +338,7 @@ const FRESH = new Date().toISOString();
 const SNAPSHOT = {
   context: {
     source: 'messmass', fetchedAt: FRESH, inputHash: 'h', event: { name: 'Derby', date: null, homeTeam: null, visitorTeam: null },
-    partner: { name: 'Club', logoUrl: 'https://i.ibb.co/logo.png' }, template: null,
+    partner: { name: 'Club', logoUrl: 'https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/club.png' }, template: null,
     style: { name: 'S', resolvedFrom: 'project', fontFamily: 'Aquatic', fontSource: 'system', fontFile: null, headingColor: WHITE, heroBackground: HERO },
   },
   messages: [], messagesOverridden: false, updatedAt: FRESH,
@@ -321,7 +349,7 @@ test('GET returns the theme of the event: from its messmass snapshot, without ex
   const { GET } = await importRouteModule('theme-snapshot');
   const { event } = ((await (await GET(getRequest(), params)).json()) as { data: { event: Record<string, unknown> } }).data;
   const theme = event.theme as { source: string; background: string; heading: string; logoUrl: string; font: { family: string } };
-  assert.deepEqual([theme.source, theme.background, theme.heading, theme.logoUrl, theme.font.family], ['messmass', HERO.slice(0, 7), WHITE.slice(0, 7), 'https://i.ibb.co/logo.png', 'Aquatic']);
+  assert.deepEqual([theme.source, theme.background, theme.heading, theme.logoUrl, theme.font.family], ['messmass', HERO.slice(0, 7), WHITE.slice(0, 7), 'https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/club.png', 'Aquatic']);
   assert.equal('frameDesign' in event, false, 'the snapshot is admin data');
 });
 

@@ -13,12 +13,12 @@ import { AccentPanel, AccessSummary, StatsStrip } from '@/components/gds/ClientW
 import { Breadcrumbs, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import VisibilityStatusIcon from '@/components/gds/VisibilityStatusIcon';
+import EventStatusToggle from '@/components/gds/EventStatusToggle';
 import PartnerEventsOpenAll from '@/components/admin/PartnerEventsOpenAll';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import DeletePartnerButton from '@/components/admin/DeletePartnerButton';
-import ExperienceTemplateDefaultSettings from '@/components/admin/ExperienceTemplateDefaultSettings';
 import { fetchPartnerStyleContext } from '@/lib/messmassClient';
 import { parseMessmassStylePalette, type MessmassStylePalette } from '@/lib/theme/messmass-style-palette';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -208,7 +208,6 @@ export default async function PartnerDetailPage({
         $or: [{ photoReview: { $exists: false } }, { reviewStatus: 'approved' }],
       })
       .sort({ createdAt: -1 })
-      .limit(50)
       .toArray()) as unknown as SubmissionDoc[];
 
     const participantRows = await db
@@ -492,18 +491,6 @@ export default async function PartnerDetailPage({
             logos={partner.defaultLogosWithDetails || []}
           />
 
-          {canManageEvents ? (
-            <div id="partner-user-journey" style={{ scrollMarginTop: '1.5rem' }}>
-              <ExperienceTemplateDefaultSettings
-                level="partner"
-                resourceId={id}
-                sourceEventId={events[0]?._id.toString()}
-                canManage={Boolean(events[0])}
-                sectionTitle="Partner User Journey"
-              />
-            </div>
-          ) : null}
-
           <Card p={0}>
             <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-default-border)', padding: '1.5rem' }}>
               <div>
@@ -574,7 +561,15 @@ export default async function PartnerDetailPage({
                       </Group>
                     </Stack>
                     <Group gap="sm" justify="flex-end">
-                      <VisibilityStatusIcon isVisible={event.isActive === true} />
+                      {canManageEvents ? (
+                        <EventStatusToggle
+                          eventId={String(event._id)}
+                          eventName={String(event.name ?? 'Event')}
+                          initialIsActive={event.isActive === true}
+                        />
+                      ) : (
+                        <VisibilityStatusIcon isVisible={event.isActive === true} />
+                      )}
                       {canManageEvents ? <Link href={`/admin/events/${event._id}/edit`}>Edit</Link> : null}
                     </Group>
                   </Group>
@@ -635,11 +630,6 @@ export default async function PartnerDetailPage({
                 </Link>
               ))}
             </div>
-            {submissions.length >= 50 ? (
-              <Text ta="center" size="sm" c="dimmed" mt="lg">
-                Showing the 50 most recent submissions
-              </Text>
-            ) : null}
           </div>
         )}
       </Card>

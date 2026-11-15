@@ -19,12 +19,12 @@ import { STAGE_HEIGHT, STAGE_WIDTH, type StageColours } from './default-stage';
 const FIT_REFERENCE_PX = 100;
 
 /** Raise when the drawing changes, so every stored picture is drawn again. */
-export const WELCOME_SCREEN_RENDER_VERSION = 1;
+export const WELCOME_SCREEN_RENDER_VERSION = 2;
 
 export interface WelcomeScreenSources {
   design: ScreenDesign;
-  /** The overlay picture of the design, fetched. */
-  overlay: Buffer;
+  /** The optional visible overlay picture, fetched when it is enabled. */
+  overlay: Buffer | null;
   /** What fills the window; null draws the stand-in. */
   windowPicture: Buffer | null;
   /** The event's frame (transparent, 16:9) drawn over the window picture; null draws none. */
@@ -100,11 +100,12 @@ export async function renderWelcomeScreen(sources: WelcomeScreenSources): Promis
   if (sources.frame) ctx.drawImage((await loadImage(sources.frame)) as never, win.x, win.y, win.w, win.h);
   ctx.restore();
 
-  // The overlay over it, then the QR code and the texts.
-  ctx.drawImage((await loadImage(sources.overlay)) as never, 0, 0, STAGE_WIDTH, STAGE_HEIGHT);
-  if (design.qr) drawQr(ctx, design.qr.url, design.qr.color, px(design.qr.x, STAGE_WIDTH), px(design.qr.y, STAGE_HEIGHT), px(design.qr.size, STAGE_WIDTH));
+  // Optional layers remain independent: an uploaded overlay can contain its own QR/text without duplicates from Camera.
+  if (sources.overlay && design.overlayVisible !== false) ctx.drawImage((await loadImage(sources.overlay)) as never, 0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+  if (design.qr && design.qr.visible !== false) drawQr(ctx, design.qr.url, design.qr.color, px(design.qr.x, STAGE_WIDTH), px(design.qr.y, STAGE_HEIGHT), px(design.qr.size, STAGE_WIDTH));
 
   for (const text of design.texts ?? []) {
+    if (text.visible === false) continue;
     const left = px(text.x, STAGE_WIDTH);
     const width = px(text.width, STAGE_WIDTH);
     let size = px(text.size, STAGE_HEIGHT);

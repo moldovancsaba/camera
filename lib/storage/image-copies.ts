@@ -20,6 +20,7 @@ import { del } from '@vercel/blob';
 import { COLLECTIONS, type ImageCopy } from '@/lib/db/schemas';
 import { PRIVACY_ERASURE_ACTIVE_FILTER } from '@/lib/privacy/erasure';
 import { isAllowedLogoUrl } from '@/lib/frame/logo';
+import { isRenderableImgbbImageUrl } from '@/lib/imgbb/url';
 import { deleteImage, uploadToImgbbOnly, type MirrorResult } from '@/lib/imgbb/upload';
 import { logInfo, logWarn } from '@/lib/observability/logger';
 
@@ -34,6 +35,11 @@ export type CopyRole = ImageCopy['role'];
 export type CopyStore = ImageCopy['store'];
 export type CopyState = ImageCopy['state'];
 
+/** Server-only validation: ImgBB may be read for backup verification/repair but is never a production image source. */
+function isAllowedStoredCopyUrl(url: string): boolean {
+  return isAllowedLogoUrl(url) || isRenderableImgbbImageUrl(url);
+}
+
 export type ProbeResult =
   | { kind: 'size'; bytes: number }
   | { kind: 'gone'; reason: string }
@@ -44,7 +50,7 @@ export type ProbeResult =
  * `gone` only for a clear 404/410 or an answer that is not an image; anything else that cannot be told (timeout, 5xx, refusal, an address that is not one of our image hosts) is `unknown`.
  */
 export async function probeStoredSize(url: string, fetchImpl: typeof fetch = fetch, timeoutMs: number = PROBE_TIMEOUT_MS): Promise<ProbeResult> {
-  if (!isAllowedLogoUrl(url)) return { kind: 'unknown', reason: 'the address is not on one of our image hosts' };
+  if (!isAllowedStoredCopyUrl(url)) return { kind: 'unknown', reason: 'the address is not on one of our stored-copy hosts' };
   try {
     const res = await fetchImpl(url, { headers: { Range: 'bytes=0-0', Accept: 'image/*' }, signal: AbortSignal.timeout(timeoutMs), redirect: 'follow' });
     // Only the headers are wanted; do not let a host that ignored the range stream the whole picture.

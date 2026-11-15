@@ -8,8 +8,8 @@
  * Pure and client-safe: the parsing of a request and the options the editor sees. The page that loads the frames of an event is `selection-options.ts`.
  */
 
-import type { FrameDesign } from './context';
-import { messageTokens, usableMessages } from './messages';
+import type { FrameContext, FrameDesign, FrameVariant } from './context';
+import { fillMessage, messageTokens, usableMessages } from './messages';
 
 /** The id of the generated layout among the layouts of an event (a library frame has its own id). */
 export const GENERATED_LAYOUT = 'generated';
@@ -119,10 +119,47 @@ export type MessageFrameChoices = Record<string, string | string[]>;
 interface DesignLike {
   messages: FrameDesign['messages'];
   messageFrames?: MessageFrameChoices;
+  messageFramesOverridden?: boolean;
   context?: FrameDesign['context'];
+  variants?: FrameVariant[];
 }
 
-/** The library frames a message is written on: the choice is one frame id, or a list of them (a message on several designs). Empty = the generated layout. */
+/**
+ * Read the saved message-to-frame map. Older compositions stored their frame id and message position on
+ * each variant before the explicit map existed; infer the map when it is missing or empty unless the editor
+ * explicitly saved the map as empty. The current message at that position must still match the rendered text. This recovers valid legacy
+ * assignments without reusing compositions for messages that have since changed.
+ */
+export function effectiveMessageFrames(design: {
+  messages: string[];
+  messageFrames?: MessageFrameChoices;
+  messageFramesOverridden?: boolean;
+  variants?: FrameVariant[];
+  context?: FrameContext;
+} | null | undefined): MessageFrameChoices {
+  if (!design) return {};
+  if (design.messageFramesOverridden === true) return design.messageFrames ?? {};
+  if (design.messageFrames && Object.keys(design.messageFrames).length > 0) return design.messageFrames;
+
+  const eventContext = design.context?.event;
+  const tokens = eventContext
+    ? messageTokens({ home: eventContext.homeTeam?.name, visitor: eventContext.visitorTeam?.name, eventName: eventContext.name })
+    : {};
+  const inferred = new Map<string, string[]>();
+  for (const variant of design.variants ?? []) {
+    if (!variant.frameId || !Number.isInteger(variant.index) || variant.index === null || variant.index < 0) continue;
+    const template = design.messages[variant.index];
+    if (typeof template !== 'string') continue;
+    const rendered = fillMessage(template, tokens);
+    if (!rendered || variant.message !== rendered) continue;
+    const ids = inferred.get(template) ?? [];
+    if (!ids.includes(variant.frameId)) ids.push(variant.frameId);
+    inferred.set(template, ids);
+  }
+  return Object.fromEntries([...inferred].map(([message, ids]) => [message, ids.length === 1 ? ids[0] : ids]));
+}
+
+/** The library frames a message is written on. Empty means no assigned composition; the optional generated fallback is handled by the caller. */
 export function framesOfMessage(messageFrames: MessageFrameChoices | undefined, message: string): string[] {
   const value: unknown = messageFrames?.[message];
   const ids = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
@@ -151,7 +188,7 @@ export function layoutOptionsOf(input: {
   let generated = false;
   const messages = input.design ? usableOf(input.design).map((message) => message.text) : [];
   for (const message of messages) {
-    const ids = framesOfMessage(input.design?.messageFrames, message).filter((id) => carrierById.has(id));
+    const ids = framesOfMessage(effectiveMessageFrames(input.design), message).filter((id) => carrierById.has(id));
     if (ids.length === 0) generated = input.generatedEnabled;
     ids.forEach((id) => used.add(id));
   }

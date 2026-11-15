@@ -13,7 +13,7 @@ function context(style: Record<string, unknown>, extra: Record<string, unknown> 
   const parsed = parseFrameContext(
     {
       event: { name: 'European Aquatics Championships 2026 Paris', date: null, homeTeam: null, visitorTeam: null },
-      partner: { name: 'Aquatics', logoUrl: 'https://i.ibb.co/logo.png' },
+      partner: { name: 'Aquatics', logoUrl: 'https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/aquatics.png' },
       template: null,
       style: { name: 'S', resolvedFrom: 'project', fontFamily: 'Aquatic', fontSource: 'system', fontFile: null, headingColor: '#ffffffff', heroBackground: '#171d37ff', ...style },
       ...extra,
@@ -37,7 +37,7 @@ test('the pages take the background, heading, card, button and radius of the mes
   assert.equal(theme.buttonBackground, '#3b82f6');
   assert.equal(theme.buttonText, '#ffffff');
   assert.equal(theme.radius, '1rem');
-  assert.equal(theme.logoUrl, 'https://i.ibb.co/logo.png');
+  assert.equal(theme.logoUrl, 'https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/aquatics.png');
   assert.equal(theme.emoji, null, 'a logo, so no emoji');
   assert.deepEqual(theme.font, { family: 'Aquatic', source: 'system', file: null, url: null });
 });
@@ -164,7 +164,8 @@ test('a logo on a host the pages may not load images from is not used: the emoji
   const theme = resolveEventTheme({ context: ctx });
   assert.equal(theme.logoUrl, null);
   assert.equal(theme.emoji, '🏐');
-  assert.equal(allowedImage('https://i.ibb.co/x/logo.png'), 'https://i.ibb.co/x/logo.png');
+  assert.equal(allowedImage('https://i.ibb.co/x/logo.png'), null, 'ImgBB is a backup host, never a guest-facing image source');
+  assert.equal(allowedImage('https://imgbb.com/x/logo.png'), null, 'ImgBB pages are not image sources either');
   assert.equal(allowedImage('https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/a.png'), 'https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/a.png');
   assert.equal(allowedImage(`https://pub-${'0'.repeat(32)}.r2.dev/logos/a.png`), null, 'only the logo bucket, not any r2.dev address');
   assert.equal(allowedImage('https://abc123.public.blob.vercel-storage.com/logo.png') !== null, true);

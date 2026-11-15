@@ -129,7 +129,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     throw apiBadRequest('Only PNG and SVG files are allowed');
   }
 
-  // Upload to imgbb
+  // Upload to Vercel Blob for production use; the optional ImgBB mirror is backup-only.
   const buffer = Buffer.from(await file.arrayBuffer());
   const base64 = buffer.toString('base64');
   const uploadResult = await uploadImage(base64, { name: `frame-${Date.now()}` });

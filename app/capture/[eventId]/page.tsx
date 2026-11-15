@@ -45,6 +45,7 @@ import { approvalTexts } from '@/lib/events/page-texts';
 import { useT, useUiTexts } from '@/components/i18n/UiLanguageProvider';
 import { translate, type MessageKey, type MessageValues, type UiLanguage } from '@/lib/i18n';
 import { errorText } from '@/lib/i18n/errors';
+import { adminJourneyPublicationText } from '@/lib/i18n/admin-journey-publication';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import RestartPage from '@/components/capture/RestartPage';
 import WelcomePage from '@/components/capture/WelcomePage';
@@ -98,6 +99,7 @@ interface EventData {
   partnerId: string | null;
   partnerName: string | null;
   eventDate: string | null;
+  journeyTest?: { name: string };
   location: string | null;
   customPages: CustomPage[];  // Custom page flow
   journeyContext?: { defaultOrders?: Record<string, number> };
@@ -241,6 +243,8 @@ export default function EventCapturePage({
   const uiTexts = useUiTexts();
   
   const [event, setEvent] = useState<EventData | null>(null);
+  const [endingJourneyTest, setEndingJourneyTest] = useState(false);
+  const [journeyTestError, setJourneyTestError] = useState<string | null>(null);
   const [sourceLinkSlug, setSourceLinkSlug] = useState<string | null>(null);
   const [loadingLogoUrl, setLoadingLogoUrl] = useState<string | null>(null);
   const [onboardingLogoUrl, setOnboardingLogoUrl] = useState<string | null>(null);
@@ -477,6 +481,7 @@ export default function EventCapturePage({
           partnerId: eventData.partnerId || null,
           partnerName: eventData.partnerName || null,
           eventDate: eventData.eventDate || null,
+          journeyTest: eventData.journeyTest ?? undefined,
           location: eventData.location || null,
           customPages: eventData.customPages || [],
           tourEnabled: eventData.tourEnabled === true,
@@ -2084,9 +2089,36 @@ export default function EventCapturePage({
     );
   }
 
+  const journeyTestText = (source: string) => adminJourneyPublicationText(source, language) ?? source;
+  const exitJourneyTest = async () => {
+    if (endingJourneyTest) return;
+    setEndingJourneyTest(true);
+    setJourneyTestError(null);
+    try {
+      const response = await fetch('/api/experience-journey-test', { method: 'DELETE', cache: 'no-store' });
+      if (!response.ok) throw new Error('Failed to fetch');
+      window.location.replace(`/capture/${encodeURIComponent(eventId)}`);
+    } catch {
+      setJourneyTestError(errorText(language, 'Failed to fetch'));
+      setEndingJourneyTest(false);
+    }
+  };
+
   return (
     <div className="app-safe-area fixed inset-0 flex flex-col landscape:flex-row bg-transparent">
       <AppShellLock />
+      {event.journeyTest ? (
+        <div className="z-[80] mx-3 mt-3 flex shrink-0 items-start justify-between gap-4 rounded-xl border-2 border-amber-600 bg-amber-50 px-4 py-3 text-slate-950 shadow-lg dark:border-amber-400 dark:bg-amber-950 dark:text-white landscape:mx-2 landscape:mt-2" role="alert">
+          <div className="min-w-0">
+            <p className="font-bold">{journeyTestText('Live journey test')} · {event.journeyTest.name}</p>
+            <p className="mt-1 text-sm">{journeyTestText('Real event: submissions are stored and follow this event’s consent, vetting, publishing and e-mail settings.')}</p>
+            {journeyTestError ? <p className="mt-1 text-sm font-semibold" role="status">{journeyTestError}</p> : null}
+          </div>
+          <button type="button" className="shrink-0 rounded-lg border-2 border-amber-800 px-4 py-2 font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:opacity-60 dark:border-amber-200 dark:focus-visible:outline-white" onClick={() => void exitJourneyTest()} disabled={endingJourneyTest}>
+            {endingJourneyTest ? t('capture.loading') : journeyTestText('Exit test')}
+          </button>
+        </div>
+      ) : null}
       {tourEnabled ? (
         <>
           <TourOverlay controller={selectFrameTour} />
