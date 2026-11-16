@@ -174,6 +174,8 @@ export const cameraAdminVocabularyPacks = [
     'turn-off': { defaultMessage: 'Turn vetting off', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'confirm-turn-off': { defaultMessage: 'Confirm turn off', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'cancel-turn-off': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
+    'enable-content-precheck': { defaultMessage: 'Turn content precheck on', icon: GdsIcons.Check, feedback: savedFeedback },
+    'disable-content-precheck': { defaultMessage: 'Turn content precheck off', icon: GdsIcons.Delete, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('photo-analysis', {
     edit: { defaultMessage: 'Update analysis', icon: GdsIcons.Edit, feedback: openedFeedback },
