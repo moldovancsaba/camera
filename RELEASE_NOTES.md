@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — vetting page crash fix (2026-11-16)
+
+- **Fixed:** every event's Vetting page showed "Something went wrong" after the content-precheck merge (#735). Its switch button used the actions `photo-review:enable-content-precheck` and `photo-review:disable-content-precheck`, which were not registered in the admin vocabulary. Both are registered now.
+- **Guard:** the registration scan in `lib/gds/semantic-actions.test.ts` now also reads action names chosen inside an expression (`action={on ? 'a:x' : 'a:y'}`); it failed on these two before the fix.
+
 ## Unreleased — optional Hetzner photo content precheck (merged 2026-11-15)
 
 - **Added:** an event-level optional content-precheck setting and a server-only, scheduled worker that discovers the permitted job/model inventory, submits `image_moderation` with `model: auto`, and stores a validated result on the exact pending Camera submission revision.

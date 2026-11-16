@@ -25,6 +25,10 @@ test('every semantic action used in the code is registered in the admin vocabula
     for (const match of readFileSync(file, 'utf8').matchAll(/action=(?:"([a-z0-9-]+:[a-z0-9-]+)"|\{'([a-z0-9-]+:[a-z0-9-]+)'\}|\{`([a-z0-9-]+:[a-z0-9-]+)`\})/g)) {
       used.set(match[1] ?? match[2] ?? match[3], file);
     }
+    // Actions chosen inside an expression, e.g. action={on ? 'pack:off' : 'pack:on'} (the vetting page crashed on 2026-11-16).
+    for (const expression of readFileSync(file, 'utf8').matchAll(/action=\{([^}]*)\}/g)) {
+      for (const literal of expression[1].matchAll(/['"`]([a-z0-9-]+:[a-z0-9-]+)['"`]/g)) used.set(literal[1], file);
+    }
   }
   assert.ok(used.size > 50, `the scan found the actions of the code (${used.size})`);
   const missing = [...used].filter(([action]) => !registered.has(action)).map(([action, file]) => `${action} (${file})`);
